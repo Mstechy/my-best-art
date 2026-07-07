@@ -3,22 +3,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
-  "env": {
-    "VITE_SUPABASE_URL": "@supabase_url",
-    "VITE_SUPABASE_ANON_KEY": "@supabase_anon_key"
-  },
-  "functions": {
-    "api": {
-      "runtime": "nodejs18.x"
-    }
-  },
-  "redirects": [
-    {
-      "source": "/",
-      "destination": "/",
-      "permanent": false
-    }
-  ],
   "rewrites": [
     {
       "source": "/(.*)",
