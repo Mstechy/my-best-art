@@ -1,0 +1,186 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --font-display: 'Space Grotesk', sans-serif;
+    --font-body: 'Inter', sans-serif;
+
+    --background: 0 0% 99%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 252 62% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 47% 20%;
+
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+
+    --accent: 173 58% 39%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 252 62% 55%;
+
+    --radius: 0.5rem;
+
+    --navbar: 222 47% 11%;
+    --navbar-foreground: 220 14% 96%;
+
+    --seller: 45 93% 47%;
+    --seller-foreground: 45 93% 10%;
+    --buyer: 173 58% 39%;
+    --buyer-foreground: 173 58% 10%;
+    --admin: 252 62% 55%;
+    --admin-foreground: 0 0% 100%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(252, 62%, 55%), hsl(270, 60%, 60%));
+    --gradient-seller: linear-gradient(135deg, hsl(45, 93%, 47%), hsl(30, 95%, 55%));
+    --gradient-buyer: linear-gradient(135deg, hsl(173, 58%, 39%), hsl(180, 55%, 45%));
+    --gradient-admin: linear-gradient(135deg, hsl(252, 62%, 55%), hsl(220, 70%, 45%));
+
+    --shadow-sm: 0 1px 2px hsl(220 30% 10% / 0.05);
+    --shadow-md: 0 4px 12px hsl(220 30% 10% / 0.08);
+    --shadow-lg: 0 12px 40px hsl(220 30% 10% / 0.1);
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 20%;
+    --sidebar-primary: 252 62% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 14% 96%;
+    --sidebar-accent-foreground: 222 47% 20%;
+    --sidebar-border: 220 14% 92%;
+    --sidebar-ring: 252 62% 55%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 220 14% 95%;
+    --card: 222 47% 9%;
+    --card-foreground: 220 14% 95%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 220 14% 95%;
+    --primary: 252 62% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 220 14% 90%;
+    --muted: 222 30% 14%;
+    --muted-foreground: 220 10% 55%;
+    --accent: 173 58% 44%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 62% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 30% 16%;
+    --input: 222 30% 16%;
+    --ring: 252 62% 65%;
+    --navbar: 222 47% 8%;
+    --navbar-foreground: 220 14% 90%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 220 14% 90%;
+    --sidebar-primary: 252 62% 65%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 14%;
+    --sidebar-accent-foreground: 220 14% 90%;
+    --sidebar-border: 222 30% 16%;
+    --sidebar-ring: 252 62% 65%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-display);
+  }
+}
+
+@layer components {
+  .gradient-primary {
+    background: var(--gradient-primary);
+  }
+  .gradient-seller {
+    background: var(--gradient-seller);
+  }
+  .gradient-buyer {
+    background: var(--gradient-buyer);
+  }
+  .gradient-admin {
+    background: var(--gradient-admin);
+  }
+
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/50;
+  }
+
+  .glass-strong {
+    @apply bg-card/80 backdrop-blur-md border border-border/60;
+  }
+
+  .gradient-text {
+    background: var(--gradient-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-card {
+    @apply relative overflow-hidden rounded-xl border border-border/60 bg-card p-6;
+  }
+  .stat-card::before {
+    content: '';
+    @apply absolute left-0 top-0 h-full w-1 rounded-l-xl;
+    background: var(--gradient-primary);
+  }
+  .stat-card-seller::before {
+    background: var(--gradient-seller);
+  }
+  .stat-card-buyer::before {
+    background: var(--gradient-buyer);
+  }
+  .stat-card-accent::before {
+    background: var(--gradient-buyer);
+  }
+  .stat-card-destructive::before {
+    background: linear-gradient(180deg, hsl(var(--destructive)), hsl(0, 50%, 40%));
+  }
+}
+
+@layer utilities {
+  .animate-slide-up {
+    animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
