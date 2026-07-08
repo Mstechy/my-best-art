@@ -6,6 +6,7 @@ import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import HeroSlider from "@/components/HeroSlider";
@@ -21,9 +22,9 @@ import heroSlide2 from "@/assets/hero-slide-2.jpg";
 import heroSlide3 from "@/assets/hero-slide-3.jpg";
 
 const heroSlides = [
-  { image: heroSlide1, title: "Shop the Best Deals", subtitle: "Premium products from verified sellers worldwide", badge: "🔥 Trending Now" },
-  { image: heroSlide2, title: "New Season Arrivals", subtitle: "Discover the latest in fashion, tech & lifestyle", badge: "🛍️ New Arrivals" },
-  { image: heroSlide3, title: "Your Workspace, Upgraded", subtitle: "Top-rated electronics and home office essentials", badge: "💻 Tech Deals" },
+  { image: heroSlide1, title: "Shop the Best Deals", subtitle: "Premium products from verified sellers worldwide", badge: "Trending Now" },
+  { image: heroSlide2, title: "New Season Arrivals", subtitle: "Discover the latest in fashion, tech and lifestyle", badge: "New Arrivals" },
+  { image: heroSlide3, title: "Your Workspace, Upgraded", subtitle: "Top-rated electronics and home office essentials", badge: "Tech Deals" },
 ];
 
 interface Product {
@@ -44,6 +45,8 @@ interface Category {
   name: string;
   slug: string;
 }
+
+type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
 
 export default function LandingPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -67,10 +70,12 @@ export default function LandingPage() {
         setProducts(productsRes.data as unknown as Product[]);
         const sellerIds = [...new Set(productsRes.data.map(p => p.seller_id))];
         if (sellerIds.length > 0) {
-          const { data: profiles } = await supabase.from("seller_profiles_public" as any).select("user_id, full_name, is_verified").in("user_id", sellerIds);
+          const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
           if (profiles) {
             const map: Record<string, { full_name: string | null; is_verified: boolean }> = {};
-            profiles.forEach(p => { map[p.user_id] = { full_name: p.full_name, is_verified: p.is_verified }; });
+            profiles.forEach((p: SellerProfilePublic) => {
+              if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified };
+            });
             setSellerProfiles(map);
           }
         }
@@ -291,14 +296,14 @@ export default function LandingPage() {
               <h4 className="font-display font-semibold mb-3 text-sm">Support</h4>
               <ul className="space-y-2 text-sm text-[hsl(var(--navbar-foreground)/0.6)]">
                 <li><Link to="/auth/login" className="hover:text-[hsl(var(--navbar-foreground))] transition-colors">My Account</Link></li>
-                <li><span className="cursor-default">Contact Us</span></li>
-                <li><span className="cursor-default">Terms of Service</span></li>
-                <li><span className="cursor-default">Privacy Policy</span></li>
+                <li><Link to="/contact" className="hover:text-[hsl(var(--navbar-foreground))] transition-colors">Contact Us</Link></li>
+                <li><Link to="/terms" className="hover:text-[hsl(var(--navbar-foreground))] transition-colors">Terms of Service</Link></li>
+                <li><Link to="/privacy" className="hover:text-[hsl(var(--navbar-foreground))] transition-colors">Privacy Policy</Link></li>
               </ul>
             </div>
           </div>
           <div className="border-t border-[hsl(var(--navbar-foreground)/0.1)] mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs text-[hsl(var(--navbar-foreground)/0.4)]">© {new Date().getFullYear()} MarketHub. All rights reserved.</p>
+            <p className="text-xs text-[hsl(var(--navbar-foreground)/0.4)]">(c) {new Date().getFullYear()} MarketHub. All rights reserved.</p>
             <div className="flex items-center gap-1 text-xs text-[hsl(var(--navbar-foreground)/0.4)]">
               <Mail className="h-3 w-3" /> support@markethub.com
             </div>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -13,34 +13,59 @@ export default function StoreFollowButton({ sellerId, className }: { sellerId: s
   const [count, setCount] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const load = async () => {
-    const [{ count: c }, mine] = await Promise.all([
-      (supabase as any).from("store_follows").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
-      user ? (supabase as any).from("store_follows").select("id").eq("seller_id", sellerId).eq("follower_id", user.id).maybeSingle() : Promise.resolve({ data: null }),
+  const load = useCallback(async () => {
+    const [countResult, mineResult] = await Promise.all([
+      supabase.from("store_follows").select("id", { count: "exact", head: true }).eq("seller_id", sellerId),
+      user
+        ? supabase.from("store_follows").select("id").eq("seller_id", sellerId).eq("follower_id", user.id).maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
-    setCount(c || 0);
-    setFollowing(!!mine.data);
-  };
 
-  useEffect(() => { load(); }, [sellerId, user?.id]);
+    if (countResult.error) {
+      toast.error("Could not load follower count");
+      return;
+    }
+    if (mineResult.error) {
+      toast.error("Could not load follow status");
+      return;
+    }
+
+    setCount(countResult.count || 0);
+    setFollowing(!!mineResult.data);
+  }, [sellerId, user]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const toggle = async () => {
     if (!user) {
       navigate(`/auth/login?redirect=${encodeURIComponent(`/seller/${sellerId}`)}`);
       return;
     }
-    if (user.id === sellerId) { toast.error("You can't follow your own store"); return; }
-    setBusy(true);
-    if (following) {
-      await (supabase as any).from("store_follows").delete().eq("seller_id", sellerId).eq("follower_id", user.id);
-      toast.success("Unfollowed store");
-    } else {
-      const { error } = await (supabase as any).from("store_follows").insert({ seller_id: sellerId, follower_id: user.id });
-      if (error) { toast.error(error.message); setBusy(false); return; }
-      toast.success("Following — you'll be notified about new products");
+    if (user.id === sellerId) {
+      toast.error("You can't follow your own store");
+      return;
     }
-    setBusy(false);
-    load();
+
+    try {
+      setBusy(true);
+      if (following) {
+        const { error } = await supabase.from("store_follows").delete().eq("seller_id", sellerId).eq("follower_id", user.id);
+        if (error) throw error;
+        toast.success("Unfollowed store");
+      } else {
+        const { error } = await supabase.from("store_follows").insert({ seller_id: sellerId, follower_id: user.id });
+        if (error) throw error;
+        toast.success("Following - you'll be notified about new products");
+      }
+      await load();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Could not update follow status";
+      toast.error(message);
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (

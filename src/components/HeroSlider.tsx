@@ -46,7 +46,7 @@ export default function HeroSlider({ slides, autoplayInterval = 5000, children }
   };
 
   return (
-    <div className="relative w-full h-[50vh] md:h-[65vh] overflow-hidden">
+    <div className="relative w-full h-[42vh] min-h-[340px] max-h-[560px] md:h-[56vh] overflow-hidden">
       <AnimatePresence initial={false} custom={direction} mode="popLayout">
         <motion.div
           key={current}
@@ -62,8 +62,10 @@ export default function HeroSlider({ slides, autoplayInterval = 5000, children }
             src={slides[current].image}
             alt={slides[current].title}
             className="w-full h-full object-cover"
+            loading={current === 0 ? "eager" : "lazy"}
+            decoding="async"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-foreground/70 via-foreground/40 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-r from-foreground/75 via-foreground/45 to-foreground/10" />
         </motion.div>
       </AnimatePresence>
 
@@ -80,14 +82,14 @@ export default function HeroSlider({ slides, autoplayInterval = 5000, children }
               className="max-w-2xl"
             >
               {slides[current].badge && (
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-background/20 backdrop-blur-sm px-4 py-1.5 text-sm text-background">
+                <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-background/20 backdrop-blur-sm px-3 py-1 text-xs font-medium text-background">
                   {slides[current].badge}
                 </div>
               )}
-              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-background leading-tight">
+              <h1 className="font-display text-3xl sm:text-4xl md:text-5xl font-bold text-background leading-tight">
                 {slides[current].title}
               </h1>
-              <p className="mt-4 text-base md:text-lg text-background/80 max-w-lg">
+              <p className="mt-3 text-base md:text-lg text-background/85 max-w-lg">
                 {slides[current].subtitle}
               </p>
               {children}

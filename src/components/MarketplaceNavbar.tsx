@@ -85,7 +85,11 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
           )}
 
           {/* Cart */}
-          <button onClick={() => openCart(true)} className="relative p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors">
+          <button
+            onClick={() => openCart(true)}
+            className="relative p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors"
+            aria-label="Open cart"
+          >
             <ShoppingCart className="h-5 w-5" />
             {totalItems > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
@@ -96,11 +100,11 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
 
           {/* Profile */}
           {user ? (
-            <Link to={dashboardPath} className="p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors">
+            <Link to={dashboardPath} aria-label="Open dashboard" className="p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors">
               <User className="h-5 w-5" />
             </Link>
           ) : (
-            <Link to="/auth/login" className="p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors">
+            <Link to="/auth/login" aria-label="Log in" className="p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors">
               <User className="h-5 w-5" />
             </Link>
           )}
@@ -108,7 +112,7 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
           {/* Hamburger drawer */}
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors">
+              <button className="p-2 rounded-lg hover:bg-[hsl(var(--navbar-foreground)/0.1)] transition-colors" aria-label="Open navigation menu">
                 <Menu className="h-5 w-5" />
               </button>
             </SheetTrigger>

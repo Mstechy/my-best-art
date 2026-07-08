@@ -13,12 +13,15 @@ import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
 
 // Promo descriptors keyed by URL ?promo=
-const PROMOS: Record<string, { label: string; filter: (p: any) => boolean }> = {
+type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
+
+const PROMOS: Record<string, { label: string; filter: (p: Product) => boolean }> = {
   summer20: { label: "20% Off Summer Sale", filter: (p) => !!p.compare_at_price && p.compare_at_price > p.price },
-  hot50: { label: "Hot Deals — Up to 50% Off", filter: (p) => !!p.compare_at_price && (1 - p.price / p.compare_at_price) >= 0.2 },
+  hot50: { label: "Hot Deals - Up to 50% Off", filter: (p) => !!p.compare_at_price && (1 - p.price / p.compare_at_price) >= 0.2 },
   freeship: { label: "Free Shipping on $50+", filter: (p) => Number(p.price) >= 50 },
   new: { label: "New Arrivals", filter: () => true },
   bundle15: { label: "Bundle & Save 15%", filter: () => true },
@@ -69,9 +72,9 @@ export default function MarketplacePage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      const { data } = await supabase.from("addresses" as any)
+      const { data } = await supabase.from("addresses")
         .select("country").eq("user_id", user.id).eq("is_default", true).maybeSingle();
-      const c = (data as any)?.country;
+      const c = data?.country;
       if (c && COUNTRIES.find(x => x.code === c) && shipsTo === "all") setShipsTo(c);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -101,10 +104,12 @@ export default function MarketplacePage() {
       setProducts(productsRes.data as unknown as Product[]);
       const sellerIds = [...new Set(productsRes.data.map(p => p.seller_id))];
       if (sellerIds.length > 0) {
-        const { data: profiles } = await supabase.from("seller_profiles_public" as any).select("user_id, full_name, is_verified").in("user_id", sellerIds);
+        const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
         if (profiles) {
           const map: Record<string, { full_name: string | null; is_verified: boolean }> = {};
-          profiles.forEach(p => { map[p.user_id] = { full_name: p.full_name, is_verified: p.is_verified }; });
+          profiles.forEach((p: SellerProfilePublic) => {
+            if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified };
+          });
           setSellerProfiles(map);
         }
       }
