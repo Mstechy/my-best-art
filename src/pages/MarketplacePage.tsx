@@ -15,6 +15,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
+import { findCategoryConfig } from "@/lib/categoryConfig";
+import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/MarketplaceFilters";
 
 // Promo descriptors keyed by URL ?promo=
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -38,10 +40,15 @@ interface Product {
   category_id: string | null;
   stock_quantity: number;
   seller_id: string;
+  brand: string | null;
+  color: string | null;
+  condition: string | null;
+  material: string | null;
   ships_to: string[] | null;
   created_at: string;
   average_rating: number;
   review_count: number;
+  variants: { categoryAttributes?: Record<string, string> } | null;
   product_images: { image_url: string; is_primary: boolean }[];
 }
 
@@ -59,6 +66,7 @@ export default function MarketplacePage() {
   const [search, setSearch] = useState(searchParam ?? "");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [shipsTo, setShipsTo] = useState<string>("all");
+  const [filters, setFilters] = useState<MarketplaceFiltersState>(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
   const { addItem } = useCart();
@@ -155,8 +163,16 @@ export default function MarketplacePage() {
     const matchesPromo = !promo || promo.filter(p);
     const list = p.ships_to || [];
     const matchesShipsTo = shipsTo === "all" || list.length === 0 || list.includes(shipsTo);
-    return matchesSearch && matchesCategory && matchesPromo && matchesShipsTo;
-  }), [products, search, selectedCategory, promo, shipsTo]);
+    const matchesPrice = Number(p.price) >= filters.minPrice && Number(p.price) <= filters.maxPrice;
+    const matchesRating = Number(p.average_rating || 0) >= filters.minRating;
+    const matchesStock = !filters.inStockOnly || p.stock_quantity > 0;
+    const matchesCondition = filters.condition === "any" || p.condition === filters.condition;
+    return matchesSearch && matchesCategory && matchesPromo && matchesShipsTo && matchesPrice && matchesRating && matchesStock && matchesCondition;
+  }), [products, search, selectedCategory, promo, shipsTo, filters]);
+
+  const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
+  const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
+  const activeFilterCount = countActive(filters);
 
   const handleAddToCart = (product: Product) => {
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
@@ -211,9 +227,14 @@ export default function MarketplacePage() {
           </div>
         </AnimatedSection>
 
-        {/* Ships-to + currency hint */}
+        {/* Ships-to + category filters + currency hint */}
         <AnimatedSection variant="fade-up" delay={60}>
+<<<<<<< Updated upstream
           <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
+=======
+          <div className="flex flex-wrap items-center gap-3 mb-6">
+            <MarketplaceFilters value={filters} onChange={setFilters} activeCount={activeFilterCount} />
+>>>>>>> Stashed changes
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
               <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>
@@ -237,6 +258,19 @@ export default function MarketplacePage() {
               </button>
             </span>
           </div>
+          {selectedCategoryRecord && (
+            <div className="mb-6 rounded-lg border border-border/60 bg-card px-4 py-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm font-medium text-foreground">{selectedCategoryRecord.name}</span>
+                <span className="text-xs text-muted-foreground">filters:</span>
+                {selectedCategoryConfig.filters.map(filter => (
+                  <Badge key={filter} variant="outline" className="capitalize text-xs">
+                    {filter.replace(/([A-Z])/g, " $1")}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
         </AnimatedSection>
 
         <AnimatedSection variant="fade-up" delay={100}>

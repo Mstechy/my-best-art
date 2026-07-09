@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES, countryName } from "@/lib/countries";
+import { findCategoryConfig, getCategoryAttributes, mergeCategoryAttributes } from "@/lib/categoryConfig";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
@@ -46,6 +47,7 @@ interface Product {
   key_features: string[] | null;
   tags: string[] | null;
   ships_to: string[] | null;
+  variants: Record<string, unknown> | null;
   created_at: string;
   product_images: { id: string; image_url: string; is_primary: boolean }[];
 }
@@ -86,6 +88,7 @@ export default function SellerProducts() {
   const [keyFeatures, setKeyFeatures] = useState<string[]>([""]);
   const [tagsInput, setTagsInput] = useState("");
   const [shipsTo, setShipsTo] = useState<string[]>([]);
+  const [categoryAttributes, setCategoryAttributes] = useState<Record<string, string>>({});
 
   const [saving, setSaving] = useState(false);
 
@@ -110,6 +113,7 @@ export default function SellerProducts() {
       key_features: (p as any).key_features ?? null,
       tags: (p as any).tags ?? null,
       ships_to: (p as any).ships_to ?? null,
+      variants: (p as any).variants ?? null,
     })) as unknown as Product[]);
     setLoading(false);
 
@@ -146,7 +150,7 @@ export default function SellerProducts() {
     setDocFile(null); setShowSoldCount(true);
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
-    setKeyFeatures([""]); setTagsInput(""); setShipsTo([]);
+    setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
     setEditingProduct(null); setFormTab("basic");
   };
 
@@ -171,6 +175,16 @@ export default function SellerProducts() {
     setTagsInput(product.tags?.join(", ") || "");
     setShipsTo(product.ships_to || []);
     setShowSoldCount(((product as any).show_sold_count as boolean) ?? true);
+    setCategoryAttributes({
+      brand: product.brand || "",
+      weight: product.weight || "",
+      dimensions: product.dimensions || "",
+      material: product.material || "",
+      color: product.color || "",
+      condition: product.condition || "",
+      warranty: product.warranty || "",
+      ...getCategoryAttributes(product.variants),
+    });
     setDocFile(null);
     setFormTab("basic");
     setDialogOpen(true);
@@ -178,6 +192,10 @@ export default function SellerProducts() {
 
   const handleSave = async () => {
     if (!user || !title.trim() || !price) return;
+    if (!categoryId) {
+      toast({ title: "Choose a category", description: "Select a category before submitting this product.", variant: "destructive" });
+      return;
+    }
     if (description.trim().length > 0 && description.trim().length < 30) {
       toast({ title: "Description too short", description: "Please write at least 30 characters.", variant: "destructive" });
       return;
@@ -186,9 +204,17 @@ export default function SellerProducts() {
 
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
+    const cleanCategoryAttributes = Object.fromEntries(
+      Object.entries(categoryAttributes)
+        .map(([key, value]) => [key, value.trim()])
+        .filter(([, value]) => value)
+    );
     const warrantyText = warrantyPeriod === "none" ? null :
       warrantyPeriod === "lifetime" ? "Lifetime Warranty" :
       warrantyPeriod;
+    const selectedCategory = categories.find(c => c.id === categoryId);
+    const selectedConfig = findCategoryConfig(selectedCategory);
+    const attr = (key: string) => cleanCategoryAttributes[key] || "";
 
     const productData = {
       seller_id: user.id,
@@ -199,19 +225,23 @@ export default function SellerProducts() {
       category_id: categoryId || null,
       stock_quantity: parseInt(stockQuantity) || 0,
       sku: sku.trim() || null,
-      brand: brand.trim() || null,
-      weight: weight.trim() || null,
-      dimensions: dimensions.trim() || null,
-      material: material.trim() || null,
-      color: color.trim() || null,
-      condition: condition,
-      warranty: warrantyText,
+      brand: (attr("brand") || brand).trim() || null,
+      weight: (attr("weight") || weight).trim() || null,
+      dimensions: (attr("dimensions") || dimensions).trim() || null,
+      material: (attr("material") || material).trim() || null,
+      color: (attr("color") || color).trim() || null,
+      condition: (attr("condition") || condition).toLowerCase(),
+      warranty: attr("warranty") || warrantyText,
       warranty_period: warrantyPeriod === "none" ? null : warrantyPeriod,
       shipping_info: shippingInfo.trim() || null,
       key_features: cleanFeatures,
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
       show_sold_count: showSoldCount,
+      variants: mergeCategoryAttributes(editingProduct?.variants, {
+        categoryGroup: selectedConfig.title,
+        ...cleanCategoryAttributes,
+      }),
     };
 
     let productId = editingProduct?.id;
@@ -297,6 +327,12 @@ export default function SellerProducts() {
     p.title.toLowerCase().includes(search.toLowerCase())
   );
 
+  const selectedCategory = categories.find(c => c.id === categoryId) || null;
+  const selectedCategoryConfig = findCategoryConfig(selectedCategory);
+  const updateCategoryAttribute = (key: string, value: string) => {
+    setCategoryAttributes(prev => ({ ...prev, [key]: value }));
+  };
+
   const getApprovalBadge = (product: Product) => {
     if (product.status !== "active") return null;
     if (product.is_approved) {
@@ -363,13 +399,14 @@ export default function SellerProducts() {
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Category</label>
-                    <Select value={categoryId} onValueChange={setCategoryId}>
+                    <label className="text-sm font-medium text-foreground">Category *</label>
+                    <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setCategoryAttributes({}); }}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                       <SelectContent>
                         {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">Choose a category first so the listing can show the right product details.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -384,43 +421,42 @@ export default function SellerProducts() {
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Brand</label>
-                      <Input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="e.g. Samsung, Apple" className="mt-1" />
+                  {!categoryId ? (
+                    <div className="rounded-lg border border-dashed border-border p-6 text-center">
+                      <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
+                      <p className="mt-2 text-sm font-medium text-foreground">Select a category to continue</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Category-specific fields will appear here.</p>
                     </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Material</label>
-                      <Input value={material} onChange={(e) => setMaterial(e.target.value)} placeholder="e.g. Aluminum, Plastic" className="mt-1" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Color</label>
-                      <Input value={color} onChange={(e) => setColor(e.target.value)} placeholder="e.g. Space Gray, White" className="mt-1" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Condition</label>
-                      <Select value={condition} onValueChange={setCondition}>
-                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="new">New</SelectItem>
-                          <SelectItem value="used">Used</SelectItem>
-                          <SelectItem value="refurbished">Refurbished</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Weight</label>
-                      <Input value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 250g, 1.2kg" className="mt-1" />
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Dimensions</label>
-                      <Input value={dimensions} onChange={(e) => setDimensions(e.target.value)} placeholder="e.g. 15 × 10 × 3 cm" className="mt-1" />
-                    </div>
-                  </div>
+                  ) : (
+                    <>
+                      <div className="rounded-lg border border-border bg-muted/30 p-3">
+                        <p className="text-sm font-medium text-foreground">{selectedCategoryConfig.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">These fields help buyers compare products in {selectedCategory?.name || "this category"}.</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {selectedCategoryConfig.fields.map((field) => (
+                          <div key={field.key}>
+                            <label className="text-sm font-medium text-foreground">{field.label}</label>
+                            {field.type === "select" ? (
+                              <Select value={categoryAttributes[field.key] || ""} onValueChange={(value) => updateCategoryAttribute(field.key, value)}>
+                                <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${field.label.toLowerCase()}`} /></SelectTrigger>
+                                <SelectContent>
+                                  {(field.options || []).map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Input
+                                value={categoryAttributes[field.key] || ""}
+                                onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
+                                placeholder={field.placeholder}
+                                className="mt-1"
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                   <div>
                     <label className="text-sm font-medium text-foreground">Warranty</label>
                     <Select value={warrantyPeriod} onValueChange={setWarrantyPeriod}>
@@ -549,7 +585,7 @@ export default function SellerProducts() {
                 </TabsContent>
               </Tabs>
 
-              <Button onClick={handleSave} disabled={saving || !title.trim() || !price} className="w-full mt-4 gradient-seller text-primary-foreground">
+              <Button onClick={handleSave} disabled={saving || !title.trim() || !price || !categoryId} className="w-full mt-4 gradient-seller text-primary-foreground">
                 {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
               </Button>
             </DialogContent>

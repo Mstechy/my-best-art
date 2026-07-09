@@ -23,6 +23,7 @@ import ReviewCard, { type ReviewData } from "@/components/product/ReviewCard";
 import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
 import { deliveryEstimateRange, formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
+import { findCategoryConfig, getCategoryAttributes } from "@/lib/categoryConfig";
 
 interface Product {
   id: string;
@@ -48,7 +49,7 @@ interface Product {
   average_rating: number;
   review_count: number;
   show_sold_count: boolean | null;
-  variants: { sizes?: string[]; colors?: string[] } | null;
+  variants: { sizes?: string[]; colors?: string[]; categoryAttributes?: Record<string, string> } | null;
   product_images: { id: string; image_url: string; is_primary: boolean }[];
 }
 
@@ -63,7 +64,7 @@ export default function ProductDetailPage() {
   const { toast } = useToast();
   const [product, setProduct] = useState<Product | null>(null);
   const [seller, setSeller] = useState<{ full_name: string | null; is_verified: boolean; user_id: string } | null>(null);
-  const [category, setCategory] = useState<{ name: string } | null>(null);
+  const [category, setCategory] = useState<{ name: string; slug?: string | null } | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
@@ -119,13 +120,14 @@ export default function ProductDetailPage() {
       setProduct(data as unknown as Product);
       const [sellerRes, catRes, soldRes, docsRes] = await Promise.all([
         supabase.from("seller_profiles_public" as any).select("user_id, full_name, is_verified, avatar_url").eq("user_id", data.seller_id).single(),
-        data.category_id ? supabase.from("categories").select("name").eq("id", data.category_id).single() : Promise.resolve({ data: null }),
+        data.category_id ? supabase.from("categories").select("name, slug").eq("id", data.category_id).single() : Promise.resolve({ data: null }),
         (supabase as any).rpc("product_sold_count", { _product_id: id }),
         (supabase as any).from("product_documents").select("*").eq("product_id", id),
       ]);
       if (sellerRes.data) {
-        setSeller({ user_id: sellerRes.data.user_id, full_name: sellerRes.data.full_name, is_verified: sellerRes.data.is_verified });
-        setSellerAvatar((sellerRes.data as any).avatar_url || null);
+        const sellerData = sellerRes.data as any;
+        setSeller({ user_id: sellerData.user_id, full_name: sellerData.full_name, is_verified: sellerData.is_verified });
+        setSellerAvatar(sellerData.avatar_url || null);
       }
       if (catRes.data) setCategory(catRes.data);
       setSoldCount(Number(soldRes.data || 0));
@@ -383,13 +385,20 @@ export default function ProductDetailPage() {
   const images = product.product_images || [];
   
 
-  const specs: { label: string; value: string }[] = [];
-  if (product.brand) specs.push({ label: "Brand", value: product.brand });
-  if (product.material) specs.push({ label: "Material", value: product.material });
-  if (product.color) specs.push({ label: "Color", value: product.color });
-  if (product.weight) specs.push({ label: "Weight", value: product.weight });
-  if (product.dimensions) specs.push({ label: "Dimensions", value: product.dimensions });
-  if (product.condition) specs.push({ label: "Condition", value: product.condition.charAt(0).toUpperCase() + product.condition.slice(1) });
+  const categoryConfig = findCategoryConfig(category);
+  const categoryAttributes = getCategoryAttributes(product.variants);
+  const specs: { label: string; value: string }[] = categoryConfig.fields
+    .map(field => ({ label: field.label, value: categoryAttributes[field.key] }))
+    .filter((item): item is { label: string; value: string } => Boolean(item.value));
+  const addFallbackSpec = (label: string, value?: string | null) => {
+    if (value && !specs.some(spec => spec.label === label)) specs.push({ label, value });
+  };
+  addFallbackSpec("Brand", product.brand);
+  addFallbackSpec("Material", product.material);
+  addFallbackSpec("Color", product.color);
+  addFallbackSpec("Weight", product.weight);
+  addFallbackSpec("Dimensions", product.dimensions);
+  addFallbackSpec("Condition", product.condition ? product.condition.charAt(0).toUpperCase() + product.condition.slice(1) : null);
 
   // Parse color variants for display
   const colorVariants = product.color?.split(",").map(c => c.trim()).filter(Boolean) || [];
@@ -696,7 +705,7 @@ export default function ProductDetailPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {specs.length > 0 && (
               <div className="rounded-xl border border-border p-6 bg-card">
-                <h3 className="font-display text-lg font-semibold text-foreground mb-4">Specifications</h3>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-4">{categoryConfig.title}</h3>
                 <div className="divide-y divide-border">
                   {specs.map(({ label, value }) => (
                     <div key={label} className="flex justify-between py-3 text-sm">
