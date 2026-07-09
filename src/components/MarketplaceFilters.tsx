@@ -11,6 +11,7 @@ export interface MarketplaceFiltersState {
   minRating: number;
   inStockOnly: boolean;
   condition: string; // "any" | "new" | "used" | "refurbished"
+  categoryAttributes: Record<string, string>;
 }
 
 export const defaultFilters: MarketplaceFiltersState = {
@@ -19,20 +20,44 @@ export const defaultFilters: MarketplaceFiltersState = {
   minRating: 0,
   inStockOnly: false,
   condition: "any",
+  categoryAttributes: {},
 };
 
 interface Props {
   value: MarketplaceFiltersState;
   onChange: (next: MarketplaceFiltersState) => void;
   activeCount: number;
+  categoryName?: string | null;
+  categoryFilters?: string[];
+  categoryFilterOptions?: Record<string, string[]>;
 }
 
-export default function MarketplaceFilters({ value, onChange, activeCount }: Props) {
+const formatFilterLabel = (key: string) => key.replace(/([A-Z])/g, " $1").replace(/^\w/, c => c.toUpperCase());
+
+export default function MarketplaceFilters({
+  value,
+  onChange,
+  activeCount,
+  categoryName,
+  categoryFilters = [],
+  categoryFilterOptions = {},
+}: Props) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
 
   const apply = () => { onChange(draft); setOpen(false); };
   const reset = () => { setDraft(defaultFilters); onChange(defaultFilters); };
+  const updateCategoryFilter = (key: string, nextValue: string) => {
+    setDraft(d => {
+      const categoryAttributes = { ...d.categoryAttributes };
+      if (nextValue === "any") {
+        delete categoryAttributes[key];
+      } else {
+        categoryAttributes[key] = nextValue;
+      }
+      return { ...d, categoryAttributes };
+    });
+  };
 
   return (
     <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (o) setDraft(value); }}>
@@ -98,6 +123,45 @@ export default function MarketplaceFilters({ value, onChange, activeCount }: Pro
             <span className="text-sm text-foreground">In stock only</span>
           </label>
 
+          {categoryFilters.length > 0 && (
+            <div className="space-y-4 border-t border-border pt-5">
+              <div>
+                <Label>{categoryName ? `${categoryName} Details` : "Category Details"}</Label>
+                <p className="mt-1 text-xs text-muted-foreground">Narrow results using the fields sellers add for this category.</p>
+              </div>
+              {categoryFilters.map(filter => {
+                const options = categoryFilterOptions[filter] || [];
+                if (options.length === 0) return null;
+                return (
+                  <div key={filter}>
+                    <Label className="text-xs text-muted-foreground">{formatFilterLabel(filter)}</Label>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => updateCategoryFilter(filter, "any")}
+                        className={`h-9 rounded-md border px-3 text-xs font-medium transition-colors ${
+                          !draft.categoryAttributes[filter] ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"
+                        }`}
+                      >
+                        Any
+                      </button>
+                      {options.map(option => (
+                        <button
+                          key={option}
+                          onClick={() => updateCategoryFilter(filter, option)}
+                          className={`h-9 rounded-md border px-3 text-xs font-medium transition-colors ${
+                            draft.categoryAttributes[filter] === option ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"
+                          }`}
+                        >
+                          {option}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           <div className="flex gap-2 pt-4">
             <Button variant="outline" onClick={reset} className="flex-1">Reset</Button>
             <Button onClick={apply} className="flex-1 bg-primary text-primary-foreground">Apply</Button>
@@ -114,5 +178,6 @@ export function countActive(f: MarketplaceFiltersState): number {
   if (f.minRating > 0) n++;
   if (f.inStockOnly) n++;
   if (f.condition !== "any") n++;
+  n += Object.values(f.categoryAttributes).filter(Boolean).length;
   return n;
 }

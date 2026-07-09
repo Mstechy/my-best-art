@@ -15,7 +15,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { findCategoryConfig } from "@/lib/categoryConfig";
+import { findCategoryConfig, getCategoryAttributes } from "@/lib/categoryConfig";
 import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/MarketplaceFilters";
 
 // Promo descriptors keyed by URL ?promo=
@@ -44,6 +44,8 @@ interface Product {
   color: string | null;
   condition: string | null;
   material: string | null;
+  weight: string | null;
+  dimensions: string | null;
   ships_to: string[] | null;
   created_at: string;
   average_rating: number;
@@ -123,7 +125,10 @@ export default function MarketplacePage() {
   useEffect(() => {
     if (!categoryParam || categories.length === 0) return;
     const cat = categories.find(c => c.slug === categoryParam || c.id === categoryParam);
-    if (cat) setSelectedCategory(cat.id);
+    if (cat) {
+      setSelectedCategory(cat.id);
+      setFilters(f => ({ ...f, categoryAttributes: {} }));
+    }
   }, [categoryParam, categories]);
 
   useEffect(() => { if (searchParam !== null) setSearch(searchParam); }, [searchParam]);
@@ -157,6 +162,19 @@ export default function MarketplacePage() {
     setLoading(false);
   };
 
+  const attributeValue = (product: Product, key: string) => {
+    const categoryAttributes = getCategoryAttributes(product.variants);
+    const fallback: Record<string, string | null> = {
+      brand: product.brand,
+      color: product.color,
+      condition: product.condition,
+      material: product.material,
+      weight: product.weight,
+      dimensions: product.dimensions,
+    };
+    return (categoryAttributes[key] || fallback[key] || "").trim();
+  };
+
   const filtered = useMemo(() => products.filter(p => {
     const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = !selectedCategory || p.category_id === selectedCategory;
@@ -167,11 +185,31 @@ export default function MarketplacePage() {
     const matchesRating = Number(p.average_rating || 0) >= filters.minRating;
     const matchesStock = !filters.inStockOnly || p.stock_quantity > 0;
     const matchesCondition = filters.condition === "any" || p.condition === filters.condition;
-    return matchesSearch && matchesCategory && matchesPromo && matchesShipsTo && matchesPrice && matchesRating && matchesStock && matchesCondition;
+    const matchesCategoryAttributes = Object.entries(filters.categoryAttributes).every(([key, value]) => {
+      if (!value) return true;
+      return attributeValue(p, key).toLowerCase() === value.toLowerCase();
+    });
+    return matchesSearch && matchesCategory && matchesPromo && matchesShipsTo && matchesPrice && matchesRating && matchesStock && matchesCondition && matchesCategoryAttributes;
   }), [products, search, selectedCategory, promo, shipsTo, filters]);
 
   const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
+  const selectedCategoryProducts = useMemo(
+    () => products.filter(product => !selectedCategory || product.category_id === selectedCategory),
+    [products, selectedCategory]
+  );
+  const categoryFilterOptions = useMemo(() => {
+    const options: Record<string, string[]> = {};
+    selectedCategoryConfig.filters.forEach(filter => {
+      const values = new Set<string>();
+      selectedCategoryProducts.forEach(product => {
+        const value = attributeValue(product, filter);
+        if (value) values.add(value);
+      });
+      options[filter] = Array.from(values).sort((a, b) => a.localeCompare(b)).slice(0, 12);
+    });
+    return options;
+  }, [selectedCategoryConfig, selectedCategoryProducts]);
   const activeFilterCount = countActive(filters);
 
   const handleAddToCart = (product: Product) => {
@@ -214,12 +252,12 @@ export default function MarketplacePage() {
         {/* Category pills */}
         <AnimatedSection variant="fade-up" delay={50}>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
-            <button onClick={() => setSelectedCategory(null)}
+            <button onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
               className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
               All
             </button>
             {categories.map(cat => (
-              <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
+              <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
                 className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
                 {cat.name}
               </button>
@@ -229,12 +267,15 @@ export default function MarketplacePage() {
 
         {/* Ships-to + category filters + currency hint */}
         <AnimatedSection variant="fade-up" delay={60}>
-<<<<<<< Updated upstream
           <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
-=======
-          <div className="flex flex-wrap items-center gap-3 mb-6">
-            <MarketplaceFilters value={filters} onChange={setFilters} activeCount={activeFilterCount} />
->>>>>>> Stashed changes
+            <MarketplaceFilters
+              value={filters}
+              onChange={setFilters}
+              activeCount={activeFilterCount}
+              categoryName={selectedCategoryRecord?.name}
+              categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
+              categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
+            />
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
               <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>

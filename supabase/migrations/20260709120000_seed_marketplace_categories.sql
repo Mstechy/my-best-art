@@ -1,0 +1,25 @@
+INSERT INTO public.categories (name, slug, icon, sort_order) VALUES
+  ('Computers', 'computers', 'Laptop', 9),
+  ('Clothing', 'clothing', 'Shirt', 10),
+  ('Shoes', 'shoes', 'Footprints', 11),
+  ('Bags', 'bags', 'Briefcase', 12),
+  ('Watches', 'watches', 'Watch', 13),
+  ('Jewelry', 'jewelry', 'Gem', 14),
+  ('Glasses', 'glasses', 'Glasses', 15),
+  ('Health & Beauty', 'health-beauty', 'Sparkles', 16),
+  ('Phones & Accessories', 'phones-accessories', 'Smartphone', 17),
+  ('Home & Decor', 'home-decor', 'Sofa', 18),
+  ('Furniture', 'furniture', 'Armchair', 19),
+  ('Home Appliances', 'home-appliances', 'Refrigerator', 20),
+  ('Beauty', 'beauty', 'Sparkles', 21),
+  ('Gaming', 'gaming', 'Gamepad2', 22),
+  ('Toys', 'toys', 'Puzzle', 23),
+  ('Auto Parts', 'auto-parts', 'Car', 24),
+  ('Baby Products', 'baby-products', 'Baby', 25),
+  ('Kitchen', 'kitchen', 'ChefHat', 26),
+  ('Pet Supplies', 'pet-supplies', 'PawPrint', 27),
+  ('Vehicles', 'vehicles', 'CarFront', 28)
+ON CONFLICT (slug) DO UPDATE SET
+  name = EXCLUDED.name,
+  icon = EXCLUDED.icon,
+  sort_order = EXCLUDED.sort_order;

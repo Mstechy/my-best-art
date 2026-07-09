@@ -23,7 +23,7 @@ import ReviewCard, { type ReviewData } from "@/components/product/ReviewCard";
 import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
 import { deliveryEstimateRange, formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
-import { findCategoryConfig, getCategoryAttributes } from "@/lib/categoryConfig";
+import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 
 interface Product {
   id: string;
@@ -385,9 +385,11 @@ export default function ProductDetailPage() {
   const images = product.product_images || [];
   
 
-  const categoryConfig = findCategoryConfig(category);
+  const productType = getProductType(product.variants);
+  const productTypeConfig = findProductTypeConfig(category, productType?.key);
   const categoryAttributes = getCategoryAttributes(product.variants);
-  const specs: { label: string; value: string }[] = categoryConfig.fields
+  const productVideos = getProductVideos(product.variants);
+  const specs: { label: string; value: string }[] = productTypeConfig.fields
     .map(field => ({ label: field.label, value: categoryAttributes[field.key] }))
     .filter((item): item is { label: string; value: string } => Boolean(item.value));
   const addFallbackSpec = (label: string, value?: string | null) => {
@@ -504,7 +506,10 @@ export default function ProductDetailPage() {
 
           {/* Details */}
           <div className="space-y-5">
-            {category && <Badge variant="secondary">{category.name}</Badge>}
+            <div className="flex flex-wrap gap-2">
+              {category && <Badge variant="secondary">{category.name}</Badge>}
+              {productType && <Badge variant="outline">{productType.label}</Badge>}
+            </div>
             <h1 className="font-display text-3xl font-bold text-foreground">{product.title}</h1>
 
             {product.brand && (
@@ -705,7 +710,7 @@ export default function ProductDetailPage() {
           <div className="grid md:grid-cols-2 gap-6">
             {specs.length > 0 && (
               <div className="rounded-xl border border-border p-6 bg-card">
-                <h3 className="font-display text-lg font-semibold text-foreground mb-4">{categoryConfig.title}</h3>
+                <h3 className="font-display text-lg font-semibold text-foreground mb-4">{productTypeConfig.label} Specifications</h3>
                 <div className="divide-y divide-border">
                   {specs.map(({ label, value }) => (
                     <div key={label} className="flex justify-between py-3 text-sm">
@@ -751,6 +756,18 @@ export default function ProductDetailPage() {
                       </li>
                     ))}
                   </ul>
+                </details>
+              )}
+              {productVideos.length > 0 && (
+                <details className="rounded-xl border border-border bg-card">
+                  <summary className="p-4 cursor-pointer text-sm font-semibold text-foreground flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" /> Product Videos ({productVideos.length})
+                  </summary>
+                  <div className="p-4 pt-0 grid gap-3">
+                    {productVideos.map(url => (
+                      <video key={url} src={url} controls className="w-full rounded-lg border border-border bg-muted" />
+                    ))}
+                  </div>
                 </details>
               )}
               {product.tags && product.tags.length > 0 && (

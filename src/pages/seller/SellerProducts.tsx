@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { findCategoryConfig, getCategoryAttributes, mergeCategoryAttributes } from "@/lib/categoryConfig";
+import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, mergeCategoryAttributes } from "@/lib/categoryConfig";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
@@ -73,6 +73,7 @@ export default function SellerProducts() {
   const [stockQuantity, setStockQuantity] = useState("");
   const [sku, setSku] = useState("");
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [videoFiles, setVideoFiles] = useState<File[]>([]);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [showSoldCount, setShowSoldCount] = useState(true);
 
@@ -89,6 +90,8 @@ export default function SellerProducts() {
   const [tagsInput, setTagsInput] = useState("");
   const [shipsTo, setShipsTo] = useState<string[]>([]);
   const [categoryAttributes, setCategoryAttributes] = useState<Record<string, string>>({});
+  const [productTypeKey, setProductTypeKey] = useState("");
+  const [existingProductVideos, setExistingProductVideos] = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
 
@@ -146,11 +149,12 @@ export default function SellerProducts() {
 
   const resetForm = () => {
     setTitle(""); setDescription(""); setPrice(""); setCompareAtPrice("");
-    setCategoryId(""); setStockQuantity(""); setSku(""); setImageFiles([]);
+    setCategoryId(""); setStockQuantity(""); setSku(""); setImageFiles([]); setVideoFiles([]);
     setDocFile(null); setShowSoldCount(true);
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
+    setProductTypeKey(""); setExistingProductVideos([]);
     setEditingProduct(null); setFormTab("basic");
   };
 
@@ -175,6 +179,8 @@ export default function SellerProducts() {
     setTagsInput(product.tags?.join(", ") || "");
     setShipsTo(product.ships_to || []);
     setShowSoldCount(((product as any).show_sold_count as boolean) ?? true);
+    setProductTypeKey(getProductType(product.variants)?.key || "");
+    setExistingProductVideos(getProductVideos(product.variants));
     setCategoryAttributes({
       brand: product.brand || "",
       weight: product.weight || "",
@@ -196,6 +202,10 @@ export default function SellerProducts() {
       toast({ title: "Choose a category", description: "Select a category before submitting this product.", variant: "destructive" });
       return;
     }
+    if (!productTypeKey) {
+      toast({ title: "Choose a product type", description: "Select a product type so buyers see the right details.", variant: "destructive" });
+      return;
+    }
     if (description.trim().length > 0 && description.trim().length < 30) {
       toast({ title: "Description too short", description: "Please write at least 30 characters.", variant: "destructive" });
       return;
@@ -214,6 +224,7 @@ export default function SellerProducts() {
       warrantyPeriod;
     const selectedCategory = categories.find(c => c.id === categoryId);
     const selectedConfig = findCategoryConfig(selectedCategory);
+    const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
     const attr = (key: string) => cleanCategoryAttributes[key] || "";
 
     const productData = {
@@ -241,7 +252,7 @@ export default function SellerProducts() {
       variants: mergeCategoryAttributes(editingProduct?.variants, {
         categoryGroup: selectedConfig.title,
         ...cleanCategoryAttributes,
-      }),
+      }, { key: selectedProductType.key, label: selectedProductType.label }, existingProductVideos),
     };
 
     let productId = editingProduct?.id;
@@ -288,6 +299,27 @@ export default function SellerProducts() {
       }
     }
 
+    // Upload optional product videos and save URLs in variants JSON.
+    if (videoFiles.length > 0 && productId) {
+      const uploadedVideos: string[] = [];
+      for (let i = 0; i < videoFiles.slice(0, 3).length; i++) {
+        const file = videoFiles[i];
+        const ext = file.name.split(".").pop();
+        const filePath = `${user.id}/${productId}/video_${Date.now()}_${i}.${ext}`;
+        const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, file);
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
+          uploadedVideos.push(urlData.publicUrl);
+        }
+      }
+      if (uploadedVideos.length > 0) {
+        const nextVideos = [...existingProductVideos, ...uploadedVideos].slice(0, 3);
+        await supabase.from("products").update({
+          variants: mergeCategoryAttributes(productData.variants, cleanCategoryAttributes, { key: selectedProductType.key, label: selectedProductType.label }, nextVideos),
+        } as any).eq("id", productId);
+      }
+    }
+
     toast({
       title: editingProduct ? "Product updated" : "Product submitted for approval",
       description: editingProduct ? undefined : "Your product will be visible on the marketplace once approved by admin.",
@@ -329,6 +361,7 @@ export default function SellerProducts() {
 
   const selectedCategory = categories.find(c => c.id === categoryId) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategory);
+  const selectedProductTypeConfig = findProductTypeConfig(selectedCategory, productTypeKey);
   const updateCategoryAttribute = (key: string, value: string) => {
     setCategoryAttributes(prev => ({ ...prev, [key]: value }));
   };
@@ -370,13 +403,34 @@ export default function SellerProducts() {
               </DialogHeader>
 
               <Tabs value={formTab} onValueChange={setFormTab} className="mt-4">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
                   <TabsTrigger value="specs">Specifications</TabsTrigger>
                   <TabsTrigger value="media">Images & Tags</TabsTrigger>
+                  <TabsTrigger value="preview">Preview</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="basic" className="space-y-4 mt-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Category *</label>
+                    <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setProductTypeKey(""); setCategoryAttributes({}); }}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">Choose a category first so the listing can show the right product details.</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Product Type *</label>
+                    <Select value={productTypeKey} onValueChange={(value) => { setProductTypeKey(value); setCategoryAttributes({}); }} disabled={!categoryId}>
+                      <SelectTrigger className="mt-1"><SelectValue placeholder={categoryId ? "Select product type" : "Choose category first"} /></SelectTrigger>
+                      <SelectContent>
+                        {selectedCategoryConfig.productTypes.map(type => <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">Product type controls the exact fields buyers and admins will see.</p>
+                  </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Title *</label>
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Wireless Bluetooth Headphones" className="mt-1" />
@@ -398,16 +452,6 @@ export default function SellerProducts() {
                       <Input type="number" step="0.01" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)} placeholder="Original price" className="mt-1" />
                     </div>
                   </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Category *</label>
-                    <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setCategoryAttributes({}); }}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
-                      <SelectContent>
-                        {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <p className="mt-1 text-xs text-muted-foreground">Choose a category first so the listing can show the right product details.</p>
-                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sm font-medium text-foreground">Stock Quantity</label>
@@ -421,20 +465,20 @@ export default function SellerProducts() {
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">
-                  {!categoryId ? (
+                  {!categoryId || !productTypeKey ? (
                     <div className="rounded-lg border border-dashed border-border p-6 text-center">
                       <Package className="mx-auto h-8 w-8 text-muted-foreground/50" />
-                      <p className="mt-2 text-sm font-medium text-foreground">Select a category to continue</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Category-specific fields will appear here.</p>
+                      <p className="mt-2 text-sm font-medium text-foreground">Select category and product type to continue</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Only relevant product fields will appear here.</p>
                     </div>
                   ) : (
                     <>
                       <div className="rounded-lg border border-border bg-muted/30 p-3">
-                        <p className="text-sm font-medium text-foreground">{selectedCategoryConfig.title}</p>
+                        <p className="text-sm font-medium text-foreground">{selectedProductTypeConfig.label} Details</p>
                         <p className="mt-1 text-xs text-muted-foreground">These fields help buyers compare products in {selectedCategory?.name || "this category"}.</p>
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {selectedCategoryConfig.fields.map((field) => (
+                        {selectedProductTypeConfig.fields.map((field) => (
                           <div key={field.key}>
                             <label className="text-sm font-medium text-foreground">{field.label}</label>
                             {field.type === "select" ? (
@@ -444,8 +488,17 @@ export default function SellerProducts() {
                                   {(field.options || []).map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
                                 </SelectContent>
                               </Select>
+                            ) : field.type === "textarea" ? (
+                              <Textarea
+                                value={categoryAttributes[field.key] || ""}
+                                onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
+                                placeholder={field.placeholder}
+                                className="mt-1"
+                                rows={3}
+                              />
                             ) : (
                               <Input
+                                type={field.type === "date" ? "date" : "text"}
                                 value={categoryAttributes[field.key] || ""}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
                                 placeholder={field.placeholder}
@@ -578,14 +631,64 @@ export default function SellerProducts() {
                     </div>
                   </div>
                   <div>
+                    <label className="text-sm font-medium text-foreground">Product Videos <span className="text-xs text-muted-foreground font-normal">(optional)</span></label>
+                    <input type="file" accept="video/*" multiple
+                      onChange={(e) => setVideoFiles(Array.from(e.target.files || []).slice(0, 3))}
+                      className="mt-1 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted/80" />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {videoFiles.length > 0 ? `${videoFiles.length} video${videoFiles.length > 1 ? "s" : ""} selected.` : existingProductVideos.length > 0 ? `${existingProductVideos.length} existing video${existingProductVideos.length > 1 ? "s" : ""} saved.` : "Add short product videos when useful."}
+                    </p>
+                  </div>
+                  <div>
                     <label className="text-sm font-medium text-foreground">Tags</label>
                     <Input value={tagsInput} onChange={(e) => setTagsInput(e.target.value)} placeholder="electronics, wireless, bluetooth (comma-separated)" className="mt-1" />
                     <p className="text-xs text-muted-foreground mt-1">Separate tags with commas. Tags help buyers find your product.</p>
                   </div>
                 </TabsContent>
+
+                <TabsContent value="preview" className="space-y-4 mt-4">
+                  <div className="rounded-lg border border-border bg-muted/30 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">{selectedCategory?.name || "Category"} {productTypeKey ? ` / ${selectedProductTypeConfig.label}` : ""}</p>
+                        <h3 className="mt-1 font-display text-lg font-semibold text-foreground">{title || "Product name"}</h3>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-display text-lg font-bold text-foreground">{price ? `$${Number(price).toFixed(2)}` : "$0.00"}</p>
+                        {compareAtPrice && <p className="text-xs text-muted-foreground line-through">${Number(compareAtPrice).toFixed(2)}</p>}
+                      </div>
+                    </div>
+                    {description && <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{description}</p>}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge variant="outline">Stock: {stockQuantity || 0}</Badge>
+                      {shippingInfo && <Badge variant="outline">Shipping added</Badge>}
+                      {tagsInput.split(",").filter(t => t.trim()).slice(0, 3).map(tag => (
+                        <Badge key={tag.trim()} variant="secondary">{tag.trim()}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                  {productTypeKey && (
+                    <div className="rounded-lg border border-border p-4">
+                      <p className="text-sm font-medium text-foreground mb-3">{selectedProductTypeConfig.label} Specifications</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {selectedProductTypeConfig.fields
+                          .filter(field => categoryAttributes[field.key])
+                          .map(field => (
+                            <div key={field.key} className="rounded-md bg-muted/40 px-3 py-2 text-sm">
+                              <span className="text-muted-foreground">{field.label}: </span>
+                              <span className="font-medium text-foreground">{categoryAttributes[field.key]}</span>
+                            </div>
+                          ))}
+                      </div>
+                      {selectedProductTypeConfig.fields.every(field => !categoryAttributes[field.key]) && (
+                        <p className="text-xs text-muted-foreground">Add specifications to make the listing easier to compare.</p>
+                      )}
+                    </div>
+                  )}
+                </TabsContent>
               </Tabs>
 
-              <Button onClick={handleSave} disabled={saving || !title.trim() || !price || !categoryId} className="w-full mt-4 gradient-seller text-primary-foreground">
+              <Button onClick={handleSave} disabled={saving || !title.trim() || !price || !categoryId || !productTypeKey} className="w-full mt-4 gradient-seller text-primary-foreground">
                 {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
               </Button>
             </DialogContent>
