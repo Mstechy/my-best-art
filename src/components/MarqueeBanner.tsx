@@ -28,11 +28,11 @@ function Track({ items }: { items: MarqueeItem[] }) {
           <Link
             key={`${it.promo}-${i}`}
             to={`/marketplace?promo=${encodeURIComponent(it.promo)}`}
-            className="group inline-flex items-center gap-2 whitespace-nowrap text-sm font-medium text-primary-foreground/95 hover:text-primary-foreground transition-colors"
+            className="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors"
           >
-            <Icon className="h-3.5 w-3.5 shrink-0 opacity-90 group-hover:opacity-100" />
+            <Icon className="h-3 w-3 shrink-0 opacity-90 group-hover:opacity-100 text-[#111111]" />
             <span className="group-hover:underline underline-offset-4">{it.label}</span>
-            <span aria-hidden="true" className="opacity-40">•</span>
+            <span aria-hidden="true" className="opacity-40 text-[#111111]/60">•</span>
           </Link>
         );
       })}
@@ -43,10 +43,10 @@ function Track({ items }: { items: MarqueeItem[] }) {
 export default function MarqueeBanner() {
   return (
     <div
-      className="group relative overflow-hidden border-y border-primary/30 bg-gradient-to-r from-primary via-primary to-accent"
+      className="group relative overflow-hidden border-y border-[#E8E8E8] bg-[#F6C75D]"
       aria-label="Promotions"
     >
-      <div className="flex w-max animate-[marquee_40s_linear_infinite] py-2.5 group-hover:[animation-play-state:paused] motion-reduce:animate-none">
+      <div className="flex w-max animate-[marquee_40s_linear_infinite] py-1.5 group-hover:[animation-play-state:paused] motion-reduce:animate-none">
         <Track items={ITEMS} />
         <Track items={ITEMS} />
       </div>

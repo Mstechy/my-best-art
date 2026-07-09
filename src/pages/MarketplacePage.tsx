@@ -63,21 +63,52 @@ export default function MarketplacePage() {
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
   const { addItem } = useCart();
   const { user } = useAuth();
-  const { currency } = useCurrency();
+  const { currency, setCurrencyCode, currencies } = useCurrency();
   const { isWishlisted, toggleWishlist } = useWishlist();
+
+  // Location and Currency Modal States
+  const [isLocationOpen, setIsLocationOpen] = useState(false);
+  const [isLocationConfirmScreen, setIsLocationConfirmScreen] = useState(true);
+  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
 
-  // Default ships-to from buyer profile country
+  // Default ships-to from buyer profile country or auto-detected visitor location
   useEffect(() => {
-    if (!user) return;
-    (async () => {
-      const { data } = await supabase.from("addresses")
-        .select("country").eq("user_id", user.id).eq("is_default", true).maybeSingle();
-      const c = data?.country;
-      if (c && COUNTRIES.find(x => x.code === c) && shipsTo === "all") setShipsTo(c);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (user) {
+      (async () => {
+        const { data } = await supabase.from("addresses")
+          .select("country").eq("user_id", user.id).eq("is_default", true).maybeSingle();
+        const c = data?.country;
+        if (c && COUNTRIES.find(x => x.code === c)) {
+          setShipsTo(c);
+          return;
+        }
+      })();
+    }
+
+    // Best-effort auto-detect location based on timezone
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+      const map: Record<string, string> = {
+        London: "GB", Europe: "GB",
+        New_York: "US", Chicago: "US", Denver: "US", Los_Angeles: "US", America: "US",
+        Johannesburg: "ZA", Africa: "ZA",
+        Nairobi: "KE",
+        Accra: "GH",
+        Lagos: "NG"
+      };
+      let matched = "NG"; // fallback default
+      for (const [key, code] of Object.entries(map)) {
+        if (tz.includes(key)) {
+          matched = code;
+          break;
+        }
+      }
+      setShipsTo(matched);
+    } catch (e) {
+      setShipsTo("NG"); // fallback
+    }
   }, [user]);
 
   // Sync category from URL once categories load
@@ -142,22 +173,22 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
       <MarketplaceNavbar search={search} onSearchChange={setSearch} />
       <CartDrawer />
 
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <AnimatedSection variant="fade-up">
-          <h1 className="font-display text-3xl font-bold text-foreground mb-2">Marketplace</h1>
-          <p className="text-muted-foreground mb-4">Discover products from verified sellers worldwide</p>
+          <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">Marketplace</h1>
+          <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">Discover products from verified sellers worldwide</p>
           {promo && (
-            <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/10 px-4 py-3">
+            <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] bg-[#F8F3F0] dark:bg-[#1C1C1E] px-4 py-3">
               <div className="flex items-center gap-2 text-sm">
-                <Sparkles className="h-4 w-4 text-primary shrink-0" />
-                <span className="font-medium text-foreground">Promotion:</span>
-                <span className="text-foreground/90">{promo.label}</span>
+                <Sparkles className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2] shrink-0" />
+                <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">Promotion:</span>
+                <span className="text-[#111111] dark:text-[#FAF5F2]">{promo.label}</span>
               </div>
-              <button onClick={clearPromo} aria-label="Clear promotion" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <button onClick={clearPromo} aria-label="Clear promotion" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#888880] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -166,14 +197,14 @@ export default function MarketplacePage() {
 
         {/* Category pills */}
         <AnimatedSection variant="fade-up" delay={50}>
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide">
+          <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
             <button onClick={() => setSelectedCategory(null)}
-              className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition-all ${!selectedCategory ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-muted"}`}>
+              className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
               All
             </button>
             {categories.map(cat => (
               <button key={cat.id} onClick={() => setSelectedCategory(cat.id)}
-                className={`whitespace-nowrap rounded-full px-5 py-2 text-sm font-medium transition-all ${selectedCategory === cat.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-muted"}`}>
+                className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
                 {cat.name}
               </button>
             ))}
@@ -182,20 +213,28 @@ export default function MarketplacePage() {
 
         {/* Ships-to + currency hint */}
         <AnimatedSection variant="fade-up" delay={60}>
-          <div className="flex flex-wrap items-center gap-3 mb-6">
+          <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
             <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Ships to</span>
-              <Select value={shipsTo} onValueChange={setShipsTo}>
-                <SelectTrigger className="h-9 w-[180px] text-sm"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Anywhere</SelectItem>
-                  {COUNTRIES.map(c => <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
+              <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>
+              <button
+                onClick={() => {
+                  setIsLocationConfirmScreen(true);
+                  setIsLocationOpen(true);
+                }}
+                className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none"
+              >
+                <span>{shipsTo === "all" ? "Anywhere 🌍" : countryName(shipsTo)}</span>
+              </button>
             </div>
-            <span className="text-xs text-muted-foreground ml-auto">
-              Prices shown in <span className="font-semibold text-foreground">{currency.code}</span>
+            <span className="text-xs text-[#888880] dark:text-[#A0A0A0] ml-auto">
+              Prices shown in{" "}
+              <button
+                onClick={() => setIsCurrencyOpen(true)}
+                className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none"
+              >
+                {currency.code} ({currency.symbol})
+              </button>
             </span>
           </div>
         </AnimatedSection>
@@ -204,19 +243,22 @@ export default function MarketplacePage() {
           {loading ? (
             <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[...Array(10)].map((_, i) => (
-                <div key={i} className="rounded-lg border border-border bg-card overflow-hidden animate-pulse">
-                  <div className="aspect-square bg-muted" />
-                  <div className="p-2 space-y-1.5"><div className="h-3 bg-muted rounded w-3/4" /><div className="h-4 bg-muted rounded w-1/3" /></div>
+                <div key={i} className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
+                  <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E]" />
+                  <div className="p-4 space-y-1.5">
+                    <div className="h-3 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-3/4" />
+                    <div className="h-4 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-1/3" />
+                  </div>
                 </div>
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <Package className="h-16 w-16 text-muted-foreground/30 mb-4" />
-              <h3 className="font-display text-xl font-semibold text-foreground">
+            <div className="flex flex-col items-center justify-center py-20 text-center select-none">
+              <Package className="h-16 w-16 text-[#888880]/30 dark:text-[#A0A0A0]/30 mb-4" />
+              <h3 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
                 {search || selectedCategory ? "No products match your filters" : "No products listed yet"}
               </h3>
-              <p className="mt-2 text-sm text-muted-foreground max-w-sm">
+              <p className="mt-2 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-sm">
                 {search || selectedCategory ? "Try different search terms or categories" : "Products will appear here as sellers list them."}
               </p>
             </div>
@@ -229,55 +271,61 @@ export default function MarketplacePage() {
                   ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
 
                 return (
-                  <div key={product.id} className="group rounded-lg border border-border/60 bg-card overflow-hidden transition-all hover:shadow-md">
-                    <Link to={`/product/${product.id}`}>
-                      <div className="aspect-square bg-muted relative overflow-hidden">
+                  <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
+                    <Link to={`/product/${product.id}`} className="block">
+                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E] flex items-center justify-center p-4 relative overflow-hidden shrink-0">
                         {primaryImage ? (
-                          <img src={primaryImage.image_url} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" loading="lazy" />
+                          <img src={primaryImage.image_url} alt={product.title} className="max-h-[140px] w-auto object-contain select-none transition-transform duration-300 group-hover:scale-105" loading="lazy" />
                         ) : (
-                          <div className="flex items-center justify-center h-full"><Package className="h-10 w-10 text-muted-foreground/20" /></div>
+                          <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
+                            <Package className="h-8 w-8 text-[#888880] opacity-40" />
+                          </div>
                         )}
-                        {discount && <Badge className="absolute top-1.5 left-1.5 bg-destructive text-destructive-foreground font-bold text-[10px] px-1.5 py-0">-{discount}%</Badge>}
-                        {product.stock_quantity <= 5 && product.stock_quantity > 0 ? (
-                          <Badge className="absolute top-1.5 right-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0"><Flame className="h-2.5 w-2.5 mr-0.5" /> Hot</Badge>
+                        {discount ? (
+                          <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">-{discount}%</span>
+                        ) : product.stock_quantity <= 5 && product.stock_quantity > 0 ? (
+                          <span className="absolute top-3 left-3 bg-[#FFA000] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center"><Flame className="h-2.5 w-2.5 mr-0.5" /> Hot</span>
                         ) : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? (
-                          <Badge className="absolute top-1.5 right-1.5 bg-accent text-accent-foreground text-[10px] px-1.5 py-0">New</Badge>
+                          <span className="absolute top-3 left-3 bg-[#2E7D32] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">New</span>
                         ) : null}
                         {user && (
                           <button
                             onClick={(e) => { e.preventDefault(); toggleWishlist(product.id); }}
-                            className={`absolute bottom-1.5 right-1.5 h-7 w-7 flex items-center justify-center rounded-full bg-background/90 backdrop-blur transition-colors ${isWishlisted(product.id) ? "text-destructive" : "text-muted-foreground hover:text-destructive"}`}
+                            className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
                           >
                             <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
                           </button>
                         )}
                       </div>
                     </Link>
-                    <div className="p-2">
+                    <div className="p-0 flex flex-col flex-1 mt-2">
                       <Link to={`/product/${product.id}`}>
-                        <h3 className="font-medium text-foreground line-clamp-2 group-hover:text-primary transition-colors text-xs leading-snug min-h-[2rem]">{product.title}</h3>
+                        <h4 className="text-[12px] font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 hover:underline min-h-[32px] leading-snug">{product.title}</h4>
                       </Link>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <div className="flex items-baseline gap-1 min-w-0">
-                          <span className="font-display text-base font-bold text-destructive">${product.price}</span>
+                      <div className="flex items-center justify-between mt-2.5">
+                        <div className="flex items-baseline gap-1.5 min-w-0">
+                          <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">${product.price.toFixed(2)}</span>
                           {product.compare_at_price && product.compare_at_price > product.price && (
-                            <span className="text-[10px] text-muted-foreground line-through">${product.compare_at_price}</span>
+                            <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">${product.compare_at_price.toFixed(2)}</span>
                           )}
                         </div>
-                        <Button size="sm" onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
-                          className="h-7 w-7 p-0 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md shrink-0"
-                          disabled={product.stock_quantity === 0}>
+                        <button
+                          onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
+                          className="bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] rounded-full p-2 h-8 w-8 flex items-center justify-center transition-colors duration-200 shrink-0"
+                          disabled={product.stock_quantity === 0}
+                          aria-label="Add to cart"
+                        >
                           <ShoppingCart className="h-3.5 w-3.5" />
-                        </Button>
+                        </button>
                       </div>
                       {seller && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <span className="text-[10px] text-muted-foreground truncate">{seller.full_name || "Seller"}</span>
-                          {seller.is_verified && <CheckCircle2 className="h-2.5 w-2.5 text-accent shrink-0" />}
+                        <div className="flex items-center gap-1 mt-1.5 select-none">
+                          <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller.full_name || "Seller"}</span>
+                          {seller.is_verified && <CheckCircle2 className="h-2.5 w-2.5 text-[#F6C75D] shrink-0" />}
                         </div>
                       )}
                       {shipsTo !== "all" && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-accent">
+                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
                           <Globe className="h-2.5 w-2.5" /> Ships to {countryName(shipsTo)}
                         </div>
                       )}
@@ -289,7 +337,170 @@ export default function MarketplacePage() {
           )}
         </AnimatedSection>
       </div>
+
+      {/* Location Modal */}
+      <ModalWrapper
+        isOpen={isLocationOpen}
+        onClose={() => setIsLocationOpen(false)}
+        title="Delivery Destination"
+      >
+        {isLocationConfirmScreen ? (
+          <div className="text-center space-y-4 select-none">
+            <div className="mx-auto h-12 w-12 rounded-full bg-[#FAF5F2] dark:bg-[#2A2A2D] flex items-center justify-center text-[#F6C75D]">
+              <Globe className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">We detected that you are in</p>
+              <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{shipsTo === "all" ? "Anywhere" : countryName(shipsTo)}</p>
+            </div>
+            <p className="text-xs text-[#888880] dark:text-[#A0A0A0] px-2 leading-relaxed">
+              Do you want to change your delivery location to view matching products?
+            </p>
+            <div className="pt-2 space-y-2">
+              <button
+                onClick={() => setIsLocationConfirmScreen(false)}
+                className="w-full bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200"
+              >
+                Yes, Change Location
+              </button>
+              <button
+                onClick={() => setIsLocationOpen(false)}
+                className="w-full bg-transparent border border-[#C8C8C0] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200"
+              >
+                No, Keep Location
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4 select-none">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold text-[#888880] dark:text-[#A0A0A0]">Select Destination</span>
+              <button
+                onClick={() => setIsLocationConfirmScreen(true)}
+                className="text-[10px] font-semibold text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline"
+              >
+                ← Back
+              </button>
+            </div>
+            <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
+              <button
+                onClick={() => {
+                  setShipsTo("all");
+                  setIsLocationOpen(false);
+                }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${
+                  shipsTo === "all"
+                    ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
+                    : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"
+                }`}
+              >
+                <span>Anywhere</span>
+                {shipsTo === "all" && <CheckCircle2 className="h-3.5 w-3.5" />}
+              </button>
+              {COUNTRIES.map(c => {
+                const isActive = shipsTo === c.code;
+                return (
+                  <button
+                    key={c.code}
+                    onClick={() => {
+                      setShipsTo(c.code);
+                      setIsLocationOpen(false);
+                    }}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${
+                      isActive
+                        ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
+                        : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"
+                    }`}
+                  >
+                    <span>{c.name}</span>
+                    {isActive && <CheckCircle2 className="h-3.5 w-3.5" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </ModalWrapper>
+
+      {/* Currency Modal */}
+      <ModalWrapper
+        isOpen={isCurrencyOpen}
+        onClose={() => setIsCurrencyOpen(false)}
+        title="Preferred Currency"
+      >
+        <div className="space-y-4 select-none">
+          <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">Choose your preferred currency to convert prices dynamically:</p>
+          <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-1">
+            {Object.entries(currencies).map(([code, info]) => {
+              const isActive = currency.code === code;
+              const FLAGS: Record<string, string> = {
+                USD: "🇺🇸", GBP: "🇬🇧", EUR: "🇪🇺", CAD: "🇨🇦", AUD: "🇦🇺",
+                NGN: "🇳🇬", ZAR: "🇿🇦", KES: "🇰🇪", GHS: "🇬🇭",
+              };
+              return (
+                <button
+                  key={code}
+                  onClick={() => {
+                    setCurrencyCode(code);
+                    setIsCurrencyOpen(false);
+                  }}
+                  className={`p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between h-[76px] ${
+                    isActive
+                      ? "bg-[#111111] dark:bg-[#FAF5F2] border-transparent text-white dark:text-[#111111] shadow-md"
+                      : "bg-[#FAFAFA] dark:bg-[#151515] border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] hover:border-[#C8C8C0] dark:hover:border-[#333333]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-sm">{FLAGS[code] || info.symbol}</span>
+                    <span className="text-[10px] font-bold tracking-wider opacity-70">{code}</span>
+                  </div>
+                  <span className="text-[11px] font-semibold truncate mt-1.5">{info.symbol} - {code}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </ModalWrapper>
+
       <SiteFooter />
+    </div>
+  );
+}
+
+interface ModalWrapperProps {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}
+
+function ModalWrapper({ isOpen, onClose, title, children }: ModalWrapperProps) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-[#000000]/60 backdrop-blur-sm transition-opacity duration-300 animate-fade-in" 
+        onClick={onClose} 
+      />
+      {/* Modal Box */}
+      <div className="relative bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] w-full max-w-sm overflow-hidden shadow-2xl z-10 transition-all duration-300 animate-scale-in">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#F2F3F5] dark:border-[#222222]">
+          <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] uppercase tracking-wider">{title}</h3>
+          <button 
+            onClick={onClose} 
+            className="text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors"
+            aria-label="Close modal"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+        {/* Body Content */}
+        <div className="p-6">
+          {children}
+        </div>
+      </div>
     </div>
   );
 }

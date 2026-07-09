@@ -173,6 +173,13 @@
   .animate-fade-in {
     animation: fadeIn 0.4s ease-out;
   }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }
 
 @keyframes slideUp {

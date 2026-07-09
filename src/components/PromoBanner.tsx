@@ -48,16 +48,16 @@ export default function PromoBanner() {
       {ad.image_url ? (
         <img src={ad.image_url} alt="" className="h-6 w-10 rounded object-cover shrink-0" />
       ) : (
-        <Sparkles className="h-4 w-4 text-primary-foreground shrink-0" />
+        <Sparkles className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2] shrink-0" />
       )}
-      <span className="font-medium text-primary-foreground truncate">{ad.title}</span>
+      <span className="font-medium text-[#111111] dark:text-[#FAF5F2] truncate">{ad.title}</span>
     </div>
   );
 
   const safeTarget = ad.target_url && /^(https?:\/\/|\/)/i.test(ad.target_url) ? ad.target_url : null;
 
   return (
-    <div className="relative bg-gradient-to-r from-primary via-primary to-accent">
+    <div className="relative bg-[#F8F3F0] dark:bg-[#1E1E1E] border-b border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2]">
       {safeTarget ? (
         safeTarget.startsWith("http") ? (
           <a href={safeTarget} target="_blank" rel="noopener noreferrer" className="block" onClick={trackClick}>{inner}</a>
@@ -68,7 +68,7 @@ export default function PromoBanner() {
 
       <button
         onClick={() => setDismissed(true)}
-        className="absolute right-2 top-1/2 -translate-y-1/2 text-primary-foreground/80 hover:text-primary-foreground"
+        className="absolute right-2 top-1/2 -translate-y-1/2 text-[#111111]/80 dark:text-[#FAF5F2]/80 hover:text-[#111111] dark:hover:text-[#FAF5F2]"
         aria-label="Dismiss promotion"
       >
         <X className="h-4 w-4" />
