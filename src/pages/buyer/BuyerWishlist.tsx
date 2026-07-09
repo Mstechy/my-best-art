@@ -1,11 +1,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Heart, ShoppingCart, Package, Trash2, Share2, Layers } from "lucide-react";
+import { Heart, ShoppingCart, Package, Trash2, Share2, Layers, Loader2 } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,8 +45,7 @@ export default function BuyerWishlist() {
     const { data } = await supabase
       .from("wishlists" as any)
       .select("id, product_id, created_at, is_public, product:products(id, title, price, compare_at_price, stock_quantity, seller_id, status, category_id, product_images(image_url, is_primary))")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
+      .eq("user_id", user.id).order("created_at", { ascending: false });
     if (data) {
       const list = data as any as WishlistItem[];
       setItems(list);
@@ -75,15 +71,7 @@ export default function BuyerWishlist() {
 
   const handleAddToCart = (item: WishlistItem) => {
     const img = item.product.product_images?.find(i => i.is_primary) || item.product.product_images?.[0];
-    addItem({
-      id: item.product.id,
-      title: item.product.title,
-      price: item.product.price,
-      image_url: img?.image_url || null,
-      seller_id: item.product.seller_id,
-      seller_name: "Seller",
-      stock_quantity: item.product.stock_quantity,
-    });
+    addItem({ id: item.product.id, title: item.product.title, price: item.product.price, image_url: img?.image_url || null, seller_id: item.product.seller_id, seller_name: "Seller", stock_quantity: item.product.stock_quantity });
     toast({ title: "Added to cart" });
   };
 
@@ -113,10 +101,7 @@ export default function BuyerWishlist() {
   const grouped = useMemo(() => {
     if (!groupByCategory) return null;
     const groups: Record<string, WishlistItem[]> = {};
-    sorted.forEach(i => {
-      const key = i.product.category_id || "uncategorized";
-      (groups[key] = groups[key] || []).push(i);
-    });
+    sorted.forEach(i => { const key = i.product.category_id || "uncategorized"; (groups[key] = groups[key] || []).push(i); });
     return groups;
   }, [sorted, groupByCategory]);
 
@@ -124,68 +109,85 @@ export default function BuyerWishlist() {
     const img = item.product.product_images?.find(i => i.is_primary) || item.product.product_images?.[0];
     const discount = item.product.compare_at_price && item.product.compare_at_price > item.product.price
       ? Math.round((1 - item.product.price / item.product.compare_at_price) * 100) : null;
+    const outOfStock = item.product.stock_quantity === 0;
     return (
-      <Card key={item.id} className="border-border/60 overflow-hidden group">
+      <div key={item.id} className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] overflow-hidden group hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
         <Link to={`/product/${item.product.id}`}>
-          <div className="aspect-square bg-muted relative overflow-hidden">
-            {img ? (
-              <img src={img.image_url} alt={item.product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-            ) : (
-              <div className="flex items-center justify-center h-full"><Package className="h-10 w-10 text-muted-foreground/20" /></div>
+          <div className="aspect-square bg-[#F2F3F5] dark:bg-[#111111] relative overflow-hidden">
+            {img
+              ? <img src={img.image_url} alt={item.product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              : <div className="flex items-center justify-center h-full"><Package className="h-10 w-10 text-[#C0C0B8] dark:text-[#333333]" /></div>
+            }
+            {discount && (
+              <span className="absolute top-3 left-3 px-2 py-1 rounded-full bg-[#F6C75D] text-[#5C3A00] text-[9px] font-bold uppercase tracking-wider">
+                -{discount}%
+              </span>
             )}
-            {discount && <Badge className="absolute top-3 left-3 bg-destructive text-destructive-foreground font-bold">-{discount}%</Badge>}
+            {outOfStock && (
+              <div className="absolute inset-0 bg-white/60 dark:bg-black/60 flex items-center justify-center">
+                <span className="text-[10px] font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider">Out of stock</span>
+              </div>
+            )}
           </div>
         </Link>
-        <CardContent className="p-4">
+        <div className="p-4">
           <Link to={`/product/${item.product.id}`}>
-            <h3 className="font-display font-semibold text-foreground truncate group-hover:text-primary transition-colors">{item.product.title}</h3>
+            <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate leading-snug group-hover:opacity-70 transition-opacity">{item.product.title}</p>
           </Link>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="font-display text-lg font-bold text-foreground">${item.product.price}</span>
+          <div className="flex items-center gap-2 mt-1.5">
+            <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">${item.product.price}</span>
             {item.product.compare_at_price && item.product.compare_at_price > item.product.price && (
-              <span className="text-sm text-muted-foreground line-through">${item.product.compare_at_price}</span>
+              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">${item.product.compare_at_price}</span>
             )}
           </div>
           <div className="flex gap-2 mt-3">
-            <Button size="sm" onClick={() => handleAddToCart(item)} disabled={item.product.stock_quantity === 0}
-              className="flex-1 gap-1 bg-primary text-primary-foreground hover:bg-primary/90">
-              <ShoppingCart className="h-3.5 w-3.5" /> Add to Cart
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => removeItem(item.id)} className="text-destructive hover:text-destructive">
+            <button onClick={() => handleAddToCart(item)} disabled={outOfStock}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[10px] font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
+              <ShoppingCart className="h-3 w-3" /> Add to Cart
+            </button>
+            <button onClick={() => removeItem(item.id)}
+              className="flex items-center justify-center h-8 w-8 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-red-400 hover:text-red-500 hover:border-red-200 dark:hover:border-red-900/40 transition-colors">
               <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            </button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     );
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-[1280px]">
       <AnimatedSection variant="fade-up">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="font-display text-3xl font-bold text-foreground">My Wishlist</h1>
-            <p className="mt-1 text-muted-foreground">{items.length} items · price-drop alerts enabled</p>
+            <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">My Wishlist</h1>
+            <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">{items.length} item{items.length !== 1 ? "s" : ""}</p>
           </div>
           {items.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <Select value={sortKey} onValueChange={(v) => setSortKey(v as SortKey)}>
-                <SelectTrigger className="w-[150px] h-10"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 w-[148px] rounded-full border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1A1A1A] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">Newest</SelectItem>
-                  <SelectItem value="price_asc">Price: Low to High</SelectItem>
-                  <SelectItem value="price_desc">Price: High to Low</SelectItem>
+                  <SelectItem value="price_asc">Price: Low → High</SelectItem>
+                  <SelectItem value="price_desc">Price: High → Low</SelectItem>
                 </SelectContent>
               </Select>
-              <Button variant={groupByCategory ? "default" : "outline"} size="sm" className="h-10 gap-1.5"
-                onClick={() => setGroupByCategory(g => !g)}>
-                <Layers className="h-4 w-4" /> Group
-              </Button>
-              <Button variant="outline" size="sm" className="h-10 gap-1.5" onClick={shareWishlist}>
-                <Share2 className="h-4 w-4" /> Share
-              </Button>
-              <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <button onClick={() => setGroupByCategory(g => !g)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-[10px] font-bold transition-colors ${
+                  groupByCategory
+                    ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-[#111111] dark:border-[#FAF5F2]"
+                    : "border-[#E8E8E8] dark:border-[#222222] text-[#888880] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A]"
+                }`}>
+                <Layers className="h-3 w-3" /> Group
+              </button>
+              <button onClick={shareWishlist}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[10px] font-bold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors">
+                <Share2 className="h-3 w-3" /> Share
+              </button>
+              <label className="flex items-center gap-2 text-[10px] font-semibold text-[#888880] dark:text-[#A0A0A0] cursor-pointer">
                 <Switch checked={isPublic} onCheckedChange={togglePublic} /> Public
               </label>
             </div>
@@ -193,30 +195,35 @@ export default function BuyerWishlist() {
         </div>
       </AnimatedSection>
 
-      <AnimatedSection variant="fade-up" delay={100}>
+      <AnimatedSection variant="fade-up" delay={80}>
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading wishlist...</div>
+          <div className="flex justify-center py-16">
+            <Loader2 className="h-5 w-5 animate-spin text-[#888880]" />
+          </div>
         ) : items.length === 0 ? (
-          <Card className="border-border/60">
-            <CardContent className="py-16">
-              <div className="flex flex-col items-center justify-center text-center">
-                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted mb-5">
-                  <Heart className="h-9 w-9 text-muted-foreground" />
-                </div>
-                <h3 className="font-display text-xl font-semibold text-foreground">Your wishlist is empty</h3>
-                <p className="mt-2 text-sm text-muted-foreground max-w-sm">Browse the marketplace and tap the heart icon to save products you love.</p>
-                <Link to="/marketplace">
-                  <Button className="mt-4 bg-primary text-primary-foreground">Browse Products</Button>
-                </Link>
+          <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] py-16">
+            <div className="flex flex-col items-center justify-center text-center gap-3">
+              <div className="h-14 w-14 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center">
+                <Heart className="h-6 w-6 text-[#888880] dark:text-[#A0A0A0]" />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Your wishlist is empty</p>
+                <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-xs">Browse the marketplace and tap the heart icon to save products you love.</p>
+              </div>
+              <Link to="/marketplace">
+                <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-semibold hover:bg-[#2A2A2A] transition-colors">
+                  Browse Products
+                </button>
+              </Link>
+            </div>
+          </div>
         ) : grouped ? (
           <div className="space-y-8">
             {Object.entries(grouped).map(([catId, list]) => (
               <div key={catId}>
-                <h2 className="font-display text-lg font-semibold text-foreground mb-3">
-                  {categoryNames[catId] || "Uncategorized"} <span className="text-sm text-muted-foreground font-normal">({list.length})</span>
+                <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">
+                  {categoryNames[catId] || "Uncategorized"}
+                  <span className="ml-2 text-[#888880] dark:text-[#A0A0A0] font-normal text-xs">({list.length})</span>
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderItem)}</div>
               </div>
