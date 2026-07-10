@@ -488,7 +488,7 @@ export default function ProductDetailPage() {
                 key={t.key}
                 onClick={() => scrollTo(t.ref, t.key)}
                 className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
-                      }`}
+                  }`}
               >
                 {t.label.split(" ")[0]} {/* Shorten tab labels on mobile if needed */}
               </button>
@@ -518,7 +518,7 @@ export default function ProductDetailPage() {
                 key={t.key}
                 onClick={() => scrollTo(t.ref, t.key)}
                 className={`px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap transition-all duration-150 ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#222222]"
-                      }`}
+                  }`}
               >
                 {t.label}
               </button>
@@ -544,8 +544,24 @@ export default function ProductDetailPage() {
                     {mediaItems.map(item => (
                       <CarouselItem key={item.id} className="h-full flex items-center justify-center">
                         {item.type === "video" ? (
-                          <div className="w-full h-full relative bg-black">
-                            <video src={item.url} controls className="w-full h-full object-contain" />
+                          <div className="w-full h-full relative bg-black flex items-center justify-center">
+                            <video
+                              id={`vid-${item.id}`}
+                              src={item.url}
+                              controls
+                              onPlay={() => setPlayingVideos(p => ({ ...p, [item.id]: true }))}
+                              onPause={() => setPlayingVideos(p => ({ ...p, [item.id]: false }))}
+                              onEnded={() => setPlayingVideos(p => ({ ...p, [item.id]: false }))}
+                              onClick={(e) => {
+                                const video = e.currentTarget;
+                                if (video.paused) {
+                                  video.play();
+                                } else {
+                                  video.pause();
+                                }
+                              }}
+                              className="w-full h-full object-contain cursor-pointer"
+                            />
                           </div>
                         ) : (
                           <button
@@ -562,10 +578,28 @@ export default function ProductDetailPage() {
                 </Carousel>
               )}
 
+              {/* Main Media Container Play Button Overlay (only visible on video slides when paused/stopped) */}
+              {mediaItems[selectedImage]?.type === "video" && !playingVideos[mediaItems[selectedImage]?.id] && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activeVidId = mediaItems[selectedImage]?.id;
+                    const video = document.getElementById(`vid-${activeVidId}`) as HTMLVideoElement | null;
+                    if (video) video.play();
+                  }}
+                  className="absolute inset-0 bg-black/15 hover:bg-black/30 transition-colors cursor-pointer z-20 flex items-center justify-center"
+                  aria-label="Play video"
+                >
+                  <div className="h-14 w-14 rounded-full bg-white/95 dark:bg-black/95 flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-transform">
+                    <Play className="h-6 w-6 text-[#111111] dark:text-[#FAF5F2] fill-current ml-0.5" />
+                  </div>
+                </button>
+              )}
+
               {/* Mobile overlay status pill: "Item 1/6 | Review | Color" */}
               {mediaItems.length > 0 && (
                 <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-sm rounded-full px-3 py-1 text-[10px] font-semibold text-white flex items-center gap-1.5 z-10">
-                  <span>Item {selectedImage + 1}/{mediaItems.length}</span>
+                  <span> {selectedImage + 1}/{mediaItems.length}</span>
                   {reviews.length > 0 && (
                     <>
                       <span className="opacity-40">|</span>
@@ -769,8 +803,8 @@ export default function ProductDetailPage() {
                       key={s}
                       onClick={() => setSelectedSize(s)}
                       className={`h-9 px-3 rounded-full border text-xs font-semibold transition-colors ${selectedSize === s
-                          ? "border-[#111111] dark:border-[#FAF5F2] bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                          : "border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2]"
+                        ? "border-[#111111] dark:border-[#FAF5F2] bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
+                        : "border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2]"
                         }`}
                     >
                       {s}
@@ -789,8 +823,8 @@ export default function ProductDetailPage() {
                       key={c}
                       onClick={() => setSelectedColor(c)}
                       className={`h-9 px-4 rounded-full border text-xs font-semibold transition-colors ${selectedColor === c
-                          ? "border-[#111111] dark:border-[#FAF5F2] bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                          : "border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2]"
+                        ? "border-[#111111] dark:border-[#FAF5F2] bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
+                        : "border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2]"
                         }`}
                     >
                       {c}
