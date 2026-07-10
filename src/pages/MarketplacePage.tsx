@@ -17,6 +17,7 @@ import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
 import { findCategoryConfig, getCategoryAttributes } from "@/lib/categoryConfig";
 import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/MarketplaceFilters";
+import ProductImage from "@/components/product/ProductImage";
 
 // Promo descriptors keyed by URL ?promo=
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -348,9 +349,9 @@ export default function MarketplacePage() {
                 return (
                   <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
                     <Link to={`/product/${product.id}`} className="block">
-                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E] flex items-center justify-center p-4 relative overflow-hidden shrink-0">
+                      <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
                         {primaryImage ? (
-                          <img src={primaryImage.image_url} alt={product.title} className="max-h-[140px] w-auto object-contain select-none transition-transform duration-300 group-hover:scale-105" loading="lazy" />
+                          <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
                         ) : (
                           <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
                             <Package className="h-8 w-8 text-[#888880] opacity-40" />

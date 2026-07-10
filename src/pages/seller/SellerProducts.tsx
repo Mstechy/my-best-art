@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,6 +17,8 @@ import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getPr
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
+import { uploadProductImagePair } from "@/lib/productImages";
+import ProductImage from "@/components/product/ProductImage";
 
 interface Category {
   id: string;
@@ -49,7 +51,31 @@ interface Product {
   ships_to: string[] | null;
   variants: Record<string, unknown> | null;
   created_at: string;
-  product_images: { id: string; image_url: string; is_primary: boolean }[];
+  product_images: { id: string; image_url: string; is_primary: boolean; sort_order?: number }[];
+}
+
+type UploadState = "local" | "uploading" | "uploaded" | "error";
+
+interface ImageMediaItem {
+  id: string;
+  dbId?: string;
+  file?: File;
+  url: string;
+  name: string;
+  isPrimary: boolean;
+  status: UploadState;
+  progress: number;
+  error?: string;
+}
+
+interface VideoMediaItem {
+  id: string;
+  file?: File;
+  url: string;
+  name: string;
+  status: UploadState;
+  progress: number;
+  error?: string;
 }
 
 export default function SellerProducts() {
@@ -72,8 +98,11 @@ export default function SellerProducts() {
   const [categoryId, setCategoryId] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [sku, setSku] = useState("");
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const [imageItems, setImageItems] = useState<ImageMediaItem[]>([]);
+  const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
+  const [videoItems, setVideoItems] = useState<VideoMediaItem[]>([]);
+  const [removedVideoUrls, setRemovedVideoUrls] = useState<string[]>([]);
+  const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [showSoldCount, setShowSoldCount] = useState(true);
 
@@ -94,6 +123,7 @@ export default function SellerProducts() {
   const [existingProductVideos, setExistingProductVideos] = useState<string[]>([]);
 
   const [saving, setSaving] = useState(false);
+  const [savedProductId, setSavedProductId] = useState<string | null>(null);
 
   const fetchProducts = useCallback(async () => {
     if (!user) return;
@@ -102,8 +132,13 @@ export default function SellerProducts() {
       .select("*, product_images(*)")
       .eq("seller_id", user.id)
       .order("created_at", { ascending: false });
-    if (!error && data) setProducts(data.map(p => ({
+    if (!error && data) setProducts(data.map(p => {
+      const sortedImages = [...(((p as any).product_images || []) as Product["product_images"])].sort(
+        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+      );
+      return ({
       ...p,
+      product_images: sortedImages,
       is_approved: (p as any).is_approved ?? false,
       brand: (p as any).brand ?? null,
       weight: (p as any).weight ?? null,
@@ -117,7 +152,8 @@ export default function SellerProducts() {
       tags: (p as any).tags ?? null,
       ships_to: (p as any).ships_to ?? null,
       variants: (p as any).variants ?? null,
-    })) as unknown as Product[]);
+    });
+    }) as unknown as Product[]);
     setLoading(false);
 
     // fetch per-product stats
@@ -147,9 +183,100 @@ export default function SellerProducts() {
     fetchCategories();
   }, [fetchProducts, fetchCategories]);
 
+  const revokeLocalMediaUrls = () => {
+    imageItems.forEach((item) => {
+      if (item.file) URL.revokeObjectURL(item.url);
+    });
+    videoItems.forEach((item) => {
+      if (item.file) URL.revokeObjectURL(item.url);
+    });
+  };
+
+  const addImageFiles = (files: File[]) => {
+    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+    if (imageFiles.length === 0) return;
+    setImageItems((prev) => {
+      const next = [
+        ...prev,
+        ...imageFiles.map((file, index): ImageMediaItem => ({
+          id: `local-image-${Date.now()}-${index}-${file.name}`,
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          isPrimary: prev.length === 0 && index === 0,
+          status: "local",
+          progress: 0,
+        })),
+      ];
+      return next.some((item) => item.isPrimary) ? next : next.map((item, index) => ({ ...item, isPrimary: index === 0 }));
+    });
+  };
+
+  const addVideoFiles = (files: File[]) => {
+    const accepted = files.filter((file) => /video\/(mp4|quicktime|webm)/i.test(file.type) || /\.(mp4|mov|webm)$/i.test(file.name)).slice(0, 3);
+    if (accepted.length === 0) return;
+    setVideoItems((prev) => [
+      ...prev,
+      ...accepted.map((file, index): VideoMediaItem => ({
+        id: `local-video-${Date.now()}-${index}-${file.name}`,
+        file,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        status: "local",
+        progress: 0,
+      })),
+    ].slice(0, 3));
+  };
+
+  const removeImageItem = (id: string) => {
+    setImageItems((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      if (removed?.file) URL.revokeObjectURL(removed.url);
+      if (removed?.dbId) setRemovedImageIds((ids) => [...ids, removed.dbId!]);
+      const next = prev.filter((item) => item.id !== id);
+      return next.some((item) => item.isPrimary) ? next : next.map((item, index) => ({ ...item, isPrimary: index === 0 }));
+    });
+  };
+
+  const removeVideoItem = (id: string) => {
+    setVideoItems((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      if (removed?.file) URL.revokeObjectURL(removed.url);
+      else if (removed) setRemovedVideoUrls((urls) => [...urls, removed.url]);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const setPrimaryImage = (id: string) => {
+    setImageItems((prev) => prev.map((item) => ({ ...item, isPrimary: item.id === id })));
+  };
+
+  const moveImageItem = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setImageItems((prev) => {
+      const fromIndex = prev.findIndex((item) => item.id === fromId);
+      const toIndex = prev.findIndex((item) => item.id === toId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const updateImageUploadState = (id: string, patch: Partial<ImageMediaItem>) => {
+    setImageItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
+  };
+
+  const updateVideoUploadState = (id: string, patch: Partial<VideoMediaItem>) => {
+    setVideoItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
+  };
+
   const resetForm = () => {
+    revokeLocalMediaUrls();
     setTitle(""); setDescription(""); setPrice(""); setCompareAtPrice("");
-    setCategoryId(""); setStockQuantity(""); setSku(""); setImageFiles([]); setVideoFiles([]);
+    setCategoryId(""); setStockQuantity(""); setSku(""); setImageItems([]); setVideoItems([]);
+    setRemovedImageIds([]); setRemovedVideoUrls([]); setDraggedImageId(null); setSavedProductId(null);
     setDocFile(null); setShowSoldCount(true);
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
@@ -180,7 +307,31 @@ export default function SellerProducts() {
     setShipsTo(product.ships_to || []);
     setShowSoldCount(((product as any).show_sold_count as boolean) ?? true);
     setProductTypeKey(getProductType(product.variants)?.key || "");
-    setExistingProductVideos(getProductVideos(product.variants));
+    const savedVideos = getProductVideos(product.variants);
+    setExistingProductVideos(savedVideos);
+    setImageItems(
+      [...(product.product_images || [])]
+        .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+        .map((image, index) => ({
+          id: `existing-image-${image.id}`,
+          dbId: image.id,
+          url: image.image_url,
+          name: `Image ${index + 1}`,
+          isPrimary: image.is_primary,
+          status: "uploaded" as const,
+          progress: 100,
+        }))
+    );
+    setVideoItems(savedVideos.map((url, index) => ({
+      id: `existing-video-${index}-${url}`,
+      url,
+      name: `Product video ${index + 1}`,
+      status: "uploaded" as const,
+      progress: 100,
+    })));
+    setRemovedImageIds([]);
+    setRemovedVideoUrls([]);
+    setSavedProductId(product.id);
     setCategoryAttributes({
       brand: product.brand || "",
       weight: product.weight || "",
@@ -255,30 +406,63 @@ export default function SellerProducts() {
       }, { key: selectedProductType.key, label: selectedProductType.label }, existingProductVideos),
     };
 
-    let productId = editingProduct?.id;
+    let productId = editingProduct?.id || savedProductId;
 
-    if (editingProduct) {
-      const { error } = await supabase.from("products").update(productData as any).eq("id", editingProduct.id);
+    if (productId) {
+      const { error } = await supabase.from("products").update(productData as any).eq("id", productId);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
     } else {
       const { data, error } = await supabase.from("products").insert({ ...productData, status: "active" } as any).select("id").single();
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
       productId = data.id;
+      setSavedProductId(data.id);
     }
 
-    // Upload images
-    if (imageFiles.length > 0 && productId) {
-      for (let i = 0; i < imageFiles.length; i++) {
-        const file = imageFiles[i];
-        const ext = file.name.split(".").pop();
-        const filePath = `${user.id}/${productId}/${Date.now()}_${i}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, file);
-        if (!uploadError) {
-          const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
-          await supabase.from("product_images").insert({
+    let mediaHadError = false;
+
+    if (removedImageIds.length > 0) {
+      const { error } = await supabase.from("product_images").delete().in("id", removedImageIds);
+      if (error) mediaHadError = true;
+    }
+
+    if (productId) {
+      for (let i = 0; i < imageItems.length; i++) {
+        const item = imageItems[i];
+        if (item.dbId) {
+          const { error } = await supabase.from("product_images").update({
+            sort_order: i,
+            is_primary: item.isPrimary,
+          } as any).eq("id", item.dbId);
+          if (error) {
+            mediaHadError = true;
+            updateImageUploadState(item.id, { status: "error", error: error.message });
+          }
+          continue;
+        }
+        if (!item.file) continue;
+        try {
+          updateImageUploadState(item.id, { status: "uploading", progress: 20, error: undefined });
+          const { originalUrl } = await uploadProductImagePair(item.file, `${user.id}/${productId}`);
+          updateImageUploadState(item.id, { progress: 80 });
+          const { data: inserted, error: insertError } = await supabase.from("product_images").insert({
             product_id: productId,
-            image_url: urlData.publicUrl,
-            is_primary: i === 0 && !editingProduct,
+            image_url: originalUrl,
+            is_primary: item.isPrimary,
+            sort_order: i,
+          } as any).select("id").single();
+          if (insertError) throw insertError;
+          updateImageUploadState(item.id, { dbId: (inserted as any).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
+        } catch (error) {
+          mediaHadError = true;
+          updateImageUploadState(item.id, {
+            status: "error",
+            progress: 0,
+            error: error instanceof Error ? error.message : "Upload failed",
+          });
+          toast({
+            title: "Image upload failed",
+            description: error instanceof Error ? error.message : "One of the product images could not be uploaded.",
+            variant: "destructive",
           });
         }
       }
@@ -300,24 +484,53 @@ export default function SellerProducts() {
     }
 
     // Upload optional product videos and save URLs in variants JSON.
-    if (videoFiles.length > 0 && productId) {
-      const uploadedVideos: string[] = [];
-      for (let i = 0; i < videoFiles.slice(0, 3).length; i++) {
-        const file = videoFiles[i];
-        const ext = file.name.split(".").pop();
-        const filePath = `${user.id}/${productId}/video_${Date.now()}_${i}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, file);
-        if (!uploadError) {
+    if (productId) {
+      const finalVideos: string[] = [];
+      for (let i = 0; i < videoItems.slice(0, 3).length; i++) {
+        const item = videoItems[i];
+        if (!item.file) {
+          if (!removedVideoUrls.includes(item.url)) finalVideos.push(item.url);
+          continue;
+        }
+        try {
+          updateVideoUploadState(item.id, { status: "uploading", progress: 20, error: undefined });
+          const ext = item.file.name.split(".").pop();
+          const filePath = `${user.id}/${productId}/video_${Date.now()}_${i}.${ext}`;
+          const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, item.file, {
+            contentType: item.file.type || "video/mp4",
+            cacheControl: "3600",
+          });
+          if (uploadError) throw uploadError;
+          updateVideoUploadState(item.id, { progress: 85 });
           const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
-          uploadedVideos.push(urlData.publicUrl);
+          finalVideos.push(urlData.publicUrl);
+          updateVideoUploadState(item.id, { file: undefined, url: urlData.publicUrl, status: "uploaded", progress: 100 });
+        } catch (error) {
+          mediaHadError = true;
+          updateVideoUploadState(item.id, {
+            status: "error",
+            progress: 0,
+            error: error instanceof Error ? error.message : "Upload failed",
+          });
         }
       }
-      if (uploadedVideos.length > 0) {
-        const nextVideos = [...existingProductVideos, ...uploadedVideos].slice(0, 3);
-        await supabase.from("products").update({
-          variants: mergeCategoryAttributes(productData.variants, cleanCategoryAttributes, { key: selectedProductType.key, label: selectedProductType.label }, nextVideos),
-        } as any).eq("id", productId);
-      }
+      const { error: videoUpdateError } = await supabase.from("products").update({
+        variants: mergeCategoryAttributes(productData.variants, cleanCategoryAttributes, { key: selectedProductType.key, label: selectedProductType.label }, finalVideos),
+      } as any).eq("id", productId);
+      if (videoUpdateError) mediaHadError = true;
+      setExistingProductVideos(finalVideos);
+    }
+
+    if (mediaHadError) {
+      setSaving(false);
+      setFormTab("media");
+      toast({
+        title: "Some media did not upload",
+        description: "The product details were saved. Review failed media and retry.",
+        variant: "destructive",
+      });
+      fetchProducts();
+      return;
     }
 
     toast({
@@ -616,28 +829,158 @@ export default function SellerProducts() {
 
                 <TabsContent value="media" className="space-y-4 mt-4">
                   <div>
-                    <label className="text-sm font-medium text-foreground">Product Images</label>
-                    <div className="mt-1">
-                      <label className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border px-6 py-8 cursor-pointer hover:bg-muted/50 transition-colors">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-sm font-medium text-foreground">Product Images</label>
+                      <span className="text-xs text-muted-foreground">{imageItems.length} image{imageItems.length === 1 ? "" : "s"}</span>
+                    </div>
+                    <div className="mt-2">
+                      <label
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          addImageFiles(Array.from(e.dataTransfer.files || []));
+                        }}
+                        className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-7 cursor-pointer hover:bg-muted/40 transition-colors"
+                      >
                         <ImagePlus className="h-8 w-8 text-muted-foreground" />
                         <div className="text-center">
-                          <span className="text-sm font-medium text-foreground">
-                            {imageFiles.length > 0 ? `${imageFiles.length} file${imageFiles.length > 1 ? "s" : ""} selected` : "Click to upload images"}
-                          </span>
-                          <p className="text-xs text-muted-foreground mt-1">PNG, JPG up to 5MB. First image will be the main photo.</p>
+                          <span className="text-sm font-medium text-foreground">Drop images here or browse files</span>
+                          <p className="text-xs text-muted-foreground mt-1">Upload any product photo. Cards are optimized automatically and originals stay available on the detail page.</p>
                         </div>
-                        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => setImageFiles(Array.from(e.target.files || []))} />
+                        <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addImageFiles(Array.from(e.target.files || []))} />
                       </label>
                     </div>
+                    {imageItems.length > 0 && (
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {imageItems.map((item) => (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={() => setDraggedImageId(item.id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedImageId) moveImageItem(draggedImageId, item.id);
+                              setDraggedImageId(null);
+                            }}
+                            className="group rounded-xl border border-border bg-card p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                          >
+                            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+                              <ProductImage src={item.url} alt={item.name} className="group-hover:scale-105" loading="lazy" />
+                              <div className="absolute left-2 top-2 flex gap-1">
+                                <button type="button" className="rounded-md bg-white/90 p-1 text-foreground shadow-sm" title="Drag to reorder">
+                                  <GripVertical className="h-3.5 w-3.5" />
+                                </button>
+                                {item.isPrimary && (
+                                  <span className="inline-flex items-center gap-1 rounded-md bg-white/95 px-1.5 py-1 text-[10px] font-semibold text-foreground shadow-sm">
+                                    <Star className="h-3 w-3 fill-yellow-500 text-yellow-500" /> Primary
+                                  </span>
+                                )}
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeImageItem(item.id)}
+                                className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-foreground shadow-sm hover:text-destructive"
+                                aria-label="Remove image"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                              {item.status === "uploading" && (
+                                <div className="absolute inset-x-2 bottom-2 rounded-full bg-white/90 p-1 shadow-sm">
+                                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                    <div className="h-full bg-primary transition-all" style={{ width: `${item.progress}%` }} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-2 flex items-center justify-between gap-2">
+                              <div className="min-w-0">
+                                <p className="truncate text-xs font-medium text-foreground">{item.name}</p>
+                                <p className={`text-[11px] ${item.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                                  {item.status === "uploaded" ? "Uploaded" : item.status === "uploading" ? `Uploading ${item.progress}%` : item.status === "error" ? item.error || "Upload failed" : "Ready"}
+                                </p>
+                              </div>
+                              {item.status === "uploaded" ? (
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />
+                              ) : item.status === "error" ? (
+                                <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={handleSave} disabled={saving}>
+                                  <RotateCcw className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : null}
+                            </div>
+                            {!item.isPrimary && (
+                              <Button type="button" variant="outline" size="sm" className="mt-2 h-8 w-full text-xs" onClick={() => setPrimaryImage(item.id)}>
+                                Set primary
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Product Videos <span className="text-xs text-muted-foreground font-normal">(optional)</span></label>
-                    <input type="file" accept="video/*" multiple
-                      onChange={(e) => setVideoFiles(Array.from(e.target.files || []).slice(0, 3))}
-                      className="mt-1 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted/80" />
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {videoFiles.length > 0 ? `${videoFiles.length} video${videoFiles.length > 1 ? "s" : ""} selected.` : existingProductVideos.length > 0 ? `${existingProductVideos.length} existing video${existingProductVideos.length > 1 ? "s" : ""} saved.` : "Add short product videos when useful."}
-                    </p>
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-sm font-medium text-foreground">Product Videos <span className="text-xs text-muted-foreground font-normal">(optional)</span></label>
+                      <span className="text-xs text-muted-foreground">MP4, MOV, WebM</span>
+                    </div>
+                    <label
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        addVideoFiles(Array.from(e.dataTransfer.files || []));
+                      }}
+                      className="mt-2 flex items-center justify-between gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-4 cursor-pointer hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-background border border-border">
+                          <Upload className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-foreground">Upload product demonstration video</p>
+                          <p className="text-xs text-muted-foreground">Buyers can play it in the product gallery.</p>
+                        </div>
+                      </div>
+                      <input type="file" accept="video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm" multiple className="hidden" onChange={(e) => addVideoFiles(Array.from(e.target.files || []))} />
+                    </label>
+                    {videoItems.length > 0 && (
+                      <div className="mt-3 grid gap-3">
+                        {videoItems.map((item) => (
+                          <div key={item.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
+                            <div className="flex gap-3">
+                              <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-black">
+                                <video src={item.url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                  <Play className="h-5 w-5 fill-white text-white" />
+                                </div>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <p className="truncate text-sm font-medium text-foreground">{item.name}</p>
+                                    <p className={`text-xs ${item.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                                      {item.status === "uploaded" ? "Uploaded" : item.status === "uploading" ? `Uploading ${item.progress}%` : item.status === "error" ? item.error || "Upload failed" : "Ready"}
+                                    </p>
+                                  </div>
+                                  <button type="button" onClick={() => removeVideoItem(item.id)} className="rounded-full p-1 text-muted-foreground hover:bg-muted hover:text-destructive" aria-label="Remove video">
+                                    <X className="h-4 w-4" />
+                                  </button>
+                                </div>
+                                {item.status === "uploading" && (
+                                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                                    <div className="h-full bg-primary transition-all" style={{ width: `${item.progress}%` }} />
+                                  </div>
+                                )}
+                                {item.status === "error" && (
+                                  <Button type="button" size="sm" variant="outline" className="mt-2 h-8 gap-1 text-xs" onClick={handleSave} disabled={saving}>
+                                    <RotateCcw className="h-3.5 w-3.5" /> Retry
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Tags</label>
@@ -740,7 +1083,7 @@ export default function SellerProducts() {
                 <Card key={product.id} className="border-border/60 overflow-hidden group">
                   <div className="aspect-video bg-muted relative">
                     {primaryImage ? (
-                      <img src={primaryImage.image_url} alt={product.title} className="w-full h-full object-cover" />
+                      <ProductImage src={primaryImage.image_url} alt={product.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="flex items-center justify-center h-full">
                         <Package className="h-10 w-10 text-muted-foreground/40" />

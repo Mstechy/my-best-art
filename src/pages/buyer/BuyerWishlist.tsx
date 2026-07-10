@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
+import ProductImage from "@/components/product/ProductImage";
 
 interface WishlistItem {
   id: string;
@@ -115,7 +116,7 @@ export default function BuyerWishlist() {
         <Link to={`/product/${item.product.id}`}>
           <div className="aspect-square bg-[#F2F3F5] dark:bg-[#111111] relative overflow-hidden">
             {img
-              ? <img src={img.image_url} alt={item.product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+              ? <ProductImage src={img.image_url} alt={item.product.title} className="group-hover:scale-105" loading="lazy" />
               : <div className="flex items-center justify-center h-full"><Package className="h-10 w-10 text-[#C0C0B8] dark:text-[#333333]" /></div>
             }
             {discount && (

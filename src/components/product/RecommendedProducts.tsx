@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Package, Star } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import ProductImage from "@/components/product/ProductImage";
 
 interface RecItem {
   id: string;
@@ -44,7 +45,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
               <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
                 <div className="aspect-square bg-muted">
                   {img ? (
-                    <img src={img.image_url} alt={p.title} loading="lazy" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                    <ProductImage src={img.image_url} alt={p.title} className="group-hover:scale-105" loading="lazy" />
                   ) : (
                     <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-muted-foreground/30" /></div>
                   )}

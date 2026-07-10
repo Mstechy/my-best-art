@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "../integrations/supabase/client";
 import { Package } from "lucide-react";
 import { useRecentlyViewed } from "../hooks/useRecentlyViewed";
+import ProductImage from "@/components/product/ProductImage";
 
 interface Item {
   id: string;
@@ -44,7 +45,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
             <Link key={p.id} to={`/product/${p.id}`} className="shrink-0 w-32 group">
               <div className="aspect-square rounded-lg bg-muted overflow-hidden border border-border/60">
                 {img ? (
-                  <img src={img.image_url} alt={p.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" loading="lazy" />
+                  <ProductImage src={img.image_url} alt={p.title} className="group-hover:scale-105" loading="lazy" />
                 ) : (
                   <div className="flex items-center justify-center h-full"><Package className="h-6 w-6 text-muted-foreground/30" /></div>
                 )}

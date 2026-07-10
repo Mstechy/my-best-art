@@ -12,6 +12,7 @@ import CartDrawer from "@/components/CartDrawer";
 import PromoBanner from "@/components/PromoBanner";
 import MarqueeBanner from "@/components/MarqueeBanner";
 import SiteFooter from "@/components/SiteFooter";
+import ProductImage from "@/components/product/ProductImage";
 import headphonesHero from "@/assets/headphones_hero.png";
 import tomasAvatar from "@/assets/tomas_avatar.png";
 import cardboardBox from "@/assets/cardboard_box.png";
@@ -265,7 +266,7 @@ export default function LandingPage() {
                     <Link to={`/product/${product.id}`}>
                       <div className="aspect-square bg-[#FAFAFA] dark:bg-[#151515] relative overflow-hidden">
                         {primaryImage ? (
-                          <img src={primaryImage.image_url} alt={product.title} className="w-full h-full object-cover transition-transform duration-300" loading="lazy" />
+                          <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
                         ) : (
                           <div className="flex items-center justify-center h-full bg-[#F2F3F5] dark:bg-[#202022]">
                             <Package className="h-8 w-8 text-[#888880] opacity-40" />
@@ -599,13 +600,9 @@ export default function LandingPage() {
                       )}
 
                       {/* Product Image */}
-                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E] flex items-center justify-center p-4 relative overflow-hidden shrink-0">
+                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
                         {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.title}
-                            className="max-h-[120px] w-auto object-contain select-none transition-transform duration-300 group-hover:scale-105"
-                          />
+                          <ProductImage src={item.image_url} alt={item.title} className="group-hover:scale-105" loading="lazy" />
                         ) : (
                           <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
                             <Package className="h-8 w-8 text-[#888880] opacity-40" />
@@ -804,13 +801,9 @@ export default function LandingPage() {
                       )}
 
                       {/* Product Image */}
-                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E] flex items-center justify-center p-4 relative overflow-hidden shrink-0">
+                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
                         {item.image_url ? (
-                          <img
-                            src={item.image_url}
-                            alt={item.title}
-                            className="max-h-[120px] w-auto object-contain select-none transition-transform duration-300 group-hover:scale-105"
-                          />
+                          <ProductImage src={item.image_url} alt={item.title} className="group-hover:scale-105" loading="lazy" />
                         ) : (
                           <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
                             <Package className="h-8 w-8 text-[#888880] opacity-40" />

@@ -11,6 +11,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import ProductImage from "@/components/product/ProductImage";
 
 
 interface Product {
@@ -200,7 +201,7 @@ export default function AdminProducts() {
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-lg bg-muted overflow-hidden shrink-0">
                               {product.primary_image ? (
-                                <img src={product.primary_image} alt={product.title} className="h-full w-full object-cover" />
+                                <ProductImage src={product.primary_image} alt={product.title} loading="lazy" />
                               ) : (
                                 <div className="flex items-center justify-center h-full"><Package className="h-4 w-4 text-muted-foreground" /></div>
                               )}
@@ -303,4 +304,3 @@ export default function AdminProducts() {
     </div>
   );
 }
-

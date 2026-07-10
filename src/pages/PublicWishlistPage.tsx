@@ -5,6 +5,7 @@ import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import ProductImage from "@/components/product/ProductImage";
 
 interface Item {
   product: {
@@ -65,7 +66,7 @@ export default function PublicWishlistPage() {
                 <Link key={product.id} to={`/product/${product.id}`} className="group">
                   <div className="aspect-square rounded-lg bg-muted overflow-hidden border border-border/60 relative">
                     {img ? (
-                      <img src={img.image_url} alt={product.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                      <ProductImage src={img.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
                     ) : (
                       <div className="flex items-center justify-center h-full"><Package className="h-8 w-8 text-muted-foreground/30" /></div>
                     )}

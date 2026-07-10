@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, CheckCircle2, Package, ShoppingCart, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, ShoppingCart, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
@@ -24,6 +24,7 @@ import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
 import { deliveryEstimateRange, formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
 import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
+import ProductImage from "@/components/product/ProductImage";
 
 interface Product {
   id: string;
@@ -72,6 +73,8 @@ export default function ProductDetailPage() {
   const [offerOpen, setOfferOpen] = useState(false);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
+  const [zoomScale, setZoomScale] = useState(1);
   const { add: addRecent } = useRecentlyViewed();
 
   useEffect(() => {
@@ -477,9 +480,9 @@ export default function ProductDetailPage() {
                   <CarouselContent>
                     {images.map(img => (
                       <CarouselItem key={img.id}>
-                        <div className="aspect-square">
-                          <img src={img.image_url} alt={product.title} className="w-full h-full object-cover" />
-                        </div>
+                        <button type="button" onClick={() => { setZoomScale(1); setZoomedImage(img.image_url); }} className="aspect-square w-full cursor-zoom-in bg-[#F7F7F5]">
+                          <ProductImage src={img.image_url} alt={product.title} variant="detail" className="hover:scale-[1.04]" loading="eager" />
+                        </button>
                       </CarouselItem>
                     ))}
                   </CarouselContent>
@@ -497,12 +500,62 @@ export default function ProductDetailPage() {
                 {images.map((img, i) => (
                   <button key={img.id} onClick={() => setSelectedImage(i)}
                     className={`w-16 h-16 rounded-lg overflow-hidden border-2 transition-all shrink-0 ${i === selectedImage ? "border-primary" : "border-border/60"}`}>
-                    <img src={img.image_url} alt="" className="w-full h-full object-cover" />
+                    <ProductImage src={img.image_url} alt="" variant="thumb" />
                   </button>
                 ))}
               </div>
             )}
           </div>
+
+          {zoomedImage && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+              role="dialog"
+              aria-modal="true"
+              onClick={() => setZoomedImage(null)}
+            >
+              <button
+                type="button"
+                className="absolute right-4 top-4 rounded-full bg-white/95 p-2 text-black shadow-lg"
+                onClick={() => { setZoomScale(1); setZoomedImage(null); }}
+                aria-label="Close image"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-full bg-white/95 px-2 py-1 text-black shadow-lg" onClick={(event) => event.stopPropagation()}>
+                <button
+                  type="button"
+                  className="rounded-full p-2 disabled:opacity-40"
+                  onClick={() => setZoomScale((scale) => Math.max(1, scale - 0.5))}
+                  disabled={zoomScale <= 1}
+                  aria-label="Zoom out"
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </button>
+                <span className="min-w-10 text-center text-xs font-semibold">{Math.round(zoomScale * 100)}%</span>
+                <button
+                  type="button"
+                  className="rounded-full p-2 disabled:opacity-40"
+                  onClick={() => setZoomScale((scale) => Math.min(3, scale + 0.5))}
+                  disabled={zoomScale >= 3}
+                  aria-label="Zoom in"
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="flex max-h-[92vh] max-w-[96vw] overflow-auto" onClick={(event) => event.stopPropagation()}>
+                <img
+                  src={zoomedImage}
+                  alt={product.title}
+                  className="object-contain transition-[max-height,max-width] duration-200"
+                  style={{
+                    maxHeight: `${92 * zoomScale}vh`,
+                    maxWidth: `${96 * zoomScale}vw`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
 
           {/* Details */}
           <div className="space-y-5">

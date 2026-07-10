@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Package, Tag, Truck, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AttachmentLightbox from "./AttachmentLightbox";
+import ProductImage from "@/components/product/ProductImage";
 
 const PRODUCT_REF_RE = /\[product:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/i;
 const ORDER_REF_RE = /\[order:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/i;
@@ -112,7 +113,7 @@ export default function ProductRefCard({ productId, orderId, offerPrice, attachm
           <div className="flex items-center gap-3 p-2">
             <div className="h-12 w-12 rounded-md bg-muted overflow-hidden shrink-0 flex items-center justify-center">
               {product.image_url ? (
-                <img src={product.image_url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                <ProductImage src={product.image_url} alt="" loading="lazy" />
               ) : (
                 <Package className="h-5 w-5 text-muted-foreground/40" />
               )}

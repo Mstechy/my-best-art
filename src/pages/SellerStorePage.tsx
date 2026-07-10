@@ -9,6 +9,7 @@ import CopyLinkButton from "../components/CopyLinkButton";
 import StoreFollowButton from "../components/store/StoreFollowButton";
 import StoreCredibilityCard from "../components/store/StoreCredibilityCard";
 import { countryName } from "../lib/countries";
+import ProductImage from "@/components/product/ProductImage";
 
 interface SellerProfile {
   user_id: string;
@@ -200,7 +201,7 @@ export default function SellerStorePage() {
                   <div className="rounded-xl border border-border/60 bg-card overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5">
                     <div className="aspect-square bg-muted relative">
                       {img ? (
-                        <img src={img.image_url} alt={product.title} loading="lazy" className="w-full h-full object-cover" />
+                        <ProductImage src={img.image_url} alt={product.title} loading="lazy" className="group-hover:scale-105" />
                       ) : (
                         <div className="flex items-center justify-center h-full"><Package className="h-12 w-12 text-muted-foreground/30" /></div>
                       )}
