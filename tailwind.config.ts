@@ -129,10 +129,6 @@ export default {
           "0%": { opacity: "0", transform: "translateY(10px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
-        "conveyor-belt": {
-          "0%": { backgroundPosition: "0px 0px" },
-          "100%": { backgroundPosition: "80px 80px" },
-        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -144,7 +140,6 @@ export default {
         "pulse-glow": "pulse-glow 3s ease-in-out infinite",
         "spin-slow": "spin-slow 20s linear infinite",
         "slide-up": "slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
-        "conveyor-belt": "conveyor-belt 2s linear infinite",
       },
     },
   },
