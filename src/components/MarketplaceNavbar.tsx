@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,7 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
   const { user, role, profile, signOut } = useAuth();
   const { totalItems, setIsOpen: openCart } = useCart();
   const unread = useUnreadMessages();
+  const navigate = useNavigate();
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 
@@ -70,6 +71,11 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
               <Input
                 value={search}
                 onChange={e => onSearchChange?.(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && search.trim()) {
+                    navigate(`/marketplace?q=${encodeURIComponent(search.trim())}`);
+                  }
+                }}
                 placeholder="Search"
                 className="pl-10 h-9 bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] placeholder:text-[#888880] focus-visible:ring-1 focus-visible:ring-[#111111] dark:focus-visible:ring-[#FAF5F2] rounded-full"
               />

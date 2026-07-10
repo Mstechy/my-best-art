@@ -72,6 +72,7 @@ export default function ProductDetailPage() {
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [playingVideos, setPlayingVideos] = useState<Record<string, boolean>>({});
+  const [searchQuery, setSearchQuery] = useState("");
   const { add: addRecent } = useRecentlyViewed();
 
   const images = product?.product_images || [];
@@ -463,9 +464,9 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E] pb-24 md:pb-6">
-      {/* Desktop navbar only */}
-      <div className="hidden md:block">
-        <MarketplaceNavbar showSearch={false} />
+      {/* Navbar (visible on all breakpoints) */}
+      <div>
+        <MarketplaceNavbar search={searchQuery} onSearchChange={setSearchQuery} />
       </div>
       <CartDrawer />
 
@@ -474,13 +475,13 @@ export default function ProductDetailPage() {
         {/* Floating Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="fixed top-3 left-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
+          className="fixed top-[68px] left-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
         >
           <ArrowLeft className="h-4 w-4" />
         </button>
 
         {/* Floating Top Navigation Pills */}
-        <div className="fixed top-3 left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm rounded-full p-1 flex items-center gap-1 shadow max-w-[calc(100vw-110px)] overflow-x-auto scrollbar-none">
+        <div className="fixed top-[68px] left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm rounded-full p-1 flex items-center gap-1 shadow max-w-[calc(100vw-110px)] overflow-x-auto scrollbar-none">
           {tabs.map(t => {
             const isActive = activeTab === t.key;
             return (
@@ -502,7 +503,7 @@ export default function ProductDetailPage() {
             navigator.clipboard.writeText(window.location.href);
             toast.success("Product link copied!");
           }}
-          className="fixed top-3 right-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
+          className="fixed top-[68px] right-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
         >
           <Share2 className="h-4 w-4" />
         </button>
@@ -548,7 +549,7 @@ export default function ProductDetailPage() {
                             <video
                               id={`vid-${item.id}`}
                               src={item.url}
-                              controls
+                              controls={playingVideos[item.id] || false}
                               onPlay={() => setPlayingVideos(p => ({ ...p, [item.id]: true }))}
                               onPause={() => setPlayingVideos(p => ({ ...p, [item.id]: false }))}
                               onEnded={() => setPlayingVideos(p => ({ ...p, [item.id]: false }))}
