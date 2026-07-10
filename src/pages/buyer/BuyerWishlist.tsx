@@ -226,12 +226,12 @@ export default function BuyerWishlist() {
                   {categoryNames[catId] || "Uncategorized"}
                   <span className="ml-2 text-[#888880] dark:text-[#A0A0A0] font-normal text-xs">({list.length})</span>
                 </h2>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{list.map(renderItem)}</div>
+                <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">{list.map(renderItem)}</div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{sorted.map(renderItem)}</div>
+          <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">{sorted.map(renderItem)}</div>
         )}
       </AnimatedSection>
     </div>

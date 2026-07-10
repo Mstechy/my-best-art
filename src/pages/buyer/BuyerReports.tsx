@@ -194,10 +194,12 @@ export default function BuyerReports() {
       {/* Report type cards */}
       <AnimatedSection variant="fade-up" delay={50}>
         <p className="text-xs font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider mb-4">What would you like to report?</p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          {reportTypes.map(type => (
+        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
+          {reportTypes.map((type, i) => (
             <button key={type.title} onClick={() => { setReason(type.title); setDialogOpen(true); }}
-              className="group bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+              className={`group bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 text-left hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 ${
+                i === 2 ? "col-span-2 sm:col-span-1" : ""
+              }`}>
               <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${type.iconBg} mb-4 group-hover:scale-105 transition-transform`}>
                 <type.icon className={`h-5 w-5 ${type.iconColor}`} />
               </div>

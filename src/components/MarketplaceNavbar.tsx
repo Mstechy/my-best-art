@@ -13,7 +13,7 @@ import {
 import {
   ShoppingBag, Search, ShoppingCart, User, Menu, Home, Package,
   Gavel, Store, ClipboardList, LogIn, Settings, HelpCircle, LogOut, ArrowRight, MessageSquare,
-  MapPin, LayoutGrid, Heart
+  MapPin, Heart
 } from "lucide-react";
 
 interface MarketplaceNavbarProps {
@@ -47,19 +47,13 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
 
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 lg:px-8">
         {/* Logo block */}
-        <Link to="/" className="flex flex-col items-start shrink-0 mr-2 group select-none">
-          <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase flex items-baseline">
+        <Link to="/" className="flex items-baseline shrink-0 mr-2 select-none">
+          <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">
             market
-            <span className="text-[#F6C75D] font-extrabold text-sm ml-0.5 leading-none">.</span>
           </span>
-          <div className="h-0.5 w-12 bg-[#F6C75D] rounded-full -mt-0.5 ml-1 transform group-hover:scale-x-110 transition-transform duration-200" />
+          <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D] lowercase">hub</span>
         </Link>
 
-        {/* ALL grid menu button */}
-        <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] shrink-0 border border-[#E8E8E8] dark:border-[#222222] transition-colors duration-200">
-          <LayoutGrid className="h-3.5 w-3.5" />
-          ALL
-        </button>
 
         {/* Horizontal nav links */}
         <div className="hidden lg:flex items-center gap-6 text-[13px] font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 shrink-0 mr-6">

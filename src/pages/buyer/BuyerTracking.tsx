@@ -1,7 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { Truck, Search, MapPin, ArrowRight, Copy, Loader2 } from "lucide-react";
+import { Truck, Search, MapPin, ArrowRight, Copy, Loader2, Package, Hash, CalendarCheck2, ExternalLink } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OrderTimeline from "@/components/OrderTimeline";
+import { PackageTrackerCard } from "@/components/ui/tracker-card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,6 +27,7 @@ interface Order {
   total_amount: number;
   created_at: string;
   updated_at: string;
+  product_image?: string | null;
 }
 
 const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> = {
@@ -33,6 +42,7 @@ export default function BuyerTracking() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [modalOrder, setModalOrder] = useState<Order | null>(null);
 
   const ordersRef = useRef<Order[]>([]);
   ordersRef.current = orders;
@@ -40,11 +50,54 @@ export default function BuyerTracking() {
   useEffect(() => {
     if (!user) return;
     const fetchOrders = async () => {
-      const { data } = await supabase
+      const { data: ordersData } = await supabase
         .from("orders").select("*").eq("buyer_id", user.id)
         .in("status", ["pending", "processing", "shipped", "delivered"])
         .order("updated_at", { ascending: false });
-      if (data) setOrders(data as unknown as Order[]);
+      
+      if (!ordersData) {
+        setOrders([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch items for these orders to extract product images
+      const orderIds = ordersData.map(o => o.id);
+      const { data: itemsData } = await supabase
+        .from("order_items")
+        .select("order_id, product_id")
+        .in("order_id", orderIds);
+
+      const productIds = [...new Set((itemsData || []).filter(i => i.product_id).map(i => i.product_id!))];
+      const productImageMap: Record<string, string | null> = {};
+
+      if (productIds.length > 0) {
+        const { data: images } = await supabase
+          .from("product_images")
+          .select("product_id, image_url, is_primary")
+          .in("product_id", productIds);
+
+        productIds.forEach(pid => {
+          const img = images?.find(i => i.product_id === pid && i.is_primary) || images?.find(i => i.product_id === pid);
+          productImageMap[pid] = img?.image_url || null;
+        });
+      }
+
+      // Map the first found product image to each order
+      const ordersWithImages = (ordersData as unknown as Order[]).map(order => {
+        const items = (itemsData || []).filter(item => item.order_id === order.id);
+        const firstProductWithImage = items.find(item => item.product_id && productImageMap[item.product_id]);
+        const imgUrl = firstProductWithImage && firstProductWithImage.product_id 
+          ? productImageMap[firstProductWithImage.product_id] 
+          : null;
+
+        return {
+          ...order,
+          product_image: imgUrl,
+        };
+      });
+
+      setOrders(ordersWithImages);
       setLoading(false);
     };
     fetchOrders();
@@ -130,54 +183,118 @@ export default function BuyerTracking() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map(order => {
-              const s = STATUS_STYLE[order.status] ?? { bg: "bg-[#F2F3F5]", text: "text-[#888880]", label: order.status };
-              const history = getStatusHistory(order.status_history);
-              return (
-                <div key={order.id} className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 space-y-4">
-                  {/* Order info */}
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                      <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] font-mono">#{order.id.slice(0, 8).toUpperCase()}</p>
-                      <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">Placed {new Date(order.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${s.bg} ${s.text}`}>
-                      {s.label}
-                    </span>
-                  </div>
-
-                  {/* Carrier / tracking */}
-                  {(order.carrier || order.tracking_number || order.estimated_delivery) && (
-                    <div className="flex flex-wrap items-center gap-2">
-                      {order.carrier && (
-                        <span className="px-2.5 py-1 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider">
-                          {order.carrier}
-                        </span>
-                      )}
-                      {order.tracking_number && (
-                        <button
-                          onClick={() => { navigator.clipboard.writeText(order.tracking_number!); sonnerToast("Tracking number copied"); }}
-                          className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-mono text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors"
-                        >
-                          <Copy className="h-2.5 w-2.5" /> {order.tracking_number}
-                        </button>
-                      )}
-                      {order.estimated_delivery && (
-                        <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">
-                          ETA {new Date(order.estimated_delivery).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  <OrderTimeline status={order.status} history={history} />
-                </div>
-              );
-            })}
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
+            {filtered.map(order => (
+              <PackageTrackerCard
+                  key={order.id}
+                  status={order.status}
+                  packageNumber={order.tracking_number || order.id.slice(0, 16).toUpperCase()}
+                  destination={order.carrier || "In Transit"}
+                  date={`Order #${order.id.slice(0, 8).toUpperCase()} · ${new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                  qrCodeValue={
+                    order.tracking_number
+                      ? `https://track.my-best-art.com/${order.tracking_number}`
+                      : `https://my-best-art.com/buyer/orders/${order.id}`
+                  }
+                  packageImage={
+                    order.product_image ? (
+                      <img
+                        src={order.product_image}
+                        alt="Product Image"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : undefined
+                  }
+                  onTrackClick={() => setModalOrder(order)}
+                  className="w-full max-w-none"
+                />
+            ))}
           </div>
         )}
       </AnimatedSection>
+
+      {/* Full Tracking Modal */}
+      <Dialog open={!!modalOrder} onOpenChange={open => { if (!open) setModalOrder(null); }}>
+        {modalOrder && (
+          <DialogContent className="max-w-md rounded-2xl">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold flex items-center gap-2">
+                <Package className="h-4 w-4 text-[#3B82F6]" />
+                Full Shipment Tracking
+              </DialogTitle>
+              <DialogDescription className="text-[11px] text-[#888880]">
+                Order #{modalOrder.id.slice(0, 8).toUpperCase()}
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Carrier & tracking number row */}
+            <div className="grid grid-cols-2 gap-3 mt-1">
+              <div className="rounded-xl bg-[#F8F8F8] dark:bg-[#111111] border border-[#F0F0F0] dark:border-[#222222] p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Truck className="h-3.5 w-3.5 text-[#3B82F6]" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880]">Carrier</p>
+                </div>
+                <p className="text-sm font-semibold text-[#111111] dark:text-[#FAF5F2] capitalize">
+                  {modalOrder.carrier || "—"}
+                </p>
+              </div>
+              <div className="rounded-xl bg-[#F8F8F8] dark:bg-[#111111] border border-[#F0F0F0] dark:border-[#222222] p-3">
+                <div className="flex items-center gap-1.5 mb-1">
+                  <Hash className="h-3.5 w-3.5 text-[#3B82F6]" />
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880]">Tracking #</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <p className="text-sm font-mono font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">
+                    {modalOrder.tracking_number || "Not assigned"}
+                  </p>
+                  {modalOrder.tracking_number && (
+                    <button
+                      onClick={() => { navigator.clipboard.writeText(modalOrder.tracking_number!); sonnerToast("Copied!"); }}
+                      className="shrink-0 text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+                    >
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Estimated delivery */}
+            {modalOrder.estimated_delivery && (
+              <div className="rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-100 dark:border-emerald-800/30 p-3 flex items-center gap-3">
+                <CalendarCheck2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <div>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Estimated Delivery</p>
+                  <p className="text-sm font-bold text-emerald-700 dark:text-emerald-300">
+                    {new Date(modalOrder.estimated_delivery).toLocaleDateString("en-US", {
+                      weekday: "long", month: "long", day: "numeric", year: "numeric"
+                    })}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Status timeline */}
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] mb-1">Status Timeline</p>
+              <OrderTimeline status={modalOrder.status} history={getStatusHistory(modalOrder.status_history)} />
+            </div>
+
+            {/* Footer CTA */}
+            <div className="pt-1 border-t border-[#F0F0F0] dark:border-[#222222]">
+              <Link
+                to="/buyer/tracking"
+                onClick={() => setModalOrder(null)}
+                className="flex items-center justify-center gap-1.5 w-full rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[11px] font-bold py-2.5 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors"
+              >
+                <MapPin className="h-3.5 w-3.5" />
+                Open Live Map View
+                <ExternalLink className="h-3 w-3 ml-0.5 opacity-70" />
+              </Link>
+            </div>
+          </DialogContent>
+        )}
+      </Dialog>
     </div>
   );
 }

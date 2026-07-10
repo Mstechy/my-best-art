@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { Search, Package, ArrowRight, Truck, Flag, X, Star, Loader2 } from "lucide-react";
+import { Search, Package, ArrowRight, Truck, Flag, X, Star, Loader2, ShoppingBag, CheckCircle2, Clock, XCircle } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -41,6 +41,15 @@ const STATUS_STYLE: Record<string, { bg: string; text: string; label: string }> 
   delivered:  { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", label: "Delivered" },
   cancelled:  { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", label: "Cancelled" },
   disputed:   { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", label: "Disputed" },
+};
+
+const STATUS_META: Record<string, { icon: React.ElementType; iconColor: string; label: string; desc: string }> = {
+  pending:    { icon: Clock,        iconColor: "text-[#F6C75D]",                    label: "Awaiting Confirmation", desc: "Your order is waiting to be accepted by the seller." },
+  processing: { icon: Package,      iconColor: "text-blue-500",                     label: "Being Prepared",        desc: "The seller is packing and preparing your order." },
+  shipped:    { icon: Truck,        iconColor: "text-purple-500",                   label: "On Its Way",            desc: "Your order has been dispatched and is with the courier." },
+  delivered:  { icon: CheckCircle2, iconColor: "text-emerald-500",                  label: "Delivered",             desc: "Your order has arrived. Enjoy your purchase!" },
+  cancelled:  { icon: XCircle,      iconColor: "text-red-400",                      label: "Cancelled",             desc: "This order was cancelled and will not be fulfilled." },
+  disputed:   { icon: Flag,         iconColor: "text-red-400",                      label: "Under Dispute",         desc: "A dispute has been raised for this order." },
 };
 
 export default function BuyerOrders() {
@@ -273,80 +282,72 @@ export default function BuyerOrders() {
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             {filtered.map(order => {
               const s = STATUS_STYLE[order.status] ?? { bg: "bg-[#F2F3F5]", text: "text-[#888880]", label: order.status };
+              const meta = STATUS_META[order.status] ?? { icon: Package, iconColor: "text-[#888880]", label: order.status, desc: "" };
+              const StatusIcon = meta.icon;
+              // Pick first item image as the card thumbnail
+              const thumb = order.items.find(it => it.product_image)?.product_image ?? null;
               return (
-                <div key={order.id} className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4">
-                  {/* Order header */}
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] font-mono">#{order.id.slice(0, 8).toUpperCase()}</p>
-                      <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">
-                        {new Date(order.created_at).toLocaleDateString()} · {order.seller_name}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">${order.total_amount}</span>
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${s.bg} ${s.text}`}>
-                        {s.label}
-                      </span>
-                    </div>
+                <div key={order.id} className="relative flex flex-col justify-between bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 overflow-hidden min-h-[172px]">
+
+                  {/* Status icon */}
+                  <StatusIcon className={`h-6 w-6 mb-2 shrink-0 ${meta.iconColor}`} />
+
+                  {/* Labels */}
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] leading-snug">{meta.label}</p>
+                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-1 leading-relaxed pr-10">{meta.desc}</p>
                   </div>
 
-                  {/* Items */}
-                  {order.items.length > 0 && (
-                    <div className="border-t border-[#F2F3F5] dark:border-[#1E1E1E] pt-3 space-y-2">
-                      {order.items.map(item => (
-                        <div key={item.id} className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-xl bg-[#F2F3F5] dark:bg-[#111111] overflow-hidden shrink-0">
-                            {item.product_image
-                              ? <img src={item.product_image} alt={item.product_title} className="h-full w-full object-cover" />
-                              : <div className="flex items-center justify-center h-full"><Package className="h-4 w-4 text-[#888880]" /></div>
-                            }
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.product_title}</p>
-                            <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">Qty: {item.quantity} × ${item.unit_price}</p>
-                          </div>
-                          {order.status === "delivered" && item.product_id && (
-                            reviewedProducts.has(item.product_id) ? (
-                              <span className="flex items-center gap-1 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                                <Star className="h-2.5 w-2.5 fill-current" /> Reviewed
-                              </span>
-                            ) : (
-                              <button onClick={() => setReviewItem({ order, item })}
-                                className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-bold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors">
-                                <Star className="h-2.5 w-2.5" /> Review
-                              </button>
-                            )
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Meta row */}
+                  <p className="text-[9px] font-mono text-[#888880] dark:text-[#555555] mt-2">
+                    #{order.id.slice(0, 8).toUpperCase()} · {new Date(order.created_at).toLocaleDateString()}
+                  </p>
 
-                  {/* Actions */}
-                  <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
+                  {/* Action buttons + total */}
+                  <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                    <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mr-1">${order.total_amount}</span>
+
                     {order.status === "pending" && (
                       <button onClick={() => setCancelOrder(order)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-red-200 dark:border-red-900/40 text-[10px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                        <X className="h-3 w-3" /> Cancel Order
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-900/40 text-[9px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <X className="h-2.5 w-2.5" /> Cancel
                       </button>
                     )}
                     {(order.status === "shipped" || order.tracking_number) && (
                       <Link to="/buyer/tracking">
-                        <button className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors">
-                          <Truck className="h-3 w-3" /> Track
+                        <button className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors">
+                          <Truck className="h-2.5 w-2.5" /> Track
                         </button>
                       </Link>
                     )}
+                    {order.status === "delivered" && order.items.some(it => it.product_id && !reviewedProducts.has(it.product_id)) && (
+                      <button onClick={() => { const it = order.items.find(it => it.product_id && !reviewedProducts.has(it.product_id!))!; setReviewItem({ order, item: it }); }}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors">
+                        <Star className="h-2.5 w-2.5" /> Review
+                      </button>
+                    )}
                     <Link to="/buyer/reports">
-                      <button className="flex items-center gap-1 px-3 py-1.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[10px] font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                        <Flag className="h-3 w-3" /> Report Issue
+                      <button className="flex items-center gap-1 px-2.5 py-1 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-semibold text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <Flag className="h-2.5 w-2.5" /> Report
                       </button>
                     </Link>
                   </div>
+
+                  {/* Product thumbnail — bottom-right decoration */}
+                  {thumb ? (
+                    <img
+                      src={thumb}
+                      alt=""
+                      className="absolute bottom-0 right-0 h-20 w-20 object-cover rounded-tl-2xl opacity-90"
+                    />
+                  ) : (
+                    <div className="absolute bottom-2 right-2 h-14 w-14 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center opacity-60">
+                      <ShoppingBag className="h-6 w-6 text-[#C0C0B8] dark:text-[#333333]" />
+                    </div>
+                  )}
                 </div>
               );
             })}

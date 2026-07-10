@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
-import { CheckCircle2, Package, Truck, ArrowRight, Printer, Copy, ShoppingBag } from "lucide-react";
-import { toast } from "@/hooks/use-toast";
+import { CheckCircle2, Package, Truck, ArrowRight, Printer, Copy, ShoppingBag, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface OrderData {
   id: string;
@@ -18,6 +16,14 @@ interface OrderData {
   shipping_address: any;
   items: { id: string; quantity: number; unit_price: number; product_title: string; product_image: string | null }[];
 }
+
+const TIMELINE = [
+  { step: "Order Confirmed",  desc: "Your order has been received",       icon: CheckCircle2, doneKey: "pending"    },
+  { step: "Processing",       desc: "Seller is preparing your items",     icon: Package,      doneKey: "processing" },
+  { step: "Shipped",          desc: "Your order is on its way",           icon: Truck,        doneKey: "shipped"    },
+  { step: "Delivered",        desc: "Enjoy your purchase!",               icon: ShoppingBag,  doneKey: "delivered"  },
+];
+const STATUS_ORDER = ["pending", "processing", "shipped", "delivered"];
 
 export default function OrderSuccessPage() {
   const { id } = useParams<{ id: string }>();
@@ -65,22 +71,12 @@ export default function OrderSuccessPage() {
     fetchOrder();
   }, [id]);
 
-  const copyTrackingId = () => {
-    if (order?.tracking_number) {
-      navigator.clipboard.writeText(order.tracking_number);
-      toast({ title: "Copied!", description: "Tracking ID copied to clipboard" });
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
         <MarketplaceNavbar showSearch={false} />
         <div className="flex items-center justify-center py-32">
-          <div className="animate-pulse space-y-4 text-center">
-            <div className="h-16 w-16 rounded-full bg-muted mx-auto" />
-            <div className="h-6 w-48 bg-muted rounded mx-auto" />
-          </div>
+          <Loader2 className="h-6 w-6 animate-spin text-[#888880]" />
         </div>
       </div>
     );
@@ -88,123 +84,140 @@ export default function OrderSuccessPage() {
 
   if (!order) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
         <MarketplaceNavbar showSearch={false} />
-        <div className="flex flex-col items-center justify-center py-32">
-          <Package className="h-16 w-16 text-muted-foreground/30 mb-4" />
-          <h2 className="font-display text-2xl font-bold text-foreground">Order not found</h2>
-          <Link to="/marketplace"><Button className="mt-4">Back to Marketplace</Button></Link>
+        <div className="flex flex-col items-center justify-center py-32 text-center">
+          <div className="h-14 w-14 rounded-2xl bg-[#F2F3F5] dark:bg-[#1A1A1A] flex items-center justify-center mb-4">
+            <Package className="h-6 w-6 text-[#C0C0B8]" />
+          </div>
+          <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Order not found</h2>
+          <Link to="/marketplace" className="mt-5">
+            <button className="px-5 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] transition-colors">
+              Back to Marketplace
+            </button>
+          </Link>
         </div>
       </div>
     );
   }
 
+  const currentStatusIdx = STATUS_ORDER.indexOf(order.status);
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
       <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
 
       <div className="mx-auto max-w-2xl px-4 lg:px-8 py-12">
-        {/* Success animation */}
-        <div className="text-center mb-10">
-          <div className="relative inline-flex items-center justify-center mb-6">
-            <div className="absolute inset-0 rounded-full bg-accent/20 animate-ping" style={{ animationDuration: "2s" }} />
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-accent/10">
-              <CheckCircle2 className="h-10 w-10 text-accent" />
+
+        {/* Success hero */}
+        <div className="text-center mb-8">
+          <div className="relative inline-flex items-center justify-center mb-5">
+            <div className="absolute inset-0 rounded-full bg-emerald-500/10 animate-ping" style={{ animationDuration: "2s" }} />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50 dark:bg-emerald-900/20">
+              <CheckCircle2 className="h-10 w-10 text-emerald-500" />
             </div>
           </div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Order Placed Successfully!</h1>
-          <p className="mt-2 text-muted-foreground">Thank you for your purchase. Your order is being processed.</p>
+          <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Order Placed!</h1>
+          <p className="mt-1.5 text-sm text-[#888880] dark:text-[#A0A0A0]">
+            Thank you for your purchase. Your order is being processed.
+          </p>
+          <p className="mt-1 text-[10px] font-mono text-[#C0C0B8] dark:text-[#444444]">
+            #{order.id.slice(0, 8).toUpperCase()} · {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+          </p>
         </div>
 
-        {/* Tracking ID card */}
+        {/* Tracking number card */}
         {order.tracking_number && (
-          <div className="rounded-xl border border-accent/30 bg-accent/5 p-6 mb-6 text-center">
-            <p className="text-sm text-muted-foreground mb-2">Your Tracking ID</p>
+          <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 mb-4 text-center">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] mb-2">Tracking Number</p>
             <div className="flex items-center justify-center gap-3">
-              <span className="font-display text-2xl font-bold text-foreground tracking-wider">{order.tracking_number}</span>
-              <button onClick={copyTrackingId} className="p-2 rounded-lg hover:bg-muted transition-colors" title="Copy">
-                <Copy className="h-4 w-4 text-muted-foreground" />
+              <span className="font-mono text-xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-widest">
+                {order.tracking_number}
+              </span>
+              <button
+                onClick={() => { navigator.clipboard.writeText(order.tracking_number!); toast.success("Copied!"); }}
+                className="h-7 w-7 flex items-center justify-center rounded-lg border border-[#E8E8E8] dark:border-[#222222] text-[#888880] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+              >
+                <Copy className="h-3.5 w-3.5" />
               </button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">Use this ID to track your order status</p>
           </div>
         )}
 
         {/* Delivery timeline */}
-        <div className="rounded-xl border border-border bg-card p-6 mb-6">
-          <h3 className="font-display font-semibold text-foreground mb-4">Delivery Timeline</h3>
+        <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 mb-4">
+          <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Delivery Timeline</p>
           <div className="space-y-4">
-            {[
-              { step: "Order Confirmed", desc: "Your order has been received", done: true, icon: CheckCircle2 },
-              { step: "Processing", desc: "Seller is preparing your items", done: false, icon: Package },
-              { step: "Shipped", desc: "Your order is on its way", done: false, icon: Truck },
-              { step: "Delivered", desc: "Enjoy your purchase!", done: false, icon: ShoppingBag },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start gap-4">
-                <div className={`flex h-9 w-9 items-center justify-center rounded-full shrink-0 ${item.done ? "bg-accent/10" : "bg-muted"}`}>
-                  <item.icon className={`h-4 w-4 ${item.done ? "text-accent" : "text-muted-foreground"}`} />
+            {TIMELINE.map((item, i) => {
+              const done = i <= currentStatusIdx;
+              const Icon = item.icon;
+              return (
+                <div key={i} className="flex items-start gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-xl shrink-0 ${done ? "bg-emerald-50 dark:bg-emerald-900/20" : "bg-[#F2F3F5] dark:bg-[#111111]"}`}>
+                    <Icon className={`h-3.5 w-3.5 ${done ? "text-emerald-500" : "text-[#C0C0B8] dark:text-[#333333]"}`} />
+                  </div>
+                  <div className={`flex-1 pb-4 border-b border-[#F2F3F5] dark:border-[#1E1E1E] last:border-0 last:pb-0`}>
+                    <p className={`text-xs font-semibold ${done ? "text-[#111111] dark:text-[#FAF5F2]" : "text-[#888880] dark:text-[#A0A0A0]"}`}>{item.step}</p>
+                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">{item.desc}</p>
+                  </div>
                 </div>
-                <div className="flex-1 pb-4 border-b border-border/60 last:border-0">
-                  <p className={`font-medium text-sm ${item.done ? "text-foreground" : "text-muted-foreground"}`}>{item.step}</p>
-                  <p className="text-xs text-muted-foreground">{item.desc}</p>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Order items */}
-        <div className="rounded-xl border border-border bg-card p-6 mb-6">
-          <h3 className="font-display font-semibold text-foreground mb-4">Order Items</h3>
+        <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 mb-6">
+          <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Order Items</p>
           <div className="space-y-3">
             {order.items.map(item => (
               <div key={item.id} className="flex items-center gap-3">
-                <div className="h-12 w-12 rounded-lg bg-muted overflow-hidden shrink-0">
+                <div className="h-11 w-11 rounded-xl bg-[#F2F3F5] dark:bg-[#111111] overflow-hidden shrink-0">
                   {item.product_image ? (
                     <img src={item.product_image} alt={item.product_title} className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex items-center justify-center h-full"><Package className="h-4 w-4 text-muted-foreground/30" /></div>
+                    <div className="flex items-center justify-center h-full"><Package className="h-4 w-4 text-[#C0C0B8]" /></div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground truncate">{item.product_title}</p>
-                  <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                  <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.product_title}</p>
+                  <p className="text-[10px] text-[#888880]">Qty: {item.quantity}</p>
                 </div>
-                <span className="text-sm font-medium text-foreground">{formatPrice(item.unit_price * item.quantity)}</span>
+                <span className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(item.unit_price * item.quantity)}</span>
               </div>
             ))}
           </div>
-          <div className="border-t border-border mt-4 pt-4 flex justify-between font-display font-bold text-lg">
-            <span>Total</span>
-            <span>{formatPrice(order.total_amount)}</span>
+          <div className="border-t border-[#F2F3F5] dark:border-[#1E1E1E] mt-4 pt-3 flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">
+            <span>Total</span><span>{formatPrice(order.total_amount)}</span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Button onClick={() => window.print()} variant="outline" className="flex-1 gap-2 h-12">
-            <Printer className="h-4 w-4" /> Print Receipt
-          </Button>
+        {/* Action buttons */}
+        <div className="flex flex-col sm:flex-row gap-2">
+          <button
+            onClick={() => window.print()}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors"
+          >
+            <Printer className="h-3.5 w-3.5" /> Print Receipt
+          </button>
           <Link to="/buyer/orders" className="flex-1">
-            <Button variant="outline" className="w-full gap-2 h-12">
-              <Package className="h-4 w-4" /> View Orders
-            </Button>
+            <button className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors">
+              <Package className="h-3.5 w-3.5" /> View Orders
+            </button>
           </Link>
           <Link to="/marketplace" className="flex-1">
-            <Button className="w-full gap-2 h-12 bg-primary text-primary-foreground hover:bg-primary/90">
-              Continue Shopping <ArrowRight className="h-4 w-4" />
-            </Button>
+            <button className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
+              Continue Shopping <ArrowRight className="h-3.5 w-3.5" />
+            </button>
           </Link>
         </div>
       </div>
 
-      {/* Print-specific styles */}
       <style>{`
         @media print {
           nav, button, .no-print { display: none !important; }
           body { background: white !important; color: black !important; }
-          .rounded-xl { border: 1px solid #ddd !important; }
         }
       `}</style>
     </div>
