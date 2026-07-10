@@ -141,11 +141,13 @@ export default function ProductDetailPage() {
         (supabase as any).rpc("product_sold_count", { _product_id: id }),
         (supabase as any).from("product_documents").select("*").eq("product_id", id),
       ]);
-      if (sellerRes.data) {
-        const sellerData = sellerRes.data as any;
-        setSeller({ user_id: sellerData.user_id, full_name: sellerData.full_name, is_verified: sellerData.is_verified });
-        setSellerAvatar(sellerData.avatar_url || null);
-      }
+      const sellerData = sellerRes.data as any;
+      setSeller({ 
+        user_id: data.seller_id, 
+        full_name: sellerData?.full_name || null, 
+        is_verified: sellerData?.is_verified || false 
+      });
+      setSellerAvatar(sellerData?.avatar_url || null);
       if (catRes.data) setCategory(catRes.data);
       setSoldCount(Number(soldRes.data || 0));
       setProductDocs((docsRes.data as any) || []);
@@ -470,44 +472,7 @@ export default function ProductDetailPage() {
       </div>
       <CartDrawer />
 
-      {/* Mobile Floating Controls & Navigation Pills */}
-      <div className="md:hidden">
-        {/* Floating Back Button */}
-        <button
-          onClick={() => navigate(-1)}
-          className="fixed top-[68px] left-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
-        >
-          <ArrowLeft className="h-4 w-4" />
-        </button>
 
-        {/* Floating Top Navigation Pills */}
-        <div className="fixed top-[68px] left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm rounded-full p-1 flex items-center gap-1 shadow max-w-[calc(100vw-110px)] overflow-x-auto scrollbar-none">
-          {tabs.map(t => {
-            const isActive = activeTab === t.key;
-            return (
-              <button
-                key={t.key}
-                onClick={() => scrollTo(t.ref, t.key)}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
-                  }`}
-              >
-                {t.label.split(" ")[0]} {/* Shorten tab labels on mobile if needed */}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Floating Share Button */}
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(window.location.href);
-            toast.success("Product link copied!");
-          }}
-          className="fixed top-[68px] right-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
-        >
-          <Share2 className="h-4 w-4" />
-        </button>
-      </div>
 
       {/* Desktop Sticky Tabs Sub-bar */}
       <div className="hidden md:sticky md:top-14 md:z-30 w-full bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md border-b border-[#E8E8E8] dark:border-[#222222] transition-all duration-200">
@@ -534,6 +499,45 @@ export default function ProductDetailPage() {
         <div ref={overviewRef} className="grid md:grid-cols-2 gap-0 md:gap-8">
           {/* Left: Images */}
           <div className="relative">
+            {/* Mobile Absolute Controls & Navigation Pills */}
+            <div className="md:hidden">
+              {/* Floating Back Button */}
+              <button
+                onClick={() => navigate(-1)}
+                className="absolute top-3 left-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+
+              {/* Floating Top Navigation Pills */}
+              <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm rounded-full p-1 flex items-center gap-1 shadow max-w-[calc(100vw-110px)] overflow-x-auto scrollbar-none">
+                {tabs.map(t => {
+                  const isActive = activeTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => scrollTo(t.ref, t.key)}
+                      className={`px-3 py-1 rounded-full text-[10px] font-bold whitespace-nowrap transition-all duration-150 ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+                        }`}
+                    >
+                      {t.label.split(" ")[0]} {/* Shorten tab labels on mobile if needed */}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Floating Share Button */}
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  toast.success("Product link copied!");
+                }}
+                className="absolute top-3 right-3 z-40 h-8 w-8 rounded-full bg-white/80 dark:bg-[#1A1A1A]/80 border border-[#E8E8E8] dark:border-[#222222] backdrop-blur-sm shadow flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] active:scale-95 transition-transform"
+              >
+                <Share2 className="h-4 w-4" />
+              </button>
+            </div>
+
             <div className="overflow-hidden bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm md:rounded-2xl md:border border-[#E8E8E8] dark:border-[#222222] aspect-square relative">
               {mediaItems.length === 0 ? (
                 <div className="aspect-square flex items-center justify-center">
@@ -650,6 +654,10 @@ export default function ProductDetailPage() {
                 ))}
               </div>
             )}
+            
+            <div className="hidden md:block mt-6 px-4 md:px-0">
+              <ProductGuarantee />
+            </div>
           </div>
 
           {/* Lightbox zoom dialog */}
@@ -903,23 +911,25 @@ export default function ProductDetailPage() {
               />
             )}
 
-            {/* Empty space/redundancy blocker */}
+            {/* Seller Card */}
+            {seller && (
+              <div className="mt-6">
+                <SellerMiniCard
+                  sellerId={seller.user_id}
+                  name={seller.full_name}
+                  avatarUrl={sellerAvatar}
+                  isVerified={seller.is_verified}
+                  rating={sellerAvgRating}
+                  soldCount={sellerTotalSold}
+                  followers={sellerFollowers}
+                />
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Balanced Info Block: Seller Card & Guarantee Card (Desktop: side-by-side, Mobile: stacked) */}
-        <div className="grid md:grid-cols-2 gap-4 mt-4 px-4 md:px-0">
-          {seller && (
-            <SellerMiniCard
-              sellerId={seller.user_id}
-              name={seller.full_name}
-              avatarUrl={sellerAvatar}
-              isVerified={seller.is_verified}
-              rating={sellerAvgRating}
-              soldCount={sellerTotalSold}
-              followers={sellerFollowers}
-            />
-          )}
+        {/* Mobile Product Guarantee (Desktop is below image) */}
+        <div className="md:hidden mt-4 px-4">
           <ProductGuarantee />
         </div>
 

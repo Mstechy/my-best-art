@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { Truck, RotateCcw, Shield, ChevronDown } from "lucide-react";
+import { Truck, RotateCcw, Shield, ChevronRight } from "lucide-react";
 import { deliveryEstimateRange } from "@/lib/productContent";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface Row {
   icon: React.ComponentType<{ className?: string }>;
@@ -34,39 +34,64 @@ export default function ProductGuarantee() {
         "Your payment is held in escrow and only released to the seller after you confirm delivery — so your money is always safe.",
     },
   ];
-  const [openIdx, setOpenIdx] = useState<number | null>(null);
+
   return (
-    <div className="rounded-xl border border-primary/20 bg-primary/5">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-primary/10">
-        <Shield className="h-4 w-4 text-primary" />
-        <span className="text-sm font-semibold text-foreground">MarketHub Guarantee</span>
-      </div>
-      <ul className="divide-y divide-primary/10">
-        {rows.map((r, i) => {
-          const Icon = r.icon;
-          const open = openIdx === i;
-          return (
-            <li key={r.title}>
-              <button
-                type="button"
-                onClick={() => setOpenIdx(open ? null : i)}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-primary/5 transition-colors"
-              >
-                <Icon className="h-4 w-4 text-primary shrink-0" />
-                <span className="flex-1 text-sm font-medium text-foreground">{r.title}</span>
-                <span className="text-xs text-muted-foreground hidden sm:inline">{r.hint}</span>
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
-              </button>
-              {open && (
-                <div className="px-4 pb-3 -mt-1 text-xs text-muted-foreground leading-relaxed">
-                  <div className="sm:hidden mb-1 text-foreground/80 font-medium">{r.hint}</div>
-                  {r.detail}
+    <Dialog>
+      <DialogTrigger asChild>
+        <button className="w-full text-left rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm transition-all hover:bg-[#FAFAFA] dark:hover:bg-[#111111]">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FAFAFA] dark:bg-[#111111] overflow-hidden shrink-0 border border-[#E8E8E8] dark:border-[#222222]">
+                <Shield className="h-5 w-5 text-[#888880]" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">MarketHub Guarantee</div>
+                <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#888880] flex-wrap">
+                  <span className="flex items-center gap-1">
+                    <Truck className="h-3 w-3" /> Free Shipping
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-1 h-1 rounded-full bg-[#D9D9D9] dark:bg-[#333333]"></span>
+                    <RotateCcw className="h-3 w-3" /> 7-day Returns
+                  </span>
                 </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-    </div>
+              </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-[#C0C0B8] shrink-0" />
+          </div>
+        </button>
+      </DialogTrigger>
+      
+      <DialogContent className="max-w-md bg-white dark:bg-[#111111] border-[#E8E8E8] dark:border-[#222222] rounded-2xl sm:rounded-2xl gap-0 p-0 overflow-hidden">
+        <DialogHeader className="p-5 border-b border-[#E8E8E8] dark:border-[#222222]">
+          <DialogTitle className="flex items-center gap-2 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">
+            <Shield className="h-4 w-4 text-[#F6C75D]" /> MarketHub Guarantee
+          </DialogTitle>
+        </DialogHeader>
+        <div className="p-5">
+          <ul className="space-y-6">
+            {rows.map((r, i) => {
+              const Icon = r.icon;
+              return (
+                <li key={r.title} className="flex gap-4">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#FAFAFA] dark:bg-[#1A1A1A] border border-[#E8E8E8] dark:border-[#222222]">
+                    <Icon className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2]" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
+                      <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{r.title}</span>
+                      <span className="text-[10px] font-semibold text-[#888880]">{r.hint}</span>
+                    </div>
+                    <p className="text-[11px] text-[#666666] dark:text-[#A0A0A0] leading-relaxed">
+                      {r.detail}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
