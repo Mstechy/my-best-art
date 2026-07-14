@@ -53,6 +53,15 @@ interface Category {
   slug: string;
 }
 
+interface HomepageCollection {
+  slug: string;
+  title: string;
+  description: string | null;
+  image_url: string | null;
+  badge: string | null;
+  cta_label: string;
+}
+
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
 
 export default function LandingPage() {
@@ -62,15 +71,18 @@ export default function LandingPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
+  const [homepageCollection, setHomepageCollection] = useState<HomepageCollection | null>(null);
   const { addItem } = useCart();
   const { user, profile } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
 
   useEffect(() => {
     const fetchData = async () => {
-      const [productsRes, categoriesRes] = await Promise.all([
-        supabase.from("products").select("*, product_images(*)").eq("status", "active").order("created_at", { ascending: false }),
+      const [productsRes, categoriesRes, collectionsRes] = await Promise.all([
+        // The homepage only renders a handful of cards. Never download the whole catalogue here.
+        supabase.from("products").select("*, product_images(*)").eq("status", "active").eq("is_approved", true).order("created_at", { ascending: false }).limit(20),
         supabase.from("categories").select("*").order("sort_order"),
+        supabase.from("marketplace_collections").select("slug, title, description, image_url, badge, cta_label").eq("placement", "homepage").order("sort_order").limit(1),
       ]);
 
       if (productsRes.data) {
@@ -88,6 +100,7 @@ export default function LandingPage() {
         }
       }
       if (categoriesRes.data) setCategories(categoriesRes.data);
+      if (collectionsRes.data?.[0]) setHomepageCollection(collectionsRes.data[0] as HomepageCollection);
       setLoading(false);
     };
     fetchData();
@@ -171,36 +184,44 @@ export default function LandingPage() {
 
   const [activeSlide, setActiveSlide] = useState(0);
 
-  const heroSlides = [
+  const defaultHeroSlides = [
     {
       title: "SHOP COMPUTERS\n& ACCESSORIES",
       description: "Shop laptops, desktops, monitors, tablets, PC gaming, hard drives and storage, accessories and more",
       image: headphonesHero,
       badge: "50%",
-      link: "/marketplace"
+      link: "/marketplace?category=electronics"
     },
     {
       title: "UPGRADE TO\nSMART WEARABLES",
       description: "Track your fitness, receive notifications, monitor health metrics, and stay connected with top smartwatches.",
       image: smartwatchHero,
       badge: "30%",
-      link: "/marketplace"
+      link: "/marketplace?category=electronics&search=watch"
     },
     {
       title: "EXPERIENCE THE\nBEST IN AUDIO",
       description: "Immersive sound, voice-assistant support, cylindrical smart mesh structure speaker for modern living room spaces.",
       image: speakerHero,
       badge: "40%",
-      link: "/marketplace"
+      link: "/marketplace?category=electronics&search=speaker"
     },
     {
       title: "CURATE MODERN\nHOME & KITCHEN",
       description: "Upgrade your culinary tools with smart instant multicookers, pressure cookers, and modern cooking appliances.",
       image: multicooker,
       badge: "35%",
-      link: "/marketplace"
+      link: "/marketplace?category=home"
     }
   ];
+  const heroSlides = homepageCollection ? [{
+    title: homepageCollection.title,
+    description: homepageCollection.description || "Explore our hand-picked products in this collection.",
+    image: homepageCollection.image_url || heroProductImage || headphonesHero,
+    badge: homepageCollection.badge || "New",
+    link: `/collections/${homepageCollection.slug}`,
+    ctaLabel: homepageCollection.cta_label,
+  }] : defaultHeroSlides;
 
   useEffect(() => {
     if (isSearchOrFilterActive) return;
@@ -212,7 +233,13 @@ export default function LandingPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#111111] text-[#111111] dark:text-[#FAF5F2] font-sans antialiased">
-      <MarketplaceNavbar search={search} onSearchChange={setSearch} />
+      <MarketplaceNavbar
+        search={search}
+        onSearchChange={setSearch}
+        categories={categories.map(category => ({ label: category.name, value: category.id }))}
+        selectedCategory={selectedCategory}
+        onCategoryChange={setSelectedCategory}
+      />
       <CartDrawer />
       <PromoBanner />
       <MarqueeBanner />
@@ -366,7 +393,7 @@ export default function LandingPage() {
                   <div>
                     <Link to={heroSlides[activeSlide].link}>
                       <button className="bg-white dark:bg-[#1E1E1E] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2] text-[13px] font-semibold px-6 py-2.5 rounded-full border border-[#C8C8C0] dark:border-[#333333] transition-colors duration-200">
-                        View more
+                        {"ctaLabel" in heroSlides[activeSlide] ? heroSlides[activeSlide].ctaLabel : "View more"}
                       </button>
                     </Link>
                   </div>
@@ -479,9 +506,9 @@ export default function LandingPage() {
                 ];
 
                 return displayCategories.map((cat, index) => (
-                  <button
+                  <Link
                     key={cat.id}
-                    onClick={() => setSelectedCategory(cat.id)}
+                    to={`/marketplace?category=${encodeURIComponent(cat.slug)}`}
                     className="group w-full aspect-[3/4] rounded-2xl bg-white dark:bg-[#1E1E1E] flex flex-col justify-between items-center overflow-hidden hover:shadow-md dark:hover:shadow-black/40 transition-shadow duration-300 relative border border-[#E8E8E8] dark:border-[#222222]"
                   >
                     <div className="flex-1 w-full flex items-center justify-center overflow-hidden relative bg-white dark:bg-[#1E1E1E]">
@@ -496,7 +523,7 @@ export default function LandingPage() {
                         {cat.name}
                       </span>
                     </div>
-                  </button>
+                  </Link>
                 ));
               })()}
             </div>
@@ -664,13 +691,13 @@ export default function LandingPage() {
                   <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] leading-snug">
                     Shop bold streetwear styles, custom-made graphic hoodies, and accessories designed for you.
                   </p>
-                  <Link to="/marketplace" className="text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:underline pt-0.5 block">
+                  <Link to="/marketplace?category=fashion" className="text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:underline pt-0.5 block">
                     See more
                   </Link>
                 </div>
 
                 {/* Lower handbag thumbnail tag */}
-                <Link to="/marketplace" className="flex items-center gap-2 bg-[#FFFFFF]/80 dark:bg-[#252528]/80 border border-[#E8E8E8]/40 dark:border-[#333333]/40 rounded-lg p-1.5 max-w-[170px] select-none hover:bg-white dark:hover:bg-[#252528] transition-all shadow-sm mt-2 shrink-0">
+                <Link to="/marketplace?category=fashion&search=handbag" className="flex items-center gap-2 bg-[#FFFFFF]/80 dark:bg-[#252528]/80 border border-[#E8E8E8]/40 dark:border-[#333333]/40 rounded-lg p-1.5 max-w-[170px] select-none hover:bg-white dark:hover:bg-[#252528] transition-all shadow-sm mt-2 shrink-0">
                   <img src={thumbHandbag} alt="Top Handbags preview" className="h-7 w-7 object-contain" />
                   <div className="text-[9px] leading-tight text-[#111111] dark:text-[#FAF5F2]">
                     <span className="font-bold block">Top Handbags</span>
@@ -702,7 +729,7 @@ export default function LandingPage() {
                   <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] leading-snug">
                     Shop structured oversized sets, heavyweight fleece hoodies, and fresh utility outerwear drops.
                   </p>
-                  <Link to="/marketplace" className="text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:underline pt-0.5 block">
+                  <Link to="/marketplace?category=fashion&search=streetwear" className="text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:underline pt-0.5 block">
                     See more
                   </Link>
                 </div>

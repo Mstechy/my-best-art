@@ -2,9 +2,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { useCart } from "@/hooks/useCart";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function CartDrawer() {
   const { items, isOpen, setIsOpen, removeItem, updateQuantity, totalPrice, totalItems } = useCart();
+  const { formatPrice } = useCurrency();
 
   return (
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -47,7 +49,7 @@ export default function CartDrawer() {
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.title}</p>
                   <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">{item.seller_name}</p>
-                  <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mt-1">${(item.price * item.quantity).toFixed(2)}</p>
+                  <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mt-1">{formatPrice(item.price * item.quantity)}</p>
                   <div className="flex items-center gap-2 mt-2">
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
@@ -79,7 +81,7 @@ export default function CartDrawer() {
           <div className="px-5 py-4 border-t border-[#F2F3F5] dark:border-[#1A1A1A] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-xs text-[#888880] dark:text-[#A0A0A0]">Total</span>
-              <span className="text-xl font-bold text-[#111111] dark:text-[#FAF5F2]">${totalPrice.toFixed(2)}</span>
+              <span className="text-xl font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(totalPrice)}</span>
             </div>
             <Link to="/checkout" onClick={() => setIsOpen(false)} className="block">
               <button className="w-full py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">

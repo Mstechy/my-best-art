@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { detectRegionDefaults } from "@/lib/region";
 
 type AppRole = "admin" | "seller" | "buyer";
 
@@ -45,8 +46,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (userId: string) => {
+  const fetchUserData = async (currentUser: User) => {
     try {
+      const userId = currentUser.id;
       let [profileRes, rolesRes] = await Promise.all([
         supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
         supabase.from("user_roles").select("role").eq("user_id", userId),
@@ -74,6 +76,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Keep role=null so ProtectedRoute/RoleRedirect won't incorrectly send admins to buyer.
       const resolved = pickPrimaryRole(rolesRes.data);
       setRole(resolved ?? null);
+
+      const userCountry = (currentUser.user_metadata?.country as string | undefined)?.toUpperCase() || null;
+      const userCurrencyMeta = (currentUser.user_metadata?.preferred_currency as string | undefined) || (currentUser.user_metadata?.currency as string | undefined);
+      const userCurrency = userCurrencyMeta?.toUpperCase() || null;
+      const missingCountry = profileRes.data && !(profileRes.data as any).country;
+      if (missingCountry && userCountry) {
+        const payload: Record<string, string | null> = { country: userCountry };
+        if (userCurrency) payload.preferred_currency = userCurrency;
+        await supabase.from("profiles").update(payload as any).eq("user_id", userId);
+      }
+      if (userCountry) localStorage.setItem("preferred_country", userCountry);
+      if (userCurrency) localStorage.setItem("preferred_currency", userCurrency);
     } catch (e) {
       console.error("Error fetching user data:", e);
       setProfile(null);
@@ -91,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         if (session?.user) {
           setLoading(true);
-          setTimeout(() => fetchUserData(session.user.id), 0);
+          setTimeout(() => fetchUserData(session.user), 0);
         } else {
           setProfile(null);
           setRole(null);
@@ -104,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserData(session.user.id);
+        fetchUserData(session.user);
       } else {
         setLoading(false);
       }
@@ -121,11 +135,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, selectedRole: AppRole) => {
+    const { country, currency } = detectRegionDefaults();
+    localStorage.setItem("preferred_country", country);
+    localStorage.setItem("preferred_currency", currency);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, role: selectedRole },
+        data: { full_name: fullName, role: selectedRole, country, preferred_currency: currency },
         emailRedirectTo: window.location.origin,
       },
     });
@@ -144,7 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refetchProfile = async () => {
     if (!user) return;
     setLoading(true);
-    await fetchUserData(user.id);
+    await fetchUserData(user);
   };
 
   const signOut = async () => {

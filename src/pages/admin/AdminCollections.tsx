@@ -1,0 +1,98 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { Plus, Pencil, Trash2, Layers3, Search, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
+
+type Collection = {
+  id: string; slug: string; title: string; description: string | null; image_url: string | null;
+  badge: string | null; cta_label: string; placement: string; status: string; sort_order: number;
+  starts_at: string | null; ends_at: string | null;
+};
+type ProductOption = { id: string; title: string; status: string; is_approved: boolean };
+
+const emptyForm = { title: "", slug: "", description: "", image_url: "", badge: "", cta_label: "Shop collection", placement: "homepage", status: "draft", sort_order: "0" };
+const toSlug = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
+export default function AdminCollections() {
+  const { toast } = useToast();
+  const { user } = useAuth();
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState<Collection | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [productSearch, setProductSearch] = useState("");
+  const [results, setResults] = useState<ProductOption[]>([]);
+  const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  const fetchCollections = async () => {
+    const { data, error } = await supabase.from("marketplace_collections").select("*").order("sort_order").order("created_at", { ascending: false });
+    if (error) toast({ title: "Could not load collections", description: error.message, variant: "destructive" });
+    else setCollections(data as Collection[]);
+  };
+  useEffect(() => { fetchCollections(); }, []);
+
+  useEffect(() => {
+    const query = productSearch.trim();
+    if (query.length < 2) { setResults([]); return; }
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase.from("products").select("id, title, status, is_approved").ilike("title", `%${query}%`).limit(10);
+      setResults((data ?? []) as ProductOption[]);
+    }, 200);
+    return () => window.clearTimeout(timer);
+  }, [productSearch]);
+
+  const openCreate = () => { setEditing(null); setForm(emptyForm); setSelectedProducts([]); setProductSearch(""); setOpen(true); };
+  const openEdit = async (collection: Collection) => {
+    setEditing(collection);
+    setForm({ title: collection.title, slug: collection.slug, description: collection.description ?? "", image_url: collection.image_url ?? "", badge: collection.badge ?? "", cta_label: collection.cta_label, placement: collection.placement, status: collection.status, sort_order: String(collection.sort_order) });
+    setProductSearch(""); setResults([]);
+    const { data } = await supabase.from("marketplace_collection_products").select("sort_order, products(id, title, status, is_approved)").eq("collection_id", collection.id).order("sort_order");
+    setSelectedProducts((data ?? []).flatMap((row: any) => row.products ? [row.products as ProductOption] : []));
+    setOpen(true);
+  };
+  const updateForm = (key: keyof typeof form, value: string) => setForm(current => ({ ...current, [key]: value }));
+  const addProduct = (product: ProductOption) => {
+    if (!selectedProducts.some(item => item.id === product.id)) setSelectedProducts(items => [...items, product]);
+    setProductSearch(""); setResults([]);
+  };
+  const save = async () => {
+    const slug = toSlug(form.slug || form.title);
+    if (!form.title.trim() || !slug) { toast({ title: "Title and a valid slug are required", variant: "destructive" }); return; }
+    setSaving(true);
+    const payload = { title: form.title.trim(), slug, description: form.description.trim() || null, image_url: form.image_url.trim() || null, badge: form.badge.trim() || null, cta_label: form.cta_label.trim() || "Shop collection", placement: form.placement, status: form.status, sort_order: Number(form.sort_order) || 0, created_by: user?.id };
+    const response = editing
+      ? await supabase.from("marketplace_collections").update(payload).eq("id", editing.id).select("id").single()
+      : await supabase.from("marketplace_collections").insert(payload).select("id").single();
+    if (response.error || !response.data) { toast({ title: "Could not save collection", description: response.error?.message, variant: "destructive" }); setSaving(false); return; }
+    const collectionId = response.data.id;
+    const removeResult = await supabase.from("marketplace_collection_products").delete().eq("collection_id", collectionId);
+    const insertResult = selectedProducts.length ? await supabase.from("marketplace_collection_products").insert(selectedProducts.map((product, sort_order) => ({ collection_id: collectionId, product_id: product.id, sort_order }))) : null;
+    setSaving(false);
+    if (removeResult.error || insertResult?.error) { toast({ title: "Collection saved, but product membership could not be updated", description: removeResult.error?.message || insertResult?.error?.message, variant: "destructive" }); return; }
+    toast({ title: "Collection saved" }); setOpen(false); fetchCollections();
+  };
+  const remove = async (collection: Collection) => {
+    if (!confirm(`Delete “${collection.title}”?`)) return;
+    const { error } = await supabase.from("marketplace_collections").delete().eq("id", collection.id);
+    if (error) toast({ title: "Could not delete collection", description: error.message, variant: "destructive" });
+    else { toast({ title: "Collection deleted" }); fetchCollections(); }
+  };
+
+  return <div className="space-y-6">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div><h1 className="font-display text-3xl font-bold text-foreground">Collections</h1><p className="mt-1 text-muted-foreground">Make homepage campaigns and navigation links lead to real curated product sets.</p></div>
+      <Button onClick={openCreate} className="gap-2 gradient-admin text-primary-foreground"><Plus className="h-4 w-4" /> New collection</Button>
+    </div>
+    {collections.length === 0 ? <Card><CardContent className="py-12 text-center"><Layers3 className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="font-medium">No collections yet</p><p className="mt-1 text-sm text-muted-foreground">Create one for a seasonal campaign, category landing page, or homepage banner.</p></CardContent></Card> : <div className="space-y-3">{collections.map(collection => <Card key={collection.id}><CardContent className="flex flex-wrap items-center gap-4 p-4"><div className="h-14 w-20 rounded-lg bg-muted overflow-hidden shrink-0">{collection.image_url && <img src={collection.image_url} alt="" className="h-full w-full object-cover" />}</div><div className="min-w-0 flex-1"><p className="font-semibold truncate">{collection.title}</p><p className="text-xs text-muted-foreground">/{collection.slug} · {collection.placement} · order {collection.sort_order}</p></div><Badge variant={collection.status === "active" ? "default" : "secondary"}>{collection.status}</Badge><div className="flex gap-2"><Button size="sm" variant="outline" asChild><Link to={`/collections/${collection.slug}`} target="_blank">View</Link></Button><Button size="sm" variant="outline" onClick={() => openEdit(collection)}><Pencil className="h-3.5 w-3.5" /></Button><Button size="sm" variant="outline" className="text-destructive" onClick={() => remove(collection)}><Trash2 className="h-3.5 w-3.5" /></Button></div></CardContent></Card>)}</div>}
+    <Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle>{editing ? "Edit collection" : "New collection"}</DialogTitle></DialogHeader><div className="grid gap-4 py-2 sm:grid-cols-2"><label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Title<Input value={form.title} onChange={e => { updateForm("title", e.target.value); if (!editing) updateForm("slug", toSlug(e.target.value)); }} /></label><label className="grid gap-1.5 text-sm font-medium">URL slug<Input value={form.slug} onChange={e => updateForm("slug", toSlug(e.target.value))} placeholder="summer-tech-deals" /></label><label className="grid gap-1.5 text-sm font-medium">Status<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={form.status} onChange={e => updateForm("status", e.target.value)}><option value="draft">Draft</option><option value="active">Active</option><option value="archived">Archived</option></select></label><label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Description<Textarea value={form.description} onChange={e => updateForm("description", e.target.value)} /></label><label className="grid gap-1.5 text-sm font-medium sm:col-span-2">Banner image URL<Input type="url" value={form.image_url} onChange={e => updateForm("image_url", e.target.value)} placeholder="https://…" /></label><label className="grid gap-1.5 text-sm font-medium">Badge<Input value={form.badge} onChange={e => updateForm("badge", e.target.value)} placeholder="Up to 40% off" /></label><label className="grid gap-1.5 text-sm font-medium">Button label<Input value={form.cta_label} onChange={e => updateForm("cta_label", e.target.value)} /></label><label className="grid gap-1.5 text-sm font-medium">Placement<select className="h-10 rounded-md border border-input bg-background px-3 text-sm" value={form.placement} onChange={e => updateForm("placement", e.target.value)}><option value="homepage">Homepage</option><option value="navigation">Navigation</option><option value="seasonal">Seasonal</option></select></label><label className="grid gap-1.5 text-sm font-medium">Display order<Input type="number" value={form.sort_order} onChange={e => updateForm("sort_order", e.target.value)} /></label></div><div className="border-t pt-4"><p className="mb-2 text-sm font-medium">Products in this collection</p><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input className="pl-9" value={productSearch} onChange={e => setProductSearch(e.target.value)} placeholder="Search products to add" /></div>{results.length > 0 && <div className="mt-2 rounded-md border">{results.map(product => <button key={product.id} type="button" onClick={() => addProduct(product)} className="block w-full px-3 py-2 text-left text-sm hover:bg-muted">{product.title} <span className="text-muted-foreground">({product.status})</span></button>)}</div>}<div className="mt-3 flex flex-wrap gap-2">{selectedProducts.map(product => <Badge key={product.id} variant="secondary" className="gap-1 py-1"><span className="max-w-48 truncate">{product.title}</span><button type="button" onClick={() => setSelectedProducts(items => items.filter(item => item.id !== product.id))}><X className="h-3 w-3" /></button></Badge>)}</div></div><div className="flex justify-end gap-2"><Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving ? "Saving…" : "Save collection"}</Button></div></DialogContent></Dialog>
+  </div>;
+}

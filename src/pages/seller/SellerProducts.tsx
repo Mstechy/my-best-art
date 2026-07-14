@@ -55,6 +55,11 @@ interface Product {
 }
 
 type UploadState = "local" | "uploading" | "uploaded" | "error";
+const MAX_PRODUCT_IMAGES = 8;
+const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
+const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
+const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 interface ImageMediaItem {
   id: string;
@@ -77,6 +82,8 @@ interface VideoMediaItem {
   progress: number;
   error?: string;
 }
+
+interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; }
 
 export default function SellerProducts() {
   const { user } = useAuth();
@@ -121,6 +128,7 @@ export default function SellerProducts() {
   const [categoryAttributes, setCategoryAttributes] = useState<Record<string, string>>({});
   const [productTypeKey, setProductTypeKey] = useState("");
   const [existingProductVideos, setExistingProductVideos] = useState<string[]>([]);
+  const [variantRows, setVariantRows] = useState<VariantDraft[]>([]);
 
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
@@ -193,8 +201,13 @@ export default function SellerProducts() {
   };
 
   const addImageFiles = (files: File[]) => {
-    const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-    if (imageFiles.length === 0) return;
+    const remaining = MAX_PRODUCT_IMAGES - imageItems.length;
+    const imageFiles = files.filter((file) => ACCEPTED_IMAGE_TYPES.has(file.type) && file.size <= MAX_IMAGE_SIZE_BYTES).slice(0, Math.max(0, remaining));
+    if (imageFiles.length === 0) {
+      toast({ title: "Images not added", description: `Use JPG, PNG, or WebP files up to 10 MB. A product can have up to ${MAX_PRODUCT_IMAGES} images.`, variant: "destructive" });
+      return;
+    }
+    if (imageFiles.length < files.length) toast({ title: "Some images skipped", description: `Use JPG, PNG, or WebP files up to 10 MB; maximum ${MAX_PRODUCT_IMAGES} images per product.` });
     setImageItems((prev) => {
       const next = [
         ...prev,
@@ -213,8 +226,12 @@ export default function SellerProducts() {
   };
 
   const addVideoFiles = (files: File[]) => {
-    const accepted = files.filter((file) => /video\/(mp4|quicktime|webm)/i.test(file.type) || /\.(mp4|mov|webm)$/i.test(file.name)).slice(0, 3);
-    if (accepted.length === 0) return;
+    const accepted = files.filter((file) => (/video\/(mp4|quicktime|webm)/i.test(file.type) || /\.(mp4|mov|webm)$/i.test(file.name)) && file.size <= MAX_VIDEO_SIZE_BYTES).slice(0, Math.max(0, 3 - videoItems.length));
+    if (accepted.length === 0) {
+      toast({ title: "Videos not added", description: "Use MP4, MOV, or WebM files up to 100 MB. A product can have up to 3 videos.", variant: "destructive" });
+      return;
+    }
+    if (accepted.length < files.length) toast({ title: "Some videos skipped", description: "Videos must be MP4, MOV, or WebM and no larger than 100 MB." });
     setVideoItems((prev) => [
       ...prev,
       ...accepted.map((file, index): VideoMediaItem => ({
@@ -281,11 +298,11 @@ export default function SellerProducts() {
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
-    setProductTypeKey(""); setExistingProductVideos([]);
+    setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]);
     setEditingProduct(null); setFormTab("basic");
   };
 
-  const openEdit = (product: Product) => {
+  const openEdit = async (product: Product) => {
     setEditingProduct(product);
     setTitle(product.title);
     setDescription(product.description || "");
@@ -343,6 +360,8 @@ export default function SellerProducts() {
       ...getCategoryAttributes(product.variants),
     });
     setDocFile(null);
+    const { data: variants } = await supabase.from("product_variants").select("id, option_values, sku, price, stock_quantity").eq("product_id", product.id).order("sort_order");
+    setVariantRows((variants ?? []).map((variant: any) => ({ key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity) })));
     setFormTab("basic");
     setDialogOpen(true);
   };
@@ -357,9 +376,37 @@ export default function SellerProducts() {
       toast({ title: "Choose a product type", description: "Select a product type so buyers see the right details.", variant: "destructive" });
       return;
     }
+    if (!imageItems.length) {
+      toast({ title: "Add a product image", description: "Listings need at least one clear product image before they can be submitted.", variant: "destructive" });
+      setFormTab("media");
+      return;
+    }
+    const numericPrice = Number(price);
+    const numericCompareAtPrice = compareAtPrice ? Number(compareAtPrice) : null;
+    const numericStock = Number(stockQuantity || 0);
+    if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
+      toast({ title: "Enter a valid price", description: "Price must be greater than zero.", variant: "destructive" });
+      setFormTab("basic");
+      return;
+    }
+    if (numericCompareAtPrice !== null && (!Number.isFinite(numericCompareAtPrice) || numericCompareAtPrice <= numericPrice)) {
+      toast({ title: "Check compare-at price", description: "Compare-at price must be higher than the sale price.", variant: "destructive" });
+      setFormTab("basic");
+      return;
+    }
+    if (!Number.isInteger(numericStock) || numericStock < 0) {
+      toast({ title: "Check stock quantity", description: "Stock must be a whole number of zero or more.", variant: "destructive" });
+      setFormTab("basic");
+      return;
+    }
     if (description.trim().length > 0 && description.trim().length < 30) {
       toast({ title: "Description too short", description: "Please write at least 30 characters.", variant: "destructive" });
       return;
+    }
+    const invalidVariant = variantRows.some(row => (!row.size.trim() && !row.color.trim()) || !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0 || (row.price && Number(row.price) <= 0));
+    const variantKeys = variantRows.map(row => `${row.size.trim().toLowerCase()}|${row.color.trim().toLowerCase()}`);
+    if (invalidVariant || new Set(variantKeys).size !== variantKeys.length) {
+      toast({ title: "Check variant rows", description: "Each variant needs a size or colour, whole stock, valid optional price, and a unique option combination.", variant: "destructive" }); setFormTab("variants"); return;
     }
     setSaving(true);
 
@@ -400,10 +447,13 @@ export default function SellerProducts() {
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
       show_sold_count: showSoldCount,
-      variants: mergeCategoryAttributes(editingProduct?.variants, {
+      variants: { ...mergeCategoryAttributes(editingProduct?.variants, {
         categoryGroup: selectedConfig.title,
         ...cleanCategoryAttributes,
       }, { key: selectedProductType.key, label: selectedProductType.label }, existingProductVideos),
+        sizes: [...new Set(variantRows.map(row => row.size.trim()).filter(Boolean))],
+        colors: [...new Set(variantRows.map(row => row.color.trim()).filter(Boolean))],
+      },
     };
 
     let productId = editingProduct?.id || savedProductId;
@@ -416,6 +466,12 @@ export default function SellerProducts() {
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
       productId = data.id;
       setSavedProductId(data.id);
+    }
+
+    if (productId) {
+      const { error: removeVariantsError } = await supabase.from("product_variants").delete().eq("product_id", productId);
+      const { error: addVariantsError } = variantRows.length ? await supabase.from("product_variants").insert(variantRows.map((row, sort_order) => ({ product_id: productId, option_values: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}) }, sku: row.sku.trim() || null, price: row.price ? Number(row.price) : null, stock_quantity: Number(row.stock), sort_order }))) : { error: null };
+      if (removeVariantsError || addVariantsError) { toast({ title: "Could not save variants", description: removeVariantsError?.message || addVariantsError?.message, variant: "destructive" }); setSaving(false); return; }
     }
 
     let mediaHadError = false;
@@ -616,8 +672,9 @@ export default function SellerProducts() {
               </DialogHeader>
 
               <Tabs value={formTab} onValueChange={setFormTab} className="mt-4">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-5">
                   <TabsTrigger value="basic">Basic Info</TabsTrigger>
+                  <TabsTrigger value="variants">Variants</TabsTrigger>
                   <TabsTrigger value="specs">Specifications</TabsTrigger>
                   <TabsTrigger value="media">Images & Tags</TabsTrigger>
                   <TabsTrigger value="preview">Preview</TabsTrigger>
@@ -675,6 +732,25 @@ export default function SellerProducts() {
                       <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Optional" className="mt-1" />
                     </div>
                   </div>
+                </TabsContent>
+
+                <TabsContent value="variants" className="space-y-4 mt-4">
+                  <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
+                    Optional. Use SKU rows when sizes or colours have different stock or prices. Products without rows keep the main stock and price above.
+                  </div>
+                  <div className="space-y-3">
+                    {variantRows.map((row, index) => (
+                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-6">
+                        <Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="Size" />
+                        <Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="Colour" />
+                        <Input value={row.sku} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, sku: e.target.value } : item))} placeholder="SKU" />
+                        <Input type="number" min="0.01" step="0.01" value={row.price} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} placeholder="Price (optional)" />
+                        <Input type="number" min="0" step="1" value={row.stock} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, stock: e.target.value } : item))} placeholder="Stock" />
+                        <Button type="button" variant="outline" className="text-destructive" onClick={() => setVariantRows(rows => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    ))}
+                  </div>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", sku: "", price: "", stock: "0" }])}><Plus className="h-4 w-4" /> Add size / colour SKU</Button>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">

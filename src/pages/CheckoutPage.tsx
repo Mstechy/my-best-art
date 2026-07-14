@@ -84,19 +84,16 @@ export default function CheckoutPage() {
     });
     try {
       for (const [sellerId, sellerItems] of Object.entries(sellerGroups)) {
-        const orderTotal = sellerItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
-        const { data: order, error: orderError } = await supabase
-          .from("orders").insert({
-            buyer_id: user.id, seller_id: sellerId, total_amount: orderTotal,
-            shipping_address: address as any, status: "pending" as const,
-          }).select("id").single();
-        if (orderError) throw orderError;
-        const orderItems = sellerItems.map(item => ({
-          order_id: order.id, product_id: item.id, quantity: item.quantity,
-          unit_price: item.price, total_price: item.price * item.quantity,
-        }));
-        const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
-        if (itemsError) throw itemsError;
+        const { error } = await supabase.rpc("place_marketplace_order", {
+          p_seller_id: sellerId,
+          p_shipping_address: address,
+          p_items: sellerItems.map(item => ({
+            product_id: item.product_id || item.id.split("::")[0],
+            product_variant_id: item.product_variant_id || null,
+            quantity: item.quantity,
+          })),
+        });
+        if (error) throw error;
       }
       clearCart();
       toast.success("Order placed successfully!");

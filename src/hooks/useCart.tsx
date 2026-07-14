@@ -2,6 +2,9 @@ import { createContext, useContext, useState, ReactNode, useCallback } from "rea
 
 export interface CartItem {
   id: string;
+  /** Database product UUID. `id` may include a variant suffix to keep cart lines separate. */
+  product_id?: string;
+  product_variant_id?: string;
   title: string;
   price: number;
   image_url: string | null;

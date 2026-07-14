@@ -50,12 +50,14 @@ export default function SellerStorePage() {
   useEffect(() => {
     if (!id) return;
     const fetch = async () => {
-      const [sellerRes, productsRes, storeRes] = await Promise.all([
+      const [sellerRes, fallbackSellerRes, productsRes, storeRes] = await Promise.all([
         (supabase as any).from("seller_profiles_public").select("*").eq("user_id", id).single(),
+        supabase.from("profiles").select("user_id, full_name, avatar_url, country, is_verified, created_at").eq("user_id", id).maybeSingle(),
         supabase.from("products").select("id, title, price, compare_at_price, average_rating, review_count, created_at, product_images(*)").eq("seller_id", id).eq("status", "active").eq("is_approved", true).order("created_at", { ascending: false }),
         supabase.from("seller_stores").select("banner_url, logo_url, bio, return_policy, shipping_policy").eq("seller_id", id).maybeSingle(),
       ]);
       if (sellerRes.data) setSeller(sellerRes.data as SellerProfile);
+      else if (fallbackSellerRes.data) setSeller(fallbackSellerRes.data as SellerProfile);
       if (productsRes.data) {
         setProducts(productsRes.data as unknown as Product[]);
         const pIds = productsRes.data.map((p: any) => p.id);

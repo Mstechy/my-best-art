@@ -18,6 +18,7 @@ import { COUNTRIES, countryName } from "@/lib/countries";
 import { findCategoryConfig, getCategoryAttributes } from "@/lib/categoryConfig";
 import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/MarketplaceFilters";
 import ProductImage from "@/components/product/ProductImage";
+import { trackProductDiscovery } from "@/lib/productDiscovery";
 
 // Promo descriptors keyed by URL ?promo=
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -56,13 +57,17 @@ interface Product {
 }
 
 interface Category { id: string; name: string; slug: string; icon: string; }
+interface CatalogueCursor { relevance: number; createdAt: string; id: string; }
+const CATALOGUE_PAGE_SIZE = 24;
 
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const promoKey = searchParams.get("promo");
   const categoryParam = searchParams.get("category");
   const searchParam = searchParams.get("search");
+  const visualParam = searchParams.get("visual");
   const promo = promoKey ? PROMOS[promoKey] : null;
+  const isVisualSearch = visualParam === "1";
 
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -70,11 +75,15 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [shipsTo, setShipsTo] = useState<string>("all");
   const [filters, setFilters] = useState<MarketplaceFiltersState>(defaultFilters);
+  const [sortBy, setSortBy] = useState("relevance");
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [cursor, setCursor] = useState<CatalogueCursor | null>(null);
+  const [hasMore, setHasMore] = useState(false);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
   const { addItem } = useCart();
   const { user } = useAuth();
-  const { currency, setCurrencyCode, currencies } = useCurrency();
+  const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
   const { isWishlisted, toggleWishlist } = useWishlist();
 
   // Location and Currency Modal States
@@ -84,43 +93,8 @@ export default function MarketplacePage() {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Default ships-to from buyer profile country or auto-detected visitor location
-  useEffect(() => {
-    if (user) {
-      (async () => {
-        const { data } = await supabase.from("addresses")
-          .select("country").eq("user_id", user.id).eq("is_default", true).maybeSingle();
-        const c = data?.country;
-        if (c && COUNTRIES.find(x => x.code === c)) {
-          setShipsTo(c);
-          return;
-        }
-      })();
-    }
-
-    // Best-effort auto-detect location based on timezone
-    try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-      const map: Record<string, string> = {
-        London: "GB", Europe: "GB",
-        New_York: "US", Chicago: "US", Denver: "US", Los_Angeles: "US", America: "US",
-        Johannesburg: "ZA", Africa: "ZA",
-        Nairobi: "KE",
-        Accra: "GH",
-        Lagos: "NG"
-      };
-      let matched = "NG"; // fallback default
-      for (const [key, code] of Object.entries(map)) {
-        if (tz.includes(key)) {
-          matched = code;
-          break;
-        }
-      }
-      setShipsTo(matched);
-    } catch (e) {
-      setShipsTo("NG"); // fallback
-    }
-  }, [user]);
+  // The shared preference is detected once, then survives navigation and manual changes.
+  useEffect(() => { setShipsTo(preferredCountry || "all"); }, [preferredCountry]);
 
   // Sync category from URL once categories load
   useEffect(() => {
@@ -134,6 +108,29 @@ export default function MarketplacePage() {
 
   useEffect(() => { if (searchParam !== null) setSearch(searchParam); }, [searchParam]);
 
+  useEffect(() => {
+    const next = new URLSearchParams(searchParams);
+    const normalizedSearch = search.trim();
+    const categoryRecord = categories.find(category => category.id === selectedCategory) || null;
+    const normalizedCategory = categoryRecord?.slug || selectedCategory || null;
+
+    if (normalizedSearch) {
+      next.set("search", normalizedSearch);
+    } else {
+      next.delete("search");
+    }
+
+    if (normalizedCategory) {
+      next.set("category", normalizedCategory);
+    } else {
+      next.delete("category");
+    }
+
+    if (next.toString() !== searchParams.toString()) {
+      setSearchParams(next, { replace: true });
+    }
+  }, [search, selectedCategory, categories, searchParams, setSearchParams]);
+
   const clearPromo = () => {
     const next = new URLSearchParams(searchParams);
     next.delete("promo");
@@ -141,13 +138,33 @@ export default function MarketplacePage() {
   };
 
   const fetchData = async () => {
-    const [productsRes, categoriesRes] = await Promise.all([
-      supabase.from("products").select("*, product_images(*)").eq("status", "active").eq("is_approved", true).order("created_at", { ascending: false }),
-      supabase.from("categories").select("*").order("sort_order"),
-    ]);
-    if (productsRes.data) {
-      setProducts(productsRes.data as unknown as Product[]);
-      const sellerIds = [...new Set(productsRes.data.map(p => p.seller_id))];
+    const { data: categoriesData } = await supabase.from("categories").select("*").order("sort_order");
+    if (categoriesData) setCategories(categoriesData);
+    setLoading(false);
+  };
+
+  async function fetchCatalogue(reset = false) {
+    if (reset) { setLoading(true); setCursor(null); } else { setLoadingMore(true); }
+    const pageCursor = reset ? null : cursor;
+    const { data: matches, error } = await supabase.rpc("search_marketplace_product_ids", {
+      p_query: search.trim(), p_category_id: selectedCategory, p_country: shipsTo === "all" ? null : shipsTo,
+      p_min_price: filters.minPrice || null, p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
+      p_min_rating: filters.minRating || null, p_in_stock_only: filters.inStockOnly,
+      p_condition: filters.condition === "any" ? null : filters.condition,
+      p_attribute_filters: filters.categoryAttributes, p_sort: sortBy, p_limit: CATALOGUE_PAGE_SIZE,
+      p_cursor_relevance: pageCursor?.relevance ?? null, p_cursor_created_at: pageCursor?.createdAt ?? null, p_cursor_id: pageCursor?.id ?? null,
+    });
+    if (error) { setLoading(false); setLoadingMore(false); return; }
+    const ids = (matches || []).map((match) => match.product_id);
+    if (!ids.length) {
+      if (reset) setProducts([]);
+      setHasMore(false); setLoading(false); setLoadingMore(false); return;
+    }
+    const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
+    const byId = new Map((productsData || []).map((product) => [product.id, product as unknown as Product]));
+    const ordered = ids.map((id) => byId.get(id)).filter((product): product is Product => !!product);
+    setProducts((current) => reset ? ordered : [...current, ...ordered.filter((product) => !current.some((existing) => existing.id === product.id))]);
+    const sellerIds = [...new Set(ordered.map((product) => product.seller_id))];
       if (sellerIds.length > 0) {
         const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
         if (profiles) {
@@ -155,13 +172,19 @@ export default function MarketplacePage() {
           profiles.forEach((p: SellerProfilePublic) => {
             if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified };
           });
-          setSellerProfiles(map);
+          setSellerProfiles((current) => reset ? map : { ...current, ...map });
         }
       }
-    }
-    if (categoriesRes.data) setCategories(categoriesRes.data);
-    setLoading(false);
-  };
+    const last = matches?.at(-1);
+    setCursor(last ? { relevance: last.relevance, createdAt: last.created_at, id: last.product_id } : null);
+    setHasMore((matches?.length || 0) === CATALOGUE_PAGE_SIZE);
+    setLoading(false); setLoadingMore(false);
+  }
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { fetchCatalogue(true); }, 250);
+    return () => window.clearTimeout(timer);
+  }, [search, selectedCategory, shipsTo, filters.minPrice, filters.maxPrice, filters.minRating, filters.inStockOnly, filters.condition, filters.categoryAttributes, sortBy]);
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
@@ -177,21 +200,18 @@ export default function MarketplacePage() {
   };
 
   const filtered = useMemo(() => products.filter(p => {
-    const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.description?.toLowerCase().includes(search.toLowerCase());
-    const matchesCategory = !selectedCategory || p.category_id === selectedCategory;
     const matchesPromo = !promo || promo.filter(p);
-    const list = p.ships_to || [];
-    const matchesShipsTo = shipsTo === "all" || list.length === 0 || list.includes(shipsTo);
-    const matchesPrice = Number(p.price) >= filters.minPrice && Number(p.price) <= filters.maxPrice;
-    const matchesRating = Number(p.average_rating || 0) >= filters.minRating;
-    const matchesStock = !filters.inStockOnly || p.stock_quantity > 0;
-    const matchesCondition = filters.condition === "any" || p.condition === filters.condition;
-    const matchesCategoryAttributes = Object.entries(filters.categoryAttributes).every(([key, value]) => {
-      if (!value) return true;
-      return attributeValue(p, key).toLowerCase() === value.toLowerCase();
-    });
-    return matchesSearch && matchesCategory && matchesPromo && matchesShipsTo && matchesPrice && matchesRating && matchesStock && matchesCondition && matchesCategoryAttributes;
-  }), [products, search, selectedCategory, promo, shipsTo, filters]);
+    return matchesPromo;
+  }), [products, promo]);
+
+  const visualFallbackProducts = useMemo(() => {
+    if (!isVisualSearch || filtered.length > 0) return [];
+    return products
+      .filter(product => !selectedCategory || product.category_id === selectedCategory)
+      .slice(0, 12);
+  }, [isVisualSearch, filtered.length, products, selectedCategory]);
+
+  const displayedProducts = filtered.length > 0 ? filtered : visualFallbackProducts;
 
   const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
@@ -214,6 +234,7 @@ export default function MarketplacePage() {
   const activeFilterCount = countActive(filters);
 
   const handleAddToCart = (product: Product) => {
+    trackProductDiscovery(product.id, "add_to_cart");
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
     addItem({
@@ -227,15 +248,34 @@ export default function MarketplacePage() {
     });
   };
 
+  useEffect(() => {
+    if (displayedProducts.length) trackProductDiscovery(displayedProducts.map((product) => product.id), "impression");
+  }, [displayedProducts]);
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
-      <MarketplaceNavbar search={search} onSearchChange={setSearch} />
+      <MarketplaceNavbar
+        search={search}
+        onSearchChange={setSearch}
+        categories={categories.map(category => ({ label: category.name, value: category.id }))}
+        selectedCategory={selectedCategory}
+        onCategoryChange={(value) => {
+          setSelectedCategory(value);
+          setFilters(f => ({ ...f, categoryAttributes: {} }));
+        }}
+      />
       <CartDrawer />
 
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <AnimatedSection variant="fade-up">
           <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">Marketplace</h1>
-          <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">Discover products from verified sellers worldwide</p>
+          <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">
+            {isVisualSearch
+              ? (filtered.length > 0
+                ? "Image search results from your upload"
+                : "No exact visual match found, showing the closest products we have")
+              : "Discover products from verified sellers worldwide"}
+          </p>
           {promo && (
             <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] bg-[#F8F3F0] dark:bg-[#1C1C1E] px-4 py-3">
               <div className="flex items-center gap-2 text-sm">
@@ -246,6 +286,13 @@ export default function MarketplacePage() {
               <button onClick={clearPromo} aria-label="Clear promotion" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#888880] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
                 <X className="h-4 w-4" />
               </button>
+            </div>
+          )}
+          {hasMore && displayedProducts.length > 0 && (
+            <div className="mt-8 flex justify-center">
+              <Button type="button" variant="outline" onClick={() => fetchCatalogue(false)} disabled={loadingMore} className="rounded-full px-6">
+                {loadingMore ? "Loading products..." : "Load more products"}
+              </Button>
             </div>
           )}
         </AnimatedSection>
@@ -277,6 +324,16 @@ export default function MarketplacePage() {
               categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
               categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
             />
+            <Select value={sortBy} onValueChange={setSortBy}>
+              <SelectTrigger className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="relevance">Best match</SelectItem>
+                <SelectItem value="newest">Newest</SelectItem>
+                <SelectItem value="rating">Top rated</SelectItem>
+                <SelectItem value="price_low">Price: low to high</SelectItem>
+                <SelectItem value="price_high">Price: high to low</SelectItem>
+              </SelectContent>
+            </Select>
             <div className="flex items-center gap-2">
               <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
               <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>
@@ -328,7 +385,7 @@ export default function MarketplacePage() {
                 </div>
               ))}
             </div>
-          ) : filtered.length === 0 ? (
+          ) : displayedProducts.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center select-none">
               <Package className="h-16 w-16 text-[#888880]/30 dark:text-[#A0A0A0]/30 mb-4" />
               <h3 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
@@ -340,7 +397,7 @@ export default function MarketplacePage() {
             </div>
           ) : (
             <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {filtered.map(product => {
+              {displayedProducts.map(product => {
                 const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
                 const seller = sellerProfiles[product.seller_id];
                 const discount = product.compare_at_price && product.compare_at_price > product.price
@@ -348,7 +405,7 @@ export default function MarketplacePage() {
 
                 return (
                   <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
-                    <Link to={`/product/${product.id}`} className="block">
+                    <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")} className="block">
                       <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
                         {primaryImage ? (
                           <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
@@ -366,7 +423,7 @@ export default function MarketplacePage() {
                         ) : null}
                         {user && (
                           <button
-                            onClick={(e) => { e.preventDefault(); toggleWishlist(product.id); }}
+                          onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
                             className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
                           >
                             <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
@@ -375,14 +432,14 @@ export default function MarketplacePage() {
                       </div>
                     </Link>
                     <div className="p-0 flex flex-col flex-1 mt-2">
-                      <Link to={`/product/${product.id}`}>
+                      <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")}>
                         <h4 className="text-[12px] font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 hover:underline min-h-[32px] leading-snug">{product.title}</h4>
                       </Link>
                       <div className="flex items-center justify-between mt-2.5">
                         <div className="flex items-baseline gap-1.5 min-w-0">
-                          <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">${product.price.toFixed(2)}</span>
+                          <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
                           {product.compare_at_price && product.compare_at_price > product.price && (
-                            <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">${product.compare_at_price.toFixed(2)}</span>
+                            <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
                           )}
                         </div>
                         <button
@@ -461,7 +518,7 @@ export default function MarketplacePage() {
             <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
               <button
                 onClick={() => {
-                  setShipsTo("all");
+                  setCountry(null);
                   setIsLocationOpen(false);
                 }}
                 className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${
@@ -479,7 +536,7 @@ export default function MarketplacePage() {
                   <button
                     key={c.code}
                     onClick={() => {
-                      setShipsTo(c.code);
+                      setCountry(c.code);
                       setIsLocationOpen(false);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${

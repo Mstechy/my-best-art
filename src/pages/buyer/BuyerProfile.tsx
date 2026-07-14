@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { COUNTRIES } from "@/lib/countries";
+import { detectRegionDefaults } from "@/lib/region";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Address {
   id: string;
@@ -49,22 +51,24 @@ function FieldInput({ label, ...props }: { label: string } & React.InputHTMLAttr
 
 export default function BuyerProfile() {
   const { user, profile } = useAuth();
+  const { setCountry: setCountryPreference } = useCurrency();
+  const defaults = detectRegionDefaults();
   const [fullName, setFullName] = useState("");
-  const [country, setCountry] = useState("US");
+  const [country, setCountry] = useState(defaults.country);
   const [avatarUrl, setAvatarUrl] = useState("");
   const [password, setPassword] = useState("");
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [showAddrForm, setShowAddrForm] = useState(false);
-  const [newAddr, setNewAddr] = useState<Partial<Address>>({ country: "US", is_default: false });
+  const [newAddr, setNewAddr] = useState<Partial<Address>>({ country: defaults.country, is_default: false });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     if (!profile) return;
     setFullName(profile.full_name || "");
-    setCountry((profile as any).country || "US");
+    setCountry((profile as any).country || defaults.country);
     setAvatarUrl((profile as any).avatar_url || "");
-  }, [profile]);
+  }, [profile, defaults.country]);
 
   const loadAddresses = async () => {
     if (!user) return;
@@ -79,7 +83,11 @@ export default function BuyerProfile() {
     setSavingProfile(true);
     const { error } = await supabase.from("profiles").update({ full_name: fullName, country, avatar_url: avatarUrl || null } as any).eq("user_id", user.id);
     setSavingProfile(false);
-    if (error) toast.error(error.message); else toast.success("Profile updated");
+    if (error) toast.error(error.message);
+    else {
+      setCountryPreference(country);
+      toast.success("Profile updated");
+    }
   };
 
   const uploadAvatar = async (file: File) => {
@@ -107,7 +115,7 @@ export default function BuyerProfile() {
     if (error) { toast.error(error.message); return; }
     toast.success("Address added");
     setShowAddrForm(false);
-    setNewAddr({ country: "US", is_default: false });
+    setNewAddr({ country, is_default: false });
     loadAddresses();
   };
 

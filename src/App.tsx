@@ -28,6 +28,7 @@ import TermsPage from "@/pages/legal/TermsPage";
 import PrivacyPage from "@/pages/legal/PrivacyPage";
 import RefundPolicyPage from "@/pages/legal/RefundPolicyPage";
 import ContactPage from "@/pages/legal/ContactPage";
+import CollectionPage from "@/pages/CollectionPage";
 
 // Admin
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -38,6 +39,7 @@ import AdminDisputes from "@/pages/admin/AdminDisputes";
 import AdminProducts from "@/pages/admin/AdminProducts";
 import AdminOrders from "@/pages/admin/AdminOrders";
 import AdminPages from "@/pages/admin/AdminPages";
+import AdminCollections from "@/pages/admin/AdminCollections";
 import ShippingPage from "@/pages/legal/ShippingPage";
 import PaymentPage from "@/pages/legal/PaymentPage";
 import AboutPage from "@/pages/legal/AboutPage";
@@ -95,6 +97,7 @@ function AppRoutes() {
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/collections/:slug" element={<CollectionPage />} />
         <Route path="/product/:id" element={<ProductDetailPage />} />
         <Route path="/seller/:id" element={<SellerStorePage />} />
         <Route path="/checkout" element={<CheckoutPage />} />
@@ -121,6 +124,7 @@ function AppRoutes() {
         <Route path="/admin/dashboard" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
         <Route path="/admin/sellers" element={<AdminRoute><AdminSellers /></AdminRoute>} />
         <Route path="/admin/ads" element={<AdminRoute><AdminAds /></AdminRoute>} />
+        <Route path="/admin/collections" element={<AdminRoute><AdminCollections /></AdminRoute>} />
         <Route path="/admin/analytics" element={<AdminRoute><AdminAnalytics /></AdminRoute>} />
         <Route path="/admin/disputes" element={<AdminRoute><AdminDisputes /></AdminRoute>} />
         <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />

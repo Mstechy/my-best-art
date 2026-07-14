@@ -1,5 +1,6 @@
-import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import type { ChangeEvent, FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -7,26 +8,59 @@ import { useCart } from "@/hooks/useCart";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import ThemeToggle from "@/components/ThemeToggle";
 import CurrencySelector from "@/components/CurrencySelector";
+import RegionalPreferences from "@/components/RegionalPreferences";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose
 } from "@/components/ui/sheet";
 import {
-  ShoppingBag, Search, ShoppingCart, User, Menu, Home, Package,
-  Gavel, Store, ClipboardList, LogIn, Settings, HelpCircle, LogOut, ArrowRight, MessageSquare,
-  MapPin, Heart
+  Search, ShoppingCart, User, Menu, Home, Package,
+  Store, ClipboardList, LogIn, HelpCircle, LogOut, ArrowRight, MessageSquare, Heart, Camera
 } from "lucide-react";
+import { buildVisualSearchResult } from "@/lib/searchByImage";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MarketplaceNavbarProps {
   search?: string;
   onSearchChange?: (value: string) => void;
   showSearch?: boolean;
+  categories?: { label: string; value: string }[];
+  selectedCategory?: string | null;
+  onCategoryChange?: (value: string | null) => void;
 }
 
-export default function MarketplaceNavbar({ search = "", onSearchChange, showSearch = true }: MarketplaceNavbarProps) {
-  const { user, role, profile, signOut } = useAuth();
+const DEFAULT_SUGGESTIONS = ["wireless earbuds", "smart watch", "fashion", "home decor"];
+interface SearchSuggestion { label: string; suggestion_type: string; category_id: string | null; }
+
+const buildMarketplaceUrl = (search?: string, category?: string | null) => {
+  const params = new URLSearchParams();
+  const query = search?.trim();
+  if (query) params.set("search", query);
+  if (category) params.set("category", category);
+  const queryString = params.toString();
+  return queryString ? `/marketplace?${queryString}` : "/marketplace";
+};
+
+export default function MarketplaceNavbar({
+  search = "",
+  onSearchChange,
+  showSearch = true,
+  categories = [],
+  selectedCategory = null,
+  onCategoryChange,
+}: MarketplaceNavbarProps) {
+  const { user, role, signOut } = useAuth();
   const { totalItems, setIsOpen: openCart } = useCart();
   const unread = useUnreadMessages();
   const navigate = useNavigate();
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const [imageSearchOpen, setImageSearchOpen] = useState(false);
+  const [imageSearchPreview, setImageSearchPreview] = useState<string | null>(null);
+  const [imageSearchLabel, setImageSearchLabel] = useState("");
+  const [imageSearchCategory, setImageSearchCategory] = useState<string | null>(selectedCategory);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 
@@ -43,48 +77,179 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
     { icon: HelpCircle, label: "Help", href: "/" },
   ];
 
+  const activeCategory = selectedCategory ?? "__all__";
+  const hasCategories = categories.length > 0;
+  const primarySuggestions = hasCategories
+    ? categories.slice(0, 4).map(category => ({ label: category.label, value: category.value, kind: "category" as const }))
+    : DEFAULT_SUGGESTIONS.map(value => ({ label: value, value, kind: "search" as const }));
+
+  useEffect(() => {
+    setImageSearchCategory(selectedCategory);
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    const query = search.trim();
+    if (query.length < 2) { setSuggestions([]); return; }
+    const timer = window.setTimeout(async () => {
+      const { data } = await supabase.rpc("marketplace_search_suggestions", { p_query: query, p_limit: 6 });
+      setSuggestions((data || []) as SearchSuggestion[]);
+    }, 180);
+    return () => window.clearTimeout(timer);
+  }, [search]);
+
+  const handleSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    navigate(buildMarketplaceUrl(search, selectedCategory));
+  };
+
+  const handleQuickChip = (chip: { label: string; value: string; kind: "category" | "search" }) => {
+    if (chip.kind === "category") {
+      onCategoryChange?.(chip.value);
+      navigate(buildMarketplaceUrl(search, chip.value));
+      return;
+    }
+
+    onSearchChange?.(chip.value);
+    navigate(buildMarketplaceUrl(chip.value, selectedCategory));
+  };
+
+  const chooseSuggestion = (suggestion: SearchSuggestion) => {
+    setSuggestionsOpen(false);
+    if (suggestion.suggestion_type === "category" && suggestion.category_id) {
+      onSearchChange?.("");
+      onCategoryChange?.(suggestion.category_id);
+      navigate(buildMarketplaceUrl("", suggestion.category_id));
+      return;
+    }
+    onSearchChange?.(suggestion.label);
+    navigate(buildMarketplaceUrl(suggestion.label, selectedCategory));
+  };
+
+  const handleImageSearch = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files || []);
+    event.target.value = "";
+    const file = files[0];
+    if (!file) return;
+    const previewUrl = URL.createObjectURL(file);
+    setImageSearchPreview(previewUrl);
+    setImageSearchLabel(files.length > 1 ? `${file.name} (+${files.length - 1} more)` : file.name);
+    setImageSearchOpen(true);
+  };
+
+  const submitImageSearch = () => {
+    const visual = buildVisualSearchResult(imageSearchLabel || "image", imageSearchCategory);
+    const params = new URLSearchParams();
+    if (visual.search) params.set("search", visual.search);
+    if (visual.category) params.set("category", visual.category);
+    params.set("visual", visual.visual);
+    navigate(`/marketplace?${params.toString()}`);
+    setImageSearchOpen(false);
+    if (imageSearchPreview) URL.revokeObjectURL(imageSearchPreview);
+    setImageSearchPreview(null);
+    setImageSearchLabel("");
+  };
+
+  const clearImageSearch = () => {
+    if (imageSearchPreview) URL.revokeObjectURL(imageSearchPreview);
+    setImageSearchPreview(null);
+    setImageSearchLabel("");
+    setImageSearchOpen(false);
+  };
+
+  const openImagePicker = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleVisualClick = () => {
+    if (imageSearchPreview) {
+      submitImageSearch();
+    } else {
+      openImagePicker();
+    }
+  };
+
   return (
-    <nav className="sticky top-0 z-50 bg-[#FFFFFF] dark:bg-[#111111] text-[#111111] dark:text-[#FAF5F2] border-b border-[#E8E8E8] dark:border-[#222222] w-full">
+    <nav className="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-[#FFFFFF]/96 text-[#111111] backdrop-blur dark:border-[#222222] dark:bg-[#111111]/96 dark:text-[#FAF5F2]">
+      <div className="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">
+        <div className="flex items-center gap-3">
+          {/* Logo block */}
+          <Link to="/" className="flex items-baseline shrink-0 select-none">
+            <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">
+              market
+            </span>
+            <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D] lowercase">hub</span>
+          </Link>
 
-      <div className="mx-auto flex h-14 max-w-7xl items-center gap-3 px-4 lg:px-8">
-        {/* Logo block */}
-        <Link to="/" className="flex items-baseline shrink-0 mr-2 select-none">
-          <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">
-            market
-          </span>
-          <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D] lowercase">hub</span>
-        </Link>
-
-
-        {/* Horizontal nav links */}
-        <div className="hidden lg:flex items-center gap-6 text-[13px] font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 shrink-0 mr-6">
-          <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Daily Deals</Link>
-          <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Top Sellers</Link>
-          <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">New Drops</Link>
-        </div>
-
-        {/* Search bar */}
-        {showSearch && (
-          <div className="flex-1 max-w-md mx-auto">
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#888880] dark:text-[#888880]" />
-              <Input
-                value={search}
-                onChange={e => onSearchChange?.(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && search.trim()) {
-                    navigate(`/marketplace?q=${encodeURIComponent(search.trim())}`);
-                  }
-                }}
-                placeholder="Search"
-                className="pl-10 h-9 bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] placeholder:text-[#888880] focus-visible:ring-1 focus-visible:ring-[#111111] dark:focus-visible:ring-[#FAF5F2] rounded-full"
-              />
-            </div>
+          {/* Horizontal nav links */}
+          <div className="hidden lg:flex items-center gap-6 text-[13px] font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 shrink-0">
+            <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Daily Deals</Link>
+            <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Top Sellers</Link>
+            <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">New Drops</Link>
           </div>
-        )}
 
-        {/* Right side icons */}
-        <div className="flex items-center gap-1 shrink-0 ml-auto">
+          {/* Search bar */}
+          {showSearch && (
+            <form onSubmit={handleSubmit} className="hidden lg:flex flex-1 items-center justify-center px-2">
+              <div className="flex w-full max-w-3xl items-center rounded-full border border-[#E8E8E8] bg-white shadow-[0_10px_30px_rgba(17,17,17,0.05)] transition-shadow focus-within:shadow-[0_12px_36px_rgba(17,17,17,0.09)] dark:border-[#333333] dark:bg-[#1A1A1A]">
+                {hasCategories && (
+                  <div className="w-44 shrink-0 border-r border-[#E8E8E8] dark:border-[#333333]">
+                    <Select value={activeCategory} onValueChange={(value) => onCategoryChange?.(value === "__all__" ? null : value)}>
+                      <SelectTrigger className="h-12 w-full rounded-none border-0 bg-transparent px-4 text-sm font-medium text-[#111111] shadow-none focus:ring-0 dark:text-[#FAF5F2]">
+                        <SelectValue placeholder="All categories" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="__all__">All categories</SelectItem>
+                        {categories.map(category => (
+                          <SelectItem key={category.value} value={category.value}>
+                            {category.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="relative min-w-0 flex-1">
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
+                  <Input
+                    value={search}
+                    onChange={e => { onSearchChange?.(e.target.value); setSuggestionsOpen(true); }}
+                    onFocus={() => setSuggestionsOpen(true)}
+                    onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
+                    placeholder="Search products, brands, and categories"
+                    className="h-12 border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:text-[#FAF5F2]"
+                  />
+                  <button type="button" onClick={handleVisualClick} aria-label="Search by image" title="Search by image" className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+                  {suggestionsOpen && suggestions.length > 0 && (
+                    <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#888880]">Suggestions</p>
+                      {suggestions.map((suggestion, index) => (
+                        <button key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"><Search className="h-3.5 w-3.5 text-[#888880]" /><span className="truncate">{suggestion.label}</span><span className="ml-auto text-[10px] text-[#888880]">{suggestion.suggestion_type === "category" ? "Category" : "Product"}</span></button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <Button
+                  type="submit"
+                  className="m-1.5 h-9 rounded-full bg-[#111111] px-5 text-sm font-semibold text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-[#E8E8E8]"
+                >
+                  Search
+                </Button>
+              </div>
+                <input
+                ref={imageInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                onChange={handleImageSearch}
+              />
+            </form>
+          )}
+
+          {/* Right side icons */}
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
+          <RegionalPreferences />
           {/* Messages (logged-in only) */}
           {user && (
             <Link to={chatPath} aria-label="Messages" className="relative p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
@@ -183,7 +348,104 @@ export default function MarketplaceNavbar({ search = "", onSearchChange, showSea
               </div>
             </SheetContent>
           </Sheet>
+          </div>
         </div>
+
+        {showSearch && (
+          <>
+            <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2 lg:hidden">
+              <div className="relative min-w-0 flex-1">
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
+                <Input
+                  value={search}
+                  onChange={e => onSearchChange?.(e.target.value)}
+                  placeholder="Search products"
+                  className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
+                />
+                <button type="button" onClick={handleVisualClick} aria-label="Search by image" title="Search by image" className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+              </div>
+              <Button
+                type="submit"
+                className="h-11 rounded-full bg-[#111111] px-4 text-sm font-semibold text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111]"
+              >
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </form>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleImageSearch}
+            />
+
+            <Dialog open={imageSearchOpen} onOpenChange={(open) => (open ? setImageSearchOpen(true) : clearImageSearch())}>
+              <DialogContent className="max-w-md rounded-3xl border-[#E8E8E8] bg-white p-0 shadow-2xl dark:border-[#222222] dark:bg-[#111111]">
+                <DialogHeader className="border-b border-[#E8E8E8] px-5 py-4 dark:border-[#222222]">
+                  <DialogTitle className="text-base font-bold text-[#111111] dark:text-[#FAF5F2]">Search by image</DialogTitle>
+                  <DialogDescription className="text-xs text-[#888880] dark:text-[#A0A0A0]">
+                    Upload a photo and we’ll match similar products in the marketplace.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 px-5 py-5">
+                  <button
+                    type="button"
+                    onClick={openImagePicker}
+                    className="flex min-h-40 w-full flex-col items-center justify-center rounded-2xl border border-dashed border-[#C8C8C0] bg-[#FAFAFA] px-4 text-center transition-colors hover:bg-[#F2F3F5] dark:border-[#333333] dark:bg-[#1A1A1A] dark:hover:bg-[#202020]"
+                  >
+                    {imageSearchPreview ? (
+                      <img src={imageSearchPreview} alt="Preview upload" className="max-h-40 rounded-xl object-contain" />
+                    ) : (
+                      <>
+                        <Camera className="h-10 w-10 text-[#888880]" />
+                        <p className="mt-3 text-sm font-semibold text-[#111111] dark:text-[#FAF5F2]">Tap to upload an image</p>
+                        <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">PNG, JPG, WEBP</p>
+                      </>
+                    )}
+                  </button>
+                  {imageSearchLabel && (
+                    <p className="truncate text-xs text-[#888880] dark:text-[#A0A0A0]">
+                      File: {imageSearchLabel}
+                    </p>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={clearImageSearch}
+                      className="flex-1 rounded-full"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={submitImageSearch}
+                      className="flex-1 rounded-full bg-[#111111] text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111]"
+                    >
+                      Search similar
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <div className="mt-3 hidden lg:flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#888880] dark:text-[#A0A0A0]">
+                Trending
+              </span>
+              {primarySuggestions.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => handleQuickChip(item)}
+                  className="rounded-full border border-[#E8E8E8] bg-white px-3 py-1.5 text-xs font-medium text-[#111111] transition-colors hover:border-[#111111] hover:bg-[#F8F8F8] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] dark:hover:border-[#FAF5F2] dark:hover:bg-[#202020]"
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
       </div>
     </nav>
   );

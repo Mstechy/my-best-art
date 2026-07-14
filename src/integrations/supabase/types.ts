@@ -140,6 +140,96 @@ export type Database = {
         }
         Relationships: []
       }
+      marketplace_collection_products: {
+        Row: {
+          collection_id: string
+          created_at: string
+          product_id: string
+          sort_order: number
+        }
+        Insert: {
+          collection_id: string
+          created_at?: string
+          product_id: string
+          sort_order?: number
+        }
+        Update: {
+          collection_id?: string
+          created_at?: string
+          product_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_collection_products_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "marketplace_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_collection_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketplace_collections: {
+        Row: {
+          badge: string | null
+          created_at: string
+          created_by: string | null
+          cta_label: string
+          description: string | null
+          ends_at: string | null
+          id: string
+          image_url: string | null
+          placement: string
+          slug: string
+          sort_order: number
+          starts_at: string | null
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          badge?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          placement?: string
+          slug: string
+          sort_order?: number
+          starts_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          badge?: string | null
+          created_at?: string
+          created_by?: string | null
+          cta_label?: string
+          description?: string | null
+          ends_at?: string | null
+          id?: string
+          image_url?: string | null
+          placement?: string
+          slug?: string
+          sort_order?: number
+          starts_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       currency_rates: {
         Row: {
           code: string
@@ -402,6 +492,7 @@ export type Database = {
           id: string
           order_id: string
           product_id: string | null
+          product_variant_id: string | null
           quantity: number
           total_price: number
           unit_price: number
@@ -410,6 +501,7 @@ export type Database = {
           id?: string
           order_id: string
           product_id?: string | null
+          product_variant_id?: string | null
           quantity?: number
           total_price: number
           unit_price: number
@@ -418,6 +510,7 @@ export type Database = {
           id?: string
           order_id?: string
           product_id?: string | null
+          product_variant_id?: string | null
           quantity?: number
           total_price?: number
           unit_price?: number
@@ -783,6 +876,66 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_variants: {
+        Row: {
+          compare_at_price: number | null
+          created_at: string
+          id: string
+          image_url: string | null
+          is_active: boolean
+          option_values: Json
+          price: number | null
+          product_id: string
+          sku: string | null
+          sort_order: number
+          stock_quantity: number
+          updated_at: string
+        }
+        Insert: {
+          compare_at_price?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          option_values?: Json
+          price?: number | null
+          product_id: string
+          sku?: string | null
+          sort_order?: number
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Update: {
+          compare_at_price?: number | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          option_values?: Json
+          price?: number | null
+          product_id?: string
+          sku?: string | null
+          sort_order?: number
+          stock_quantity?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_variants_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_variant_id_fkey"
+            columns: ["product_variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
             referencedColumns: ["id"]
           },
         ]
@@ -1296,6 +1449,10 @@ export type Database = {
       }
     }
     Functions: {
+      place_marketplace_order: {
+        Args: { p_items: Json; p_seller_id: string; p_shipping_address: Json }
+        Returns: string
+      }
       admin_grant_seller: { Args: { _user_id: string }; Returns: undefined }
       admin_platform_counts: {
         Args: never
@@ -1380,6 +1537,33 @@ export type Database = {
         Args: { _product_id: string }
         Returns: undefined
       }
+      search_marketplace_product_ids: {
+        Args: {
+          p_category_id?: string | null
+          p_attribute_filters?: Json
+          p_condition?: string | null
+          p_country?: string | null
+          p_cursor_created_at?: string | null
+          p_cursor_id?: string | null
+          p_cursor_relevance?: number | null
+          p_in_stock_only?: boolean
+          p_limit?: number
+          p_max_price?: number | null
+          p_min_price?: number | null
+          p_min_rating?: number | null
+          p_query?: string
+          p_sort?: string
+        }
+        Returns: {
+          created_at: string
+          product_id: string
+          relevance: number
+        }[]
+      }
+      marketplace_search_suggestions: {
+        Args: { p_limit?: number; p_query: string }
+        Returns: { category_id: string | null; label: string; suggestion_type: string }[]
+      }
       store_credibility: {
         Args: { _seller_id: string }
         Returns: {
@@ -1392,6 +1576,10 @@ export type Database = {
           positive: number
           total: number
         }[]
+      }
+      track_product_discovery_event: {
+        Args: { p_event_type: string; p_product_ids: string[]; p_visitor_id?: string | null }
+        Returns: undefined
       }
       track_ad_click: { Args: { _ad_id: string }; Returns: undefined }
       track_ad_impression: { Args: { _ad_id: string }; Returns: undefined }
