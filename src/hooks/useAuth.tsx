@@ -114,11 +114,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
+      if (error) throw error;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        fetchUserData(session.user);
+        // Do not keep an expired token in storage and send it with public requests.
+        const { data: userData, error: userError } = await supabase.auth.getUser();
+        if (userError || !userData.user) throw userError || new Error("Session is no longer valid");
+        fetchUserData(userData.user);
       } else {
         setLoading(false);
       }

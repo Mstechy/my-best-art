@@ -18,8 +18,8 @@ import {
   Search, ShoppingCart, User, Menu, Home, Package,
   Store, ClipboardList, LogIn, HelpCircle, LogOut, ArrowRight, MessageSquare, Heart, Camera
 } from "lucide-react";
-import { buildVisualSearchResult } from "@/lib/searchByImage";
 import { supabase } from "@/integrations/supabase/client";
+import { createVisualHash } from "@/lib/visualHash";
 
 interface MarketplaceNavbarProps {
   search?: string;
@@ -58,6 +58,9 @@ export default function MarketplaceNavbar({
   const [imageSearchOpen, setImageSearchOpen] = useState(false);
   const [imageSearchPreview, setImageSearchPreview] = useState<string | null>(null);
   const [imageSearchLabel, setImageSearchLabel] = useState("");
+  const [imageSearchDataUrl, setImageSearchDataUrl] = useState<string | null>(null);
+  const [imageSearchFile, setImageSearchFile] = useState<File | null>(null);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
   const [imageSearchCategory, setImageSearchCategory] = useState<string | null>(selectedCategory);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -130,29 +133,47 @@ export default function MarketplaceNavbar({
     event.target.value = "";
     const file = files[0];
     if (!file) return;
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type) || file.size > 5 * 1024 * 1024) {
+      setImageSearchLabel("Use a JPG, PNG, or WebP image up to 5 MB.");
+      setImageSearchOpen(true);
+      return;
+    }
     const previewUrl = URL.createObjectURL(file);
     setImageSearchPreview(previewUrl);
+    setImageSearchFile(file);
     setImageSearchLabel(files.length > 1 ? `${file.name} (+${files.length - 1} more)` : file.name);
+    const reader = new FileReader();
+    reader.onload = () => setImageSearchDataUrl(typeof reader.result === "string" ? reader.result : null);
+    reader.readAsDataURL(file);
     setImageSearchOpen(true);
   };
 
-  const submitImageSearch = () => {
-    const visual = buildVisualSearchResult(imageSearchLabel || "image", imageSearchCategory);
+  const submitImageSearch = async () => {
+    if (!imageSearchFile) return;
+    setImageSearchLoading(true);
+    let visualHash: string;
+    try { visualHash = (await createVisualHash(imageSearchFile)).hash; }
+    catch { setImageSearchLoading(false); setImageSearchLabel("We could not read that image. Please try another JPG, PNG, or WebP."); return; }
+    setImageSearchLoading(false);
     const params = new URLSearchParams();
-    if (visual.search) params.set("search", visual.search);
-    if (visual.category) params.set("category", visual.category);
-    params.set("visual", visual.visual);
+    if (imageSearchCategory) params.set("category", imageSearchCategory);
+    params.set("visual", "1");
+    params.set("visualHash", visualHash);
     navigate(`/marketplace?${params.toString()}`);
     setImageSearchOpen(false);
     if (imageSearchPreview) URL.revokeObjectURL(imageSearchPreview);
     setImageSearchPreview(null);
     setImageSearchLabel("");
+    setImageSearchDataUrl(null);
+    setImageSearchFile(null);
   };
 
   const clearImageSearch = () => {
     if (imageSearchPreview) URL.revokeObjectURL(imageSearchPreview);
     setImageSearchPreview(null);
     setImageSearchLabel("");
+    setImageSearchDataUrl(null);
+    setImageSearchFile(null);
     setImageSearchOpen(false);
   };
 
@@ -240,7 +261,6 @@ export default function MarketplaceNavbar({
                 ref={imageInputRef}
                 type="file"
                 accept="image/*"
-                multiple
                 className="hidden"
                 onChange={handleImageSearch}
               />
@@ -422,7 +442,7 @@ export default function MarketplaceNavbar({
                       onClick={submitImageSearch}
                       className="flex-1 rounded-full bg-[#111111] text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111]"
                     >
-                      Search similar
+                      {imageSearchLoading ? "Analysing image…" : "Search similar"}
                     </Button>
                   </div>
                 </div>

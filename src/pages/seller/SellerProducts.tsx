@@ -19,6 +19,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Globe } from "lucide-react";
 import { uploadProductImagePair } from "@/lib/productImages";
 import ProductImage from "@/components/product/ProductImage";
+import { generateSku } from "@/lib/sku";
+import { createVisualHash } from "@/lib/visualHash";
 
 interface Category {
   id: string;
@@ -104,7 +106,7 @@ export default function SellerProducts() {
   const [compareAtPrice, setCompareAtPrice] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
-  const [sku, setSku] = useState("");
+  const [sku, setSku] = useState(() => generateSku());
   const [imageItems, setImageItems] = useState<ImageMediaItem[]>([]);
   const [removedImageIds, setRemovedImageIds] = useState<string[]>([]);
   const [videoItems, setVideoItems] = useState<VideoMediaItem[]>([]);
@@ -292,7 +294,7 @@ export default function SellerProducts() {
   const resetForm = () => {
     revokeLocalMediaUrls();
     setTitle(""); setDescription(""); setPrice(""); setCompareAtPrice("");
-    setCategoryId(""); setStockQuantity(""); setSku(""); setImageItems([]); setVideoItems([]);
+    setCategoryId(""); setStockQuantity(""); setSku(generateSku()); setImageItems([]); setVideoItems([]);
     setRemovedImageIds([]); setRemovedVideoUrls([]); setDraggedImageId(null); setSavedProductId(null);
     setDocFile(null); setShowSoldCount(true);
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
@@ -498,6 +500,7 @@ export default function SellerProducts() {
         if (!item.file) continue;
         try {
           updateImageUploadState(item.id, { status: "uploading", progress: 20, error: undefined });
+          const visualHash = await createVisualHash(item.file);
           const { originalUrl } = await uploadProductImagePair(item.file, `${user.id}/${productId}`);
           updateImageUploadState(item.id, { progress: 80 });
           const { data: inserted, error: insertError } = await supabase.from("product_images").insert({
@@ -505,6 +508,8 @@ export default function SellerProducts() {
             image_url: originalUrl,
             is_primary: item.isPrimary,
             sort_order: i,
+            visual_hash: visualHash.hash,
+            visual_hash_buckets: visualHash.buckets,
           } as any).select("id").single();
           if (insertError) throw insertError;
           updateImageUploadState(item.id, { dbId: (inserted as any).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
@@ -728,7 +733,7 @@ export default function SellerProducts() {
                       <Input type="number" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="0" className="mt-1" />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">SKU</label>
+                      <div className="flex items-center justify-between gap-2"><label className="text-sm font-medium text-foreground">SKU</label><Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSku(generateSku())}>Generate new</Button></div>
                       <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Optional" className="mt-1" />
                     </div>
                   </div>
@@ -750,7 +755,7 @@ export default function SellerProducts() {
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", sku: "", price: "", stock: "0" }])}><Plus className="h-4 w-4" /> Add size / colour SKU</Button>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0" }])}><Plus className="h-4 w-4" /> Add size / colour SKU</Button>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">

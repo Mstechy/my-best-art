@@ -655,6 +655,8 @@ export type Database = {
           is_primary: boolean
           product_id: string
           sort_order: number
+          visual_hash: string | null
+          visual_hash_buckets: string[]
         }
         Insert: {
           id?: string
@@ -662,6 +664,8 @@ export type Database = {
           is_primary?: boolean
           product_id: string
           sort_order?: number
+          visual_hash?: string | null
+          visual_hash_buckets?: string[]
         }
         Update: {
           id?: string
@@ -669,6 +673,8 @@ export type Database = {
           is_primary?: boolean
           product_id?: string
           sort_order?: number
+          visual_hash?: string | null
+          visual_hash_buckets?: string[]
         }
         Relationships: [
           {
@@ -1559,6 +1565,10 @@ export type Database = {
           product_id: string
           relevance: number
         }[]
+      }
+      search_marketplace_product_ids_by_visual_hash: {
+        Args: { p_category_id?: string | null; p_hash: string; p_limit?: number }
+        Returns: { created_at: string; product_id: string; relevance: number }[]
       }
       marketplace_search_suggestions: {
         Args: { p_limit?: number; p_query: string }

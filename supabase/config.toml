@@ -1,1 +1,5 @@
 project_id = "bnkyddmmhaaefzfvzpqs"
+
+[functions.visual-product-search]
+# Product discovery is available to visitors; the function's only secret stays server-side.
+verify_jwt = false

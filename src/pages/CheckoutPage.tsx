@@ -10,6 +10,7 @@ import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import { Package, ArrowLeft, ShoppingBag, CheckCircle2, Lock, ShieldCheck, CreditCard, BookmarkPlus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { COUNTRIES } from "@/lib/countries";
 
 interface SavedAddress {
   id: string;
@@ -53,9 +54,10 @@ export default function CheckoutPage() {
   }, [user]);
 
   const applySaved = (a: SavedAddress) => {
+    const savedCountry = COUNTRIES.find(country => country.code === a.country || country.name.toLowerCase() === a.country.toLowerCase())?.code || "";
     setAddress({
       name: a.recipient, street: [a.line1, a.line2].filter(Boolean).join(", "),
-      city: a.city, state: a.region || "", zip: a.postal_code || "", country: a.country,
+      city: a.city, state: a.region || "", zip: a.postal_code || "", country: savedCountry,
     });
   };
 
@@ -192,7 +194,10 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Country *</label>
-                    <input className={inputCls} value={address.country} onChange={e => setAddress(p => ({ ...p, country: e.target.value }))} placeholder="United States" />
+                    <Select value={address.country} onValueChange={country => setAddress(p => ({ ...p, country }))}>
+                      <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
+                      <SelectContent>{COUNTRIES.map(country => <SelectItem key={country.code} value={country.code}>{country.name}</SelectItem>)}</SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>

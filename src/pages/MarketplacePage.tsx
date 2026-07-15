@@ -66,6 +66,7 @@ export default function MarketplacePage() {
   const categoryParam = searchParams.get("category");
   const searchParam = searchParams.get("search");
   const visualParam = searchParams.get("visual");
+  const visualHashParam = searchParams.get("visualHash");
   const promo = promoKey ? PROMOS[promoKey] : null;
   const isVisualSearch = visualParam === "1";
 
@@ -146,14 +147,17 @@ export default function MarketplacePage() {
   async function fetchCatalogue(reset = false) {
     if (reset) { setLoading(true); setCursor(null); } else { setLoadingMore(true); }
     const pageCursor = reset ? null : cursor;
-    const { data: matches, error } = await supabase.rpc("search_marketplace_product_ids", {
-      p_query: search.trim(), p_category_id: selectedCategory, p_country: shipsTo === "all" ? null : shipsTo,
-      p_min_price: filters.minPrice || null, p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
-      p_min_rating: filters.minRating || null, p_in_stock_only: filters.inStockOnly,
-      p_condition: filters.condition === "any" ? null : filters.condition,
-      p_attribute_filters: filters.categoryAttributes, p_sort: sortBy, p_limit: CATALOGUE_PAGE_SIZE,
-      p_cursor_relevance: pageCursor?.relevance ?? null, p_cursor_created_at: pageCursor?.createdAt ?? null, p_cursor_id: pageCursor?.id ?? null,
-    });
+    const response = visualHashParam
+      ? await supabase.rpc("search_marketplace_product_ids_by_visual_hash", { p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE })
+      : await supabase.rpc("search_marketplace_product_ids", {
+        p_query: search.trim(), p_category_id: selectedCategory, p_country: shipsTo === "all" ? null : shipsTo,
+        p_min_price: filters.minPrice || null, p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
+        p_min_rating: filters.minRating || null, p_in_stock_only: filters.inStockOnly,
+        p_condition: filters.condition === "any" ? null : filters.condition,
+        p_attribute_filters: filters.categoryAttributes, p_sort: sortBy, p_limit: CATALOGUE_PAGE_SIZE,
+        p_cursor_relevance: pageCursor?.relevance ?? null, p_cursor_created_at: pageCursor?.createdAt ?? null, p_cursor_id: pageCursor?.id ?? null,
+      });
+    const { data: matches, error } = response;
     if (error) { setLoading(false); setLoadingMore(false); return; }
     const ids = (matches || []).map((match) => match.product_id);
     if (!ids.length) {
@@ -177,14 +181,14 @@ export default function MarketplacePage() {
       }
     const last = matches?.at(-1);
     setCursor(last ? { relevance: last.relevance, createdAt: last.created_at, id: last.product_id } : null);
-    setHasMore((matches?.length || 0) === CATALOGUE_PAGE_SIZE);
+    setHasMore(!visualHashParam && (matches?.length || 0) === CATALOGUE_PAGE_SIZE);
     setLoading(false); setLoadingMore(false);
   }
 
   useEffect(() => {
     const timer = window.setTimeout(() => { fetchCatalogue(true); }, 250);
     return () => window.clearTimeout(timer);
-  }, [search, selectedCategory, shipsTo, filters.minPrice, filters.maxPrice, filters.minRating, filters.inStockOnly, filters.condition, filters.categoryAttributes, sortBy]);
+  }, [search, selectedCategory, shipsTo, filters.minPrice, filters.maxPrice, filters.minRating, filters.inStockOnly, filters.condition, filters.categoryAttributes, sortBy, visualHashParam]);
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
