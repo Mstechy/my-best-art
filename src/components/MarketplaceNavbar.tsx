@@ -32,6 +32,7 @@ interface MarketplaceNavbarProps {
 
 const DEFAULT_SUGGESTIONS = ["wireless earbuds", "smart watch", "fashion", "home decor"];
 interface SearchSuggestion { label: string; suggestion_type: string; category_id: string | null; }
+interface NavigationCollection { title: string; slug: string; }
 
 const buildMarketplaceUrl = (search?: string, category?: string | null) => {
   const params = new URLSearchParams();
@@ -64,12 +65,14 @@ export default function MarketplaceNavbar({
   const [imageSearchCategory, setImageSearchCategory] = useState<string | null>(selectedCategory);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [navigationCollections, setNavigationCollections] = useState<NavigationCollection[]>([]);
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 
   const menuItems = [
     { icon: Home, label: "Home", href: "/" },
     { icon: Package, label: "Browse Products", href: "/marketplace" },
+    ...navigationCollections.map(collection => ({ icon: Package, label: collection.title, href: `/collections/${collection.slug}` })),
     { icon: Store, label: "Sell With Us", href: "/auth/register" },
     ...(user ? [
       { icon: ClipboardList, label: "My Orders", href: role === "seller" ? "/seller/orders" : "/buyer/orders" },
@@ -89,6 +92,14 @@ export default function MarketplaceNavbar({
   useEffect(() => {
     setImageSearchCategory(selectedCategory);
   }, [selectedCategory]);
+
+  useEffect(() => {
+    const loadNavigationCollections = async () => {
+      const { data } = await (supabase.from("marketplace_collections") as any).select("title,slug").is("seller_id", null).eq("status", "active").eq("placement", "navigation").order("sort_order");
+      setNavigationCollections((data || []) as NavigationCollection[]);
+    };
+    loadNavigationCollections();
+  }, []);
 
   useEffect(() => {
     const query = search.trim();

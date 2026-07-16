@@ -71,7 +71,7 @@ export default function LandingPage() {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
-  const [homepageCollection, setHomepageCollection] = useState<HomepageCollection | null>(null);
+  const [homepageCollections, setHomepageCollections] = useState<HomepageCollection[]>([]);
   const { addItem } = useCart();
   const { user, profile } = useAuth();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -82,7 +82,7 @@ export default function LandingPage() {
         // The homepage only renders a handful of cards. Never download the whole catalogue here.
         supabase.from("products").select("*, product_images(*)").eq("status", "active").eq("is_approved", true).order("created_at", { ascending: false }).limit(20),
         supabase.from("categories").select("*").order("sort_order"),
-        supabase.from("marketplace_collections").select("slug, title, description, image_url, badge, cta_label").eq("placement", "homepage").order("sort_order").limit(1),
+        supabase.from("marketplace_collections").select("slug, title, description, image_url, badge, cta_label").is("seller_id", null).eq("status", "active").eq("placement", "homepage").order("sort_order"),
       ]);
 
       if (productsRes.data) {
@@ -100,7 +100,7 @@ export default function LandingPage() {
         }
       }
       if (categoriesRes.data) setCategories(categoriesRes.data);
-      if (collectionsRes.data?.[0]) setHomepageCollection(collectionsRes.data[0] as HomepageCollection);
+      if (collectionsRes.data) setHomepageCollections(collectionsRes.data as HomepageCollection[]);
       setLoading(false);
     };
     fetchData();
@@ -214,14 +214,7 @@ export default function LandingPage() {
       link: "/marketplace?category=home"
     }
   ];
-  const heroSlides = homepageCollection ? [{
-    title: homepageCollection.title,
-    description: homepageCollection.description || "Explore our hand-picked products in this collection.",
-    image: homepageCollection.image_url || heroProductImage || headphonesHero,
-    badge: homepageCollection.badge || "New",
-    link: `/collections/${homepageCollection.slug}`,
-    ctaLabel: homepageCollection.cta_label,
-  }] : defaultHeroSlides;
+  const heroSlides = homepageCollections.length ? homepageCollections.map(collection => ({ title: collection.title, description: collection.description || "Explore our hand-picked products in this collection.", image: collection.image_url || heroProductImage || headphonesHero, badge: collection.badge || "New", link: `/collections/${collection.slug}`, ctaLabel: collection.cta_label })) : defaultHeroSlides;
 
   useEffect(() => {
     if (isSearchOrFilterActive) return;
@@ -527,6 +520,15 @@ export default function LandingPage() {
                 ));
               })()}
             </div>
+          </section>
+
+          {/* Category-organized catalogue rows: products stay grouped by category, never seller. */}
+          <section className="mx-auto max-w-7xl space-y-10 px-4 lg:px-8">
+            {categories.slice(0, 6).map(category => {
+              const categoryProducts = products.filter(product => product.category_id === category.id).slice(0, 5);
+              if (!categoryProducts.length) return null;
+              return <div key={category.id}><div className="mb-4 flex items-center justify-between"><h2 className="text-base font-semibold text-[#111111] dark:text-[#FAF5F2]">{category.name}</h2><Link to={`/marketplace?category=${encodeURIComponent(category.slug)}`} className="text-xs font-semibold hover:underline">See all</Link></div><div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">{categoryProducts.map(product => { const image = product.product_images.find(item => item.is_primary)?.image_url || product.product_images[0]?.image_url; return <Link key={product.id} to={`/product/${product.id}`} className="group overflow-hidden rounded-xl border border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1E1E1E]"><div className="aspect-square bg-muted">{image ? <ProductImage src={image} alt={product.title} className="group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center"><Package className="h-7 w-7 text-muted-foreground" /></div>}</div><div className="p-3"><h3 className="line-clamp-2 min-h-10 text-xs font-medium">{product.title}</h3><p className="mt-2 text-sm font-bold">${product.price}</p></div></Link>; })}</div></div>;
+            })}
           </section>
 
           {/* SECTION 4: MID-PAGE BANNER */}

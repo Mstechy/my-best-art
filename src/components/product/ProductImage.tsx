@@ -32,6 +32,9 @@ export default function ProductImage({
       src={currentSrc}
       alt={alt}
       loading={loading}
+      decoding="async"
+      width={900}
+      height={900}
       onError={() => {
         if (currentSrc !== src) setCurrentSrc(src);
       }}

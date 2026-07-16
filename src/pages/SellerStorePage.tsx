@@ -38,6 +38,7 @@ interface Product {
   created_at: string;
   product_images: { image_url: string; is_primary: boolean }[];
 }
+interface StoreCollection { id: string; title: string; slug: string; description: string | null; image_url: string | null; }
 
 export default function SellerStorePage() {
   const { id } = useParams<{ id: string }>();
@@ -45,16 +46,18 @@ export default function SellerStorePage() {
   const [store, setStore] = useState<StoreProfile | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [productOrders, setProductOrders] = useState<Record<string, number>>({});
+  const [collections, setCollections] = useState<StoreCollection[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
     const fetch = async () => {
-      const [sellerRes, fallbackSellerRes, productsRes, storeRes] = await Promise.all([
+      const [sellerRes, fallbackSellerRes, productsRes, storeRes, collectionsRes] = await Promise.all([
         (supabase as any).from("seller_profiles_public").select("*").eq("user_id", id).single(),
         supabase.from("profiles").select("user_id, full_name, avatar_url, country, is_verified, created_at").eq("user_id", id).maybeSingle(),
         supabase.from("products").select("id, title, price, compare_at_price, average_rating, review_count, created_at, product_images(*)").eq("seller_id", id).eq("status", "active").eq("is_approved", true).order("created_at", { ascending: false }),
         supabase.from("seller_stores").select("banner_url, logo_url, bio, return_policy, shipping_policy").eq("seller_id", id).maybeSingle(),
+        (supabase.from("marketplace_collections") as any).select("id,title,slug,description,image_url").eq("seller_id", id).eq("status", "active").order("sort_order"),
       ]);
       if (sellerRes.data) setSeller(sellerRes.data as SellerProfile);
       else if (fallbackSellerRes.data) setSeller(fallbackSellerRes.data as SellerProfile);
@@ -73,6 +76,7 @@ export default function SellerStorePage() {
         }
       }
       if (storeRes.data) setStore(storeRes.data as StoreProfile);
+      if (collectionsRes.data) setCollections(collectionsRes.data as StoreCollection[]);
       setLoading(false);
     };
     fetch();
@@ -181,6 +185,8 @@ export default function SellerStorePage() {
           </div>
         )}
 
+        {/* Seller collections */}
+        {collections.length > 0 && <section className="mb-8"><h2 className="font-display text-xl font-bold text-foreground mb-4">Store Collections</h2><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{collections.map(collection => <Link key={collection.id} to={`/collections/${collection.slug}`} className="overflow-hidden rounded-2xl border border-border/60 bg-card"><div className="aspect-[16/6] bg-muted">{collection.image_url && <img src={collection.image_url} alt="" className="h-full w-full object-cover" />}</div><div className="p-4"><p className="font-semibold">{collection.title}</p>{collection.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{collection.description}</p>}</div></Link>)}</div></section>}
         {/* Products */}
         <h2 className="font-display text-xl font-bold text-foreground mb-4">All Products</h2>
         {products.length === 0 ? (

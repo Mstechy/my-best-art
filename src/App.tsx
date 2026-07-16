@@ -54,6 +54,7 @@ import SellerChat from "@/pages/seller/SellerChat";
 import SellerStore from "@/pages/seller/SellerStore";
 import SellerReviews from "@/pages/seller/SellerReviews";
 import SellerAnalytics from "@/pages/seller/SellerAnalytics";
+import SellerCollections from "@/pages/seller/SellerCollections";
 
 // Buyer
 import BuyerDashboard from "@/pages/buyer/BuyerDashboard";
@@ -135,6 +136,7 @@ function AppRoutes() {
         <Route path="/seller/dashboard" element={<SellerRoute><SellerDashboard /></SellerRoute>} />
         <Route path="/seller/products" element={<SellerRoute><SellerProducts /></SellerRoute>} />
         <Route path="/seller/store" element={<SellerRoute><SellerStore /></SellerRoute>} />
+        <Route path="/seller/collections" element={<SellerRoute><SellerCollections /></SellerRoute>} />
         <Route path="/seller/orders" element={<SellerRoute><SellerOrders /></SellerRoute>} />
         <Route path="/seller/reviews" element={<SellerRoute><SellerReviews /></SellerRoute>} />
         <Route path="/seller/analytics" element={<SellerRoute><SellerAnalytics /></SellerRoute>} />

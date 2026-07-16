@@ -36,6 +36,7 @@ const sellerNav: NavItem[] = [
   { label: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { label: "Products", href: "/seller/products", icon: Package },
   { label: "Store Profile", href: "/seller/store", icon: Store },
+  { label: "My Collections", href: "/seller/collections", icon: Layers3 },
   { label: "Orders", href: "/seller/orders", icon: ShoppingCart },
   { label: "Reviews", href: "/seller/reviews", icon: Star },
   { label: "Analytics", href: "/seller/analytics", icon: BarChart3 },
