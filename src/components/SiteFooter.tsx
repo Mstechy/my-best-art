@@ -11,9 +11,9 @@ export default function SiteFooter() {
             <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">Shop</h4>
             <ul className="space-y-2 text-xs text-[#888880] dark:text-[#A0A0A0]">
               <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">All Products</Link></li>
-              <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Categories</Link></li>
-              <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Top Sellers</Link></li>
-              <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Deals & Discounts</Link></li>
+              <li><Link to="/categories" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Categories</Link></li>
+              <li><Link to="/marketplace?sort=best_sellers" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Top Sellers</Link></li>
+              <li><Link to="/marketplace?promo=summer20" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">Deals & Discounts</Link></li>
             </ul>
           </div>
           <div>

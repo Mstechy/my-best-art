@@ -86,6 +86,7 @@ interface VideoMediaItem {
 }
 
 interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; }
+type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; };
 
 export default function SellerProducts() {
   const { user } = useAuth();
@@ -134,6 +135,7 @@ export default function SellerProducts() {
 
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
+  const draftKey = user ? `markethub:product-listing-draft:${user.id}` : "";
 
   const fetchProducts = useCallback(async () => {
     if (!user) return;
@@ -192,6 +194,12 @@ export default function SellerProducts() {
     fetchProducts();
     fetchCategories();
   }, [fetchProducts, fetchCategories]);
+
+  useEffect(() => {
+    if (!dialogOpen || editingProduct || !draftKey) return;
+    const draft: ProductFormDraft = { title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab };
+    localStorage.setItem(draftKey, JSON.stringify(draft));
+  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab]);
 
   const revokeLocalMediaUrls = () => {
     imageItems.forEach((item) => {
@@ -303,6 +311,21 @@ export default function SellerProducts() {
     setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]);
     setEditingProduct(null); setFormTab("basic");
   };
+
+  const openNewProduct = () => {
+    resetForm();
+    const saved = draftKey ? localStorage.getItem(draftKey) : null;
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved) as ProductFormDraft;
+        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic");
+        toast({ title: "Unfinished listing restored", description: "Your text and settings were recovered. Please reselect any files before submitting." });
+      } catch { localStorage.removeItem(draftKey); }
+    }
+    setDialogOpen(true);
+  };
+
+  const discardNewDraft = () => { if (draftKey) localStorage.removeItem(draftKey); resetForm(); toast({ title: "Unfinished listing discarded" }); };
 
   const openEdit = async (product: Product) => {
     setEditingProduct(product);
@@ -598,6 +621,7 @@ export default function SellerProducts() {
       title: editingProduct ? "Product updated" : "Product submitted for approval",
       description: editingProduct ? undefined : "Your product will be visible on the marketplace once approved by admin.",
     });
+    if (draftKey) localStorage.removeItem(draftKey);
     resetForm();
     setDialogOpen(false);
     setSaving(false);
@@ -662,17 +686,15 @@ export default function SellerProducts() {
             <h1 className="font-display text-3xl font-bold text-foreground">My Products</h1>
             <p className="mt-1 text-muted-foreground">Manage your product listings ({products.length} total)</p>
           </div>
+          <Button onClick={openNewProduct} className="gap-2 gradient-seller text-primary-foreground shadow-glow-seller">
+            <Plus className="h-4 w-4" /> Add Product
+          </Button>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button className="gap-2 gradient-seller text-primary-foreground shadow-glow-seller">
-                <Plus className="h-4 w-4" /> Add Product
-              </Button>
-            </DialogTrigger>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle className="font-display">{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
                 {!editingProduct && (
-                  <p className="text-sm text-muted-foreground mt-1">Fill in product details. Your listing will be reviewed by admin before going live.</p>
+                  <div className="mt-1 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Your text and selections are saved automatically on this device. Re-select files if you leave before submitting.</p><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
                 )}
               </DialogHeader>
 

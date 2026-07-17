@@ -14,13 +14,12 @@ import CopyLinkButton from "@/components/CopyLinkButton";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
-import ProductGuarantee from "@/components/product/ProductGuarantee";
 import SellerMiniCard from "@/components/product/SellerMiniCard";
 import ReviewSummary from "@/components/product/ReviewSummary";
 import ReviewCard, { type ReviewData } from "@/components/product/ReviewCard";
 import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
-import { deliveryEstimateRange, formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
+import { formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
 import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
@@ -445,12 +444,11 @@ export default function ProductDetailPage() {
   const colorVariants = product.color?.split(",").map(c => c.trim()).filter(Boolean) || [];
   const warrantyDisplay = formatWarranty(product.warranty_period || product.warranty);
   const shipInfoValid = product.shipping_info && !isLikelyTestData(product.shipping_info);
-  const shipInfoDisplay = shipInfoValid ? product.shipping_info : "Ships within 3-5 business days";
+  const shipInfoDisplay = shipInfoValid ? product.shipping_info : null;
   const descriptionValid = product.description && !isLikelyTestData(product.description);
   const validFeatures = (product.key_features || []).filter(f => !isLikelyTestFeature(f));
   const showSold = product.show_sold_count !== false && soldCount > 0;
   const soldLabel = soldCount >= 10000 ? "10,000+ sold" : soldCount >= 100 ? `${Math.floor(soldCount / 100) * 100}+ sold` : `${soldCount} sold`;
-  const deliveryRange = deliveryEstimateRange();
   const positive = reviews.filter(r => r.rating >= 5).length;
   const neutral = reviews.filter(r => r.rating >= 3 && r.rating <= 4).length;
   const negative = reviews.filter(r => r.rating <= 2).length;
@@ -517,7 +515,13 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="mx-auto max-w-6xl md:px-4 lg:px-8 py-0 md:py-4">
-
+        <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-2 pb-4 text-xs text-[#888880]">
+          <Link to="/" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Home</Link>
+          <ChevronRight className="h-3.5 w-3.5" />
+          <Link to="/categories" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Categories</Link>
+          {category && <><ChevronRight className="h-3.5 w-3.5" /><Link to={`/categories/${category.slug || ""}`} className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">{category.name}</Link></>}
+          {productType && <><ChevronRight className="h-3.5 w-3.5" /><span>{productType.label}</span></>}
+        </nav>
 
         <div ref={overviewRef} className="grid md:grid-cols-2 gap-0 md:gap-8">
           {/* Left: Images */}
@@ -678,9 +682,6 @@ export default function ProductDetailPage() {
               </div>
             )}
             
-            <div className="hidden md:block mt-6 px-4 md:px-0">
-              <ProductGuarantee />
-            </div>
           </div>
 
           {/* Lightbox zoom dialog */}
@@ -798,8 +799,8 @@ export default function ProductDetailPage() {
                 <div className="flex items-start gap-2.5 min-w-0">
                   <Truck className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Free shipping</p>
-                    <p className="text-[10px] text-[#888880] mt-0.5">Delivery: {deliveryRange}</p>
+                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Shipping information</p>
+                    <p className="text-[10px] text-[#888880] mt-0.5">{shipInfoDisplay || "The seller has not supplied delivery information."}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-[#C0C0B8] shrink-0 self-center group-hover:translate-x-0.5 transition-transform" />
@@ -809,8 +810,8 @@ export default function ProductDetailPage() {
                 <div className="flex items-start gap-2.5 min-w-0">
                   <Shield className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Return & refund policy</p>
-                    <p className="text-[10px] text-[#888880] mt-0.5">{warrantyDisplay || "Refund within 30 days if unsatisfied"}</p>
+                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Warranty & returns</p>
+                    <p className="text-[10px] text-[#888880] mt-0.5">{warrantyDisplay || "No warranty or return terms were supplied."}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-4 w-4 text-[#C0C0B8] shrink-0 self-center group-hover:translate-x-0.5 transition-transform" />
@@ -953,7 +954,6 @@ export default function ProductDetailPage() {
 
         {/* Mobile Product Guarantee (Desktop is below image) */}
         <div className="md:hidden mt-4 px-4">
-          <ProductGuarantee />
         </div>
 
         {/* Tab contents (Specs, Details, etc) */}

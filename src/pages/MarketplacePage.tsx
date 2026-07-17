@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -62,11 +62,13 @@ const CATALOGUE_PAGE_SIZE = 24;
 
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const { slug: categoryRouteSlug } = useParams<{ slug?: string }>();
   const promoKey = searchParams.get("promo");
-  const categoryParam = searchParams.get("category");
+  const categoryParam = categoryRouteSlug ?? searchParams.get("category");
   const searchParam = searchParams.get("search");
   const visualParam = searchParams.get("visual");
   const visualHashParam = searchParams.get("visualHash");
+  const sortParam = searchParams.get("sort");
   const promo = promoKey ? PROMOS[promoKey] : null;
   const isVisualSearch = visualParam === "1";
 
@@ -76,7 +78,7 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [shipsTo, setShipsTo] = useState<string>("all");
   const [filters, setFilters] = useState<MarketplaceFiltersState>(defaultFilters);
-  const [sortBy, setSortBy] = useState("relevance");
+  const [sortBy, setSortBy] = useState(() => ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended"].includes(sortParam || "") ? sortParam! : "relevance");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [cursor, setCursor] = useState<CatalogueCursor | null>(null);
@@ -108,8 +110,19 @@ export default function MarketplacePage() {
   }, [categoryParam, categories]);
 
   useEffect(() => { if (searchParam !== null) setSearch(searchParam); }, [searchParam]);
+  useEffect(() => {
+    const nextSort = ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended"].includes(sortParam || "") ? sortParam! : "relevance";
+    setSortBy(current => current === nextSort ? current : nextSort);
+  }, [sortParam]);
 
   useEffect(() => {
+    if (categoryRouteSlug) {
+      const next = new URLSearchParams(searchParams);
+      if (search.trim()) next.set("search", search.trim()); else next.delete("search");
+      next.delete("category");
+      if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
+      return;
+    }
     const next = new URLSearchParams(searchParams);
     const normalizedSearch = search.trim();
     const categoryRecord = categories.find(category => category.id === selectedCategory) || null;
@@ -127,10 +140,12 @@ export default function MarketplacePage() {
       next.delete("category");
     }
 
+    if (sortBy !== "relevance") next.set("sort", sortBy); else next.delete("sort");
+
     if (next.toString() !== searchParams.toString()) {
       setSearchParams(next, { replace: true });
     }
-  }, [search, selectedCategory, categories, searchParams, setSearchParams]);
+  }, [search, selectedCategory, categories, searchParams, setSearchParams, categoryRouteSlug, sortBy]);
 
   const clearPromo = () => {
     const next = new URLSearchParams(searchParams);
@@ -141,7 +156,6 @@ export default function MarketplacePage() {
   const fetchData = async () => {
     const { data: categoriesData } = await supabase.from("categories").select("*").order("sort_order");
     if (categoriesData) setCategories(categoriesData);
-    setLoading(false);
   };
 
   async function fetchCatalogue(reset = false) {
@@ -272,13 +286,14 @@ export default function MarketplacePage() {
 
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <AnimatedSection variant="fade-up">
-          <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">Marketplace</h1>
+          {selectedCategoryRecord && <nav aria-label="Breadcrumb" className="mb-2 text-xs text-[#888880]"><Link to="/" className="hover:underline">Home</Link><span className="mx-2">/</span><Link to="/categories" className="hover:underline">Categories</Link><span className="mx-2">/</span><span>{selectedCategoryRecord.name}</span></nav>}
+          <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">{selectedCategoryRecord?.name || "Marketplace"}</h1>
           <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">
             {isVisualSearch
               ? (filtered.length > 0
                 ? "Image search results from your upload"
                 : "No exact visual match found, showing the closest products we have")
-              : "Discover products from verified sellers worldwide"}
+              : selectedCategoryRecord ? `Explore ${selectedCategoryRecord.name} from verified sellers. Filter, compare, and keep discovering.` : "Discover products from verified sellers worldwide"}
           </p>
           {promo && (
             <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] bg-[#F8F3F0] dark:bg-[#1C1C1E] px-4 py-3">
@@ -334,6 +349,9 @@ export default function MarketplacePage() {
                 <SelectItem value="relevance">Best match</SelectItem>
                 <SelectItem value="newest">Newest</SelectItem>
                 <SelectItem value="rating">Top rated</SelectItem>
+                <SelectItem value="best_sellers">Best sellers</SelectItem>
+                <SelectItem value="trending">Trending</SelectItem>
+                <SelectItem value="recommended">Recommended</SelectItem>
                 <SelectItem value="price_low">Price: low to high</SelectItem>
                 <SelectItem value="price_high">Price: high to low</SelectItem>
               </SelectContent>

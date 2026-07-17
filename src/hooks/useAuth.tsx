@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 import { detectRegionDefaults } from "@/lib/region";
 
 type AppRole = "admin" | "seller" | "buyer";
@@ -16,6 +17,8 @@ interface Profile {
   is_banned: boolean;
   is_frozen: boolean;
   is_approved: boolean;
+  country: string | null;
+  preferred_currency: string | null;
 }
 
 interface AuthContextType {
@@ -46,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (currentUser: User) => {
+  const fetchUserData = useCallback(async (currentUser: User) => {
     try {
       const userId = currentUser.id;
       let [profileRes, rolesRes] = await Promise.all([
@@ -80,11 +83,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userCountry = (currentUser.user_metadata?.country as string | undefined)?.toUpperCase() || null;
       const userCurrencyMeta = (currentUser.user_metadata?.preferred_currency as string | undefined) || (currentUser.user_metadata?.currency as string | undefined);
       const userCurrency = userCurrencyMeta?.toUpperCase() || null;
-      const missingCountry = profileRes.data && !(profileRes.data as any).country;
+      const profileData = profileRes.data as Profile | null;
+      const missingCountry = profileData && !profileData.country;
       if (missingCountry && userCountry) {
-        const payload: Record<string, string | null> = { country: userCountry };
+        const payload: Database["public"]["Tables"]["profiles"]["Update"] = { country: userCountry };
         if (userCurrency) payload.preferred_currency = userCurrency;
-        await supabase.from("profiles").update(payload as any).eq("user_id", userId);
+        await supabase.from("profiles").update(payload).eq("user_id", userId);
       }
       if (userCountry) localStorage.setItem("preferred_country", userCountry);
       if (userCurrency) localStorage.setItem("preferred_currency", userCurrency);
@@ -95,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [role]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -136,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [fetchUserData]);
 
   const signUp = async (email: string, password: string, fullName: string, selectedRole: AppRole) => {
     const { country, currency } = detectRegionDefaults();

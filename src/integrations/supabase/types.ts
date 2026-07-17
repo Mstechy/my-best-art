@@ -188,6 +188,7 @@ export type Database = {
           image_url: string | null
           placement: string
           slug: string
+          seller_id: string | null
           sort_order: number
           starts_at: string | null
           status: string
@@ -205,6 +206,7 @@ export type Database = {
           image_url?: string | null
           placement?: string
           slug: string
+          seller_id?: string | null
           sort_order?: number
           starts_at?: string | null
           status?: string
@@ -222,6 +224,7 @@ export type Database = {
           image_url?: string | null
           placement?: string
           slug?: string
+          seller_id?: string | null
           sort_order?: number
           starts_at?: string | null
           status?: string

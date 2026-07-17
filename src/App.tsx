@@ -29,6 +29,7 @@ import PrivacyPage from "@/pages/legal/PrivacyPage";
 import RefundPolicyPage from "@/pages/legal/RefundPolicyPage";
 import ContactPage from "@/pages/legal/ContactPage";
 import CollectionPage from "@/pages/CollectionPage";
+import CategoriesPage from "@/pages/CategoriesPage";
 
 // Admin
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -98,6 +99,8 @@ function AppRoutes() {
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/marketplace" element={<MarketplacePage />} />
+        <Route path="/categories" element={<CategoriesPage />} />
+        <Route path="/categories/:slug" element={<MarketplacePage />} />
         <Route path="/collections/:slug" element={<CollectionPage />} />
         <Route path="/product/:id" element={<ProductDetailPage />} />
         <Route path="/seller/:id" element={<SellerStorePage />} />

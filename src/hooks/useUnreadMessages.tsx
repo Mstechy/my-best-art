@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import type { Database } from "@/integrations/supabase/types";
+
+type MessageChange = Pick<Database["public"]["Tables"]["messages"]["Row"], "receiver_id" | "sender_id">;
 
 export function useUnreadMessages() {
   const { user } = useAuth();
@@ -27,7 +31,7 @@ export function useUnreadMessages() {
     if (!user?.id) return;
 
     const ch = supabase.channel(`unread-msgs-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: any) => {
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: RealtimePostgresChangesPayload<MessageChange>) => {
         const row = payload.new ?? payload.old;
         if (row?.receiver_id === user.id || row?.sender_id === user.id) void refresh();
       })

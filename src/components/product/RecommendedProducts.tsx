@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { Package, Star, ShoppingCart, Flame } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Package, Star, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import ProductImage from "@/components/product/ProductImage";
 import { useCart } from "@/hooks/useCart";
@@ -21,7 +21,6 @@ interface RecItem {
 
 export default function RecommendedProducts({ productId, categoryId }: { productId: string; categoryId: string | null }) {
   const [items, setItems] = useState<RecItem[]>([]);
-  const navigate = useNavigate();
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -48,7 +47,6 @@ export default function RecommendedProducts({ productId, categoryId }: { product
       <div className="flex gap-3 overflow-x-auto pb-4 -mx-4 px-4 md:mx-0 md:px-0 snap-x scrollbar-none">
         {items.map(p => {
           const img = p.product_images?.find(i => i.is_primary) || p.product_images?.[0];
-          const soldCount = (p.review_count || 1) * 23 + 142; // Faux sold count for display
           
           return (
             <div key={p.id} className="shrink-0 w-40 sm:w-44 snap-start group relative bg-white dark:bg-[#1A1A1A] rounded-xl overflow-hidden hover:shadow-md transition-shadow border border-[#E8E8E8] dark:border-[#222222]">
@@ -95,12 +93,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                 </div>
                 
                 <Link to={`/product/${p.id}`} className="block">
-                  <div className="text-[10px] truncate">
-                    <span className="text-[#FF7A00] font-medium">Best-Selling Item</span>
-                    <span className="text-[#888880]"> in {p.categories?.name || "its category"}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-1 pt-1">
+                  {p.review_count > 0 && <div className="flex items-center gap-1 pt-1">
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map(s => (
                         <Star 
@@ -110,7 +103,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                       ))}
                     </div>
                     <span className="text-[10px] text-[#888880]">{p.review_count}</span>
-                  </div>
+                  </div>}
                 </Link>
               </div>
             </div>
