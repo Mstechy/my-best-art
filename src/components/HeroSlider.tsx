@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
@@ -9,7 +9,7 @@ interface HeroSliderProps {
   defaultDuration?: number;
 }
 
-export default function HeroSlider({
+const HeroSlider = memo(function HeroSlider({
   slides,
   autoRotate = true,
   defaultDuration = 5000,
@@ -116,8 +116,8 @@ export default function HeroSlider({
                 <img
                   src={s.image_url}
                   alt=""
-                  className={`h-full w-full object-cover transition-opacity duration-700 ${
-                    loadedImages.has(index) ? "opacity-100" : "opacity-0"
+                  className={`h-full w-full object-cover ${
+                    index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
                   }`}
                   loading={index === 0 ? "eager" : "lazy"}
                   fetchPriority={index === 0 ? "high" : "auto"}
@@ -132,11 +132,6 @@ export default function HeroSlider({
                     {s.title}
                   </p>
                 </div>
-              )}
-
-              {/* Placeholder backdrop while image loads */}
-              {!loadedImages.has(index) && (
-                <div className="absolute inset-0 bg-[#1C1C1E]" aria-hidden="true" />
               )}
 
               {/* Gradient overlay */}
@@ -215,4 +210,6 @@ export default function HeroSlider({
       )}
     </section>
   );
-}
+});
+
+export default HeroSlider;

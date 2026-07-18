@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
@@ -9,6 +9,7 @@ type MessageChange = Pick<Database["public"]["Tables"]["messages"]["Row"], "rece
 export function useUnreadMessages() {
   const { user } = useAuth();
   const [total, setTotal] = useState(0);
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refresh = useCallback(async () => {
     if (!user?.id) {
@@ -26,18 +27,45 @@ export function useUnreadMessages() {
     setTotal(count ?? 0);
   }, [user?.id]);
 
+  // Debounced refresh to prevent excessive API calls
+  const debouncedRefresh = useCallback(() => {
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+    }
+    refreshTimerRef.current = setTimeout(() => {
+      void refresh();
+    }, 300); // 300ms debounce
+  }, [refresh]);
+
   useEffect(() => {
     void refresh();
     if (!user?.id) return;
 
     const ch = supabase.channel(`unread-msgs-${user.id}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, (payload: RealtimePostgresChangesPayload<MessageChange>) => {
-        const row = payload.new ?? payload.old;
-        if (row?.receiver_id === user.id || row?.sender_id === user.id) void refresh();
-      })
+      .on("postgres_changes", 
+        { 
+          event: "*", 
+          schema: "public", 
+          table: "messages",
+          filter: `receiver_id=eq.${user.id}` // Only listen to messages for this user
+        }, 
+        (payload: RealtimePostgresChangesPayload<MessageChange>) => {
+          // Only refresh if the message is unread and belongs to this user
+          const row = payload.new as MessageChange | null;
+          if (row?.receiver_id === user.id) {
+            debouncedRefresh();
+          }
+        }
+      )
       .subscribe();
-    return () => { supabase.removeChannel(ch); };
-  }, [refresh, user?.id]);
+
+    return () => { 
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+      }
+      supabase.removeChannel(ch); 
+    };
+  }, [refresh, debouncedRefresh, user?.id]);
 
   return total;
 }

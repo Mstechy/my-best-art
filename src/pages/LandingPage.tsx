@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Package, Sparkles, Star } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
@@ -35,29 +35,54 @@ export default function LandingPage() {
   const [feeds, setFeeds] = useState<Record<FeedName, FeedItem[]>>({ flash_deals: [], best_sellers: [], new_arrivals: [], trending: [], recommended: [] });
   const [sellers, setSellers] = useState<Record<string, Seller>>({});
   const [loading, setLoading] = useState(true);
+  const [heroLoading, setHeroLoading] = useState(true);
   const { formatPrice } = useCurrency();
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
+      // Fetch all data in parallel for maximum speed
       const [categoriesRes, countsRes, heroRes, ...feedRes] = await Promise.all([
         supabase.from("categories").select("id,name,slug").order("sort_order"),
-        supabase.rpc("homepage_category_counts"),
+        (supabase as any).rpc("homepage_category_counts"),
         fetchHeroCollections(),
         ...FEEDS.map(feed => (supabase as any).rpc("homepage_product_feed", { p_section: feed.key, p_limit: 10 })),
       ]);
+      
+      // Extract product IDs from feeds
       const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
-      const productsRes = ids.length ? await supabase.from("products").select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)").in("id", ids) : { data: [] };
-      const products = new Map(((productsRes.data || []) as unknown as Product[]).map(product => [product.id, product]));
-      const sellerIds = [...new Set((productsRes.data || []).map((product: any) => product.seller_id))];
-      const profilesRes = sellerIds.length ? await supabase.from("seller_profiles_public").select("user_id,full_name,is_verified").in("user_id", sellerIds) : { data: [] };
+      
+      // Extract seller IDs from feeds
+      const sellerIds = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id)))];
+      
+      // Fetch products and seller profiles in parallel (not sequential!)
+      const [productsRes, profilesRes] = await Promise.all([
+        ids.length ? supabase.from("products").select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)").in("id", ids) : { data: [] },
+        sellerIds.length ? supabase.from("seller_profiles_public").select("user_id,full_name,is_verified").in("user_id", sellerIds) : { data: [] }
+      ]);
+      
       if (!mounted) return;
+      
+      const products = new Map(((productsRes.data || []) as unknown as Product[]).map(product => [product.id, product]));
+      const profiles = new Map(((profilesRes.data || []) as any).filter((row: any) => row.user_id).map((row: any) => [row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified }]));
+      
       setCategories((categoriesRes.data || []) as Category[]);
       setCounts(Object.fromEntries((countsRes.data || []).map((row: any) => [row.category_id, Number(row.product_count)])));
       setHeroSlides(heroRes);
-      setSellers(Object.fromEntries((profilesRes.data || []).filter((row: any) => row.user_id).map((row: any) => [row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified }])));
+      setHeroLoading(false);
+      setSellers(Object.fromEntries(profiles));
       setFeeds(Object.fromEntries(FEEDS.map((feed, index) => [feed.key, (feedRes[index].data || []).flatMap((row: any) => products.has(row.product_id) ? [{ ...products.get(row.product_id)!, sold_count: Number(row.sold_count), trend_score: Number(row.trend_score) }] : [])])) as Record<FeedName, FeedItem[]>);
       setLoading(false);
+      
+      // Preload the first hero image for LCP optimization (industry standard)
+      if (heroRes.length > 0 && heroRes[0].image_url) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.href = heroRes[0].image_url;
+        link.fetchPriority = 'high';
+        document.head.appendChild(link);
+      }
     };
     void load();
     return () => { mounted = false; };
@@ -69,7 +94,11 @@ export default function LandingPage() {
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="pb-16">
       {/* Hero Slider — uses hero-enabled collections */}
-      {heroSlides.length > 0 ? (
+      {heroLoading ? (
+        <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
+          <div className="mx-auto aspect-[21/9] min-h-[320px] animate-pulse bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]" />
+        </div>
+      ) : heroSlides.length > 0 ? (
         <HeroSlider slides={heroSlides} />
       ) : (
         <section className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
@@ -92,8 +121,8 @@ export default function LandingPage() {
 }
 
 function Empty({ text }: { text: string }) { return <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#888880] dark:border-[#333333] dark:bg-[#1A1A1A]">{text}</div>; }
-function ProductCard({ product, seller, formatPrice }: { product: FeedItem; seller?: Seller; formatPrice: (amount: number, sourceCurrency?: string) => string }) {
-  const image = product.product_images.find(item => item.is_primary)?.image_url || product.product_images[0]?.image_url;
-  const discount = product.compare_at_price && product.compare_at_price > product.price ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
+const ProductCard = memo(function ProductCard({ product, seller, formatPrice }: { product: FeedItem; seller?: Seller; formatPrice: (amount: number, sourceCurrency?: string) => string }) {
+  const image = useMemo(() => product.product_images.find(item => item.is_primary)?.image_url || product.product_images[0]?.image_url, [product.product_images]);
+  const discount = useMemo(() => product.compare_at_price && product.compare_at_price > product.price ? Math.round((1 - product.price / product.compare_at_price) * 100) : null, [product.price, product.compare_at_price]);
   return <Link to={`/product/${product.id}`} className="group overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white transition hover:-translate-y-0.5 hover:shadow-md dark:border-[#222222] dark:bg-[#1A1A1A]"><div className="relative aspect-square bg-[#F2F3F5] dark:bg-[#202020]">{image ? <ProductImage src={image} alt={product.title} className="group-hover:scale-105" loading="lazy" /> : <div className="flex h-full items-center justify-center"><Package className="h-8 w-8 text-[#888880]" /></div>}{discount && <span className="absolute left-3 top-3 rounded bg-[#E53935] px-2 py-0.5 text-[10px] font-bold text-white">-{discount}%</span>}</div><div className="p-3"><h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">{product.title}</h3><div className="mt-2 flex items-baseline gap-2"><span className="font-bold">{formatPrice(product.price, product.currency)}</span>{product.compare_at_price && product.compare_at_price > product.price && <span className="text-xs text-[#888880] line-through">{formatPrice(product.compare_at_price, product.currency)}</span>}</div>{product.review_count > 0 && <div className="mt-2 flex items-center gap-1 text-xs text-[#666666] dark:text-[#A0A0A0]"><Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />{product.average_rating.toFixed(1)} <span>({product.review_count})</span></div>}{product.sold_count > 0 && <p className="mt-1 text-xs text-[#888880]">{product.sold_count} sold</p>}{seller && <div className="mt-2 flex items-center gap-1 border-t border-[#F2F3F5] pt-2 text-[10px] text-[#888880] dark:border-[#262626]"><span className="truncate">{seller.full_name || "Seller"}</span>{seller.is_verified && <CheckCircle2 className="h-3 w-3 shrink-0 text-[#F6C75D]" />}</div>}</div></Link>;
-}
+});

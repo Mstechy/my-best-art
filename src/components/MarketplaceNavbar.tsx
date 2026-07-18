@@ -1,6 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import type { ChangeEvent, FormEvent } from "react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/hooks/useAuth";
@@ -43,7 +43,7 @@ const buildMarketplaceUrl = (search?: string, category?: string | null) => {
   return queryString ? `/marketplace?${queryString}` : "/marketplace";
 };
 
-export default function MarketplaceNavbar({
+const MarketplaceNavbar = memo(function MarketplaceNavbar({
   search = "",
   onSearchChange,
   showSearch = true,
@@ -66,6 +66,7 @@ export default function MarketplaceNavbar({
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [navigationCollections, setNavigationCollections] = useState<NavigationCollection[]>([]);
+  const [localSearch, setLocalSearch] = useState(search);
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 
@@ -122,19 +123,25 @@ export default function MarketplaceNavbar({
     loadNavigationCollections();
   }, []);
 
+  // Sync local search when prop changes (e.g., navigating between pages)
   useEffect(() => {
-    const query = search.trim();
+    setLocalSearch(search);
+  }, [search]);
+
+  // Fetch suggestions based on local search
+  useEffect(() => {
+    const query = localSearch.trim();
     if (query.length < 2) { setSuggestions([]); return; }
     const timer = window.setTimeout(async () => {
       const { data } = await supabase.rpc("marketplace_search_suggestions", { p_query: query, p_limit: 6 });
       setSuggestions((data || []) as SearchSuggestion[]);
     }, 180);
     return () => window.clearTimeout(timer);
-  }, [search]);
+  }, [localSearch]);
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    navigate(buildMarketplaceUrl(search, selectedCategory));
+    navigate(buildMarketplaceUrl(localSearch, selectedCategory));
   };
 
   const handleQuickChip = (chip: { label: string; value: string; kind: "category" | "search" }) => {
@@ -265,8 +272,8 @@ export default function MarketplaceNavbar({
                 <div className="relative min-w-0 flex-1">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
                   <Input
-                    value={search}
-                    onChange={e => { onSearchChange?.(e.target.value); setSuggestionsOpen(true); }}
+                    value={localSearch}
+                    onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                     onFocus={() => setSuggestionsOpen(true)}
                     onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
                     placeholder="Search products, brands, and categories"
@@ -409,8 +416,8 @@ export default function MarketplaceNavbar({
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
                 <Input
-                  value={search}
-                  onChange={e => onSearchChange?.(e.target.value)}
+                  value={localSearch}
+                  onChange={e => setLocalSearch(e.target.value)}
                   placeholder="Search products"
                   className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
                 />
@@ -497,8 +504,10 @@ export default function MarketplaceNavbar({
               ))}
             </div>
           </>
-        )}
+          )}
       </div>
     </nav>
   );
-}
+});
+
+export default MarketplaceNavbar;
