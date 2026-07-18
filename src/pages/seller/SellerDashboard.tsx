@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store, Eye } from "lucide-react";
+import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OffersReceivedCard from "@/components/OffersReceivedCard";
 import { Link } from "react-router-dom";
@@ -12,7 +12,7 @@ import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGri
 
 
 export default function SellerDashboard() {
-  const { user, profile } = useAuth();
+  const { user, profile, refetchProfile } = useAuth();
   const [isApproved, setIsApproved] = useState<boolean>(profile?.is_approved ?? false);
   const [checkingApproval, setCheckingApproval] = useState<boolean>(profile?.is_approved === undefined);
 
@@ -29,8 +29,6 @@ export default function SellerDashboard() {
 
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [weekly, setWeekly] = useState<{ day: string; revenue: number }[]>([]);
-
-  const { refetchProfile } = useAuth();
 
   useEffect(() => {
     if (!user) return;
@@ -182,7 +180,7 @@ export default function SellerDashboard() {
 
     fetchStats();
     fetchRecentOrders();
-  }, [user, isApproved]);
+  }, [user, isApproved, refetchProfile]);
 
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",

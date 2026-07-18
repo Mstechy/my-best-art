@@ -95,8 +95,29 @@ export default function MarketplaceNavbar({
 
   useEffect(() => {
     const loadNavigationCollections = async () => {
-      const { data } = await (supabase.from("marketplace_collections") as any).select("title,slug").is("seller_id", null).eq("status", "active").eq("placement", "navigation").order("sort_order");
-      setNavigationCollections((data || []) as NavigationCollection[]);
+      // Try new show_in_navigation flag first, fall back to old placement check
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data } = await (supabase.from("marketplace_collections") as any)
+        .select("title,slug")
+        .is("seller_id", null)
+        .eq("status", "active")
+        .eq("show_in_navigation", true)
+        .order("display_order")
+        .order("sort_order");
+      
+      // If no results with show_in_navigation, fall back to old placement method
+      if (!data || data.length === 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: oldData } = await (supabase.from("marketplace_collections") as any)
+          .select("title,slug")
+          .is("seller_id", null)
+          .eq("status", "active")
+          .eq("placement", "navigation")
+          .order("sort_order");
+        setNavigationCollections((oldData || []) as NavigationCollection[]);
+      } else {
+        setNavigationCollections((data || []) as NavigationCollection[]);
+      }
     };
     loadNavigationCollections();
   }, []);
