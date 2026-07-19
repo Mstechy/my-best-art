@@ -38,6 +38,27 @@ export default function LandingPage() {
   const [heroLoading, setHeroLoading] = useState(true);
   const { formatPrice } = useCurrency();
 
+  // Early hero preload: triggers immediately when hero data arrives
+  // All other requests continue loading in parallel
+  useEffect(() => {
+    // Start hero fetch early - preload happens as soon as URL is available
+    fetchHeroCollections().then(heroRes => {
+      if (heroRes.length > 0 && heroRes[0].image_url) {
+        const link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        // Use responsive image size for mobile-first LCP optimization
+        const separator = heroRes[0].image_url.includes("?") ? "&" : "?";
+        link.href = `${heroRes[0].image_url}${separator}width=1280&quality=85`;
+        link.fetchPriority = 'high';
+        // Using type assertion for image preload attributes (imagesrcset/imageSizes)
+        (link as { imagesrcset?: string }).imagesrcset = `${heroRes[0].image_url}${separator}width=768&quality=85 768w, ${heroRes[0].image_url}${separator}width=1280&quality=85 1280w, ${heroRes[0].image_url}${separator}width=1920&quality=85 1920w`;
+        (link as { imagesizes?: string }).imagesizes = "100vw";
+        document.head.appendChild(link);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     let mounted = true;
     const load = async () => {
@@ -53,7 +74,7 @@ export default function LandingPage() {
       const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
       
       // Extract seller IDs from feeds
-      const sellerIds = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id)))];
+      const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id)))];
       
       // Fetch products and seller profiles in parallel (not sequential!)
       const [productsRes, profilesRes] = await Promise.all([
@@ -73,16 +94,6 @@ export default function LandingPage() {
       setSellers(Object.fromEntries(profiles));
       setFeeds(Object.fromEntries(FEEDS.map((feed, index) => [feed.key, (feedRes[index].data || []).flatMap((row: any) => products.has(row.product_id) ? [{ ...products.get(row.product_id)!, sold_count: Number(row.sold_count), trend_score: Number(row.trend_score) }] : [])])) as Record<FeedName, FeedItem[]>);
       setLoading(false);
-      
-      // Preload the first hero image for LCP optimization (industry standard)
-      if (heroRes.length > 0 && heroRes[0].image_url) {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = heroRes[0].image_url;
-        link.fetchPriority = 'high';
-        document.head.appendChild(link);
-      }
     };
     void load();
     return () => { mounted = false; };

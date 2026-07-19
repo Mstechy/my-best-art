@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, memo } from "react";
+import { useCallback, useEffect, useRef, useState, memo, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
@@ -7,6 +7,16 @@ interface HeroSliderProps {
   slides: EnhancedCollection[];
   autoRotate?: boolean;
   defaultDuration?: number;
+}
+
+// Generate responsive image URLs using Supabase transformations
+// Never upscale beyond original dimensions
+function getHeroImageUrl(src: string | null, width: number): string {
+  if (!src) return "";
+  // Only apply transformation if it's a Supabase storage URL
+  if (!src.includes(".supabase.co/storage/")) return src;
+  const separator = src.includes("?") ? "&" : "?";
+  return `${src}${separator}width=${width}&quality=85`;
 }
 
 const HeroSlider = memo(function HeroSlider({
@@ -114,7 +124,9 @@ const HeroSlider = memo(function HeroSlider({
               {/* Background image */}
               {s.image_url ? (
                 <img
-                  src={s.image_url}
+                  src={getHeroImageUrl(s.image_url, 1920)}
+                  srcSet={`${getHeroImageUrl(s.image_url, 768)} 768w, ${getHeroImageUrl(s.image_url, 1280)} 1280w, ${getHeroImageUrl(s.image_url, 1920)} 1920w`}
+                  sizes="100vw"
                   alt=""
                   className={`h-full w-full object-cover ${
                     index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
