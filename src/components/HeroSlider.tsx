@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, memo, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
@@ -110,6 +110,7 @@ const HeroSlider = memo(function HeroSlider({
       >
         {slides.map((s, index) => {
           const isActive = index === current;
+          const imageAlt = s.title || "Hero banner";
           return (
             <div
               key={s.id}
@@ -127,7 +128,7 @@ const HeroSlider = memo(function HeroSlider({
                   src={getHeroImageUrl(s.image_url, 1920)}
                   srcSet={`${getHeroImageUrl(s.image_url, 768)} 768w, ${getHeroImageUrl(s.image_url, 1280)} 1280w, ${getHeroImageUrl(s.image_url, 1920)} 1920w`}
                   sizes="100vw"
-                  alt=""
+                  alt={imageAlt}
                   className={`h-full w-full object-cover ${
                     index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
                   }`}
@@ -135,7 +136,7 @@ const HeroSlider = memo(function HeroSlider({
                   fetchPriority={index === 0 ? "high" : "auto"}
                   decoding="async"
                   width={1920}
-                  height={520}
+                  height={852}
                   onLoad={() => handleImageLoad(index)}
                 />
               ) : (

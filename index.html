@@ -5,9 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MarketHub - Multi-Vendor Marketplace</title>
     
-    <!-- Preconnect to Supabase for early hero image discovery -->
-    <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" />
+<!-- Preconnect to Supabase for early hero image discovery -->
     <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin />
+    
+    <!-- Critical hero image preload for LCP - static fallback -->
+    <!-- This ensures LCP optimization even before React hydrates -->
+    <link rel="preload" as="image" href="https://bnkyddmmhaaefzfvzpqs.supabase.co/storage/v1/object/public/heroes/default-hero.jpg?width=1280&quality=85" fetchpriority="high" />
+    
+    <!-- Fallback hero image preload (in case admin hasn't configured hero slides) -->
+    <script>
+      // Preconnect + early fetch for hero image discovery
+      // Runs before React hydration to optimize LCP
+      (function() {
+        var img = new Image();
+        img.fetchPriority = 'high';
+        img.src = 'https://bnkyddmmhaaefzfvzpqs.supabase.co/storage/v1/object/public/heroes/default-hero.jpg?width=768&quality=85';
+      })();
+    </script>
     
     <!-- Preconnect to Google Fonts for faster font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
