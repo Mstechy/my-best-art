@@ -1,7 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, ShoppingCart, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Search, ChevronRight, BookmarkPlus, Play } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import type { TablesInsert } from "@/integrations/supabase/types";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,8 +11,8 @@ import { useCurrency } from "@/hooks/useCurrency";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
-import CopyLinkButton from "@/components/CopyLinkButton";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
@@ -20,7 +22,7 @@ import ReviewCard, { type ReviewData } from "@/components/product/ReviewCard";
 import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
 import { formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
-import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
+import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 
@@ -80,12 +82,16 @@ export default function ProductDetailPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const { add: addRecent } = useRecentlyViewed();
 
+  // Collapsible section states
+  const [specsOpen, setSpecsOpen] = useState(false);
+  const [descriptionOpen, setDescriptionOpen] = useState(false);
+  const [shippingOpen, setShippingOpen] = useState(false);
+  const [reviewFormOpen, setReviewFormOpen] = useState(false);
+
   useEffect(() => {
     if (product?.id) trackProductDiscovery(product.id, "view");
   }, [product?.id]);
 
-  const images = product?.product_images || [];
-  const productVideos = product ? getProductVideos(product.variants) : [];
   const variantSizes = product?.variants?.sizes?.length ? product.variants.sizes : [...new Set(productVariants.map(variant => variant.option_values.size).filter(Boolean))];
   const variantColors = product?.variants?.colors?.length ? product.variants.colors : [...new Set(productVariants.map(variant => variant.option_values.color).filter(Boolean))];
   const selectedVariant = productVariants.find(variant =>
@@ -98,6 +104,8 @@ export default function ProductDetailPage() {
 
   // Combine videos and images into a single media array (videos first)
   const mediaItems = useMemo(() => {
+    const images = product?.product_images || [];
+    const productVideos = product ? getProductVideos(product.variants) : [];
     const list: { type: "video" | "image"; url: string; id: string }[] = [];
     productVideos.forEach((vurl, idx) => {
       list.push({ type: "video", url: vurl, id: `video-${idx}` });
@@ -106,7 +114,7 @@ export default function ProductDetailPage() {
       list.push({ type: "image", url: img.image_url, id: img.id });
     });
     return list;
-  }, [productVideos, images]);
+  }, [product]);
 
 
   useEffect(() => {
@@ -147,107 +155,50 @@ export default function ProductDetailPage() {
   const recommendedRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "description" | "recommended">("overview");
 
-  useEffect(() => {
-    if (!id) return;
-    const fetchProduct = async () => {
-      const { data, error } = await supabase.from("products").select("*, product_images(*)").eq("id", id).single();
-      if (error || !data) { setLoading(false); return; }
-      setProduct(data as unknown as Product);
-      const [sellerRes, catRes, soldRes, docsRes, variantsRes] = await Promise.all([
-        supabase.from("seller_profiles_public" as any).select("user_id, full_name, is_verified, avatar_url").eq("user_id", data.seller_id).single(),
-        data.category_id ? supabase.from("categories").select("name, slug").eq("id", data.category_id).single() : Promise.resolve({ data: null }),
-        (supabase as any).rpc("product_sold_count", { _product_id: id }),
-        (supabase as any).from("product_documents").select("*").eq("product_id", id),
-        supabase.from("product_variants").select("id, option_values, price, stock_quantity, is_active").eq("product_id", id).eq("is_active", true).order("sort_order"),
-      ]);
-      const sellerData = sellerRes.data as any;
-      setSeller({ 
-        user_id: data.seller_id, 
-        full_name: sellerData?.full_name || null, 
-        is_verified: sellerData?.is_verified || false 
-      });
-      setSellerAvatar(sellerData?.avatar_url || null);
-      if (catRes.data) setCategory(catRes.data);
-      setSoldCount(Number(soldRes.data || 0));
-      setProductDocs((docsRes.data as any) || []);
-      setProductVariants((variantsRes.data ?? []) as unknown as ProductVariant[]);
-
-      // seller-level stats
-      const [{ count: followerCount }, sellerProducts] = await Promise.all([
-        (supabase as any).from("store_follows").select("id", { count: "exact", head: true }).eq("seller_id", data.seller_id),
-        supabase.from("products").select("id, average_rating, review_count").eq("seller_id", data.seller_id),
-      ]);
-      setSellerFollowers(followerCount || 0);
-      const prods = (sellerProducts.data as any[]) || [];
-      const totalReviews = prods.reduce((s, p) => s + (p.review_count || 0), 0);
-      const weighted = prods.reduce((s, p) => s + (p.average_rating || 0) * (p.review_count || 0), 0);
-      setSellerAvgRating(totalReviews > 0 ? weighted / totalReviews : 0);
-      // aggregate seller sold count
-      const pIds = prods.map(p => p.id);
-      if (pIds.length > 0) {
-        const { data: soldItems } = await supabase
-          .from("order_items")
-          .select("quantity, orders!inner(status)")
-          .in("product_id", pIds)
-          .eq("orders.status", "delivered");
-        setSellerTotalSold((soldItems || []).reduce((s: number, r: any) => s + (r.quantity || 0), 0));
-      }
-      setLoading(false);
-    };
-    fetchProduct();
-    fetchReviews();
-    fetchKeywords();
-    checkCanReview();
-    if (id) {
-      addRecent(id);
-      supabase.from("product_views").insert({ product_id: id, viewer_id: null } as any).then(() => { });
-    }
-  }, [id, user?.id]);
-
   const fetchKeywords = async () => {
     if (!id) return;
-    const { data } = await (supabase as any).rpc("product_review_keywords", { _product_id: id });
-    setKeywords((data as any[]) || []);
+    const { data } = await supabase.rpc("product_review_keywords", { _product_id: id });
+    setKeywords((data ?? []) as { keyword: string; count: number }[]);
   };
 
   const checkCanReview = async () => {
     if (!id || !user) { setCanReview(false); return; }
     const { data: items } = await supabase.from("order_items").select("order_id").eq("product_id", id);
-    const oids = [...new Set((items || []).map((i: any) => i.order_id).filter(Boolean))];
+    const oids = [...new Set((items || []).map((i: { order_id: string | null }) => i.order_id).filter(Boolean))];
     if (oids.length === 0) { setCanReview(false); return; }
     const { data: delivered } = await supabase
       .from("orders").select("id").eq("buyer_id", user.id).eq("status", "delivered").in("id", oids).limit(1).maybeSingle();
     setCanReview(!!delivered);
-    const { data: existing } = await (supabase as any)
+    const { data: existing } = await supabase
       .from("reviews").select("id").eq("product_id", id).eq("buyer_id", user.id).limit(1).maybeSingle();
     setAlreadyReviewed(!!existing);
   };
 
   const fetchReviews = async () => {
     if (!id) return;
-    const { data } = await (supabase as any)
+    const { data } = await supabase
       .from("reviews")
       .select("*")
       .eq("product_id", id)
       .eq("is_approved", true)
       .order("created_at", { ascending: false });
     if (!data) return;
-    const list = data as any[];
+    const list = data as unknown as { id: string; buyer_id: string; rating: number; title: string | null; comment: string | null; created_at: string; is_verified_purchase: boolean; subrating_communication: number | null; subrating_description: number | null; subrating_shipping: number | null }[];
     const buyerIds = [...new Set(list.map(r => r.buyer_id))];
     const reviewIds = list.map(r => r.id);
     const [{ data: profiles }, { data: photos }, { data: replies }, { data: pins }] = await Promise.all([
       supabase.from("profiles").select("user_id, full_name, country").in("user_id", buyerIds),
-      (supabase as any).from("review_photos").select("*").in("review_id", reviewIds),
-      (supabase as any).from("review_replies").select("*").in("review_id", reviewIds),
-      (supabase as any).from("review_pins").select("review_id").in("review_id", reviewIds),
+      supabase.from("review_photos").select("*").in("review_id", reviewIds),
+      supabase.from("review_replies").select("*").in("review_id", reviewIds),
+      supabase.from("review_pins").select("review_id").in("review_id", reviewIds),
     ]);
     const nameMap: Record<string, { name: string; country: string | null }> = {};
-    (profiles || []).forEach((p: any) => { nameMap[p.user_id] = { name: p.full_name || "Buyer", country: p.country || null }; });
+    (profiles || []).forEach((p: { user_id: string; full_name: string | null; country: string | null }) => { nameMap[p.user_id] = { name: p.full_name || "Buyer", country: p.country || null }; });
     const photoMap: Record<string, { url: string }[]> = {};
-    (photos || []).forEach((p: any) => { (photoMap[p.review_id] ||= []).push({ url: p.url }); });
+    (photos || []).forEach((p: { review_id: string; url: string }) => { (photoMap[p.review_id] ||= []).push({ url: p.url }); });
     const replyMap: Record<string, string> = {};
-    (replies || []).forEach((r: any) => { replyMap[r.review_id] = r.body; });
-    const pinSet = new Set((pins || []).map((p: any) => p.review_id));
+    (replies || []).forEach((r: { review_id: string; body: string }) => { replyMap[r.review_id] = r.body; });
+    const pinSet = new Set((pins || []).map((p: { review_id: string }) => p.review_id));
 
     const mapped: ReviewData[] = list.map(r => ({
       id: r.id,
@@ -267,6 +218,63 @@ export default function ProductDetailPage() {
     setReviews(mapped);
   };
 
+  useEffect(() => {
+    if (!id) return;
+    const fetchProduct = async () => {
+      const { data, error } = await supabase.from("products").select("*, product_images(*)").eq("id", id).single();
+      if (error || !data) { setLoading(false); return; }
+      setProduct(data as unknown as Product);
+      const [sellerRes, catRes, soldRes, docsRes, variantsRes] = await Promise.all([
+        supabase.from("seller_profiles_public").select("user_id, full_name, is_verified, avatar_url").eq("user_id", data.seller_id).single(),
+        data.category_id ? supabase.from("categories").select("name, slug").eq("id", data.category_id).single() : Promise.resolve({ data: null }),
+        supabase.rpc("product_sold_count", { _product_id: id }),
+        supabase.from("product_documents").select("*").eq("product_id", id),
+        supabase.from("product_variants").select("id, option_values, price, stock_quantity, is_active").eq("product_id", id).eq("is_active", true).order("sort_order"),
+      ]);
+      const sellerData = sellerRes.data;
+      setSeller({ 
+        user_id: data.seller_id, 
+        full_name: sellerData?.full_name || null, 
+        is_verified: sellerData?.is_verified || false 
+      });
+      setSellerAvatar(sellerData?.avatar_url || null);
+      if (catRes.data) setCategory(catRes.data);
+      setSoldCount(Number(soldRes.data || 0));
+      setProductDocs((docsRes.data ?? []) as ProductDoc[]);
+      setProductVariants((variantsRes.data ?? []) as unknown as ProductVariant[]);
+
+      // seller-level stats
+      const [{ count: followerCount }, sellerProducts] = await Promise.all([
+        supabase.from("store_follows").select("id", { count: "exact", head: true }).eq("seller_id", data.seller_id),
+        supabase.from("products").select("id, average_rating, review_count").eq("seller_id", data.seller_id),
+      ]);
+      setSellerFollowers(followerCount || 0);
+      const prods = (sellerProducts.data ?? []) as { id: string; average_rating: number; review_count: number }[];
+      const totalReviews = prods.reduce((s, p) => s + (p.review_count || 0), 0);
+      const weighted = prods.reduce((s, p) => s + (p.average_rating || 0) * (p.review_count || 0), 0);
+      setSellerAvgRating(totalReviews > 0 ? weighted / totalReviews : 0);
+      // aggregate seller sold count
+      const pIds = prods.map(p => p.id);
+      if (pIds.length > 0) {
+        const { data: soldItems } = await supabase
+          .from("order_items")
+          .select("quantity, orders!inner(status)")
+          .in("product_id", pIds)
+          .eq("orders.status", "delivered");
+        setSellerTotalSold((soldItems || []).reduce((s: number, r: { quantity: number }) => s + (r.quantity || 0), 0));
+      }
+      setLoading(false);
+    };
+    fetchProduct();
+    fetchReviews();
+    fetchKeywords();
+    checkCanReview();
+    if (id) {
+      addRecent(id);
+      supabase.from("product_views").insert({ product_id: id, viewer_id: null } as unknown as TablesInsert<"product_views">).then(() => { });
+    }
+  }, [id, user?.id, addRecent, checkCanReview, fetchKeywords, fetchReviews]);
+
   const submitReview = async () => {
     if (!user || !id || !product) return;
     if (reviewComment.trim().length < 20) {
@@ -284,7 +292,7 @@ export default function ProductDetailPage() {
       setSubmittingReview(false);
       return;
     }
-    const { data: inserted, error } = await (supabase as any).from("reviews").insert({
+    const { data: inserted, error } = await supabase.from("reviews").insert({
       product_id: id,
       buyer_id: user.id,
       seller_id: product.seller_id,
@@ -306,7 +314,7 @@ export default function ProductDetailPage() {
       const { error: upErr } = await supabase.storage.from("product-images").upload(path, file);
       if (!upErr) {
         const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-        await (supabase as any).from("review_photos").insert({ review_id: inserted.id, url: urlData.publicUrl, position: i });
+        await supabase.from("review_photos").insert({ review_id: inserted.id, url: urlData.publicUrl, position: i });
       }
     }
     toast.success("Review submitted ✓");
@@ -368,7 +376,7 @@ export default function ProductDetailPage() {
     if (url.searchParams.get("action") === "chat" && user.id !== sellerId) {
       navigate(`/buyer/chat?seller=${sellerId}&product=${product.id}`, { replace: true });
     }
-  }, [product, seller, user]);
+  }, [product, seller, user, navigate]);
 
   const handleSendOffer = async (offerPrice: number, note: string, attachmentUrl?: string | null) => {
     if (!user || !seller || !product) {
@@ -441,12 +449,10 @@ export default function ProductDetailPage() {
   addFallbackSpec("Dimensions", product.dimensions);
   addFallbackSpec("Condition", product.condition ? product.condition.charAt(0).toUpperCase() + product.condition.slice(1) : null);
 
-  const colorVariants = product.color?.split(",").map(c => c.trim()).filter(Boolean) || [];
   const warrantyDisplay = formatWarranty(product.warranty_period || product.warranty);
   const shipInfoValid = product.shipping_info && !isLikelyTestData(product.shipping_info);
   const shipInfoDisplay = shipInfoValid ? product.shipping_info : null;
   const descriptionValid = product.description && !isLikelyTestData(product.description);
-  const validFeatures = (product.key_features || []).filter(f => !isLikelyTestFeature(f));
   const showSold = product.show_sold_count !== false && soldCount > 0;
   const soldLabel = soldCount >= 10000 ? "10,000+ sold" : soldCount >= 100 ? `${Math.floor(soldCount / 100) * 100}+ sold` : `${soldCount} sold`;
   const positive = reviews.filter(r => r.rating >= 5).length;
@@ -493,8 +499,6 @@ export default function ProductDetailPage() {
       </div>
       <CartDrawer />
 
-
-
       {/* Desktop Sticky Tabs Sub-bar */}
       <div className="hidden md:sticky md:top-14 md:z-30 w-full bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md border-b border-[#E8E8E8] dark:border-[#222222] transition-all duration-200">
         <div className="mx-auto max-w-6xl flex items-center h-11 px-4 gap-1.5 overflow-x-auto scrollbar-none">
@@ -515,7 +519,7 @@ export default function ProductDetailPage() {
       </div>
 
       <div className="mx-auto max-w-6xl md:px-4 lg:px-8 py-0 md:py-4">
-        <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-2 pb-4 text-xs text-[#888880]">
+        <nav aria-label="Breadcrumb" className="hidden md:flex items-center gap-2 pb-3 text-xs text-[#888880]">
           <Link to="/" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Home</Link>
           <ChevronRight className="h-3.5 w-3.5" />
           <Link to="/categories" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Categories</Link>
@@ -523,7 +527,7 @@ export default function ProductDetailPage() {
           {productType && <><ChevronRight className="h-3.5 w-3.5" /><span>{productType.label}</span></>}
         </nav>
 
-        <div ref={overviewRef} className="grid md:grid-cols-2 gap-0 md:gap-8">
+        <div ref={overviewRef} className="grid md:grid-cols-2 gap-0 md:gap-6">
           {/* Left: Images */}
           <div className="relative">
             {/* Mobile Absolute Controls & Navigation Pills */}
@@ -660,7 +664,7 @@ export default function ProductDetailPage() {
 
             {/* List of mini thumbnails below the main image/video */}
             {mediaItems.length > 1 && (
-              <div className="flex gap-2 p-4 md:px-0 overflow-x-auto scrollbar-none">
+              <div className="flex gap-2 p-3 md:px-0 overflow-x-auto scrollbar-none">
                 {mediaItems.map((item, i) => (
                   <button
                     key={item.id}
@@ -733,15 +737,15 @@ export default function ProductDetailPage() {
           )}
 
           {/* Right: Info / Pricing / Checkout actions */}
-          <div className="p-4 md:p-0 space-y-4">
+          <div className="p-4 md:p-0 space-y-3">
             <div>
-              <div className="flex flex-wrap gap-1.5 mb-2">
+              <div className="flex flex-wrap gap-1.5 mb-1.5">
                 {category && <span className="inline-flex px-2 py-0.5 rounded bg-[#F2F3F5] dark:bg-[#1A1A1A] text-[9px] font-bold uppercase tracking-wider text-[#888880]">{category.name}</span>}
                 {productType && <span className="inline-flex px-2 py-0.5 rounded border border-[#E8E8E8] dark:border-[#222222] text-[9px] font-bold uppercase tracking-wider text-[#888880]">{productType.label}</span>}
               </div>
               <h1 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2] leading-snug tracking-tight">{product.title}</h1>
               {product.brand && (
-                <p className="text-xs text-[#888880] mt-1">Brand: <span className="text-[#111111] dark:text-[#FAF5F2] font-semibold">{product.brand}</span></p>
+                <p className="text-xs text-[#888880] mt-0.5">Brand: <span className="text-[#111111] dark:text-[#FAF5F2] font-semibold">{product.brand}</span></p>
               )}
             </div>
 
@@ -770,7 +774,7 @@ export default function ProductDetailPage() {
             )}
 
             {/* Brand Accent Price Box */}
-            <div className="bg-[#F6C75D]/10 dark:bg-[#F6C75D]/5 border border-[#F6C75D]/20 dark:border-[#F6C75D]/10 rounded-2xl p-4 flex flex-col gap-1.5 relative overflow-hidden">
+            <div className="bg-[#F6C75D]/10 dark:bg-[#F6C75D]/5 border border-[#F6C75D]/20 dark:border-[#F6C75D]/10 rounded-2xl p-3.5 flex flex-col gap-1.5 relative overflow-hidden">
               <div className="flex items-baseline gap-2">
                 <span className="text-3xl font-black text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</span>
                 {product.compare_at_price && product.compare_at_price > product.price && (
@@ -793,29 +797,42 @@ export default function ProductDetailPage() {
               <p className="text-[9px] text-[#888880] mt-0.5 leading-none">Tax excluded, added at checkout if applicable</p>
             </div>
 
-            {/* Commitments Section (Brand Style) */}
+            {/* Commitments Section (Brand Style) - Grouped Policies */}
             <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] overflow-hidden divide-y divide-[#F2F3F5] dark:divide-[#222222]">
-              <div className="p-3 flex items-start justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors">
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <Truck className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Shipping information</p>
-                    <p className="text-[10px] text-[#888880] mt-0.5">{shipInfoDisplay || "The seller has not supplied delivery information."}</p>
+              <Collapsible open={shippingOpen} onOpenChange={setShippingOpen}>
+                <CollapsibleTrigger className="w-full">
+                  <div className="p-3 flex items-start justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors w-full">
+                    <div className="flex items-start gap-2.5 min-w-0 text-left">
+                      <Truck className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Shipping information</p>
+                        <p className="text-[10px] text-[#888880] mt-0.5">{shipInfoDisplay ? "View shipping details" : "The seller has not supplied delivery information."}</p>
+                      </div>
+                    </div>
+                    <ChevronDown className={`h-4 w-4 text-[#C0C0B8] shrink-0 self-center transition-transform duration-200 ${shippingOpen ? "rotate-180" : ""}`} />
                   </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-[#C0C0B8] shrink-0 self-center group-hover:translate-x-0.5 transition-transform" />
-              </div>
-
-              <div className="p-3 flex items-start justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors">
-                <div className="flex items-start gap-2.5 min-w-0">
-                  <Shield className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Warranty & returns</p>
-                    <p className="text-[10px] text-[#888880] mt-0.5">{warrantyDisplay || "No warranty or return terms were supplied."}</p>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-3 pb-3">
+                    {shipInfoDisplay && (
+                      <div className="rounded-xl bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#222222] p-3 mb-2">
+                        <p className="text-xs text-[#888880] leading-relaxed">{shipInfoDisplay}</p>
+                      </div>
+                    )}
+                    {warrantyDisplay && (
+                      <div className="rounded-xl bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#222222] p-3">
+                        <div className="flex items-start gap-2.5">
+                          <Shield className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
+                          <div>
+                            <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-0.5">Warranty & returns</p>
+                            <p className="text-xs text-[#888880] leading-relaxed">{warrantyDisplay}</p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <ChevronRight className="h-4 w-4 text-[#C0C0B8] shrink-0 self-center group-hover:translate-x-0.5 transition-transform" />
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
 
               <div className="p-3 flex items-start gap-2.5 min-w-0">
                 <CheckCircle2 className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
@@ -828,8 +845,8 @@ export default function ProductDetailPage() {
 
             {/* Size / Color selection */}
             {variantSizes.length > 0 && (
-              <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4">
-                <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-3 flex items-center gap-1">Size <span className="text-red-500">*</span></p>
+              <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-3.5">
+                <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-2.5 flex items-center gap-1">Size <span className="text-red-500">*</span></p>
                 <div className="flex flex-wrap gap-2">
                   {variantSizes.map((s) => (
                     <button
@@ -848,8 +865,8 @@ export default function ProductDetailPage() {
             )}
 
             {variantColors.length > 0 && (
-              <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4">
-                <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-3 flex items-center gap-1">Color <span className="text-red-500">*</span></p>
+              <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-3.5">
+                <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-2.5 flex items-center gap-1">Color <span className="text-red-500">*</span></p>
                 <div className="flex flex-wrap gap-2">
                   {variantColors.map((c) => (
                     <button
@@ -869,7 +886,7 @@ export default function ProductDetailPage() {
 
             {/* Quantity Selector */}
             {purchasableStock > 0 && (
-              <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 flex items-center justify-between">
+              <div className="bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-3.5 flex items-center justify-between">
                 <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Quantity:</span>
                 <div className="flex items-center border border-[#E8E8E8] dark:border-[#222222] rounded-full overflow-hidden shrink-0">
                   <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-8 h-8 flex items-center justify-center text-xs font-bold text-[#888880] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors">−</button>
@@ -937,7 +954,7 @@ export default function ProductDetailPage() {
 
             {/* Seller Card */}
             {seller && (
-              <div className="mt-6">
+              <div className="mt-4">
                 <SellerMiniCard
                   sellerId={seller.user_id}
                   name={seller.full_name}
@@ -953,72 +970,109 @@ export default function ProductDetailPage() {
         </div>
 
         {/* Mobile Product Guarantee (Desktop is below image) */}
-        <div className="md:hidden mt-4 px-4">
+        <div className="md:hidden mt-3 px-4">
         </div>
 
         {/* Tab contents (Specs, Details, etc) */}
-        <div ref={descriptionRef} className="mt-10 scroll-mt-32 px-4 md:px-0 space-y-4">
-          {/* Specifications */}
+        <div ref={descriptionRef} className="mt-6 scroll-mt-32 px-4 md:px-0 space-y-3">
+          {/* Specifications - Collapsible with summary */}
           {specs.length > 0 && (
-            <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm">
-              <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-3 flex items-center gap-1.5">
-                <Info className="h-4.5 w-4.5 text-[#111111] dark:text-[#FAF5F2]" /> Specifications
-              </p>
-              <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
-                {specs.map(({ label, value }) => (
-                  <div key={label} className="flex justify-between py-2 text-xs border-b border-[#F2F3F5] dark:border-[#222222] last:border-0 sm:last:border-b sm:[&:nth-last-child(-n+2)]:border-0">
-                    <span className="text-[#888880]">{label}</span>
-                    <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{value}</span>
+            <Collapsible open={specsOpen} onOpenChange={setSpecsOpen}>
+              <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm overflow-hidden">
+                <CollapsibleTrigger className="w-full">
+                  <div className="p-4 flex items-center justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors">
+                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] flex items-center gap-1.5">
+                      <Info className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2]" /> Specifications
+                      <span className="text-[10px] font-normal text-[#888880] ml-1">({specs.length})</span>
+                    </p>
+                    <ChevronDown className={`h-4 w-4 text-[#C0C0B8] shrink-0 transition-transform duration-200 ${specsOpen ? "rotate-180" : ""}`} />
                   </div>
-                ))}
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4">
+                    <div className="grid sm:grid-cols-2 gap-x-8 gap-y-1">
+                      {specs.map(({ label, value }) => (
+                        <div key={label} className="flex justify-between py-2 text-xs border-b border-[#F2F3F5] dark:border-[#222222] last:border-0 sm:last:border-b sm:[&:nth-last-child(-n+2)]:border-0">
+                          <span className="text-[#888880]">{label}</span>
+                          <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CollapsibleContent>
               </div>
-            </div>
+            </Collapsible>
           )}
 
-          {/* About this product */}
+          {/* About this product - Collapsible with summary */}
           {descriptionValid && (
-            <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm">
-              <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-3 flex items-center gap-1.5">
-                <FileText className="h-4.5 w-4.5 text-[#111111] dark:text-[#FAF5F2]" /> About this product
-              </p>
-              <p className="text-xs text-[#888880] leading-relaxed whitespace-pre-wrap">{product.description}</p>
-            </div>
+            <Collapsible open={descriptionOpen} onOpenChange={setDescriptionOpen}>
+              <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm overflow-hidden">
+                <CollapsibleTrigger className="w-full">
+                  <div className="p-4 flex items-center justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors">
+                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] flex items-center gap-1.5">
+                      <FileText className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2]" /> About this product
+                    </p>
+                    <ChevronDown className={`h-4 w-4 text-[#C0C0B8] shrink-0 transition-transform duration-200 ${descriptionOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4">
+                    <p className="text-xs text-[#888880] leading-relaxed whitespace-pre-wrap">{product.description}</p>
+                  </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           )}
 
-          {/* Shipping & Warranty Metadata Cards */}
+          {/* Shipping & Warranty Metadata - Collapsible (merged into one section) */}
           {(warrantyDisplay || shipInfoDisplay) && (
-            <div className="grid sm:grid-cols-2 gap-4">
-              {shipInfoDisplay && (
-                <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm flex gap-3 items-start">
-                  <Truck className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">Shipping Policy</h4>
-                    <p className="text-xs text-[#888880] leading-relaxed">{shipInfoDisplay}</p>
+            <Collapsible open={shippingOpen} onOpenChange={setShippingOpen}>
+              <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm overflow-hidden">
+                <CollapsibleTrigger className="w-full">
+                  <div className="p-4 flex items-center justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors">
+                    <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] flex items-center gap-1.5">
+                      <Truck className="h-4 w-4 text-[#F6C75D]" /> Shipping & Policies
+                    </p>
+                    <ChevronDown className={`h-4 w-4 text-[#C0C0B8] shrink-0 transition-transform duration-200 ${shippingOpen ? "rotate-180" : ""}`} />
                   </div>
-                </div>
-              )}
-              {warrantyDisplay && (
-                <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm flex gap-3 items-start">
-                  <Shield className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2] shrink-0 mt-0.5" />
-                  <div>
-                    <h4 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">Warranty Details</h4>
-                    <p className="text-xs text-[#888880] leading-relaxed">{warrantyDisplay}</p>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-4 pb-4 space-y-3">
+                    {shipInfoDisplay && (
+                      <div className="rounded-xl bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#222222] p-3.5 flex gap-3 items-start">
+                        <Truck className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">Shipping Policy</h4>
+                          <p className="text-xs text-[#888880] leading-relaxed">{shipInfoDisplay}</p>
+                        </div>
+                      </div>
+                    )}
+                    {warrantyDisplay && (
+                      <div className="rounded-xl bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#222222] p-3.5 flex gap-3 items-start">
+                        <Shield className="h-4 w-4 text-[#F6C75D] shrink-0 mt-0.5" />
+                        <div>
+                          <h4 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">Warranty Details</h4>
+                          <p className="text-xs text-[#888880] leading-relaxed">{warrantyDisplay}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
-            </div>
+                </CollapsibleContent>
+              </div>
+            </Collapsible>
           )}
         </div>
 
         {/* Reviews Section */}
-        <div ref={reviewsRef} className="mt-10 scroll-mt-32 px-4 md:px-0">
-          <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-5 flex items-center gap-1.5">
+        <div ref={reviewsRef} className="mt-6 scroll-mt-32 px-4 md:px-0">
+          <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-4 flex items-center gap-1.5">
             <Star className="h-4.5 w-4.5 fill-[#F6C75D] text-[#F6C75D]" /> Customer Reviews
             {reviews.length > 0 && <span className="text-xs font-normal text-[#888880] ml-1">({reviews.length})</span>}
           </h2>
 
           {reviews.length > 0 && (
-            <div className="mb-4">
+            <div className="mb-3">
               <ReviewSummary
                 average={avgRating}
                 total={reviews.length}
@@ -1035,85 +1089,96 @@ export default function ProductDetailPage() {
             </div>
           )}
 
-          {/* Submit Review */}
+          {/* Submit Review - Collapsible */}
           {user && canReview && !alreadyReviewed && (
-            <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 mb-5 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm">
-              <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-3">Write a Review</h3>
-              <div className="flex items-center gap-1 mb-3">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <button key={s} onMouseEnter={() => setHoverRating(s)} onMouseLeave={() => setHoverRating(0)}
-                    onClick={() => setReviewRating(s)} className="p-0.5">
-                    <Star className={`h-5.5 w-5.5 transition-colors ${s <= (hoverRating || reviewRating) ? "text-[#F6C75D] fill-[#F6C75D]" : "text-[#C0C0B8]/30"}`} />
-                  </button>
-                ))}
-                <span className="text-xs text-[#888880] ml-2">{reviewRating}/5</span>
-              </div>
-              <input
-                value={reviewTitle}
-                onChange={e => setReviewTitle(e.target.value)}
-                placeholder="Review title (optional)"
-                className="w-full mb-3 h-10 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs text-[#111111] dark:text-[#FAF5F2] outline-none"
-              />
-              <textarea
-                value={reviewComment}
-                onChange={e => setReviewComment(e.target.value)}
-                placeholder="Share your experience (min 20 characters)…"
-                rows={3}
-                className="w-full mb-3 p-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs text-[#111111] dark:text-[#FAF5F2] outline-none"
-              />
-              {reviewPhotoFiles.length > 0 && (
-                <div className="flex gap-2 mb-3 flex-wrap">
-                  {reviewPhotoFiles.map((f, i) => (
-                    <div key={i} className="relative">
-                      <img src={URL.createObjectURL(f)} alt="" className="h-14 w-14 rounded-xl object-cover border border-[#E8E8E8] dark:border-[#222222]" />
-                      <button onClick={() => setReviewPhotoFiles(files => files.filter((_, j) => j !== i))}
-                        className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">
-                        <X className="h-2.5 w-2.5" />
+            <Collapsible open={reviewFormOpen} onOpenChange={setReviewFormOpen}>
+              <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm overflow-hidden mb-4">
+                <CollapsibleTrigger className="w-full">
+                  <div className="p-3.5 flex items-center justify-between cursor-pointer group hover:bg-[#FAFAFA] dark:hover:bg-[#111111] transition-colors">
+                    <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Write a Review</h3>
+                    <ChevronDown className={`h-4 w-4 text-[#C0C0B8] shrink-0 transition-transform duration-200 ${reviewFormOpen ? "rotate-180" : ""}`} />
+                  </div>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="px-3.5 pb-3.5">
+                    <div className="flex items-center gap-1 mb-3">
+                      {[1, 2, 3, 4, 5].map(s => (
+                        <button key={s} onMouseEnter={() => setHoverRating(s)} onMouseLeave={() => setHoverRating(0)}
+                          onClick={() => setReviewRating(s)} className="p-0.5">
+                          <Star className={`h-5.5 w-5.5 transition-colors ${s <= (hoverRating || reviewRating) ? "text-[#F6C75D] fill-[#F6C75D]" : "text-[#C0C0B8]/30"}`} />
+                        </button>
+                      ))}
+                      <span className="text-xs text-[#888880] ml-2">{reviewRating}/5</span>
+                    </div>
+                    <input
+                      value={reviewTitle}
+                      onChange={e => setReviewTitle(e.target.value)}
+                      placeholder="Review title (optional)"
+                      className="w-full mb-2.5 h-10 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs text-[#111111] dark:text-[#FAF5F2] outline-none"
+                    />
+                    <textarea
+                      value={reviewComment}
+                      onChange={e => setReviewComment(e.target.value)}
+                      placeholder="Share your experience (min 20 characters)…"
+                      rows={3}
+                      className="w-full mb-2.5 p-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs text-[#111111] dark:text-[#FAF5F2] outline-none"
+                    />
+                    {reviewPhotoFiles.length > 0 && (
+                      <div className="flex gap-2 mb-2.5 flex-wrap">
+                        {reviewPhotoFiles.map((f, i) => (
+                          <div key={i} className="relative">
+                            <img src={URL.createObjectURL(f)} alt="" className="h-14 w-14 rounded-xl object-cover border border-[#E8E8E8] dark:border-[#222222]" />
+                            <button onClick={() => setReviewPhotoFiles(files => files.filter((_, j) => j !== i))}
+                              className="absolute -top-1.5 -right-1.5 h-4.5 w-4.5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">
+                              <X className="h-2.5 w-2.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <label className="inline-flex items-center gap-1.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] px-3 py-1.5 text-xs text-[#888880] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] cursor-pointer font-semibold">
+                        <ImagePlus className="h-3.5 w-3.5" /> Add photos
+                        <input type="file" accept="image/*" multiple className="hidden"
+                          onChange={e => {
+                            const chosen = Array.from(e.target.files || []);
+                            setReviewPhotoFiles(prev => [...prev, ...chosen].slice(0, 3));
+                          }} />
+                      </label>
+                      <span className="text-[10px] text-[#888880]">Up to 3 photos</span>
+                      <button
+                        onClick={submitReview}
+                        disabled={submittingReview}
+                        className="ml-auto flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors"
+                      >
+                        <Send className="h-3.5 w-3.5" /> {submittingReview ? "Submitting…" : "Submit Review"}
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center gap-2">
-                <label className="inline-flex items-center gap-1.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] px-3 py-1.5 text-xs text-[#888880] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] cursor-pointer font-semibold">
-                  <ImagePlus className="h-3.5 w-3.5" /> Add photos
-                  <input type="file" accept="image/*" multiple className="hidden"
-                    onChange={e => {
-                      const chosen = Array.from(e.target.files || []);
-                      setReviewPhotoFiles(prev => [...prev, ...chosen].slice(0, 3));
-                    }} />
-                </label>
-                <span className="text-[10px] text-[#888880]">Up to 3 photos</span>
-                <button
-                  onClick={submitReview}
-                  disabled={submittingReview}
-                  className="ml-auto flex items-center gap-1.5 px-5 py-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors"
-                >
-                  <Send className="h-3.5 w-3.5" /> {submittingReview ? "Submitting…" : "Submit Review"}
-                </button>
+                  </div>
+                </CollapsibleContent>
               </div>
-            </div>
+            </Collapsible>
           )}
           {user && !canReview && (
-            <div className="mb-4 rounded-xl border border-[#E8E8E8] dark:border-[#222222] p-3 text-[10px] text-[#888880] bg-[#FAFAFA] dark:bg-[#111111] font-semibold">
+            <div className="mb-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] p-3 text-[10px] text-[#888880] bg-[#FAFAFA] dark:bg-[#111111] font-semibold">
               You can leave a review once your order is delivered.
             </div>
           )}
           {user && alreadyReviewed && (
-            <div className="mb-4 rounded-xl border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/10 p-3 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+            <div className="mb-3 rounded-xl border border-emerald-200 dark:border-emerald-900/30 bg-emerald-50 dark:bg-emerald-900/10 p-3 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
               Review Submitted ✓ — thanks for your feedback.
             </div>
           )}
 
           {reviews.length === 0 ? (
-            <div className="text-center py-8 text-[#888880]">
+            <div className="text-center py-6 text-[#888880]">
               <Star className="h-6 w-6 mx-auto mb-2 text-[#C0C0B8]/40" />
               <p className="text-xs">No reviews yet. Be the first to review this product!</p>
             </div>
           ) : visibleReviews.length === 0 ? (
-            <div className="text-center py-8 text-[#888880] text-xs">No reviews match this filter.</div>
+            <div className="text-center py-6 text-[#888880] text-xs">No reviews match this filter.</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
               {visibleReviews.map(r => <ReviewCard key={r.id} review={r} />)}
             </div>
           )}
@@ -1127,7 +1192,7 @@ export default function ProductDetailPage() {
           {product && <RecommendedProducts productId={product.id} categoryId={product.category_id} />}
         </div>
 
-        <div className="mt-8 px-4 md:px-0">
+        <div className="mt-6 px-4 md:px-0">
           <RecentlyViewed />
         </div>
       </div>

@@ -14,23 +14,23 @@ import PageTransition from "@/components/PageTransition";
 import NotificationsHub from "@/components/NotificationsHub";
 import CookieConsent from "@/components/CookieConsent";
 
-// Public pages (loaded immediately)
+// Public pages - Landing page and marketplace are critical, lazy load the rest
 import LandingPage from "@/pages/LandingPage";
-import MarketplacePage from "@/pages/MarketplacePage";
-import ProductDetailPage from "@/pages/ProductDetailPage";
-import SellerStorePage from "@/pages/SellerStorePage";
-import CheckoutPage from "@/pages/CheckoutPage";
-import OrderSuccessPage from "@/pages/OrderSuccessPage";
-import LoginPage from "@/pages/auth/LoginPage";
-import RegisterPage from "@/pages/auth/RegisterPage";
-import NotFound from "@/pages/NotFound";
-import PublicWishlistPage from "@/pages/PublicWishlistPage";
-import TermsPage from "@/pages/legal/TermsPage";
-import PrivacyPage from "@/pages/legal/PrivacyPage";
-import RefundPolicyPage from "@/pages/legal/RefundPolicyPage";
-import ContactPage from "@/pages/legal/ContactPage";
-import CollectionPage from "@/pages/CollectionPage";
-import CategoriesPage from "@/pages/CategoriesPage";
+const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
+const ProductDetailPage = lazy(() => import("@/pages/ProductDetailPage"));
+const SellerStorePage = lazy(() => import("@/pages/SellerStorePage"));
+const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
+const OrderSuccessPage = lazy(() => import("@/pages/OrderSuccessPage"));
+const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
+const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const NotFound = lazy(() => import("@/pages/NotFound"));
+const PublicWishlistPage = lazy(() => import("@/pages/PublicWishlistPage"));
+const TermsPage = lazy(() => import("@/pages/legal/TermsPage"));
+const PrivacyPage = lazy(() => import("@/pages/legal/PrivacyPage"));
+const RefundPolicyPage = lazy(() => import("@/pages/legal/RefundPolicyPage"));
+const ContactPage = lazy(() => import("@/pages/legal/ContactPage"));
+const CollectionPage = lazy(() => import("@/pages/CollectionPage"));
+const CategoriesPage = lazy(() => import("@/pages/CategoriesPage"));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -113,28 +113,28 @@ function AppRoutes() {
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
-        <Route path="/marketplace" element={<MarketplacePage />} />
-        <Route path="/categories" element={<CategoriesPage />} />
-        <Route path="/categories/:slug" element={<MarketplacePage />} />
-        <Route path="/collections/:slug" element={<CollectionPage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/seller/:id" element={<SellerStorePage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/order-success/:id" element={<OrderSuccessPage />} />
-        <Route path="/auth/login" element={<LoginPage />} />
-        <Route path="/auth/register" element={<RegisterPage />} />
-        <Route path="/wishlist/:userId" element={<PublicWishlistPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/refund-policy" element={<RefundPolicyPage />} />
-        <Route path="/shipping" element={<ShippingPage />} />
-        <Route path="/payment" element={<PaymentPage />} />
-        <Route path="/cookies" element={<PrivacyPage />} />
-        <Route path="/seller-agreement" element={<TermsPage />} />
-        <Route path="/prohibited-items" element={<TermsPage />} />
-        <Route path="/about" element={<AboutPage />} />
-        <Route path="/faq" element={<AboutPage />} />
-        <Route path="/contact" element={<ContactPage />} />
+        <Route path="/marketplace" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
+        <Route path="/categories" element={<RouteSuspense><CategoriesPage /></RouteSuspense>} />
+        <Route path="/categories/:slug" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
+        <Route path="/collections/:slug" element={<RouteSuspense><CollectionPage /></RouteSuspense>} />
+        <Route path="/product/:id" element={<RouteSuspense><ProductDetailPage /></RouteSuspense>} />
+        <Route path="/seller/:id" element={<RouteSuspense><SellerStorePage /></RouteSuspense>} />
+        <Route path="/checkout" element={<RouteSuspense><CheckoutPage /></RouteSuspense>} />
+        <Route path="/order-success/:id" element={<RouteSuspense><OrderSuccessPage /></RouteSuspense>} />
+        <Route path="/auth/login" element={<RouteSuspense><LoginPage /></RouteSuspense>} />
+        <Route path="/auth/register" element={<RouteSuspense><RegisterPage /></RouteSuspense>} />
+        <Route path="/wishlist/:userId" element={<RouteSuspense><PublicWishlistPage /></RouteSuspense>} />
+        <Route path="/terms" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
+        <Route path="/privacy" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />
+        <Route path="/refund-policy" element={<RouteSuspense><RefundPolicyPage /></RouteSuspense>} />
+        <Route path="/shipping" element={<RouteSuspense><ShippingPage /></RouteSuspense>} />
+        <Route path="/payment" element={<RouteSuspense><PaymentPage /></RouteSuspense>} />
+        <Route path="/cookies" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />
+        <Route path="/seller-agreement" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
+        <Route path="/prohibited-items" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
+        <Route path="/about" element={<RouteSuspense><AboutPage /></RouteSuspense>} />
+        <Route path="/faq" element={<RouteSuspense><AboutPage /></RouteSuspense>} />
+        <Route path="/contact" element={<RouteSuspense><ContactPage /></RouteSuspense>} />
 
         {/* Role redirect */}
         <Route path="/dashboard" element={<RoleRedirect />} />

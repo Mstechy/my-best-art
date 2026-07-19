@@ -14,6 +14,9 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   build: {
+    target: "es2020",
+    cssMinify: "lightningcss",
+    minify: "esbuild",
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -22,16 +25,23 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("@radix-ui")) return "radix-ui";
           if (id.includes("recharts")) return "charts";
           if (id.includes("framer-motion")) return "motion";
+          if (id.includes("lucide-react")) return "icons";
           if (id.includes("node_modules\\react") || id.includes("node_modules/react")) return "react";
           return "vendor";
         },
       },
     },
+    chunkSizeWarningLimit: 200,
+    sourcemap: false,
+    reportCompressedSize: false,
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
     },
     dedupe: ["react", "react-dom"],
+  },
+  esbuild: {
+    drop: mode === "production" ? ["console", "debugger"] : [],
   },
 }));
