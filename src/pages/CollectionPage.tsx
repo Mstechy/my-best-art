@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, Filter, Grid3X3, List, Package, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Grid3X3, List, Package } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
-import { resolveCollectionProducts, trackCollectionView, type EnhancedCollection } from "@/lib/collectionResolver";
+import { resolveCollectionProducts, trackCollectionView } from "@/lib/collectionResolver";
 
 type CollectionData = {
   id: string;
@@ -59,8 +59,7 @@ export default function CollectionPage() {
   const [sort, setSort] = useState<SortOption>("newest");
   const [page, setPage] = useState(1);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [showFilters, setShowFilters] = useState(false);
-  const [tracked, setTracked] = useState(false);
+  const trackedRef = useRef(false);
   const PER_PAGE = 20;
 
   const loadCollection = useCallback(async () => {
@@ -82,10 +81,10 @@ export default function CollectionPage() {
 
     setCollection(c as unknown as CollectionData);
 
-    // Track view once per session
-    if (!tracked) {
+    // Track view once per session (useRef to avoid triggering re-renders)
+    if (!trackedRef.current) {
       trackCollectionView(c.id);
-      setTracked(true);
+      trackedRef.current = true;
     }
 
     // Resolve products (works for both automatic and manual collections)
@@ -141,7 +140,7 @@ export default function CollectionPage() {
     }
 
     setLoading(false);
-  }, [slug, tracked]);
+  }, [slug]);
 
   useEffect(() => {
     loadCollection();
@@ -236,7 +235,6 @@ export default function CollectionPage() {
                 src={collection.image_url}
                 alt={collection.title}
                 className="h-full w-full object-cover"
-                fetchPriority="high"
               />
               <div
                 className="absolute inset-0"
@@ -303,7 +301,9 @@ export default function CollectionPage() {
             <div className="flex items-center gap-3">
               {/* Sort */}
               <div className="relative">
+                <label htmlFor="sort-select" className="sr-only">Sort products</label>
                 <select
+                  id="sort-select"
                   value={sort}
                   onChange={(e) => {
                     setSort(e.target.value as SortOption);

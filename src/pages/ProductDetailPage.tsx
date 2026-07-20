@@ -187,7 +187,8 @@ export default function ProductDetailPage() {
     const buyerIds = [...new Set(list.map(r => r.buyer_id))];
     const reviewIds = list.map(r => r.id);
     const [{ data: profiles }, { data: photos }, { data: replies }, { data: pins }] = await Promise.all([
-      buyerIds.length ? supabase.from("profiles").select("user_id, full_name, country").in("user_id", buyerIds) : Promise.resolve({ data: [] }),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      buyerIds.length ? (supabase as any).from("buyer_profiles_public").select("user_id, full_name, country").in("user_id", buyerIds) : Promise.resolve({ data: [] }),
       supabase.from("review_photos").select("*").in("review_id", reviewIds),
       supabase.from("review_replies").select("*").in("review_id", reviewIds),
       supabase.from("review_pins").select("review_id").in("review_id", reviewIds),

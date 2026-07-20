@@ -110,9 +110,9 @@ export interface EnhancedCollection {
  * Fetch hero-enabled collections for the homepage slider.
  * Uses `as any` cast because supabase types don't reflect new columns yet.
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
   const { data } = await (supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("*")
     .is("seller_id", null)
@@ -132,6 +132,7 @@ export async function fetchCollectionsByPlacement(
   limit = 20
 ): Promise<EnhancedCollection[]> {
   const { data } = await (supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("*")
     .is("seller_id", null)
@@ -152,6 +153,7 @@ export async function fetchCollectionsByPlacement(
  */
 export async function fetchNavigationCollections() {
   const { data } = await (supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("title, slug")
     .is("seller_id", null)
@@ -245,10 +247,17 @@ export function parseRulesFromJson(
 /**
  * Track a collection view (increments view_count).
  */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function trackCollectionView(collectionId: string) {
-  await (supabase
-    .from("marketplace_collections") as any)
-    .update({ view_count: (supabase.rpc as any)("increment", { x: 1 }) })
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data } = await (supabase.from("marketplace_collections") as any)
+    .select("view_count")
+    .eq("id", collectionId)
+    .single();
+
+  const currentCount = (data?.view_count ?? 0) + 1;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  await (supabase.from("marketplace_collections") as any)
+    .update({ view_count: currentCount })
     .eq("id", collectionId);
 }

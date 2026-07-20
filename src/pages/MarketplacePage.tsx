@@ -182,7 +182,7 @@ export default function MarketplacePage() {
     const byId = new Map((productsData || []).map((product) => [product.id, product as unknown as Product]));
     const ordered = ids.map((id) => byId.get(id)).filter((product): product is Product => !!product);
     setProducts((current) => reset ? ordered : [...current, ...ordered.filter((product) => !current.some((existing) => existing.id === product.id))]);
-    const sellerIds = [...new Set(ordered.map((product) => product.seller_id))];
+    const sellerIds = [...new Set(ordered.map((product) => product.seller_id).filter(Boolean))];
       if (sellerIds.length > 0) {
         const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
         if (profiles) {
@@ -202,7 +202,8 @@ export default function MarketplacePage() {
   useEffect(() => {
     const timer = window.setTimeout(() => { fetchCatalogue(true); }, 250);
     return () => window.clearTimeout(timer);
-  }, [search, selectedCategory, shipsTo, filters.minPrice, filters.maxPrice, filters.minRating, filters.inStockOnly, filters.condition, filters.categoryAttributes, sortBy, visualHashParam]);
+  }, 
+  );
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
