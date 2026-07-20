@@ -188,13 +188,13 @@ const App = () => (
             <CartProvider>
               <NotificationsHub />
               <CookieConsent />
-              <AppRoutes />
-            </CartProvider>
-          </CurrencyProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+        <AppRoutes />
+      </CartProvider>
+    </CurrencyProvider>
+  </AuthProvider>
+</BrowserRouter>
+</TooltipProvider>
+</QueryClientProvider>
 );
 
 export default App;

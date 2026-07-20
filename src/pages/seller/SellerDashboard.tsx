@@ -111,7 +111,7 @@ export default function SellerDashboard() {
       isCancelled = true;
       if (intervalIdRef.current) window.clearInterval(intervalIdRef.current);
     };
-  }, [user?.id, isApproved, profile?.is_approved, refetchProfile]);
+  }, [user, isApproved, profile?.is_approved, refetchProfile]);
 
 
   // Keep hooks order stable; gate rendering only.
@@ -171,9 +171,19 @@ export default function SellerDashboard() {
         .limit(5);
       if (data && data.length > 0) {
         const buyerIds = [...new Set(data.map(o => o.buyer_id))];
-        const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", buyerIds);
+        let profiles: { user_id: string; full_name: string | null }[] = [];
+        if (buyerIds.length) {
+          const { data: profileData, error: profileError } = await supabase
+            .from("profiles")
+            .select("user_id, full_name")
+            .in("user_id", buyerIds);
+          if (profileError) {
+            console.warn("Failed to load buyer profiles for recent orders:", profileError.message);
+          }
+          profiles = profileData || [];
+        }
         const map: Record<string, string> = {};
-        profiles?.forEach(p => { map[p.user_id] = p.full_name || "Unknown"; });
+        profiles.forEach(p => { if (p.user_id) map[p.user_id] = p.full_name || "Unknown"; });
         setRecentOrders(data.map(o => ({ ...o, buyer_name: map[o.buyer_id] || "Unknown" })));
       }
     };

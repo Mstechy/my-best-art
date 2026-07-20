@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -155,13 +155,13 @@ export default function ProductDetailPage() {
   const recommendedRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "description" | "recommended">("overview");
 
-  const fetchKeywords = async () => {
+  const fetchKeywords = useCallback(async () => {
     if (!id) return;
     const { data } = await supabase.rpc("product_review_keywords", { _product_id: id });
     setKeywords((data ?? []) as { keyword: string; count: number }[]);
-  };
+  }, [id]);
 
-  const checkCanReview = async () => {
+  const checkCanReview = useCallback(async () => {
     if (!id || !user) { setCanReview(false); return; }
     const { data: items } = await supabase.from("order_items").select("order_id").eq("product_id", id);
     const oids = [...new Set((items || []).map((i: { order_id: string | null }) => i.order_id).filter(Boolean))];
@@ -172,9 +172,9 @@ export default function ProductDetailPage() {
     const { data: existing } = await supabase
       .from("reviews").select("id").eq("product_id", id).eq("buyer_id", user.id).limit(1).maybeSingle();
     setAlreadyReviewed(!!existing);
-  };
+  }, [id, user]);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     if (!id) return;
     const { data } = await supabase
       .from("reviews")
@@ -187,7 +187,7 @@ export default function ProductDetailPage() {
     const buyerIds = [...new Set(list.map(r => r.buyer_id))];
     const reviewIds = list.map(r => r.id);
     const [{ data: profiles }, { data: photos }, { data: replies }, { data: pins }] = await Promise.all([
-      supabase.from("profiles").select("user_id, full_name, country").in("user_id", buyerIds),
+      buyerIds.length ? supabase.from("profiles").select("user_id, full_name, country").in("user_id", buyerIds) : Promise.resolve({ data: [] }),
       supabase.from("review_photos").select("*").in("review_id", reviewIds),
       supabase.from("review_replies").select("*").in("review_id", reviewIds),
       supabase.from("review_pins").select("review_id").in("review_id", reviewIds),
@@ -216,7 +216,7 @@ export default function ProductDetailPage() {
     }));
     mapped.sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
     setReviews(mapped);
-  };
+  }, [id]);
 
   useEffect(() => {
     if (!id) return;
@@ -725,7 +725,7 @@ export default function ProductDetailPage() {
               <div className="flex max-h-[92vh] max-w-[96vw] overflow-auto" onClick={(event) => event.stopPropagation()}>
                 <img
                   src={zoomedImage}
-                  alt={product.title}
+                  alt={`Zoomed view of ${product.title}`}
                   className="object-contain transition-[max-height,max-width] duration-200"
                   style={{
                     maxHeight: `${92 * zoomScale}vh`,
