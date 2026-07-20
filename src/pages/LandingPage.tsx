@@ -74,7 +74,7 @@ export default function LandingPage() {
       const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
       
       // Extract seller IDs from feeds
-      const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id)))];
+      const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id).filter(Boolean)))];
       
       // Fetch products and seller profiles in parallel (not sequential!)
       const [productsRes, profilesRes] = await Promise.all([

@@ -133,7 +133,7 @@ const HeroSlider = memo(function HeroSlider({
                     index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
                   }`}
                   loading={index === 0 ? "eager" : "lazy"}
-                  fetchPriority={index === 0 ? "high" : "auto"}
+                  fetchpriority={index === 0 ? "high" : "auto"}
                   decoding="async"
                   width={1920}
                   height={852}
