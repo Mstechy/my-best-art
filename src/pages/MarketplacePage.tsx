@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -81,7 +81,7 @@ export default function MarketplacePage() {
   const [sortBy, setSortBy] = useState(() => ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended"].includes(sortParam || "") ? sortParam! : "relevance");
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [cursor, setCursor] = useState<CatalogueCursor | null>(null);
+  const cursorRef = useRef<CatalogueCursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
   const { addItem } = useCart();
@@ -159,8 +159,8 @@ export default function MarketplacePage() {
   };
 
   const fetchCatalogue = useCallback(async function fetchCatalogueInner(reset = false) {
-    if (reset) { setLoading(true); setCursor(null); } else { setLoadingMore(true); }
-    const pageCursor = reset ? null : cursor;
+    if (reset) { setLoading(true); cursorRef.current = null; } else { setLoadingMore(true); }
+    const pageCursor = reset ? null : cursorRef.current;
     const response = visualHashParam
       ? await supabase.rpc("search_marketplace_product_ids_by_visual_hash", { p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE })
       : await supabase.rpc("search_marketplace_product_ids", {
@@ -194,10 +194,10 @@ export default function MarketplacePage() {
         }
       }
     const last = matches?.at(-1);
-    setCursor(last ? { relevance: last.relevance, createdAt: last.created_at, id: last.product_id } : null);
+    cursorRef.current = last ? { relevance: last.relevance, createdAt: last.created_at, id: last.product_id } : null;
     setHasMore(!visualHashParam && (matches?.length || 0) === CATALOGUE_PAGE_SIZE);
     setLoading(false); setLoadingMore(false);
-  }, [search, selectedCategory, shipsTo, filters, sortBy, cursor, visualHashParam]);
+  }, [search, selectedCategory, shipsTo, filters, sortBy, visualHashParam]);
 
   // Debounced fetch when search/filters change
   useEffect(() => {
