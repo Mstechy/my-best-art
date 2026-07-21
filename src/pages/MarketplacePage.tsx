@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -158,7 +158,7 @@ export default function MarketplacePage() {
     if (categoriesData) setCategories(categoriesData);
   };
 
-  async function fetchCatalogue(reset = false) {
+  const fetchCatalogue = useCallback(async function fetchCatalogueInner(reset = false) {
     if (reset) { setLoading(true); setCursor(null); } else { setLoadingMore(true); }
     const pageCursor = reset ? null : cursor;
     const response = visualHashParam
@@ -197,13 +197,12 @@ export default function MarketplacePage() {
     setCursor(last ? { relevance: last.relevance, createdAt: last.created_at, id: last.product_id } : null);
     setHasMore(!visualHashParam && (matches?.length || 0) === CATALOGUE_PAGE_SIZE);
     setLoading(false); setLoadingMore(false);
-  }
+  }, [search, selectedCategory, shipsTo, filters, sortBy, cursor, visualHashParam]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { fetchCatalogue(true); }, 250);
     return () => window.clearTimeout(timer);
-  }, 
-  );
+  }, [fetchCatalogue]);
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
