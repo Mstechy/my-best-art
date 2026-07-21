@@ -20,7 +20,6 @@ import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFilter
 import ProductImage from "@/components/product/ProductImage";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 
-// Promo descriptors keyed by URL ?promo=
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
 
 const PROMOS: Record<string, { label: string; filter: (p: Product) => boolean }> = {
@@ -89,17 +88,13 @@ export default function MarketplacePage() {
   const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
   const { isWishlisted, toggleWishlist } = useWishlist();
 
-  // Location and Currency Modal States
   const [isLocationOpen, setIsLocationOpen] = useState(false);
   const [isLocationConfirmScreen, setIsLocationConfirmScreen] = useState(true);
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
-
-  // The shared preference is detected once, then survives navigation and manual changes.
   useEffect(() => { setShipsTo(preferredCountry || "all"); }, [preferredCountry]);
 
-  // Sync category from URL once categories load
   useEffect(() => {
     if (!categoryParam || categories.length === 0) return;
     const cat = categories.find(c => c.slug === categoryParam || c.id === categoryParam);
@@ -127,24 +122,10 @@ export default function MarketplacePage() {
     const normalizedSearch = search.trim();
     const categoryRecord = categories.find(category => category.id === selectedCategory) || null;
     const normalizedCategory = categoryRecord?.slug || selectedCategory || null;
-
-    if (normalizedSearch) {
-      next.set("search", normalizedSearch);
-    } else {
-      next.delete("search");
-    }
-
-    if (normalizedCategory) {
-      next.set("category", normalizedCategory);
-    } else {
-      next.delete("category");
-    }
-
+    if (normalizedSearch) next.set("search", normalizedSearch); else next.delete("search");
+    if (normalizedCategory) next.set("category", normalizedCategory); else next.delete("category");
     if (sortBy !== "relevance") next.set("sort", sortBy); else next.delete("sort");
-
-    if (next.toString() !== searchParams.toString()) {
-      setSearchParams(next, { replace: true });
-    }
+    if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
   }, [search, selectedCategory, categories, searchParams, setSearchParams, categoryRouteSlug, sortBy]);
 
   const clearPromo = () => {
@@ -166,22 +147,20 @@ export default function MarketplacePage() {
       let result: { products: Product[]; has_more: boolean };
 
       if (visualHashParam) {
-        // Visual search still uses the old two-step approach
         const { data: matches, error } = await supabase.rpc("search_marketplace_product_ids_by_visual_hash", {
           p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE,
         });
         if (error) throw error;
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ids = (matches || []).map((m: any) => m.product_id);
-        if (!ids.length) { setProducts(reset ? [] : []); setHasMore(false); setLoading(false); setLoadingMore(false); return; }
+        if (!ids.length) { setProducts([]); setHasMore(false); setLoading(false); setLoadingMore(false); return; }
         const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const byId = new Map((productsData || []).map((p: any) => [p.id, p as unknown as Product]));
         const ordered = ids.map((id: string) => byId.get(id)).filter(Boolean) as Product[];
-        setProducts(reset ? ordered : (prev: Product[]) => [...prev, ...ordered.filter((p: Product) => !prev.some((e: Product) => e.id === p.id))]);
+        setProducts(ordered);
         result = { products: ordered, has_more: false };
       } else {
-        // Single roundtrip: combined RPC returns products + images in one call
         const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
           p_query: search.trim() || null,
           p_category_id: selectedCategory || null,
@@ -202,19 +181,17 @@ export default function MarketplacePage() {
         result = { products: (parsed?.products || []) as Product[], has_more: !!parsed?.has_more };
       }
 
-      // Fetch seller profiles for new products
-      const newProducts = reset ? result.products : result.products;
-      const sellerIds = [...new Set(newProducts.map((p: Product) => p.seller_id).filter(Boolean))];
+      const sellerIds = [...new Set(result.products.map((p: Product) => p.seller_id).filter(Boolean))];
       if (sellerIds.length > 0) {
         const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
         if (profiles) {
           const map: Record<string, { full_name: string | null; is_verified: boolean }> = {};
           profiles.forEach((p: SellerProfilePublic) => { if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified }; });
-          setSellerProfiles((prev) => reset ? map : { ...prev, ...map });
+          setSellerProfiles(map);
         }
       }
 
-      setProducts((prev: Product[]) => reset ? result.products : [...prev, ...result.products.filter((p: Product) => !prev.some((e: Product) => e.id === p.id))]);
+      setProducts(result.products);
       const last = result.products[result.products.length - 1];
       cursorRef.current = last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null;
       setHasMore(result.has_more);
@@ -225,7 +202,7 @@ export default function MarketplacePage() {
     setLoadingMore(false);
   }, [search, selectedCategory, shipsTo, filters, sortBy, visualHashParam]);
 
-  // Fetch immediately when search/filters change (no debounce for instant feel)
+  // Fetch immediately when search/filters change
   useEffect(() => {
     fetchCatalogue(true);
   }, [fetchCatalogue]);
@@ -233,12 +210,8 @@ export default function MarketplacePage() {
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
     const fallback: Record<string, string | null> = {
-      brand: product.brand,
-      color: product.color,
-      condition: product.condition,
-      material: product.material,
-      weight: product.weight,
-      dimensions: product.dimensions,
+      brand: product.brand, color: product.color, condition: product.condition,
+      material: product.material, weight: product.weight, dimensions: product.dimensions,
     };
     return (categoryAttributes[key] || fallback[key] || "").trim();
   };
@@ -250,9 +223,7 @@ export default function MarketplacePage() {
 
   const visualFallbackProducts = useMemo(() => {
     if (!isVisualSearch || filtered.length > 0) return [];
-    return products
-      .filter(product => !selectedCategory || product.category_id === selectedCategory)
-      .slice(0, 12);
+    return products.filter(product => !selectedCategory || product.category_id === selectedCategory).slice(0, 12);
   }, [isVisualSearch, filtered.length, products, selectedCategory]);
 
   const displayedProducts = filtered.length > 0 ? filtered : visualFallbackProducts;
@@ -282,19 +253,15 @@ export default function MarketplacePage() {
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
     addItem({
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      image_url: primaryImage?.image_url || null,
-      seller_id: product.seller_id,
-      seller_name: seller?.full_name || "Seller",
-      stock_quantity: product.stock_quantity,
+      id: product.id, title: product.title, price: product.price,
+      image_url: primaryImage?.image_url || null, seller_id: product.seller_id,
+      seller_name: seller?.full_name || "Seller", stock_quantity: product.stock_quantity,
     });
   };
 
   useEffect(() => {
-    if (displayedProducts.length) trackProductDiscovery(displayedProducts.map((product) => product.id), "impression");
-  }, [displayedProducts]);
+    if (displayedProducts.length && !loading) trackProductDiscovery(displayedProducts.map((product) => product.id), "impression");
+  }, [displayedProducts, loading]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
@@ -309,16 +276,13 @@ export default function MarketplacePage() {
         }}
       />
       <CartDrawer />
-
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
         <AnimatedSection variant="fade-up">
           {selectedCategoryRecord && <nav aria-label="Breadcrumb" className="mb-2 text-xs text-[#888880]"><Link to="/" className="hover:underline">Home</Link><span className="mx-2">/</span><Link to="/categories" className="hover:underline">Categories</Link><span className="mx-2">/</span><span>{selectedCategoryRecord.name}</span></nav>}
           <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">{selectedCategoryRecord?.name || "Marketplace"}</h1>
           <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">
             {isVisualSearch
-              ? (filtered.length > 0
-                ? "Image search results from your upload"
-                : "No exact visual match found, showing the closest products we have")
+              ? (filtered.length > 0 ? "Image search results from your upload" : "No exact visual match found, showing the closest products we have")
               : selectedCategoryRecord ? `Explore ${selectedCategoryRecord.name} from verified sellers. Filter, compare, and keep discovering.` : "Discover products from verified sellers worldwide"}
           </p>
           {promo && (
@@ -342,7 +306,6 @@ export default function MarketplacePage() {
           )}
         </AnimatedSection>
 
-        {/* Category pills */}
         <AnimatedSection variant="fade-up" delay={50}>
           <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
             <button onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
@@ -358,7 +321,6 @@ export default function MarketplacePage() {
           </div>
         </AnimatedSection>
 
-        {/* Ships-to + category filters + currency hint */}
         <AnimatedSection variant="fade-up" delay={60}>
           <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
             <MarketplaceFilters
@@ -386,10 +348,7 @@ export default function MarketplacePage() {
               <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
               <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>
               <button
-                onClick={() => {
-                  setIsLocationConfirmScreen(true);
-                  setIsLocationOpen(true);
-                }}
+                onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
                 className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none"
               >
                 <span>{shipsTo === "all" ? "Anywhere 🌍" : countryName(shipsTo)}</span>
@@ -397,10 +356,7 @@ export default function MarketplacePage() {
             </div>
             <span className="text-xs text-[#888880] dark:text-[#A0A0A0] ml-auto">
               Prices shown in{" "}
-              <button
-                onClick={() => setIsCurrencyOpen(true)}
-                className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none"
-              >
+              <button onClick={() => setIsCurrencyOpen(true)} className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none">
                 {currency.code} ({currency.symbol})
               </button>
             </span>
@@ -411,9 +367,7 @@ export default function MarketplacePage() {
                 <span className="text-sm font-medium text-foreground">{selectedCategoryRecord.name}</span>
                 <span className="text-xs text-muted-foreground">filters:</span>
                 {selectedCategoryConfig.filters.map(filter => (
-                  <Badge key={filter} variant="outline" className="capitalize text-xs">
-                    {filter.replace(/([A-Z])/g, " $1")}
-                  </Badge>
+                  <Badge key={filter} variant="outline" className="capitalize text-xs">{filter.replace(/([A-Z])/g, " $1")}</Badge>
                 ))}
               </div>
             </div>
@@ -421,7 +375,7 @@ export default function MarketplacePage() {
         </AnimatedSection>
 
         <AnimatedSection variant="fade-up" delay={100}>
-          {loading ? (
+          {loading && products.length === 0 ? (
             <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
               {[...Array(10)].map((_, i) => (
                 <div key={i} className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
@@ -471,7 +425,7 @@ export default function MarketplacePage() {
                         ) : null}
                         {user && (
                           <button
-                          onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
+                            onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
                             className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop:blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
                           >
                             <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
@@ -519,83 +473,32 @@ export default function MarketplacePage() {
         </AnimatedSection>
       </div>
 
-      {/* Location Modal */}
-      <ModalWrapper
-        isOpen={isLocationOpen}
-        onClose={() => setIsLocationOpen(false)}
-        title="Delivery Destination"
-      >
+      <ModalWrapper isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} title="Delivery Destination">
         {isLocationConfirmScreen ? (
           <div className="text-center space-y-4 select-none">
-            <div className="mx-auto h-12 w-12 rounded-full bg-[#FAF5F2] dark:bg-[#2A2A2D] flex items-center justify-center text-[#F6C75D]">
-              <Globe className="h-6 w-6" />
-            </div>
+            <div className="mx-auto h-12 w-12 rounded-full bg-[#FAF5F2] dark:bg-[#2A2A2D] flex items-center justify-center text-[#F6C75D]"><Globe className="h-6 w-6" /></div>
             <div className="space-y-1">
               <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">We detected that you are in</p>
               <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{shipsTo === "all" ? "Anywhere" : countryName(shipsTo)}</p>
             </div>
-            <p className="text-xs text-[#888880] dark:text-[#A0A0A0] px-2 leading-relaxed">
-              Do you want to change your delivery location to view matching products?
-            </p>
+            <p className="text-xs text-[#888880] dark:text-[#A0A0A0] px-2 leading-relaxed">Do you want to change your delivery location to view matching products?</p>
             <div className="pt-2 space-y-2">
-              <button
-                onClick={() => setIsLocationConfirmScreen(false)}
-                className="w-full bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200"
-              >
-                Yes, Change Location
-              </button>
-              <button
-                onClick={() => setIsLocationOpen(false)}
-                className="w-full bg-transparent border border-[#C8C8C0] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200"
-              >
-                No, Keep Location
-              </button>
+              <button onClick={() => setIsLocationConfirmScreen(false)} className="w-full bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200">Yes, Change Location</button>
+              <button onClick={() => setIsLocationOpen(false)} className="w-full bg-transparent border border-[#C8C8C0] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200">No, Keep Location</button>
             </div>
           </div>
         ) : (
           <div className="space-y-4 select-none">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#888880] dark:text-[#A0A0A0]">Select Destination</span>
-              <button
-                onClick={() => setIsLocationConfirmScreen(true)}
-                className="text-[10px] font-semibold text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline"
-              >
-                ← Back
-              </button>
+              <button onClick={() => setIsLocationConfirmScreen(true)} className="text-[10px] font-semibold text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline">← Back</button>
             </div>
             <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
-              <button
-                onClick={() => {
-                  setCountry(null);
-                  setIsLocationOpen(false);
-                }}
-                className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${
-                  shipsTo === "all"
-                    ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                    : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"
-                }`}
-              >
-                <span>Anywhere</span>
-                {shipsTo === "all" && <CheckCircle2 className="h-3.5 w-3.5" />}
-              </button>
+              <button onClick={() => { setCountry(null); setIsLocationOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${shipsTo === "all" ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"}`}><span>Anywhere</span>{shipsTo === "all" && <CheckCircle2 className="h-3.5 w-3.5" />}</button>
               {COUNTRIES.map(c => {
                 const isActive = shipsTo === c.code;
                 return (
-                  <button
-                    key={c.code}
-                    onClick={() => {
-                      setCountry(c.code);
-                      setIsLocationOpen(false);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${
-                      isActive
-                        ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                        : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"
-                    }`}
-                  >
-                    <span>{c.name}</span>
-                    {isActive && <CheckCircle2 className="h-3.5 w-3.5" />}
-                  </button>
+                  <button key={c.code} onClick={() => { setCountry(c.code); setIsLocationOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"}`}><span>{c.name}</span>{isActive && <CheckCircle2 className="h-3.5 w-3.5" />}</button>
                 );
               })}
             </div>
@@ -603,38 +506,16 @@ export default function MarketplacePage() {
         )}
       </ModalWrapper>
 
-      {/* Currency Modal */}
-      <ModalWrapper
-        isOpen={isCurrencyOpen}
-        onClose={() => setIsCurrencyOpen(false)}
-        title="Preferred Currency"
-      >
+      <ModalWrapper isOpen={isCurrencyOpen} onClose={() => setIsCurrencyOpen(false)} title="Preferred Currency">
         <div className="space-y-4 select-none">
           <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">Choose your preferred currency to convert prices dynamically:</p>
           <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-1">
             {Object.entries(currencies).map(([code, info]) => {
               const isActive = currency.code === code;
-              const FLAGS: Record<string, string> = {
-                USD: "🇺🇸", GBP: "🇬🇧", EUR: "🇪🇺", CAD: "🇨🇦", AUD: "🇦🇺",
-                NGN: "🇳🇬", ZAR: "🇿🇦", KES: "🇰🇪", GHS: "🇬🇭",
-              };
+              const FLAGS: Record<string, string> = { USD: "🇺🇸", GBP: "🇬🇧", EUR: "🇪🇺", CAD: "🇨🇦", AUD: "🇦🇺", NGN: "🇳🇬", ZAR: "🇿🇦", KES: "🇰🇪", GHS: "🇬🇭" };
               return (
-                <button
-                  key={code}
-                  onClick={() => {
-                    setCurrencyCode(code);
-                    setIsCurrencyOpen(false);
-                  }}
-                  className={`p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between h-[76px] ${
-                    isActive
-                      ? "bg-[#111111] dark:bg-[#FAF5F2] border-transparent text-white dark:text-[#111111] shadow-md"
-                      : "bg-[#FAFAFA] dark:bg-[#151515] border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] hover:border-[#C8C8C0] dark:hover:border-[#333333]"
-                  }`}
-                >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-sm">{FLAGS[code] || info.symbol}</span>
-                    <span className="text-[10px] font-bold tracking-wider opacity-70">{code}</span>
-                  </div>
+                <button key={code} onClick={() => { setCurrencyCode(code); setIsCurrencyOpen(false); }} className={`p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between h-[76px] ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] border-transparent text-white dark:text-[#111111] shadow-md" : "bg-[#FAFAFA] dark:bg-[#151515] border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] hover:border-[#C8C8C0] dark:hover:border-[#333333]"}`}>
+                  <div className="flex items-center justify-between w-full"><span className="text-sm">{FLAGS[code] || info.symbol}</span><span className="text-[10px] font-bold tracking-wider opacity-70">{code}</span></div>
                   <span className="text-[11px] font-semibold truncate mt-1.5">{info.symbol} - {code}</span>
                 </button>
               );
@@ -648,39 +529,19 @@ export default function MarketplacePage() {
   );
 }
 
-interface ModalWrapperProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title: string;
-  children: React.ReactNode;
-}
+interface ModalWrapperProps { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode; }
 
 function ModalWrapper({ isOpen, onClose, title, children }: ModalWrapperProps) {
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-[#000000]/60 backdrop:blur-sm transition-opacity duration-300 animate-fade-in" 
-        onClick={onClose} 
-      />
-      {/* Modal Box */}
+      <div className="absolute inset-0 bg-[#000000]/60 backdrop:blur-sm transition-opacity duration-300 animate-fade-in" onClick={onClose} />
       <div className="relative bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] w-full max-w-sm overflow-hidden shadow-2xl z-10 transition-all duration-300 animate-scale-in">
-        {/* Header */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#F2F3F5] dark:border-[#222222]">
           <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] uppercase tracking-wider">{title}</h3>
-          <button 
-            onClick={onClose} 
-            className="text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors"
-            aria-label="Close modal"
-          >
-            <X className="h-4 w-4" />
-          </button>
+          <button onClick={onClose} className="text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors" aria-label="Close modal"><X className="h-4 w-4" /></button>
         </div>
-        {/* Body Content */}
-        <div className="p-6">
-          {children}
-        </div>
+        <div className="p-6">{children}</div>
       </div>
     </div>
   );
