@@ -15,8 +15,10 @@ function getHeroImageUrl(src: string | null, width: number): string {
   if (!src) return "";
   // Only apply transformation if it's a Supabase storage URL
   if (!src.includes(".supabase.co/storage/")) return src;
-  const separator = src.includes("?") ? "&" : "?";
-  return `${src}${separator}width=${width}&quality=85`;
+  // Use render endpoint for optimized images (matches preload format)
+  const renderSrc = src.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+  const separator = renderSrc.includes("?") ? "&" : "?";
+  return `${renderSrc}${separator}width=${width}&quality=85`;
 }
 
 const HeroSlider = memo(function HeroSlider({
