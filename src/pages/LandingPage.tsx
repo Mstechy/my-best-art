@@ -77,26 +77,33 @@ export default function LandingPage() {
       };
 
       const loadHero = async () => {
-        const heroRes = await fetchHeroCollections();
-        if (!mounted) return;
+        try {
+          const heroRes = await fetchHeroCollections();
+          if (!mounted) return;
 
-        if (heroRes.length > 0 && heroRes[0].image_url) {
-          const baseTransformed = toSupabaseRenderImageUrl(heroRes[0].image_url);
-          const optimizedSlides = heroRes.map(slide => ({
-            ...slide,
-            image_url: toSupabaseRenderImageUrl(slide.image_url || "")
-          }));
-          const link = document.createElement('link');
-          link.rel = 'preload';
-          link.as = 'image';
-          link.href = baseTransformed;
-          (link as { imagesrcset?: string }).imagesrcset = `${buildVariantUrl(baseTransformed, 768)} 768w, ${buildVariantUrl(baseTransformed, 1280)} 1280w, ${buildVariantUrl(baseTransformed, 1920)} 1920w`;
-          (link as { imagesizes?: string }).imagesizes = "100vw";
-          document.head.appendChild(link);
-          linkElement = link;
+          if (heroRes.length > 0 && heroRes[0].image_url) {
+            const baseTransformed = toSupabaseRenderImageUrl(heroRes[0].image_url);
+            const optimizedSlides = heroRes.map(slide => ({
+              ...slide,
+              image_url: toSupabaseRenderImageUrl(slide.image_url || "")
+            }));
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.href = baseTransformed;
+            (link as { imagesrcset?: string }).imagesrcset = `${buildVariantUrl(baseTransformed, 768)} 768w, ${buildVariantUrl(baseTransformed, 1280)} 1280w, ${buildVariantUrl(baseTransformed, 1920)} 1920w`;
+            (link as { imagesizes?: string }).imagesizes = "100vw";
+            document.head.appendChild(link);
+            linkElement = link;
 
-          setHeroSlides(optimizedSlides);
-          setHeroLoading(false);
+            setHeroSlides(optimizedSlides);
+          } else {
+            setHeroSlides([]);
+          }
+        } catch {
+          if (mounted) setHeroSlides([]);
+        } finally {
+          if (mounted) setHeroLoading(false);
         }
       };
 
@@ -113,35 +120,40 @@ export default function LandingPage() {
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      // Fetch non-hero data in parallel; hero is already loaded above
-      const [categoriesRes, countsRes, ...feedRes] = await Promise.all([
-        supabase.from("categories").select("id,name,slug").order("sort_order"),
-        (supabase as any).rpc("homepage_category_counts"),
-        ...FEEDS.map(feed => (supabase as any).rpc("homepage_product_feed", { p_section: feed.key, p_limit: 10 })),
-      ]);
-      
-      // Extract product IDs from feeds
-      const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
-      
-      // Extract seller IDs from feeds
-      const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id).filter(Boolean)))];
-      
-      // Fetch products and seller profiles in parallel (not sequential!)
-      const [productsRes, profilesRes] = await Promise.all([
-        ids.length ? supabase.from("products").select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)").in("id", ids) : { data: [] },
-        sellerIds.length ? supabase.from("seller_profiles_public").select("user_id,full_name,is_verified").in("user_id", sellerIds) : { data: [] }
-      ]);
-      
-      if (!mounted) return;
-      
-      const products = new Map(((productsRes.data || []) as unknown as Product[]).map(product => [product.id, product]));
-      const profiles = new Map(((profilesRes.data || []) as any).filter((row: any) => row.user_id).map((row: any) => [row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified }]));
-      
-      setCategories((categoriesRes.data || []) as Category[]);
-      setCounts(Object.fromEntries((countsRes.data || []).map((row: any) => [row.category_id, Number(row.product_count)])));
-      setSellers(Object.fromEntries(profiles));
-      setFeeds(Object.fromEntries(FEEDS.map((feed, index) => [feed.key, (feedRes[index].data || []).flatMap((row: any) => products.has(row.product_id) ? [{ ...products.get(row.product_id)!, sold_count: Number(row.sold_count), trend_score: Number(row.trend_score) }] : [])])) as Record<FeedName, FeedItem[]>);
-      setLoading(false);
+      try {
+        // Fetch non-hero data in parallel; hero is already loaded above
+        const [categoriesRes, countsRes, ...feedRes] = await Promise.all([
+          supabase.from("categories").select("id,name,slug").order("sort_order"),
+          (supabase as any).rpc("homepage_category_counts"),
+          ...FEEDS.map(feed => (supabase as any).rpc("homepage_product_feed", { p_section: feed.key, p_limit: 10 })),
+        ]);
+        
+        // Extract product IDs from feeds
+        const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
+        
+        // Extract seller IDs from feeds
+        const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id).filter(Boolean)))];
+        
+        // Fetch products and seller profiles in parallel (not sequential!)
+        const [productsRes, profilesRes] = await Promise.all([
+          ids.length ? supabase.from("products").select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)").in("id", ids) : { data: [] },
+          sellerIds.length ? supabase.from("seller_profiles_public").select("user_id,full_name,is_verified").in("user_id", sellerIds) : { data: [] }
+        ]);
+        
+        if (!mounted) return;
+        
+        const products = new Map(((productsRes.data || []) as unknown as Product[]).map(product => [product.id, product]));
+        const profiles = new Map(((profilesRes.data || []) as any).filter((row: any) => row.user_id).map((row: any) => [row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified }]));
+        
+        setCategories((categoriesRes.data || []) as Category[]);
+        setCounts(Object.fromEntries((countsRes.data || []).map((row: any) => [row.category_id, Number(row.product_count)])));
+        setSellers(Object.fromEntries(profiles));
+        setFeeds(Object.fromEntries(FEEDS.map((feed, index) => [feed.key, (feedRes[index].data || []).flatMap((row: any) => products.has(row.product_id) ? [{ ...products.get(row.product_id)!, sold_count: Number(row.sold_count), trend_score: Number(row.trend_score) }] : [])])) as Record<FeedName, FeedItem[]>);
+      } catch (err) {
+        console.error("[LandingPage] homepage load failed", err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
     };
     void load();
     return () => { mounted = false; };
