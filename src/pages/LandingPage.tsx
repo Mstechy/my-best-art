@@ -38,35 +38,85 @@ export default function LandingPage() {
   const [heroLoading, setHeroLoading] = useState(true);
   const { formatPrice } = useCurrency();
 
-   // Early hero preload: triggers immediately when hero data arrives
-   // All other requests continue loading in parallel
-   useEffect(() => {
-     // Start hero fetch early - preload happens as soon as URL is available
-     fetchHeroCollections().then(heroRes => {
-       if (heroRes.length > 0 && heroRes[0].image_url) {
-         const link = document.createElement('link');
-         link.rel = 'preload';
-         link.as = 'image';
-         // Use responsive image size for mobile-first LCP optimization
-         const separator = heroRes[0].image_url.includes("?") ? "&" : "?";
-         link.href = `${heroRes[0].image_url}${separator}width=1280&quality=85`;
-         // Using type assertion for image preload attributes (imagesrcset/imageSizes)
-         // These are valid for LCP optimization per web.dev best practices
-         (link as { imagesrcset?: string }).imagesrcset = `${heroRes[0].image_url}${separator}width=768&quality=85 768w, ${heroRes[0].image_url}${separator}width=1280&quality=85 1280w, ${heroRes[0].image_url}${separator}width=1920&quality=85 1920w`;
-         (link as { imagesizes?: string }).imagesizes = "100vw";
-         document.head.appendChild(link);
-       }
-     });
-   }, []);
+   // Early hero preload + fast slider render: load hero independently, so the
+   // preloaded image is consumed quickly by the slider as soon as hero data arrives.
+    useEffect(() => {
+      let mounted = true;
+      let linkElement: HTMLLinkElement | null = null;
+
+      const DEFAULT_TRANSFORM = { width: 1920, quality: 80 } as const;
+
+      const toSupabaseRenderImageUrl = (rawUrl: string): string => {
+        try {
+          const url = new URL(rawUrl);
+          if (url.hostname.includes("supabase.co") && url.pathname.includes("/storage/v1/object/public/")) {
+            url.pathname = url.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
+            const existing = new URLSearchParams(url.search);
+            existing.set("width", String(DEFAULT_TRANSFORM.width));
+            existing.set("quality", String(DEFAULT_TRANSFORM.quality));
+            url.search = existing.toString();
+            return url.toString();
+          }
+        } catch {
+          // fallback to original if parsing fails
+        }
+        return rawUrl;
+      };
+
+      const buildVariantUrl = (base: string, width: number): string => {
+        try {
+          const url = new URL(base);
+          const qs = new URLSearchParams(url.search);
+          qs.set("width", String(width));
+          qs.set("quality", String(DEFAULT_TRANSFORM.quality));
+          url.search = qs.toString();
+          return url.toString();
+        } catch {
+          return base;
+        }
+      };
+
+      const loadHero = async () => {
+        const heroRes = await fetchHeroCollections();
+        if (!mounted) return;
+
+        if (heroRes.length > 0 && heroRes[0].image_url) {
+          const baseTransformed = toSupabaseRenderImageUrl(heroRes[0].image_url);
+          const optimizedSlides = heroRes.map(slide => ({
+            ...slide,
+            image_url: toSupabaseRenderImageUrl(slide.image_url || "")
+          }));
+          const link = document.createElement('link');
+          link.rel = 'preload';
+          link.as = 'image';
+          link.href = baseTransformed;
+          (link as { imagesrcset?: string }).imagesrcset = `${buildVariantUrl(baseTransformed, 768)} 768w, ${buildVariantUrl(baseTransformed, 1280)} 1280w, ${buildVariantUrl(baseTransformed, 1920)} 1920w`;
+          (link as { imagesizes?: string }).imagesizes = "100vw";
+          document.head.appendChild(link);
+          linkElement = link;
+
+          setHeroSlides(optimizedSlides);
+          setHeroLoading(false);
+        }
+      };
+
+      void loadHero();
+
+      return () => {
+        mounted = false;
+        if (linkElement && linkElement.parentNode) {
+          linkElement.parentNode.removeChild(linkElement);
+        }
+      };
+    }, []);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
-      // Fetch all data in parallel for maximum speed
-      const [categoriesRes, countsRes, heroRes, ...feedRes] = await Promise.all([
+      // Fetch non-hero data in parallel; hero is already loaded above
+      const [categoriesRes, countsRes, ...feedRes] = await Promise.all([
         supabase.from("categories").select("id,name,slug").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
-        fetchHeroCollections(),
         ...FEEDS.map(feed => (supabase as any).rpc("homepage_product_feed", { p_section: feed.key, p_limit: 10 })),
       ]);
       
@@ -89,8 +139,6 @@ export default function LandingPage() {
       
       setCategories((categoriesRes.data || []) as Category[]);
       setCounts(Object.fromEntries((countsRes.data || []).map((row: any) => [row.category_id, Number(row.product_count)])));
-      setHeroSlides(heroRes);
-      setHeroLoading(false);
       setSellers(Object.fromEntries(profiles));
       setFeeds(Object.fromEntries(FEEDS.map((feed, index) => [feed.key, (feedRes[index].data || []).flatMap((row: any) => products.has(row.product_id) ? [{ ...products.get(row.product_id)!, sold_count: Number(row.sold_count), trend_score: Number(row.trend_score) }] : [])])) as Record<FeedName, FeedItem[]>);
       setLoading(false);
@@ -107,10 +155,14 @@ export default function LandingPage() {
       {/* Hero Slider — uses hero-enabled collections */}
       {heroLoading ? (
         <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
-          <div className="mx-auto aspect-[21/9] min-h-[320px] animate-pulse bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]" />
+          <div className="mx-auto aspect-[21/9] min-h-[320px] animate-pulse bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]">
+            <link rel="preload" as="image" href="/hero-placeholder.svg" />
+          </div>
         </div>
       ) : heroSlides.length > 0 ? (
-        <HeroSlider slides={heroSlides} />
+        <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
+          <HeroSlider slides={heroSlides} />
+        </div>
       ) : (
         <section className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
           <div className="mx-auto flex aspect-[21/9] min-h-[320px] items-center justify-center md:min-h-[420px]">

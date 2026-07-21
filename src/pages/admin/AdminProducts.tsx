@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import ProductImage from "@/components/product/ProductImage";
+import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
 
 
 interface Product {
@@ -85,14 +86,14 @@ export default function AdminProducts() {
 
   const approveProduct = async (id: string) => {
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: true, _status: "active" });
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    if (error) { logError(error, "admin_product_approval"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product approved", description: "Product is now visible on the marketplace." });
     fetchProducts();
   };
 
   const rejectProduct = async (id: string) => {
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: false, _status: "draft" });
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    if (error) { logError(error, "admin_product_rejection"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product hidden", description: "Product is no longer visible on the marketplace." });
     fetchProducts();
   };
@@ -290,7 +291,7 @@ export default function AdminProducts() {
                 const id = deleteId;
                 setDeleteId(null);
                 const { error } = await supabase.from("products").delete().eq("id", id);
-                if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+                if (error) { logError(error, "admin_product_delete"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "delete"), variant: "destructive" }); return; }
                 toast({ title: "Product deleted" });
                 fetchProducts();
               }}

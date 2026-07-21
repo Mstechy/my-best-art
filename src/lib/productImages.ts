@@ -4,6 +4,14 @@ const CARD_SIZE = 900;
 const CARD_QUALITY = 0.86;
 const CARD_MIME_TYPE = "image/webp";
 
+const BLOCKED_EXTENSIONS = new Set([
+  "exe", "bat", "cmd", "sh", "bash", "zsh", "ps1", "vbs", "js", "jse",
+  "vba", "vbe", "wsf", "wsh", "msi", "msp", "scr", "pif", "hta",
+  "cpl", "reg", "com", "dll", "sys",
+]);
+
+const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp", "gif", "svg"]);
+
 const safeFileStem = (name: string) =>
   name
     .replace(/\.[^.]+$/, "")
@@ -14,7 +22,11 @@ const safeFileStem = (name: string) =>
 
 const extensionFor = (file: File) => {
   const ext = file.name.split(".").pop()?.toLowerCase();
-  return ext && /^[a-z0-9]+$/.test(ext) ? ext : "jpg";
+  if (!ext || !/^[a-z0-9]+$/.test(ext)) return "jpg";
+  if (BLOCKED_EXTENSIONS.has(ext)) return "jpg";
+  if (ALLOWED_EXTENSIONS.has(ext)) return ext;
+  // Fallback for unknown safe extensions
+  return /^[a-z]{2,4}$/.test(ext) ? ext : "jpg";
 };
 
 const loadImage = (file: File) =>

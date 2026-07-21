@@ -8,6 +8,7 @@ import { Search, Store, CheckCircle2, Snowflake, Ban, ShieldCheck, ShieldOff, Us
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
 
 type AppRole = "admin" | "seller" | "buyer";
 
@@ -60,8 +61,8 @@ export default function AdminSellers() {
         order_count: Number(u.order_count) || 0,
       })));
     } catch (e) {
-      const msg = (e as { message?: string }).message || "Failed to load users. Check your connection and try again.";
-
+      logError(e, "admin_user_directory");
+      const msg = getUserFacingErrorMessage(e, "load");
       setLoadError(msg);
       toast({ title: "Could not load users", description: msg, variant: "destructive" });
     } finally {
@@ -89,10 +90,10 @@ export default function AdminSellers() {
     });
 
     if (error) {
-      console.error("RPC Error:", error);
+      logError(error, "admin_set_account_status");
       toast({
         title: "Error",
-        description: `${(error as { message?: string }).message ?? "RPC Error"} (code: ${String((error as { code?: string }).code ?? "NO_CODE")})`,
+        description: getUserFacingErrorMessage(error, "save"),
         variant: "destructive",
       });
       return;
@@ -111,10 +112,10 @@ export default function AdminSellers() {
     const { error } = await supabase.rpc(rpcName, { _user_id: userId });
 
     if (error) {
-      console.error("RPC Error:", error);
+      logError(error, "admin_seller_access");
       toast({
         title: "Action Failed",
-        description: `${(error as { message?: string }).message ?? "RPC Error"} (code: ${String((error as { code?: string }).code ?? "NO_CODE")})`,
+        description: getUserFacingErrorMessage(error, "save"),
         variant: "destructive",
       });
       return;
