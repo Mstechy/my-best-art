@@ -159,50 +159,75 @@ export default function MarketplacePage() {
   };
 
   const fetchCatalogue = useCallback(async function fetchCatalogueInner(reset = false) {
-    if (reset) { setLoading(true); cursorRef.current = null; } else { setLoadingMore(true); }
+    if (reset) { cursorRef.current = null; } else { setLoadingMore(true); }
     const pageCursor = reset ? null : cursorRef.current;
-    const response = visualHashParam
-      ? await supabase.rpc("search_marketplace_product_ids_by_visual_hash", { p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE })
-      : await supabase.rpc("search_marketplace_product_ids", {
-        p_query: search.trim(), p_category_id: selectedCategory, p_country: shipsTo === "all" ? null : shipsTo,
-        p_min_price: filters.minPrice || null, p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
-        p_min_rating: filters.minRating || null, p_in_stock_only: filters.inStockOnly,
-        p_condition: filters.condition === "any" ? null : filters.condition,
-        p_attribute_filters: filters.categoryAttributes, p_sort: sortBy, p_limit: CATALOGUE_PAGE_SIZE,
-        p_cursor_relevance: pageCursor?.relevance ?? null, p_cursor_created_at: pageCursor?.createdAt ?? null, p_cursor_id: pageCursor?.id ?? null,
-      });
-    const { data: matches, error } = response;
-    if (error) { setLoading(false); setLoadingMore(false); return; }
-    const ids = (matches || []).map((match) => match.product_id);
-    if (!ids.length) {
-      if (reset) setProducts([]);
-      setHasMore(false); setLoading(false); setLoadingMore(false); return;
-    }
-    const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
-    const byId = new Map((productsData || []).map((product) => [product.id, product as unknown as Product]));
-    const ordered = ids.map((id) => byId.get(id)).filter((product): product is Product => !!product);
-    setProducts((current) => reset ? ordered : [...current, ...ordered.filter((product) => !current.some((existing) => existing.id === product.id))]);
-    const sellerIds = [...new Set(ordered.map((product) => product.seller_id).filter(Boolean))];
+
+    try {
+      let result: { products: Product[]; has_more: boolean };
+
+      if (visualHashParam) {
+        // Visual search still uses the old two-step approach
+        const { data: matches, error } = await supabase.rpc("search_marketplace_product_ids_by_visual_hash", {
+          p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE,
+        });
+        if (error) throw error;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const ids = (matches || []).map((m: any) => m.product_id);
+        if (!ids.length) { setProducts(reset ? [] : []); setHasMore(false); setLoading(false); setLoadingMore(false); return; }
+        const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const byId = new Map((productsData || []).map((p: any) => [p.id, p as unknown as Product]));
+        const ordered = ids.map((id: string) => byId.get(id)).filter(Boolean) as Product[];
+        setProducts(reset ? ordered : (prev: Product[]) => [...prev, ...ordered.filter((p: Product) => !prev.some((e: Product) => e.id === p.id))]);
+        result = { products: ordered, has_more: false };
+      } else {
+        // Single roundtrip: combined RPC returns products + images in one call
+        const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
+          p_query: search.trim() || null,
+          p_category_id: selectedCategory || null,
+          p_country: shipsTo === "all" ? null : shipsTo,
+          p_min_price: filters.minPrice || null,
+          p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
+          p_min_rating: filters.minRating || null,
+          p_in_stock_only: filters.inStockOnly || null,
+          p_condition: filters.condition === "any" ? null : filters.condition,
+          p_sort: sortBy,
+          p_limit: CATALOGUE_PAGE_SIZE,
+          p_cursor_relevance: pageCursor?.relevance ?? null,
+          p_cursor_created_at: pageCursor?.createdAt ?? null,
+          p_cursor_id: pageCursor?.id ?? null,
+        });
+        if (error) throw error;
+        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+        result = { products: (parsed?.products || []) as Product[], has_more: !!parsed?.has_more };
+      }
+
+      // Fetch seller profiles for new products
+      const newProducts = reset ? result.products : result.products;
+      const sellerIds = [...new Set(newProducts.map((p: Product) => p.seller_id).filter(Boolean))];
       if (sellerIds.length > 0) {
         const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
         if (profiles) {
           const map: Record<string, { full_name: string | null; is_verified: boolean }> = {};
-          profiles.forEach((p: SellerProfilePublic) => {
-            if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified };
-          });
-          setSellerProfiles((current) => reset ? map : { ...current, ...map });
+          profiles.forEach((p: SellerProfilePublic) => { if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified }; });
+          setSellerProfiles((prev) => reset ? map : { ...prev, ...map });
         }
       }
-    const last = matches?.at(-1);
-    cursorRef.current = last ? { relevance: last.relevance, createdAt: last.created_at, id: last.product_id } : null;
-    setHasMore(!visualHashParam && (matches?.length || 0) === CATALOGUE_PAGE_SIZE);
-    setLoading(false); setLoadingMore(false);
+
+      setProducts((prev: Product[]) => reset ? result.products : [...prev, ...result.products.filter((p: Product) => !prev.some((e: Product) => e.id === p.id))]);
+      const last = result.products[result.products.length - 1];
+      cursorRef.current = last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null;
+      setHasMore(result.has_more);
+    } catch (e) {
+      console.error("Search failed", e);
+    }
+    setLoading(false);
+    setLoadingMore(false);
   }, [search, selectedCategory, shipsTo, filters, sortBy, visualHashParam]);
 
-  // Debounced fetch when search/filters change
+  // Fetch immediately when search/filters change (no debounce for instant feel)
   useEffect(() => {
-    const timer = window.setTimeout(() => { fetchCatalogue(true); }, 250);
-    return () => window.clearTimeout(timer);
+    fetchCatalogue(true);
   }, [fetchCatalogue]);
 
   const attributeValue = (product: Product, key: string) => {
