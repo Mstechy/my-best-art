@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
-import { Search, Package, CheckCircle2, XCircle, Clock, Pencil, Trash2, Plus } from "lucide-react";
+import { Search, Package, CheckCircle2, XCircle, Clock, Pencil, Trash2, Plus, Zap, PauseCircle, Ban } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import AnimatedSection from "@/components/AnimatedSection";
 import { Link } from "react-router-dom";
@@ -95,6 +95,13 @@ export default function AdminProducts() {
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: false, _status: "draft" });
     if (error) { logError(error, "admin_product_rejection"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product hidden", description: "Product is no longer visible on the marketplace." });
+    fetchProducts();
+  };
+
+  const setFlashDealStatus = async (productId: string, status: string) => {
+    const { error } = await (supabase as any).rpc("admin_set_flash_deal_status", { _product_id: productId, _new_status: status });
+    if (error) { logError(error, "admin_flash_deal_status"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
+    toast({ title: `Flash deal ${status}`, description: `Flash deal has been ${status}.` });
     fetchProducts();
   };
 
@@ -232,6 +239,21 @@ export default function AdminProducts() {
                                 <Clock className="h-3 w-3" /> Pending
                               </Badge>
                             ) : null}
+                            {(product as any).flash_deal_status === 'active' && (
+                              <Badge className="bg-red-500/10 text-red-600 border-red-500/20 gap-1 text-xs">
+                                <Zap className="h-3 w-3" /> Flash Deal
+                              </Badge>
+                            )}
+                            {(product as any).flash_deal_status === 'paused' && (
+                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 gap-1 text-xs">
+                                <PauseCircle className="h-3 w-3" /> Deal Paused
+                              </Badge>
+                            )}
+                            {(product as any).flash_deal_status === 'rejected' && (
+                              <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1 text-xs">
+                                <Ban className="h-3 w-3" /> Deal Rejected
+                              </Badge>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -244,6 +266,21 @@ export default function AdminProducts() {
                             {product.is_approved && (
                               <Button size="sm" variant="outline" onClick={() => rejectProduct(product.id)} className="gap-1">
                                 <XCircle className="h-3 w-3" /> Hide
+                              </Button>
+                            )}
+                            {(product as any).flash_deal_status === 'active' && (
+                              <Button size="sm" variant="outline" onClick={() => setFlashDealStatus(product.id, 'paused')} className="gap-1 text-orange-600">
+                                <PauseCircle className="h-3 w-3" /> Pause Deal
+                              </Button>
+                            )}
+                            {(product as any).flash_deal_status === 'paused' && (
+                              <Button size="sm" variant="outline" onClick={() => setFlashDealStatus(product.id, 'active')} className="gap-1 text-green-600">
+                                <Zap className="h-3 w-3" /> Activate Deal
+                              </Button>
+                            )}
+                            {((product as any).flash_deal_status === 'active' || (product as any).flash_deal_status === 'paused') && (
+                              <Button size="sm" variant="outline" onClick={() => setFlashDealStatus(product.id, 'rejected')} className="gap-1 text-destructive">
+                                <Ban className="h-3 w-3" /> Reject Deal
                               </Button>
                             )}
                             {product.seller_id === user?.id ? (

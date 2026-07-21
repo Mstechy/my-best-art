@@ -38,113 +38,56 @@ export default function LandingPage() {
   const [heroLoading, setHeroLoading] = useState(true);
   const { formatPrice } = useCurrency();
 
-   // Early hero preload + fast slider render: load hero independently, so the
-   // preloaded image is consumed quickly by the slider as soon as hero data arrives.
-    useEffect(() => {
-      let mounted = true;
-      let linkElement: HTMLLinkElement | null = null;
+  useEffect(() => {
+    let mounted = true;
 
-      const DEFAULT_TRANSFORM = { width: 1920, quality: 80 } as const;
+    const loadHero = async () => {
+      try {
+        const heroRes = await fetchHeroCollections();
+        if (!mounted) return;
 
-      const toSupabaseRenderImageUrl = (rawUrl: string): string => {
-        try {
-          const url = new URL(rawUrl);
-          if (url.hostname.includes("supabase.co") && url.pathname.includes("/storage/v1/object/public/")) {
-            url.pathname = url.pathname.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-            const existing = new URLSearchParams(url.search);
-            existing.set("width", String(DEFAULT_TRANSFORM.width));
-            existing.set("quality", String(DEFAULT_TRANSFORM.quality));
-            url.search = existing.toString();
-            return url.toString();
-          }
-        } catch {
-          // fallback to original if parsing fails
+        if (heroRes.length > 0) {
+          setHeroSlides(heroRes);
+        } else {
+          setHeroSlides([]);
         }
-        return rawUrl;
-      };
+      } catch {
+        if (mounted) setHeroSlides([]);
+      } finally {
+        if (mounted) setHeroLoading(false);
+      }
+    };
 
-      const buildVariantUrl = (base: string, width: number): string => {
-        try {
-          const url = new URL(base);
-          const qs = new URLSearchParams(url.search);
-          qs.set("width", String(width));
-          qs.set("quality", String(DEFAULT_TRANSFORM.quality));
-          url.search = qs.toString();
-          return url.toString();
-        } catch {
-          return base;
-        }
-      };
+    void loadHero();
 
-      const loadHero = async () => {
-        try {
-          const heroRes = await fetchHeroCollections();
-          if (!mounted) return;
-
-          if (heroRes.length > 0 && heroRes[0].image_url) {
-            const baseTransformed = toSupabaseRenderImageUrl(heroRes[0].image_url);
-            const optimizedSlides = heroRes.map(slide => ({
-              ...slide,
-              image_url: toSupabaseRenderImageUrl(slide.image_url || "")
-            }));
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.as = 'image';
-            link.href = baseTransformed;
-            (link as { imagesrcset?: string }).imagesrcset = `${buildVariantUrl(baseTransformed, 768)} 768w, ${buildVariantUrl(baseTransformed, 1280)} 1280w, ${buildVariantUrl(baseTransformed, 1920)} 1920w`;
-            (link as { imagesizes?: string }).imagesizes = "100vw";
-            document.head.appendChild(link);
-            linkElement = link;
-
-            setHeroSlides(optimizedSlides);
-          } else {
-            setHeroSlides([]);
-          }
-        } catch {
-          if (mounted) setHeroSlides([]);
-        } finally {
-          if (mounted) setHeroLoading(false);
-        }
-      };
-
-      void loadHero();
-
-      return () => {
-        mounted = false;
-        if (linkElement && linkElement.parentNode) {
-          linkElement.parentNode.removeChild(linkElement);
-        }
-      };
-    }, []);
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
     const load = async () => {
       try {
-        // Fetch non-hero data in parallel; hero is already loaded above
         const [categoriesRes, countsRes, ...feedRes] = await Promise.all([
           supabase.from("categories").select("id,name,slug").order("sort_order"),
           (supabase as any).rpc("homepage_category_counts"),
           ...FEEDS.map(feed => (supabase as any).rpc("homepage_product_feed", { p_section: feed.key, p_limit: 10 })),
         ]);
-        
-        // Extract product IDs from feeds
+
         const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
-        
-        // Extract seller IDs from feeds
         const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id).filter(Boolean)))];
-        
-        // Fetch products and seller profiles in parallel (not sequential!)
+
         const [productsRes, profilesRes] = await Promise.all([
           ids.length ? supabase.from("products").select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)").in("id", ids) : { data: [] },
           sellerIds.length ? supabase.from("seller_profiles_public").select("user_id,full_name,is_verified").in("user_id", sellerIds) : { data: [] }
         ]);
-        
+
         if (!mounted) return;
-        
+
         const products = new Map(((productsRes.data || []) as unknown as Product[]).map(product => [product.id, product]));
         const profiles = new Map(((profilesRes.data || []) as any).filter((row: any) => row.user_id).map((row: any) => [row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified }]));
-        
+
         setCategories((categoriesRes.data || []) as Category[]);
         setCounts(Object.fromEntries((countsRes.data || []).map((row: any) => [row.category_id, Number(row.product_count)])));
         setSellers(Object.fromEntries(profiles));
@@ -164,12 +107,9 @@ export default function LandingPage() {
     <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="pb-16">
-      {/* Hero Slider — uses hero-enabled collections */}
       {heroLoading ? (
         <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
-          <div className="mx-auto aspect-[21/9] min-h-[320px] animate-pulse bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]">
-            <link rel="preload" as="image" href="/hero-placeholder.svg" />
-          </div>
+          <div className="mx-auto aspect-[21/9] min-h-[320px] animate-pulse bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]" />
         </div>
       ) : heroSlides.length > 0 ? (
         <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">

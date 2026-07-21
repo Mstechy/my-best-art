@@ -199,6 +199,7 @@ export default function MarketplacePage() {
     setLoading(false); setLoadingMore(false);
   }, [search, selectedCategory, shipsTo, filters, sortBy, cursor, visualHashParam]);
 
+  // Debounced fetch when search/filters change
   useEffect(() => {
     const timer = window.setTimeout(() => { fetchCatalogue(true); }, 250);
     return () => window.clearTimeout(timer);
@@ -446,7 +447,7 @@ export default function MarketplacePage() {
                         {user && (
                           <button
                           onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
-                            className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
+                            className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop:blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
                           >
                             <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
                           </button>
@@ -635,7 +636,7 @@ function ModalWrapper({ isOpen, onClose, title, children }: ModalWrapperProps) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-[#000000]/60 backdrop-blur-sm transition-opacity duration-300 animate-fade-in" 
+        className="absolute inset-0 bg-[#000000]/60 backdrop:blur-sm transition-opacity duration-300 animate-fade-in" 
         onClick={onClose} 
       />
       {/* Modal Box */}

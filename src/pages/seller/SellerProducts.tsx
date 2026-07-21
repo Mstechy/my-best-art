@@ -115,6 +115,10 @@ export default function SellerProducts() {
   const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
   const [docFile, setDocFile] = useState<File | null>(null);
   const [showSoldCount, setShowSoldCount] = useState(true);
+  const [flashDealEnabled, setFlashDealEnabled] = useState(false);
+  const [flashDealDiscount, setFlashDealDiscount] = useState("");
+  const [flashDealStart, setFlashDealStart] = useState("");
+  const [flashDealEnd, setFlashDealEnd] = useState("");
 
   // Form state — specifications
   const [brand, setBrand] = useState("");
@@ -309,6 +313,7 @@ export default function SellerProducts() {
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
     setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]);
+    setFlashDealEnabled(false); setFlashDealDiscount(""); setFlashDealStart(""); setFlashDealEnd("");
     setEditingProduct(null); setFormTab("basic");
   };
 
@@ -351,6 +356,10 @@ export default function SellerProducts() {
     setProductTypeKey(getProductType(product.variants)?.key || "");
     const savedVideos = getProductVideos(product.variants);
     setExistingProductVideos(savedVideos);
+    setFlashDealEnabled(!!((product as any).flash_deal_discount_percent));
+    setFlashDealDiscount(((product as any).flash_deal_discount_percent ?? 0).toString());
+    setFlashDealStart(((product as any).flash_deal_start_at || "").slice(0, 16));
+    setFlashDealEnd(((product as any).flash_deal_end_at || "").slice(0, 16));
     setImageItems(
       [...(product.product_images || [])]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -450,6 +459,18 @@ export default function SellerProducts() {
     const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
     const attr = (key: string) => cleanCategoryAttributes[key] || "";
 
+    const flashDealFields = flashDealEnabled && flashDealDiscount && flashDealStart && flashDealEnd
+      ? {
+          flash_deal_discount_percent: Math.round(Number(flashDealDiscount)),
+          flash_deal_start_at: new Date(flashDealStart).toISOString(),
+          flash_deal_end_at: new Date(flashDealEnd).toISOString(),
+        }
+      : {
+          flash_deal_discount_percent: null,
+          flash_deal_start_at: null,
+          flash_deal_end_at: null,
+        };
+
     const productData = {
       seller_id: user.id,
       title: title.trim(),
@@ -472,6 +493,7 @@ export default function SellerProducts() {
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
       show_sold_count: showSoldCount,
+      ...flashDealFields,
       variants: { ...mergeCategoryAttributes(editingProduct?.variants, {
         categoryGroup: selectedConfig.title,
         ...cleanCategoryAttributes,
@@ -758,6 +780,31 @@ export default function SellerProducts() {
                       <div className="flex items-center justify-between gap-2"><label className="text-sm font-medium text-foreground">SKU</label><Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSku(generateSku())}>Generate new</Button></div>
                       <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Optional" className="mt-1" />
                     </div>
+                  </div>
+                  {/* Flash Deal */}
+                  <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Checkbox checked={flashDealEnabled} onCheckedChange={(v) => setFlashDealEnabled(!!v)} id="flash-deal" />
+                      <label htmlFor="flash-deal" className="text-sm font-medium text-foreground cursor-pointer">Enable Flash Deal</label>
+                    </div>
+                    {flashDealEnabled && (
+                      <>
+                        <div>
+                          <label className="text-sm font-medium text-foreground">Discount %</label>
+                          <Input type="number" min="1" max="99" value={flashDealDiscount} onChange={(e) => setFlashDealDiscount(e.target.value)} placeholder="e.g. 20" className="mt-1" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground">Start Date & Time</label>
+                            <Input type="datetime-local" value={flashDealStart} onChange={(e) => setFlashDealStart(e.target.value)} className="mt-1" />
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-foreground">End Date & Time</label>
+                            <Input type="datetime-local" value={flashDealEnd} onChange={(e) => setFlashDealEnd(e.target.value)} className="mt-1" />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </TabsContent>
 

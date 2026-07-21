@@ -69,7 +69,20 @@ const ShippingPage = lazy(() => import("@/pages/legal/ShippingPage"));
 const PaymentPage = lazy(() => import("@/pages/legal/PaymentPage"));
 const AboutPage = lazy(() => import("@/pages/legal/AboutPage"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000,       // 5 min – data is fresh before refetch
+      gcTime: 10 * 60 * 1000,         // 10 min – keep in memory cache
+      refetchOnWindowFocus: false,     // don't refetch on tab switch
+      retry: 2,                        // retry twice on failure
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000), // exponential backoff
+    },
+    mutations: {
+      retry: 1,
+    },
+  },
+});
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return (

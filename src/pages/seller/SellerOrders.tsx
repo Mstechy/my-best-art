@@ -8,6 +8,7 @@ import { ShoppingCart, Search, Truck } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import ShipOrderDialog from "@/components/ShipOrderDialog";
 import { supabase } from "@/integrations/supabase/client";
+import type { Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -67,15 +68,16 @@ export default function SellerOrders() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
-  const updateStatus = async (orderId: string, newStatus: string) => {
+  const updateStatus = async (orderId: string, newStatus: Enums<"order_status">) => {
     const order = orders.find(o => o.id === orderId);
     if (newStatus === "shipped") {
       if (order) setShipDialogOrder(order);
       return;
     }
-    const { error } = await supabase.from("orders").update({ status: newStatus } as any).eq("id", orderId);
+    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: `Order marked as ${newStatus}` });
     fetchOrders();
@@ -88,7 +90,7 @@ export default function SellerOrders() {
       carrier: data.carrier,
       tracking_number: data.tracking_number,
       estimated_delivery: data.estimated_delivery,
-    } as any).eq("id", shipDialogOrder.id);
+    }).eq("id", shipDialogOrder.id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
     await supabase.from("messages").insert({
@@ -174,7 +176,7 @@ export default function SellerOrders() {
                         </Button>
                       )}
                       {(order.status === "pending" || order.status === "processing" || order.status === "shipped") && (
-                        <Select onValueChange={(val) => updateStatus(order.id, val)}>
+                        <Select onValueChange={(val) => updateStatus(order.id, val as Enums<"order_status">)}>
                           <SelectTrigger className="w-[140px] h-8 text-xs">
                             <SelectValue placeholder="Update status" />
                           </SelectTrigger>

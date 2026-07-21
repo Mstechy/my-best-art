@@ -79,7 +79,9 @@ export default function AdminSellers() {
 
   const updateAccount = async (userId: string, update: Partial<{ is_verified: boolean; is_frozen: boolean; is_banned: boolean; is_approved: boolean }>, title: string) => {
     // Prefer v2 RPC so the same DB fields/keys that SellerDashboard polls are updated.
-    const rpcName = "admin_set_account_status_v2";
+    // Use the v2 RPC via a cast since it's not yet in auto-generated types,
+    // but has the same signature as admin_set_account_status.
+    const rpcName = "admin_set_account_status_v2" as "admin_set_account_status";
 
     const { error } = await supabase.rpc(rpcName, {
       _user_id: userId,
