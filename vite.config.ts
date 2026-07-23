@@ -31,7 +31,7 @@ export default defineConfig(({ mode }) => ({
         },
       },
     },
-    chunkSizeWarningLimit: 200,
+    chunkSizeWarningLimit: 500,
     sourcemap: false,
     reportCompressedSize: false,
   },

@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { cacheGet, cacheSet, cacheStaleWhileRevalidate, cacheKey as buildKey } from "@/lib/cache";
+import {
+  persistentCacheGet,
+  persistentCacheSet,
+  persistentCacheDelete,
+} from "@/lib/indexedDBCache";
 
 interface UseCachedFetchOptions<T> {
   /** Cache TTL in milliseconds (default 5 minutes) */
@@ -23,8 +27,8 @@ interface UseCachedFetchResult<T> {
 }
 
 /**
- * React hook for fetching data with client-side caching.
- * Wraps the cache.ts primitives into a convenient hook.
+ * React hook for fetching data with persistent IndexedDB caching.
+ * Wraps Dexie-based cache so data survives page reloads.
  *
  * @param cacheKey - Unique key for this cache entry (falsy = skip fetch)
  * @param fetcher - Async function that returns the data
@@ -54,10 +58,9 @@ export function useCachedFetch<T = unknown>(
 
     try {
       if (bypass) {
-        // Bypass cache – always hit network
         const fresh = await fetcherRef.current();
         if (!mountedRef.current) return;
-        cacheSet(cacheKey, fresh, ttlMs);
+        await persistentCacheSet(cacheKey, fresh, ttlMs);
         setData(fresh);
         setLoading(false);
         onSuccess?.(fresh);
@@ -65,16 +68,14 @@ export function useCachedFetch<T = unknown>(
       }
 
       if (swr) {
-        // Stale-while-revalidate: show cached immediately, refresh in bg
-        const cached = cacheGet<T>(cacheKey);
-        if (cached !== undefined) {
+        const cached = await persistentCacheGet<T>(cacheKey);
+        if (cached !== null) {
           setData(cached);
           setLoading(false);
-          // Background refresh
           fetcherRef.current()
-            .then(fresh => {
+            .then(async fresh => {
               if (!mountedRef.current) return;
-              cacheSet(cacheKey, fresh, ttlMs);
+              await persistentCacheSet(cacheKey, fresh, ttlMs);
               setData(fresh);
               onSuccess?.(fresh);
             })
@@ -87,9 +88,8 @@ export function useCachedFetch<T = unknown>(
         }
       }
 
-      // Standard: check cache, then fetch
-      const cached = cacheGet<T>(cacheKey);
-      if (cached !== undefined && !bypass) {
+      const cached = await persistentCacheGet<T>(cacheKey);
+      if (cached !== null && !bypass) {
         setData(cached);
         setLoading(false);
         return;
@@ -97,15 +97,14 @@ export function useCachedFetch<T = unknown>(
 
       const fresh = await fetcherRef.current();
       if (!mountedRef.current) return;
-      cacheSet(cacheKey, fresh, ttlMs);
+      await persistentCacheSet(cacheKey, fresh, ttlMs);
       setData(fresh);
       setLoading(false);
       onSuccess?.(fresh);
     } catch (err) {
       if (!mountedRef.current) return;
-      // Fall back to cache on error if we have it
-      const cached = cacheGet<T>(cacheKey);
-      if (cached !== undefined) {
+      const cached = await persistentCacheGet<T>(cacheKey);
+      if (cached !== null) {
         setData(cached);
       }
       setError(err);
@@ -131,13 +130,13 @@ export function useCachedFetch<T = unknown>(
 
 /**
  * Build a cache key from parts for use with Supabase queries.
- * e.g. cacheKeyFor("products", { categoryId: "abc" }) => "products:categoryId=abc"
  */
 export function cacheKeyFor(prefix: string, params?: Record<string, unknown>): string {
   if (!params) return prefix;
-  const parts = Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== null)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${String(v)}`);
-  return parts.length ? buildKey(prefix, ...parts) : prefix;
+  const filtered = Object.fromEntries(
+    Object.entries(params)
+      .filter(([, v]) => v !== undefined && v !== null)
+      .sort(([a], [b]) => a.localeCompare(b))
+  );
+  return `${prefix}:${JSON.stringify(filtered)}`;
 }

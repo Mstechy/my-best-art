@@ -8,10 +8,14 @@ import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import SiteFooter from "@/components/SiteFooter";
+import CategorySidebar from "@/components/CategorySidebar";
+import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
+import { usePrefetchProduct } from "@/hooks/usePrefetchProduct";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
@@ -59,6 +63,22 @@ interface Category { id: string; name: string; slug: string; icon: string; }
 interface CatalogueCursor { relevance: number; createdAt: string; id: string; }
 const CATALOGUE_PAGE_SIZE = 24;
 
+function ModalWrapper({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] w-full max-w-sm overflow-hidden shadow-2xl z-10">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#F2F3F5] dark:border-[#222222]">
+          <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] uppercase tracking-wider">{title}</h3>
+          <button onClick={onClose} className="text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors" aria-label="Close modal"><X className="h-4 w-4" /></button>
+        </div>
+        <div className="p-6">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug: categoryRouteSlug } = useParams<{ slug?: string }>();
@@ -84,6 +104,7 @@ export default function MarketplacePage() {
   const [hasMore, setHasMore] = useState(false);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
   const { addItem } = useCart();
+  const { handleMouseEnter, handleMouseLeave } = usePrefetchProduct();
   const { user } = useAuth();
   const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -202,7 +223,6 @@ export default function MarketplacePage() {
     setLoadingMore(false);
   }, [search, selectedCategory, shipsTo, filters, sortBy, visualHashParam]);
 
-  // Fetch immediately when search/filters change
   useEffect(() => {
     fetchCatalogue(true);
   }, [fetchCatalogue]);
@@ -277,202 +297,248 @@ export default function MarketplacePage() {
       />
       <CartDrawer />
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
-        <AnimatedSection variant="fade-up">
-          {selectedCategoryRecord && <nav aria-label="Breadcrumb" className="mb-2 text-xs text-[#888880]"><Link to="/" className="hover:underline">Home</Link><span className="mx-2">/</span><Link to="/categories" className="hover:underline">Categories</Link><span className="mx-2">/</span><span>{selectedCategoryRecord.name}</span></nav>}
-          <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">{selectedCategoryRecord?.name || "Marketplace"}</h1>
-          <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">
-            {isVisualSearch
-              ? (filtered.length > 0 ? "Image search results from your upload" : "No exact visual match found, showing the closest products we have")
-              : selectedCategoryRecord ? `Explore ${selectedCategoryRecord.name} from verified sellers. Filter, compare, and keep discovering.` : "Discover products from verified sellers worldwide"}
-          </p>
-          {promo && (
-            <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] bg-[#F8F3F0] dark:bg-[#1C1C1E] px-4 py-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Sparkles className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2] shrink-0" />
-                <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">Promotion:</span>
-                <span className="text-[#111111] dark:text-[#FAF5F2]">{promo.label}</span>
-              </div>
-              <button onClick={clearPromo} aria-label="Clear promotion" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#888880] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
-                <X className="h-4 w-4" />
-              </button>
+        <div className="flex gap-6">
+          <div className="hidden lg:block w-60 shrink-0">
+            <div className="sticky top-24">
+              <CategorySidebar
+                selectedCategory={selectedCategory}
+                onSelect={(slugOrId) => {
+                  const match = categories.find(c => c.slug === slugOrId || c.id === slugOrId);
+                  setSelectedCategory(match?.id || null);
+                  setFilters(f => ({ ...f, categoryAttributes: {} }));
+                }}
+                categories={categories.map(cat => ({ id: cat.id, name: cat.name, slug: cat.slug }))}
+              />
             </div>
-          )}
-          {hasMore && displayedProducts.length > 0 && (
-            <div className="mt-8 flex justify-center">
-              <Button type="button" variant="outline" onClick={() => fetchCatalogue(false)} disabled={loadingMore} className="rounded-full px-6">
-                {loadingMore ? "Loading products..." : "Load more products"}
-              </Button>
-            </div>
-          )}
-        </AnimatedSection>
-
-        <AnimatedSection variant="fade-up" delay={50}>
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
-            <button onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
-              className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
-              All
-            </button>
-            {categories.map(cat => (
-              <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
-                className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
-                {cat.name}
-              </button>
-            ))}
           </div>
-        </AnimatedSection>
-
-        <AnimatedSection variant="fade-up" delay={60}>
-          <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
-            <MarketplaceFilters
-              value={filters}
-              onChange={setFilters}
-              activeCount={activeFilterCount}
-              categoryName={selectedCategoryRecord?.name}
-              categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
-              categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
-            />
-            <Select value={sortBy} onValueChange={setSortBy}>
-              <SelectTrigger className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="relevance">Best match</SelectItem>
-                <SelectItem value="newest">Newest</SelectItem>
-                <SelectItem value="rating">Top rated</SelectItem>
-                <SelectItem value="best_sellers">Best sellers</SelectItem>
-                <SelectItem value="trending">Trending</SelectItem>
-                <SelectItem value="recommended">Recommended</SelectItem>
-                <SelectItem value="price_low">Price: low to high</SelectItem>
-                <SelectItem value="price_high">Price: high to low</SelectItem>
-              </SelectContent>
-            </Select>
-            <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
-              <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>
-              <button
-                onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
-                className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none"
-              >
-                <span>{shipsTo === "all" ? "Anywhere 🌍" : countryName(shipsTo)}</span>
-              </button>
-            </div>
-            <span className="text-xs text-[#888880] dark:text-[#A0A0A0] ml-auto">
-              Prices shown in{" "}
-              <button onClick={() => setIsCurrencyOpen(true)} className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none">
-                {currency.code} ({currency.symbol})
-              </button>
-            </span>
-          </div>
-          {selectedCategoryRecord && (
-            <div className="mb-6 rounded-lg border border-border/60 bg-card px-4 py-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium text-foreground">{selectedCategoryRecord.name}</span>
-                <span className="text-xs text-muted-foreground">filters:</span>
-                {selectedCategoryConfig.filters.map(filter => (
-                  <Badge key={filter} variant="outline" className="capitalize text-xs">{filter.replace(/([A-Z])/g, " $1")}</Badge>
+          <div className="flex-1 min-w-0">
+            <AnimatedSection variant="fade-up">
+              {selectedCategoryRecord && (
+                <nav aria-label="Breadcrumb" className="mb-2 text-xs text-[#888880]">
+                  <Link to="/" className="hover:underline">Home</Link>
+                  <span className="mx-2">/</span>
+                  <Link to="/categories" className="hover:underline">Categories</Link>
+                  <span className="mx-2">/</span>
+                  <span>{selectedCategoryRecord.name}</span>
+                </nav>
+              )}
+              <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">
+                {selectedCategoryRecord?.name || "Marketplace"}
+              </h1>
+              <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">
+                {isVisualSearch
+                  ? (filtered.length > 0 ? "Image search results from your upload" : "No exact visual match found, showing the closest products we have")
+                  : selectedCategoryRecord
+                    ? `Explore ${selectedCategoryRecord.name} from verified sellers. Filter, compare, and keep discovering.`
+                    : "Discover products from verified sellers worldwide"}
+              </p>
+              {promo && (
+                <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] bg-[#F8F3F0] dark:bg-[#1C1C1E] px-4 py-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <Sparkles className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2] shrink-0" />
+                    <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">Promotion:</span>
+                    <span className="text-[#111111] dark:text-[#FAF5F2]">{promo.label}</span>
+                  </div>
+                  <button onClick={clearPromo} aria-label="Clear promotion" className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#888880] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </AnimatedSection>
+            <AnimatedSection variant="fade-up" delay={50}>
+              <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
+                <button onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
+                  className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
+                  All
+                </button>
+                {categories.map(cat => (
+                  <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
+                    className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
+                    {cat.name}
+                  </button>
                 ))}
               </div>
-            </div>
-          )}
-        </AnimatedSection>
-
-        <AnimatedSection variant="fade-up" delay={100}>
-          {loading && products.length === 0 ? (
-            <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {[...Array(10)].map((_, i) => (
-                <div key={i} className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
-                  <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E]" />
-                  <div className="p-4 space-y-1.5">
-                    <div className="h-3 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-3/4" />
-                    <div className="h-4 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-1/3" />
-                  </div>
+            </AnimatedSection>
+            <AnimatedSection variant="fade-up" delay={60}>
+              <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
+                <MarketplaceFilters
+                  value={filters} onChange={setFilters} activeCount={activeFilterCount}
+                  categoryName={selectedCategoryRecord?.name}
+                  categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
+                  categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
+                />
+                <Select value={sortBy} onValueChange={setSortBy}>
+                  <SelectTrigger className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relevance">Best match</SelectItem>
+                    <SelectItem value="newest">Newest</SelectItem>
+                    <SelectItem value="rating">Top rated</SelectItem>
+                    <SelectItem value="best_sellers">Best sellers</SelectItem>
+                    <SelectItem value="trending">Trending</SelectItem>
+                    <SelectItem value="recommended">Recommended</SelectItem>
+                    <SelectItem value="price_low">Price: low to high</SelectItem>
+                    <SelectItem value="price_high">Price: high to low</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
+                  <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">Ships to</span>
+                  <button onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
+                    className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none">
+                    <span>{shipsTo === "all" ? "Anywhere 🌍" : countryName(shipsTo)}</span>
+                  </button>
                 </div>
-              ))}
-            </div>
-          ) : displayedProducts.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center select-none">
-              <Package className="h-16 w-16 text-[#888880]/30 dark:text-[#A0A0A0]/30 mb-4" />
-              <h3 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
-                {search || selectedCategory ? "No products match your filters" : "No products listed yet"}
-              </h3>
-              <p className="mt-2 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-sm">
-                {search || selectedCategory ? "Try different search terms or categories" : "Products will appear here as sellers list them."}
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {displayedProducts.map(product => {
-                const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-                const seller = sellerProfiles[product.seller_id];
-                const discount = product.compare_at_price && product.compare_at_price > product.price
-                  ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
-
-                return (
-                  <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
-                    <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")} className="block">
-                      <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
-                        {primaryImage ? (
-                          <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
-                        ) : (
-                          <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
-                            <Package className="h-8 w-8 text-[#888880] opacity-40" />
-                          </div>
-                        )}
-                        {discount ? (
-                          <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">-{discount}%</span>
-                        ) : product.stock_quantity <= 5 && product.stock_quantity > 0 ? (
-                          <span className="absolute top-3 left-3 bg-[#FFA000] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center"><Flame className="h-2.5 w-2.5 mr-0.5" /> Hot</span>
-                        ) : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? (
-                          <span className="absolute top-3 left-3 bg-[#2E7D32] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">New</span>
-                        ) : null}
-                        {user && (
-                          <button
-                            onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
-                            className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop:blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
-                          >
-                            <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
-                          </button>
-                        )}
-                      </div>
-                    </Link>
-                    <div className="p-0 flex flex-col flex-1 mt-2">
-                      <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")}>
-                        <h4 className="text-[12px] font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 hover:underline min-h-[32px] leading-snug">{product.title}</h4>
-                      </Link>
-                      <div className="flex items-center justify-between mt-2.5">
-                        <div className="flex items-baseline gap-1.5 min-w-0">
-                          <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
-                          {product.compare_at_price && product.compare_at_price > product.price && (
-                            <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
+                <span className="text-xs text-[#888880] dark:text-[#A0A0A0] ml-auto">
+                  Prices shown in{" "}
+                  <button onClick={() => setIsCurrencyOpen(true)} className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none">
+                    {currency.code} ({currency.symbol})
+                  </button>
+                </span>
+              </div>
+            </AnimatedSection>
+            {displayedProducts.length > 0 && (
+              <AnimatedSection variant="fade-up" delay={80}>
+                <HorizontalScrollSection
+                  title="Popular Now"
+                  subtitle="Scroll to explore"
+                  itemWidth={180}
+                  showArrows
+                  showDots
+                >
+                  {displayedProducts.slice(0, 20).map(product => {
+                    const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+                    const discount = product.compare_at_price && product.compare_at_price > product.price
+                      ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
+                    return (
+                      <Link
+                        key={product.id}
+                        to={`/product/${product.id}`}
+                        onClick={() => trackProductDiscovery(product.id, "click")}
+                        className="block w-[180px] shrink-0 rounded-xl overflow-hidden bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all"
+                      >
+                        <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E]">
+                          {primaryImage ? (
+                            <ProductImage src={primaryImage.image_url} alt={product.title} loading="lazy" />
+                          ) : (
+                            <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D]">
+                              <Package className="h-8 w-8 text-[#888880] opacity-40" />
+                            </div>
                           )}
                         </div>
-                        <button
-                          onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
-                          className="bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] rounded-full p-2 h-8 w-8 flex items-center justify-center transition-colors duration-200 shrink-0"
-                          disabled={product.stock_quantity === 0}
-                          aria-label="Add to cart"
-                        >
-                          <ShoppingCart className="h-3.5 w-3.5" />
-                        </button>
+                        <div className="p-2">
+                          {discount && (
+                            <span className="inline-block bg-[#E53935] text-white text-[9px] font-bold px-1.5 py-0.5 rounded mb-1">-{discount}%</span>
+                          )}
+                          <p className="text-xs font-semibold line-clamp-2">{product.title}</p>
+                          <p className="text-sm font-bold mt-1">{formatPrice(product.price)}</p>
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </HorizontalScrollSection>
+              </AnimatedSection>
+            )}
+            <AnimatedSection variant="fade-up" delay={100}>
+              {loading && products.length === 0 ? (
+                <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {[...Array(10)].map((_, i) => (
+                    <div key={i} className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
+                      <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E]" />
+                      <div className="p-4 space-y-1.5">
+                        <div className="h-3 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-3/4" />
+                        <div className="h-4 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-1/3" />
                       </div>
-                      {seller && (
-                        <div className="flex items-center gap-1 mt-1.5 select-none">
-                          <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller.full_name || "Seller"}</span>
-                          {seller.is_verified && <CheckCircle2 className="h-2.5 w-2.5 text-[#F6C75D] shrink-0" />}
-                        </div>
-                      )}
-                      {shipsTo !== "all" && (
-                        <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
-                          <Globe className="h-2.5 w-2.5" /> Ships to {countryName(shipsTo)}
-                        </div>
-                      )}
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </AnimatedSection>
+                  ))}
+                </div>
+              ) : displayedProducts.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center select-none">
+                  <Package className="h-16 w-16 text-[#888880]/30 dark:text-[#A0A0A0]/30 mb-4" />
+                  <h3 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
+                    {search || selectedCategory ? "No products match your filters" : "No products listed yet"}
+                  </h3>
+                  <p className="mt-2 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-sm">
+                    {search || selectedCategory ? "Try different search terms or categories" : "Products will appear here as sellers list them."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                  {displayedProducts.map(product => {
+                    const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+                    const seller = sellerProfiles[product.seller_id];
+                    const discount = product.compare_at_price && product.compare_at_price > product.price
+                      ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
+                    return (
+                      <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
+                        <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")} className="block">
+                          <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
+                            {primaryImage ? (
+                              <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
+                            ) : (
+                              <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
+                                <Package className="h-8 w-8 text-[#888880] opacity-40" />
+                              </div>
+                            )}
+                            {discount ? (
+                              <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">-{discount}%</span>
+                            ) : product.stock_quantity <= 5 && product.stock_quantity > 0 ? (
+                              <span className="absolute top-3 left-3 bg-[#FFA000] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center"><Flame className="h-2.5 w-2.5 mr-0.5" /> Hot</span>
+                            ) : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? (
+                              <span className="absolute top-3 left-3 bg-[#2E7D32] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">New</span>
+                            ) : null}
+                            {user && (
+                              <button onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
+                                className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}>
+                                <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
+                              </button>
+                            )}
+                          </div>
+                        </Link>
+                        <div className="p-0 flex flex-col flex-1 mt-2">
+                          <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")}>
+                            <h4 className="text-[12px] font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 hover:underline min-h-[32px] leading-snug">{product.title}</h4>
+                          </Link>
+                          <div className="flex items-center justify-between mt-2.5">
+                            <div className="flex items-baseline gap-1.5 min-w-0">
+                              <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
+                              {product.compare_at_price && product.compare_at_price > product.price && (
+                                <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
+                              )}
+                            </div>
+                            <button onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
+                              className="bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] rounded-full p-2 h-8 w-8 flex items-center justify-center transition-colors duration-200 shrink-0"
+                              disabled={product.stock_quantity === 0} aria-label="Add to cart">
+                              <ShoppingCart className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          {seller && (
+                            <div className="flex items-center gap-1 mt-1.5 select-none">
+                              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller.full_name || "Seller"}</span>
+                              {seller.is_verified && <CheckCircle2 className="h-2.5 w-2.5 text-[#F6C75D] shrink-0" />}
+                            </div>
+                          )}
+                          {shipsTo !== "all" && (
+                            <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
+                              <Globe className="h-2.5 w-2.5" /> Ships to {countryName(shipsTo)}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {hasMore && displayedProducts.length > 0 && !loading && (
+                <div className="mt-8 flex justify-center">
+                  <Button type="button" variant="outline" onClick={() => fetchCatalogue(false)} disabled={loadingMore} className="rounded-full px-6">
+                    {loadingMore ? "Loading products..." : "Load more products"}
+                  </Button>
+                </div>
+              )}
+            </AnimatedSection>
+          </div>
+        </div>
       </div>
-
       <ModalWrapper isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} title="Delivery Destination">
         {isLocationConfirmScreen ? (
           <div className="text-center space-y-4 select-none">
@@ -505,7 +571,6 @@ export default function MarketplacePage() {
           </div>
         )}
       </ModalWrapper>
-
       <ModalWrapper isOpen={isCurrencyOpen} onClose={() => setIsCurrencyOpen(false)} title="Preferred Currency">
         <div className="space-y-4 select-none">
           <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">Choose your preferred currency to convert prices dynamically:</p>
@@ -523,26 +588,7 @@ export default function MarketplacePage() {
           </div>
         </div>
       </ModalWrapper>
-
       <SiteFooter />
-    </div>
-  );
-}
-
-interface ModalWrapperProps { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode; }
-
-function ModalWrapper({ isOpen, onClose, title, children }: ModalWrapperProps) {
-  if (!isOpen) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-[#000000]/60 backdrop:blur-sm transition-opacity duration-300 animate-fade-in" onClick={onClose} />
-      <div className="relative bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] w-full max-w-sm overflow-hidden shadow-2xl z-10 transition-all duration-300 animate-scale-in">
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#F2F3F5] dark:border-[#222222]">
-          <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] uppercase tracking-wider">{title}</h3>
-          <button onClick={onClose} className="text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors" aria-label="Close modal"><X className="h-4 w-4" /></button>
-        </div>
-        <div className="p-6">{children}</div>
-      </div>
     </div>
   );
 }

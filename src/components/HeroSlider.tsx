@@ -58,6 +58,30 @@ const HeroSlider = memo(function HeroSlider({
     });
   };
 
+  // Preload next 2 slides for instant rotation and better LCP
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const links: HTMLLinkElement[] = [];
+    for (let offset = 1; offset <= 2; offset++) {
+      const index = (current + offset) % len;
+      const slide = slides[index];
+      if (!slide?.image_url) continue;
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = getHeroImageUrl(slide.image_url, 1920);
+      link.imageSrcset = `${getHeroImageUrl(slide.image_url, 768)} 768w, ${getHeroImageUrl(slide.image_url, 1280)} 1280w, ${getHeroImageUrl(slide.image_url, 1920)} 1920w`;
+      link.imageSizes = "100vw";
+      document.head.appendChild(link);
+      links.push(link);
+    }
+    return () => {
+      links.forEach(l => {
+        try { document.head.removeChild(l); } catch { /* ignore cleanup error */ }
+      });
+    };
+  }, [current, len, slides]);
+
   // Auto-rotate
   useEffect(() => {
     if (!autoRotate || !hasMultiple || isPaused) {
