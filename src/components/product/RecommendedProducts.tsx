@@ -77,11 +77,12 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                       e.stopPropagation();
                       addItem({
                         id: p.id,
-                        price: p.price,
+                        product_id: p.id,
                         title: p.title,
-                        image_url: img?.image_url,
+                        price: p.price,
+                        image_url: img?.image_url || null,
                         seller_id: p.seller_id,
-                        seller_name: "Store Seller",
+                        seller_name: "Seller",
                         stock_quantity: p.stock_quantity || 1,
                       });
                       toast.success("Added to cart");

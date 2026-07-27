@@ -3,8 +3,6 @@ import { useEffect, useRef } from "react";
 const SCROLL_KEY = "marketplace_scroll_position";
 
 export function useScrollRestoration() {
-  const restoredRef = useRef(false);
-
   useEffect(() => {
     const saved = sessionStorage.getItem(SCROLL_KEY);
     if (saved) {
@@ -16,7 +14,6 @@ export function useScrollRestoration() {
       }
       sessionStorage.removeItem(SCROLL_KEY);
     }
-    restoredRef.current = true;
   }, []);
 
   const saveScroll = () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,18 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-
-interface Order {
-  id: string;
-  buyer_id: string;
-  status: string;
-  total_amount: number;
-  currency: string;
-  tracking_number: string | null;
-  carrier: string | null;
-  estimated_delivery: string | null;
-  created_at: string;
-}
+import { useSellerOrders } from "@/hooks/useSellerDashboard";
 
 type Tab = "all" | "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
@@ -38,38 +27,13 @@ const statusColors: Record<string, string> = {
 export default function SellerOrders() {
   const { user } = useAuth();
   const { toast } = useToast();
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
-  const [shipDialogOrder, setShipDialogOrder] = useState<Order | null>(null);
+  const [shipDialogOrder, setShipDialogOrder] = useState<ReturnType<typeof useSellerOrders>["data"][number] | null>(null);
 
-  const fetchOrders = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("seller_id", user.id)
-      .order("created_at", { ascending: false });
-    if (data) setOrders(data as unknown as Order[]);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchOrders();
-    if (!user) return;
-    const channel = supabase
-      .channel(`seller-orders-${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "orders", filter: `seller_id=eq.${user.id}` },
-        () => fetchOrders()
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  const ordersQuery = useSellerOrders(user?.id);
+  const orders = ordersQuery.data ?? [];
+  const loading = ordersQuery.isLoading;
 
   const updateStatus = async (orderId: string, newStatus: Enums<"order_status">) => {
     const order = orders.find(o => o.id === orderId);
@@ -80,7 +44,7 @@ export default function SellerOrders() {
     const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: `Order marked as ${newStatus}` });
-    fetchOrders();
+    ordersQuery.refetch();
   };
 
   const confirmShip = async (data: { carrier: string; tracking_number: string; estimated_delivery: string | null }) => {
@@ -100,7 +64,8 @@ export default function SellerOrders() {
     });
 
     toast({ title: "Order marked as shipped", description: "The buyer has been notified." });
-    fetchOrders();
+    setShipDialogOrder(null);
+    ordersQuery.refetch();
   };
 
   const filtered = orders.filter(o => {

@@ -1,16 +1,23 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/hooks/useCart";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useAuth } from "@/hooks/useAuth";
+import { useDedupedMutation } from "@/hooks/useDedupedMutation";
 import { supabase } from "@/integrations/supabase/client";
+import { logError } from "@/lib/errorHandler";
 import { toast } from "sonner";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import { Package, ArrowLeft, ShoppingBag, CheckCircle2, Lock, ShieldCheck, CreditCard, BookmarkPlus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { COUNTRIES } from "@/lib/countries";
+
+/** Generate a unique idempotency key for safe retries without duplicate orders */
+function generateIdempotencyKey(): string {
+  return `po_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+}
 
 interface SavedAddress {
   id: string;
@@ -44,8 +51,10 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await supabase.from("addresses" as any)
         .select("*").eq("user_id", user.id).order("is_default", { ascending: false }).order("created_at", { ascending: false });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const list = (data as any) as SavedAddress[] || [];
       setSaved(list);
       const def = list.find(a => a.is_default) || list[0];
@@ -61,6 +70,54 @@ export default function CheckoutPage() {
     });
   };
 
+  const placeOrder = useDedupedMutation(
+    useCallback(async (idempotencyKey: string) => {
+      if (!user) {
+        toast.error("Please sign in to place an order.");
+        navigate("/auth/login");
+        return;
+      }
+      if (!address.name || !address.street || !address.city || !address.country) {
+        toast.error("Please fill in all required address fields.");
+        return;
+      }
+
+      if (saveAfter) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        await supabase.from("addresses" as any).insert({
+          user_id: user.id, label: addressLabel || null, recipient: address.name,
+          line1: address.street, city: address.city, region: address.state || null,
+          postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        } as any);
+      }
+
+      const sellerGroups: Record<string, typeof items> = {};
+      items.forEach(item => {
+        if (!sellerGroups[item.seller_id]) sellerGroups[item.seller_id] = [];
+        sellerGroups[item.seller_id].push(item);
+      });
+
+      for (const [sellerId, sellerItems] of Object.entries(sellerGroups)) {
+        const { error } = await supabase.rpc("place_marketplace_order", {
+          p_seller_id: sellerId,
+          p_shipping_address: address,
+          p_items: sellerItems.map(item => ({
+            product_id: item.product_id || item.id.split("::")[0],
+            product_variant_id: item.product_variant_id || null,
+            quantity: item.quantity,
+          })),
+          p_idempotency_key: idempotencyKey,
+        });
+        if (error) throw error;
+      }
+      clearCart();
+      toast.success("Order placed successfully!");
+      navigate("/buyer/orders");
+    }, [user, address, saveAfter, addressLabel, saved.length, items, clearCart, navigate]),
+    useCallback(() => "place-order", []),
+  );
+
   const handlePlaceOrder = async () => {
     if (!user) {
       toast.error("Please sign in to place an order.");
@@ -72,36 +129,13 @@ export default function CheckoutPage() {
       return;
     }
     setLoading(true);
-    if (saveAfter) {
-      await supabase.from("addresses" as any).insert({
-        user_id: user.id, label: addressLabel || null, recipient: address.name,
-        line1: address.street, city: address.city, region: address.state || null,
-        postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
-      } as any);
-    }
-    const sellerGroups: Record<string, typeof items> = {};
-    items.forEach(item => {
-      if (!sellerGroups[item.seller_id]) sellerGroups[item.seller_id] = [];
-      sellerGroups[item.seller_id].push(item);
-    });
     try {
-      for (const [sellerId, sellerItems] of Object.entries(sellerGroups)) {
-        const { error } = await supabase.rpc("place_marketplace_order", {
-          p_seller_id: sellerId,
-          p_shipping_address: address,
-          p_items: sellerItems.map(item => ({
-            product_id: item.product_id || item.id.split("::")[0],
-            product_variant_id: item.product_variant_id || null,
-            quantity: item.quantity,
-          })),
-        });
-        if (error) throw error;
-      }
-      clearCart();
-      toast.success("Order placed successfully!");
-      navigate(`/buyer/orders`);
-    } catch (error: any) {
-      toast.error(error.message);
+      const idempotencyKey = generateIdempotencyKey();
+      await placeOrder(idempotencyKey);
+    } catch (error: unknown) {
+      logError(error, "checkout");
+      const message = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      toast.error(message);
     } finally {
       setLoading(false);
     }

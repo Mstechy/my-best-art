@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,26 +9,16 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
-
+import { useSellerDashboard } from "@/hooks/useSellerDashboard";
 
 export default function SellerDashboard() {
   const { user, profile, refetchProfile } = useAuth();
   const [isApproved, setIsApproved] = useState<boolean>(profile?.is_approved ?? false);
   const [checkingApproval, setCheckingApproval] = useState<boolean>(profile?.is_approved === undefined);
 
+  const { products, stats, loading: dashboardLoading, recentOrders, weekly } = useSellerDashboard(user?.id);
 
-  const [stats, setStats] = useState({ products: 0, pendingApproval: 0, pendingOrders: 0, totalRevenue: 0 });
-  type RecentOrder = {
-    id: string;
-    status: string;
-    total_amount: number | string;
-    created_at: string;
-    buyer_id: string;
-    buyer_name?: string;
-  };
-
-  const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
-  const [weekly, setWeekly] = useState<{ day: string; revenue: number }[]>([]);
+  const pendingOrdersCount = useMemo(() => (recentOrders || []).filter((o) => o.status === "pending" || o.status === "processing").length, [recentOrders]);
 
   useEffect(() => {
     if (!user) return;
@@ -39,7 +29,6 @@ export default function SellerDashboard() {
     const userId = user.id;
 
     const tryReadApproval = async (): Promise<boolean> => {
-      // Prefer profiles.user_id (matches useAuth.tsx)
       const { data: byUserId } = await supabase
         .from("profiles")
         .select("is_approved")
@@ -48,7 +37,6 @@ export default function SellerDashboard() {
 
       if (typeof byUserId?.is_approved === "boolean") return byUserId.is_approved;
 
-      // Fallback: profiles.id
       const { data: byId } = await supabase
         .from("profiles")
         .select("is_approved")
@@ -60,8 +48,6 @@ export default function SellerDashboard() {
 
     const runOnce = async () => {
       if (isCancelled) return;
-
-      // Avoid work if we already approved (from state)
       if (isApproved) {
         setCheckingApproval(false);
         if (intervalIdRef.current) window.clearInterval(intervalIdRef.current);
@@ -83,23 +69,17 @@ export default function SellerDashboard() {
       }
     };
 
-    // Gate while we don't know yet (cached profile missing/undefined)
     setCheckingApproval(profile?.is_approved === undefined);
 
     if (profile?.is_approved === undefined) {
       runOnce();
-
-      intervalIdRef.current = window.setInterval(() => {
-        runOnce();
-      }, 4000);
-
+      intervalIdRef.current = window.setInterval(() => runOnce(), 4000);
       return () => {
         isCancelled = true;
         if (intervalIdRef.current) window.clearInterval(intervalIdRef.current);
       };
     }
 
-    // If we already have a cached value, render normally
     if (profile?.is_approved === true) {
       setIsApproved(true);
       setCheckingApproval(false);
@@ -113,85 +93,6 @@ export default function SellerDashboard() {
     };
   }, [user, isApproved, profile?.is_approved, refetchProfile]);
 
-
-  // Keep hooks order stable; gate rendering only.
-
-
-
-
-  useEffect(() => {
-    if (!user) return;
-    if (!isApproved) return;
-
-    const fetchStats = async () => {
-      const [productsRes, ordersRes] = await Promise.all([
-        supabase.from("products").select("id", { count: "exact", head: true }).eq("seller_id", user.id),
-        supabase.from("orders").select("id, total_amount, status").eq("seller_id", user.id),
-      ]);
-
-      // Separate query for pending approval count
-      const pendingQuery = supabase
-        .from("products")
-        .select("id", { count: "exact", head: true })
-        .eq("seller_id", user.id);
-      const { count: pendingCount } = await pendingQuery.eq("is_approved", false);
-
-      const orders = ordersRes.data || [];
-      const pending = orders.filter(o => o.status === "pending" || o.status === "processing").length;
-      const revenue = orders.filter(o => o.status === "delivered").reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
-      setStats({ products: productsRes.count || 0, pendingApproval: pendingCount || 0, pendingOrders: pending, totalRevenue: revenue });
-
-      // Build last-7-days revenue chart from delivered orders
-      const { data: weekOrders } = await supabase
-        .from("orders")
-        .select("total_amount, delivered_at, status, created_at")
-        .eq("seller_id", user.id)
-        .eq("status", "delivered")
-        .gte("created_at", new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString());
-      const days: { day: string; revenue: number }[] = [];
-      const dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0,0,0,0);
-        const key = d.toDateString();
-        const total = (weekOrders || []).filter(o => {
-          const od = new Date(o.delivered_at || o.created_at); od.setHours(0,0,0,0);
-          return od.toDateString() === key;
-        }).reduce((s, o) => s + Number(o.total_amount || 0), 0);
-        days.push({ day: dayNames[d.getDay()], revenue: Math.round(total * 100) / 100 });
-      }
-      setWeekly(days);
-    };
-
-    const fetchRecentOrders = async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("id, status, total_amount, created_at, buyer_id")
-        .eq("seller_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
-      if (data && data.length > 0) {
-        const buyerIds = [...new Set(data.map(o => o.buyer_id))];
-        let profiles: { user_id: string; full_name: string | null }[] = [];
-        if (buyerIds.length) {
-          const { data: profileData, error: profileError } = await supabase
-            .from("profiles")
-            .select("user_id, full_name")
-            .in("user_id", buyerIds);
-          if (profileError) {
-            console.warn("Failed to load buyer profiles for recent orders:", profileError.message);
-          }
-          profiles = profileData || [];
-        }
-        const map: Record<string, string> = {};
-        profiles.forEach(p => { if (p.user_id) map[p.user_id] = p.full_name || "Unknown"; });
-        setRecentOrders(data.map(o => ({ ...o, buyer_name: map[o.buyer_id] || "Unknown" })));
-      }
-    };
-
-    fetchStats();
-    fetchRecentOrders();
-  }, [user, isApproved, refetchProfile]);
-
   const statusColors: Record<string, string> = {
     pending: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
     processing: "bg-blue-500/10 text-blue-600 border-blue-500/20",
@@ -200,11 +101,14 @@ export default function SellerDashboard() {
     cancelled: "bg-destructive/10 text-destructive border-destructive/20",
   };
 
+  const loading = dashboardLoading;
+  const showChecking = Boolean(checkingApproval || (loading && (!products.length && !stats.totalRevenue)));
+
   const statCards = [
-    { label: "Total Revenue", value: `$${stats.totalRevenue.toFixed(2)}`, icon: DollarSign, cardClass: "stat-card stat-card-seller" },
-    { label: "Active Products", value: String(stats.products), icon: Package, cardClass: "stat-card" },
-    { label: "Pending Approval", value: String(stats.pendingApproval), icon: Clock, cardClass: stats.pendingApproval > 0 ? "stat-card stat-card-destructive" : "stat-card" },
-    { label: "Pending Orders", value: String(stats.pendingOrders), icon: ShoppingCart, cardClass: "stat-card stat-card-buyer" },
+    { label: "Total Revenue", value: `$${(stats.totalRevenue || 0).toFixed(2)}`, icon: DollarSign, cardClass: "stat-card stat-card-seller" },
+    { label: "Active Products", value: String(products.length), icon: Package, cardClass: "stat-card" },
+    { label: "Pending Approval", value: String(stats.pendingApproval || 0), icon: Clock, cardClass: (stats.pendingApproval || 0) > 0 ? "stat-card stat-card-destructive" : "stat-card" },
+    { label: "Pending Orders", value: String(pendingOrdersCount), icon: ShoppingCart, cardClass: "stat-card stat-card-buyer" },
   ];
 
   const quickActions = [
@@ -215,7 +119,7 @@ export default function SellerDashboard() {
     { label: "Withdraw", icon: Wallet, href: "/seller/wallet", gradient: "gradient-primary", desc: "Cash out earnings" },
   ];
 
-  if (checkingApproval) {
+  if (showChecking) {
     return (
       <div className="space-y-8">
         <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
@@ -243,12 +147,12 @@ export default function SellerDashboard() {
         </div>
       </AnimatedSection>
 
-      {stats.pendingApproval > 0 && (
+      {(stats.pendingApproval || 0) > 0 && (
         <AnimatedSection variant="fade-up" delay={30}>
           <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 flex items-center gap-3">
             <Clock className="h-5 w-5 text-yellow-600 shrink-0" />
             <div>
-              <p className="font-medium text-foreground text-sm">{stats.pendingApproval} product{stats.pendingApproval > 1 ? "s" : ""} pending admin approval</p>
+              <p className="font-medium text-foreground text-sm">{stats.pendingApproval} product{(stats.pendingApproval || 0) > 1 ? "s" : ""} pending admin approval</p>
               <p className="text-xs text-muted-foreground">Products will be visible on the marketplace once approved</p>
             </div>
           </div>
@@ -300,7 +204,6 @@ export default function SellerDashboard() {
       </AnimatedSection>
 
       <div className="grid gap-6 lg:grid-cols-3">
-
         <AnimatedSection variant="fade-up" delay={200} className="lg:col-span-2">
           <Card className="border-border/60">
             <CardHeader className="flex flex-row items-center justify-between">

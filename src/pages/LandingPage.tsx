@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useEffect, useMemo, useState, memo, useCallback } from "react";
+import { useMemo, memo } from "react";
 import { Link } from "react-router-dom";
 import { CheckCircle2, Package, Sparkles, Star } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
@@ -10,98 +9,12 @@ import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
 import HeroSlider from "@/components/HeroSlider";
 import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
-import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
-import { fetchHeroCollections } from "@/lib/collectionResolver";
-import type { EnhancedCollection } from "@/lib/collectionResolver";
-
-type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; average_rating: number; review_count: number; ships_to: string[] | null; product_images: { image_url: string; is_primary: boolean }[] };
-type Category = { id: string; name: string; slug: string };
-type Seller = { full_name: string | null; is_verified: boolean };
-type FeedItem = Product & { sold_count: number; trend_score: number };
-type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
-
-const FEEDS: { key: FeedName; title: string; subtitle: string; href: string; empty: string }[] = [
-  { key: "flash_deals", title: "Flash Deals", subtitle: "Limited time offers", href: "/marketplace?promo=summer20", empty: "No live deals right now." },
-  { key: "best_sellers", title: "Best Sellers", subtitle: "Most popular this week", href: "/marketplace?sort=best_sellers", empty: "Sales will appear here once orders are delivered." },
-  { key: "new_arrivals", title: "New Arrivals", subtitle: "Fresh from sellers", href: "/marketplace?sort=newest", empty: "New approved listings will appear here." },
-  { key: "trending", title: "Trending", subtitle: "What shoppers love", href: "/marketplace?sort=trending", empty: "Trending products will appear as shoppers engage with them." },
-  { key: "recommended", title: "Recommended", subtitle: "Just for you", href: "/marketplace?sort=recommended", empty: "Recommendations will appear as the catalogue grows." },
-];
+import { useHomepageData, FEEDS, type FeedItem, type Seller } from "@/hooks/useHomepage";
 
 export default function LandingPage() {
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [counts, setCounts] = useState<Record<string, number>>({});
-  const [heroSlides, setHeroSlides] = useState<EnhancedCollection[]>([]);
-  const [feeds, setFeeds] = useState<Record<FeedName, FeedItem[]>>({ flash_deals: [], best_sellers: [], new_arrivals: [], trending: [], recommended: [] });
-  const [sellers, setSellers] = useState<Record<string, Seller>>({});
-  const [loading, setLoading] = useState(true);
-  const [heroLoading, setHeroLoading] = useState(true);
+  const { categories, counts, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
   const { formatPrice } = useCurrency();
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadHero = async () => {
-      try {
-        const heroRes = await fetchHeroCollections();
-        if (!mounted) return;
-
-        if (heroRes.length > 0) {
-          setHeroSlides(heroRes);
-        } else {
-          setHeroSlides([]);
-        }
-      } catch {
-        if (mounted) setHeroSlides([]);
-      } finally {
-        if (mounted) setHeroLoading(false);
-      }
-    };
-
-    void loadHero();
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
-  useEffect(() => {
-    let mounted = true;
-    const load = async () => {
-      try {
-        const [categoriesRes, countsRes, ...feedRes] = await Promise.all([
-          supabase.from("categories").select("id,name,slug").order("sort_order"),
-          (supabase as any).rpc("homepage_category_counts"),
-          ...FEEDS.map(feed => (supabase as any).rpc("homepage_product_feed", { p_section: feed.key, p_limit: 10 })),
-        ]);
-
-        const ids = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => row.product_id)))];
-        const sellerIds: string[] = [...new Set(feedRes.flatMap((result: any) => (result.data || []).map((row: any) => (row as any).seller_id).filter(Boolean)))];
-
-        const [productsRes, profilesRes] = await Promise.all([
-          ids.length ? supabase.from("products").select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)").in("id", ids) : { data: [] },
-          sellerIds.length ? supabase.from("seller_profiles_public").select("user_id,full_name,is_verified").in("user_id", sellerIds) : { data: [] }
-        ]);
-
-        if (!mounted) return;
-
-        const products = new Map(((productsRes.data || []) as unknown as Product[]).map(product => [product.id, product]));
-        const profiles = new Map(((profilesRes.data || []) as any).filter((row: any) => row.user_id).map((row: any) => [row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified }]));
-
-        setCategories((categoriesRes.data || []) as Category[]);
-        setCounts(Object.fromEntries((countsRes.data || []).map((row: any) => [row.category_id, Number(row.product_count)])));
-        setSellers(Object.fromEntries(profiles));
-        setFeeds(Object.fromEntries(FEEDS.map((feed, index) => [feed.key, (feedRes[index].data || []).flatMap((row: any) => products.has(row.product_id) ? [{ ...products.get(row.product_id)!, sold_count: Number(row.sold_count), trend_score: Number(row.trend_score) }] : [])])) as Record<FeedName, FeedItem[]>);
-      } catch (err) {
-        console.error("[LandingPage] homepage load failed", err);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-    void load();
-    return () => { mounted = false; };
-  }, []);
 
   const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
 
@@ -182,7 +95,7 @@ export default function LandingPage() {
             <HorizontalProductCard
               key={product.id}
               product={product}
-              seller={sellers[product.seller_id]}
+              seller={sellers.get(product.seller_id)}
               formatPrice={formatPrice}
             />
           ))}

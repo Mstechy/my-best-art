@@ -13,9 +13,10 @@ import RoleRedirect from "@/components/RoleRedirect";
 import PageTransition from "@/components/PageTransition";
 import NotificationsHub from "@/components/NotificationsHub";
 import CookieConsent from "@/components/CookieConsent";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
-// Public pages - Landing page and marketplace are critical, lazy load the rest
-import LandingPage from "@/pages/LandingPage";
+// Public pages - lazy load all for billion-scale bundle splitting
+const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const ProductDetailPage = lazy(() => import("@/pages/ProductDetailPage"));
 const SellerStorePage = lazy(() => import("@/pages/SellerStorePage"));
@@ -72,11 +73,11 @@ const AboutPage = lazy(() => import("@/pages/legal/AboutPage"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,       // 5 min – data is fresh before refetch
-      gcTime: 10 * 60 * 1000,         // 10 min – keep in memory cache
-      refetchOnWindowFocus: false,     // don't refetch on tab switch
-      retry: 2,                        // retry twice on failure
-      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000), // exponential backoff
+      staleTime: 5 * 60 * 1000,
+      gcTime: 10 * 60 * 1000,
+      refetchOnWindowFocus: false,
+      retry: 2,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
     },
     mutations: {
       retry: 1,
@@ -110,11 +111,13 @@ function BuyerRoute({ children }: { children: React.ReactNode }) {
 
 function RouteSuspense({ children }: { children: React.ReactNode }) {
   return (
-    <Suspense fallback={
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#111111]"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#111111]"></div>
+        </div>
+      }
+    >
       {children}
     </Suspense>
   );
@@ -122,71 +125,63 @@ function RouteSuspense({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   return (
-    <PageTransition>
-      <Routes>
-        {/* Public */}
-        <Route path="/" element={<LandingPage />} />
-        <Route path="/marketplace" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
-        <Route path="/categories" element={<RouteSuspense><CategoriesPage /></RouteSuspense>} />
-        <Route path="/categories/:slug" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
-        <Route path="/collections/:slug" element={<RouteSuspense><CollectionPage /></RouteSuspense>} />
-        <Route path="/product/:id" element={<RouteSuspense><ProductDetailPage /></RouteSuspense>} />
-        <Route path="/seller/:id" element={<RouteSuspense><SellerStorePage /></RouteSuspense>} />
-        <Route path="/checkout" element={<RouteSuspense><CheckoutPage /></RouteSuspense>} />
-        <Route path="/order-success/:id" element={<RouteSuspense><OrderSuccessPage /></RouteSuspense>} />
-        <Route path="/auth/login" element={<RouteSuspense><LoginPage /></RouteSuspense>} />
-        <Route path="/auth/register" element={<RouteSuspense><RegisterPage /></RouteSuspense>} />
-        <Route path="/wishlist/:userId" element={<RouteSuspense><PublicWishlistPage /></RouteSuspense>} />
-        <Route path="/terms" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
-        <Route path="/privacy" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />
-        <Route path="/refund-policy" element={<RouteSuspense><RefundPolicyPage /></RouteSuspense>} />
-        <Route path="/shipping" element={<RouteSuspense><ShippingPage /></RouteSuspense>} />
-        <Route path="/payment" element={<RouteSuspense><PaymentPage /></RouteSuspense>} />
-        <Route path="/cookies" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />
-        <Route path="/seller-agreement" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
-        <Route path="/prohibited-items" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
-        <Route path="/about" element={<RouteSuspense><AboutPage /></RouteSuspense>} />
-        <Route path="/faq" element={<RouteSuspense><AboutPage /></RouteSuspense>} />
-        <Route path="/contact" element={<RouteSuspense><ContactPage /></RouteSuspense>} />
-
-        {/* Role redirect */}
-        <Route path="/dashboard" element={<RoleRedirect />} />
-
-        {/* Admin */}
-        <Route path="/admin/dashboard" element={<AdminRoute><RouteSuspense><AdminDashboard /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/sellers" element={<AdminRoute><RouteSuspense><AdminSellers /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/ads" element={<AdminRoute><RouteSuspense><AdminAds /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/collections" element={<AdminRoute><RouteSuspense><AdminCollections /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/analytics" element={<AdminRoute><RouteSuspense><AdminAnalytics /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/disputes" element={<AdminRoute><RouteSuspense><AdminDisputes /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/products" element={<AdminRoute><RouteSuspense><AdminProducts /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/orders" element={<AdminRoute><RouteSuspense><AdminOrders /></RouteSuspense></AdminRoute>} />
-        <Route path="/admin/pages" element={<AdminRoute><RouteSuspense><AdminPages /></RouteSuspense></AdminRoute>} />
-
-        {/* Seller */}
-        <Route path="/seller/dashboard" element={<SellerRoute><RouteSuspense><SellerDashboard /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/products" element={<SellerRoute><RouteSuspense><SellerProducts /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/store" element={<SellerRoute><RouteSuspense><SellerStore /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/collections" element={<SellerRoute><RouteSuspense><SellerCollections /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/orders" element={<SellerRoute><RouteSuspense><SellerOrders /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/reviews" element={<SellerRoute><RouteSuspense><SellerReviews /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/analytics" element={<SellerRoute><RouteSuspense><SellerAnalytics /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/ads" element={<SellerRoute><RouteSuspense><SellerAds /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/wallet" element={<SellerRoute><RouteSuspense><SellerWallet /></RouteSuspense></SellerRoute>} />
-        <Route path="/seller/chat" element={<SellerRoute><RouteSuspense><SellerChat /></RouteSuspense></SellerRoute>} />
-
-        {/* Buyer */}
-        <Route path="/buyer/dashboard" element={<BuyerRoute><RouteSuspense><BuyerDashboard /></RouteSuspense></BuyerRoute>} />
-        <Route path="/buyer/profile" element={<BuyerRoute><RouteSuspense><BuyerProfile /></RouteSuspense></BuyerRoute>} />
-        <Route path="/buyer/orders" element={<BuyerRoute><RouteSuspense><BuyerOrders /></RouteSuspense></BuyerRoute>} />
-        <Route path="/buyer/wishlist" element={<BuyerRoute><RouteSuspense><BuyerWishlist /></RouteSuspense></BuyerRoute>} />
-        <Route path="/buyer/tracking" element={<BuyerRoute><RouteSuspense><BuyerTracking /></RouteSuspense></BuyerRoute>} />
-        <Route path="/buyer/chat" element={<BuyerRoute><RouteSuspense><BuyerChat /></RouteSuspense></BuyerRoute>} />
-        <Route path="/buyer/reports" element={<BuyerRoute><RouteSuspense><BuyerReports /></RouteSuspense></BuyerRoute>} />
-
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </PageTransition>
+    <ErrorBoundary>
+      <PageTransition>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/marketplace" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
+          <Route path="/categories" element={<RouteSuspense><CategoriesPage /></RouteSuspense>} />
+          <Route path="/categories/:slug" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
+          <Route path="/collections/:slug" element={<RouteSuspense><CollectionPage /></RouteSuspense>} />
+          <Route path="/product/:id" element={<RouteSuspense><ProductDetailPage /></RouteSuspense>} />
+          <Route path="/seller/:id" element={<RouteSuspense><SellerStorePage /></RouteSuspense>} />
+          <Route path="/checkout" element={<RouteSuspense><CheckoutPage /></RouteSuspense>} />
+          <Route path="/order-success/:id" element={<RouteSuspense><OrderSuccessPage /></RouteSuspense>} />
+          <Route path="/auth/login" element={<RouteSuspense><LoginPage /></RouteSuspense>} />
+          <Route path="/auth/register" element={<RouteSuspense><RegisterPage /></RouteSuspense>} />
+          <Route path="/wishlist/:userId" element={<RouteSuspense><PublicWishlistPage /></RouteSuspense>} />
+          <Route path="/terms" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
+          <Route path="/privacy" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />
+          <Route path="/refund-policy" element={<RouteSuspense><RefundPolicyPage /></RouteSuspense>} />
+          <Route path="/shipping" element={<RouteSuspense><ShippingPage /></RouteSuspense>} />
+          <Route path="/payment" element={<RouteSuspense><PaymentPage /></RouteSuspense>} />
+          <Route path="/cookies" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />
+          <Route path="/seller-agreement" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
+          <Route path="/prohibited-items" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
+          <Route path="/about" element={<RouteSuspense><AboutPage /></RouteSuspense>} />
+          <Route path="/faq" element={<RouteSuspense><AboutPage /></RouteSuspense>} />
+          <Route path="/contact" element={<RouteSuspense><ContactPage /></RouteSuspense>} />
+          <Route path="/dashboard" element={<RoleRedirect />} />
+          <Route path="/admin/dashboard" element={<AdminRoute><RouteSuspense><AdminDashboard /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/sellers" element={<AdminRoute><RouteSuspense><AdminSellers /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/ads" element={<AdminRoute><RouteSuspense><AdminAds /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/collections" element={<AdminRoute><RouteSuspense><AdminCollections /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/analytics" element={<AdminRoute><RouteSuspense><AdminAnalytics /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/disputes" element={<AdminRoute><RouteSuspense><AdminDisputes /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/products" element={<AdminRoute><RouteSuspense><AdminProducts /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/orders" element={<AdminRoute><RouteSuspense><AdminOrders /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/pages" element={<AdminRoute><RouteSuspense><AdminPages /></RouteSuspense></AdminRoute>} />
+          <Route path="/seller/dashboard" element={<SellerRoute><RouteSuspense><SellerDashboard /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/products" element={<SellerRoute><RouteSuspense><SellerProducts /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/store" element={<SellerRoute><RouteSuspense><SellerStore /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/collections" element={<SellerRoute><RouteSuspense><SellerCollections /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/orders" element={<SellerRoute><RouteSuspense><SellerOrders /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/reviews" element={<SellerRoute><RouteSuspense><SellerReviews /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/analytics" element={<SellerRoute><RouteSuspense><SellerAnalytics /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/ads" element={<SellerRoute><RouteSuspense><SellerAds /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/wallet" element={<SellerRoute><RouteSuspense><SellerWallet /></RouteSuspense></SellerRoute>} />
+          <Route path="/seller/chat" element={<SellerRoute><RouteSuspense><SellerChat /></RouteSuspense></SellerRoute>} />
+          <Route path="/buyer/dashboard" element={<BuyerRoute><RouteSuspense><BuyerDashboard /></RouteSuspense></BuyerRoute>} />
+          <Route path="/buyer/profile" element={<BuyerRoute><RouteSuspense><BuyerProfile /></RouteSuspense></BuyerRoute>} />
+          <Route path="/buyer/orders" element={<BuyerRoute><RouteSuspense><BuyerOrders /></RouteSuspense></BuyerRoute>} />
+          <Route path="/buyer/wishlist" element={<BuyerRoute><RouteSuspense><BuyerWishlist /></RouteSuspense></BuyerRoute>} />
+          <Route path="/buyer/tracking" element={<BuyerRoute><RouteSuspense><BuyerTracking /></RouteSuspense></BuyerRoute>} />
+          <Route path="/buyer/chat" element={<BuyerRoute><RouteSuspense><BuyerChat /></RouteSuspense></BuyerRoute>} />
+          <Route path="/buyer/reports" element={<BuyerRoute><RouteSuspense><BuyerReports /></RouteSuspense></BuyerRoute>} />
+          <Route path="*" element={<RouteSuspense><NotFound /></RouteSuspense>} />
+        </Routes>
+      </PageTransition>
+    </ErrorBoundary>
   );
 }
 
@@ -201,13 +196,13 @@ const App = () => (
             <CartProvider>
               <NotificationsHub />
               <CookieConsent />
-        <AppRoutes />
-      </CartProvider>
-    </CurrencyProvider>
-  </AuthProvider>
-</BrowserRouter>
-</TooltipProvider>
-</QueryClientProvider>
+              <AppRoutes />
+            </CartProvider>
+          </CurrencyProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;

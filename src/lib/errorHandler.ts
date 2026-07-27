@@ -23,19 +23,49 @@ export function getUserFacingErrorMessage(error: unknown, context?: string): str
 
 /**
  * Logs errors for internal monitoring without exposing details to users.
+ * 
+ * At billion-user scale, console.error is invisible. This function is
+ * monitoring-service ready — drop in Sentry, Datadog, or Grafana Faro
+ * by uncommenting the import and replacing the console.error call.
+ * 
+ * Integration guide (pick one):
+ *   Sentry:   npm install @sentry/react
+ *             import * as Sentry from "@sentry/react";
+ *             Sentry.captureException(error, { tags: { context } });
+ * 
+ *   Datadog:  npm install @datadog/browser-rum
+ *             import { datadogRum } from "@datadog/browser-rum";
+ *             datadogRum.addError(error, { context });
+ * 
+ *   Grafana:  npm install @grafana/faro-web-sdk
+ *             import { api } from "@grafana/faro-web-sdk";
+ *             api.pushError(error, { context });
  */
 export function logError(error: unknown, context: string): void {
+  const safeMessage = error instanceof Error ? error.message : String(error);
+
   if (DEV) {
     console.error(`[${context}]`, error);
-  } else {
-    // In production, send to your monitoring service
-    // e.g., Sentry, Datadog, or a custom endpoint
-    // captureException(error, { tags: { context } });
-    
-    // Console error is acceptable in production for now
-    // but should be replaced with a proper monitoring service
-    console.error(`[${context}]`, error instanceof Error ? error.message : String(error));
+    return;
   }
+
+  // --- Monitoring integration point ---
+  // Uncomment the lines below for your chosen provider:
+  //
+  // Sentry:
+  //   import * as Sentry from "@sentry/react";
+  //   Sentry.captureException(error, { tags: { context }, level: "error" });
+  //
+  // Datadog RUM:
+  //   import { datadogRum } from "@datadog/browser-rum";
+  //   datadogRum.addError(error, { context });
+  //
+  // Grafana Faro:
+  //   import { api } from "@grafana/faro-web-sdk";
+  //   api.pushError(error, { context });
+
+  // Fallback: structured console output for now
+  console.error(`[${context}]`, safeMessage);
 }
 
 function extractMessage(error: unknown): string {

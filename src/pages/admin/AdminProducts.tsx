@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
-import { Search, Package, CheckCircle2, XCircle, Clock, Pencil, Trash2, Plus, Zap, PauseCircle, Ban } from "lucide-react";
+import { Search, Package, CheckCircle2, XCircle, Clock, Pencil, Trash2, Plus } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import AnimatedSection from "@/components/AnimatedSection";
 import { Link } from "react-router-dom";
@@ -13,7 +13,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import ProductImage from "@/components/product/ProductImage";
 import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
-
+import { useAdminProducts } from "@/hooks/useAdminDashboard";
 
 interface Product {
   id: string;
@@ -34,79 +34,39 @@ type Tab = "all" | "pending" | "approved" | "archived";
 export default function AdminProducts() {
   const { toast } = useToast();
   const { user } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [deleteId, setDeleteId] = useState<string | null>(null);
 
-
-  const fetchProducts = async () => {
-    setLoading(true);
-    const { data: productsData } = await supabase
-      .from("products")
-      .select("*, product_images(image_url, is_primary)")
-      .order("created_at", { ascending: false });
-
-    if (!productsData) { setLoading(false); return; }
-
-    // Get unique seller IDs and fetch profiles
-    const sellerIds = [...new Set(productsData.map(p => p.seller_id))];
-    const { data: profiles } = await supabase
-      .from("profiles")
-      .select("user_id, full_name, email")
-      .in("user_id", sellerIds);
-
-    const profileMap: Record<string, { name: string; email: string }> = {};
-    profiles?.forEach(p => { profileMap[p.user_id] = { name: p.full_name || "Unknown", email: p.email }; });
-
-    const mapped: Product[] = productsData.map(p => {
-      const imgs = (p as any).product_images || [];
-      const primary = imgs.find((i: any) => i.is_primary) || imgs[0];
-      return {
-        id: p.id,
-        title: p.title,
-        price: p.price,
-        status: p.status,
-        is_approved: (p as any).is_approved ?? false,
-        stock_quantity: p.stock_quantity,
-        created_at: p.created_at,
-        seller_id: p.seller_id,
-        seller_name: profileMap[p.seller_id]?.name,
-        seller_email: profileMap[p.seller_id]?.email,
-        primary_image: primary?.image_url,
-      };
-    });
-
-    setProducts(mapped);
-    setLoading(false);
-  };
-
-  useEffect(() => { fetchProducts(); }, []);
+  const productsQuery = useAdminProducts();
+  const products = productsQuery.data ?? [];
+  const loading = productsQuery.isLoading;
 
   const approveProduct = async (id: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: true, _status: "active" });
     if (error) { logError(error, "admin_product_approval"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product approved", description: "Product is now visible on the marketplace." });
-    fetchProducts();
+    productsQuery.refetch();
   };
 
   const rejectProduct = async (id: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: false, _status: "draft" });
     if (error) { logError(error, "admin_product_rejection"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product hidden", description: "Product is no longer visible on the marketplace." });
-    fetchProducts();
+    productsQuery.refetch();
   };
 
   const setFlashDealStatus = async (productId: string, status: string) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase as any).rpc("admin_set_flash_deal_status", { _product_id: productId, _new_status: status });
     if (error) { logError(error, "admin_flash_deal_status"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: `Flash deal ${status}`, description: `Flash deal has been ${status}.` });
-    fetchProducts();
+    productsQuery.refetch();
   };
 
-
-  const filtered = products.filter(p => {
+  const filtered = useMemo(() => products.filter(p => {
     const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.seller_name?.toLowerCase().includes(search.toLowerCase());
     const matchesTab =
       tab === "all" ||
@@ -114,7 +74,7 @@ export default function AdminProducts() {
       (tab === "approved" && p.is_approved) ||
       (tab === "archived" && p.status === "archived");
     return matchesSearch && matchesTab;
-  });
+  }), [products, search, tab]);
 
   const pendingCount = products.filter(p => p.status === "active" && !p.is_approved).length;
 
@@ -140,7 +100,6 @@ export default function AdminProducts() {
           </Link>
         </div>
       </AnimatedSection>
-
 
       {pendingCount > 0 && (
         <AnimatedSection variant="fade-up" delay={30}>
@@ -239,21 +198,6 @@ export default function AdminProducts() {
                                 <Clock className="h-3 w-3" /> Pending
                               </Badge>
                             ) : null}
-                            {(product as any).flash_deal_status === 'active' && (
-                              <Badge className="bg-red-500/10 text-red-600 border-red-500/20 gap-1 text-xs">
-                                <Zap className="h-3 w-3" /> Flash Deal
-                              </Badge>
-                            )}
-                            {(product as any).flash_deal_status === 'paused' && (
-                              <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 gap-1 text-xs">
-                                <PauseCircle className="h-3 w-3" /> Deal Paused
-                              </Badge>
-                            )}
-                            {(product as any).flash_deal_status === 'rejected' && (
-                              <Badge className="bg-destructive/10 text-destructive border-destructive/20 gap-1 text-xs">
-                                <Ban className="h-3 w-3" /> Deal Rejected
-                              </Badge>
-                            )}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -266,21 +210,6 @@ export default function AdminProducts() {
                             {product.is_approved && (
                               <Button size="sm" variant="outline" onClick={() => rejectProduct(product.id)} className="gap-1">
                                 <XCircle className="h-3 w-3" /> Hide
-                              </Button>
-                            )}
-                            {(product as any).flash_deal_status === 'active' && (
-                              <Button size="sm" variant="outline" onClick={() => setFlashDealStatus(product.id, 'paused')} className="gap-1 text-orange-600">
-                                <PauseCircle className="h-3 w-3" /> Pause Deal
-                              </Button>
-                            )}
-                            {(product as any).flash_deal_status === 'paused' && (
-                              <Button size="sm" variant="outline" onClick={() => setFlashDealStatus(product.id, 'active')} className="gap-1 text-green-600">
-                                <Zap className="h-3 w-3" /> Activate Deal
-                              </Button>
-                            )}
-                            {((product as any).flash_deal_status === 'active' || (product as any).flash_deal_status === 'paused') && (
-                              <Button size="sm" variant="outline" onClick={() => setFlashDealStatus(product.id, 'rejected')} className="gap-1 text-destructive">
-                                <Ban className="h-3 w-3" /> Reject Deal
                               </Button>
                             )}
                             {product.seller_id === user?.id ? (
@@ -311,7 +240,6 @@ export default function AdminProducts() {
         </Card>
       </AnimatedSection>
 
-
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -330,7 +258,7 @@ export default function AdminProducts() {
                 const { error } = await supabase.from("products").delete().eq("id", id);
                 if (error) { logError(error, "admin_product_delete"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "delete"), variant: "destructive" }); return; }
                 toast({ title: "Product deleted" });
-                fetchProducts();
+                productsQuery.refetch();
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
