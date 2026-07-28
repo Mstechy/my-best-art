@@ -49,22 +49,22 @@ export function logError(error: unknown, context: string): void {
     return;
   }
 
-  // --- Monitoring integration point ---
-  // Uncomment the lines below for your chosen provider:
-  //
-  // Sentry:
-  //   import * as Sentry from "@sentry/react";
-  //   Sentry.captureException(error, { tags: { context }, level: "error" });
-  //
-  // Datadog RUM:
-  //   import { datadogRum } from "@datadog/browser-rum";
-  //   datadogRum.addError(error, { context });
-  //
-  // Grafana Faro:
-  //   import { api } from "@grafana/faro-web-sdk";
-  //   api.pushError(error, { context });
+  // --- Monitoring integration ---
+  // Sentry is configured in src/lib/sentry.ts
+  // When VITE_SENTRY_DSN is set, errors are automatically captured
+  try {
+    // Dynamic import — safe even if sentry.ts isn't in the bundle
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (import("@/lib/sentry") as any).then((sentry: any) => {
+      sentry.captureError(error, context);
+    }).catch(() => {
+      // Sentry module not available — safe ignore
+    });
+  } catch {
+    // Fall through
+  }
 
-  // Fallback: structured console output for now
+  // Fallback: structured console output
   console.error(`[${context}]`, safeMessage);
 }
 

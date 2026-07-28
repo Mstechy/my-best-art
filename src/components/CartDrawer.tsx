@@ -54,6 +54,7 @@ export default function CartDrawer() {
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
                       className="h-6 w-6 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                      aria-label={`Decrease quantity of ${item.title}`}
                     >
                       <Minus className="h-2.5 w-2.5" />
                     </button>
@@ -61,12 +62,14 @@ export default function CartDrawer() {
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       className="h-6 w-6 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                      aria-label={`Increase quantity of ${item.title}`}
                     >
                       <Plus className="h-2.5 w-2.5" />
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
                       className="ml-auto h-6 w-6 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      aria-label={`Remove ${item.title} from cart`}
                     >
                       <Trash2 className="h-3 w-3" />
                     </button>

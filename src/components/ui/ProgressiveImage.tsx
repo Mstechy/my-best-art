@@ -18,10 +18,8 @@ interface ProgressiveImageProps {
   threshold?: number;
 }
 
-// Generate a tiny thumbnail URL for the placeholder
 function getPlaceholderUrl(src: string): string | null {
   if (!src) return null;
-  // For Supabase images, generate a tiny 20px version
   if (src.includes(".supabase.co/storage/")) {
     const renderSrc = src.replace(
       "/storage/v1/object/public/",
@@ -30,7 +28,6 @@ function getPlaceholderUrl(src: string): string | null {
     const separator = renderSrc.includes("?") ? "&" : "?";
     return `${renderSrc}${separator}width=20&quality=10`;
   }
-  // For other images, we can't generate thumbnails, use the original
   return null;
 }
 
@@ -60,10 +57,8 @@ const ProgressiveImage = memo(function ProgressiveImage({
   const [showPlaceholder, setShowPlaceholder] = useState(!!placeholderUrl.current);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Intersection Observer for lazy loading
   useEffect(() => {
     if (loading !== "lazy" || inView) return;
-
     observerRef.current = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -75,11 +70,9 @@ const ProgressiveImage = memo(function ProgressiveImage({
       },
       { rootMargin: "200px 0px", threshold }
     );
-
     if (wrapperRef.current) {
       observerRef.current.observe(wrapperRef.current);
     }
-
     return () => {
       observerRef.current?.disconnect();
     };
@@ -100,7 +93,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
     onError?.();
   };
 
-  // Generate shimmer style
   const shimmerStyle: React.CSSProperties = !loaded && !error
     ? {
         background: `linear-gradient(90deg, ${placeholderColor} 25%, #E8E8E8 50%, ${placeholderColor} 75%)`,
@@ -120,7 +112,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
         ...style,
       }}
     >
-      {/* Placeholder image (blurry 20px version) */}
       {showPlaceholder && placeholderUrl.current && (
         <img
           src={placeholderUrl.current}
@@ -137,7 +128,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
         />
       )}
 
-      {/* Actual image */}
       {(inView || loading === "eager") && (
         <img
           ref={imgRef}
@@ -149,7 +139,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
           width={width}
           height={height}
           loading={loading}
-          fetchPriority={fetchPriority}
           decoding={decoding}
           onLoad={handleLoad}
           onError={handleError}
@@ -157,7 +146,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
         />
       )}
 
-      {/* Error fallback */}
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#F2F3F5] dark:bg-[#202020]">
           <svg

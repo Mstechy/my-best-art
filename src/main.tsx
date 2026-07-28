@@ -3,8 +3,10 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { applyTheme, getPreferredTheme } from "@/lib/theme";
+import { initSentry } from "@/lib/sentry";
 
 applyTheme(getPreferredTheme());
+initSentry();
 
 // Register service worker for asset caching and offline support
 if ("serviceWorker" in navigator && location.hostname !== "localhost") {

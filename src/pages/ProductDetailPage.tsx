@@ -120,18 +120,26 @@ export default function ProductDetailPage() {
     return list;
   }, [product]);
 
+  const carouselLockRef = useRef(false);
+
   useEffect(() => {
     if (!carouselApi) return;
-    const onSelect = () => setSelectedImage(carouselApi.selectedScrollSnap());
+    const onSelect = () => {
+      if (carouselLockRef.current) return;
+      setSelectedImage(carouselApi.selectedScrollSnap());
+    };
     carouselApi.on("select", onSelect);
     onSelect();
     return () => { carouselApi.off("select", onSelect); };
   }, [carouselApi]);
 
   useEffect(() => {
-    if (carouselApi && carouselApi.selectedScrollSnap() !== selectedImage) {
+    if (!carouselApi || carouselLockRef.current) return;
+    if (carouselApi.selectedScrollSnap() !== selectedImage) {
+      carouselLockRef.current = true;
       carouselApi.scrollTo(selectedImage);
     }
+    return () => { carouselLockRef.current = false; };
   }, [selectedImage, carouselApi]);
 
   const [reviewRating, setReviewRating] = useState(5);
