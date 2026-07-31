@@ -617,14 +617,16 @@ export default function SellerProducts() {
           updateImageUploadState(item.id, { dbId: (inserted as { id: string }).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
         } catch (error) {
           mediaHadError = true;
+          const message = error instanceof Error ? error.message : "Upload failed";
+          console.error("[SellerProducts] image upload error", error);
           updateImageUploadState(item.id, {
             status: "error",
             progress: 0,
-            error: error instanceof Error ? error.message : "Upload failed",
+            error: message,
           });
           toast({
             title: "Image upload failed",
-            description: error instanceof Error ? error.message : "One of the product images could not be uploaded.",
+            description: message,
             variant: "destructive",
           });
         }
@@ -633,21 +635,30 @@ export default function SellerProducts() {
 
     // Upload optional PDF document
     if (docFile && productId) {
-      const ext = docFile.name.split(".").pop();
-      const path = `${user.id}/${productId}/doc_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("product-images").upload(path, docFile);
-      if (!upErr) {
+      try {
+        const ext = docFile.name.split(".").pop();
+        const path = `${user.id}/${productId}/doc_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from("product-images").upload(path, docFile);
+        if (upErr) throw upErr;
         const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
         await supabase.from("product_documents").insert({
           product_id: productId,
           url: urlData.publicUrl,
           label: docFile.name,
         });
+      } catch (error) {
+        mediaHadError = true;
+        const message = error instanceof Error ? error.message : "Document upload failed";
+        toast({
+          title: "Document upload failed",
+          description: message,
+          variant: "destructive",
+        });
       }
     }
 
     // Upload optional product videos and save URLs in variants JSON.
-    if (productId) {
+    if (productId && videoItems.length > 0) {
       const finalVideos: string[] = [];
       for (let i = 0; i < videoItems.slice(0, 3).length; i++) {
         const item = videoItems[i];
@@ -670,17 +681,39 @@ export default function SellerProducts() {
           updateVideoUploadState(item.id, { file: undefined, url: urlData.publicUrl, status: "uploaded", progress: 100 });
         } catch (error) {
           mediaHadError = true;
+          const message = error instanceof Error ? error.message : "Upload failed";
           updateVideoUploadState(item.id, {
             status: "error",
             progress: 0,
-            error: error instanceof Error ? error.message : "Upload failed",
+            error: message,
+          });
+          toast({
+            title: "Video upload failed",
+            description: message,
+            variant: "destructive",
           });
         }
       }
-      const { error: videoUpdateError } = await supabase.from("products").update({
-        variants: mergeCategoryAttributes(productData.variants as Record<string, unknown>, cleanCategoryAttributes, { key: selectedProductType.key, label: selectedProductType.label }, finalVideos),
-      }).eq("id", productId);
-      if (videoUpdateError) mediaHadError = true;
+
+      // Only update if videos changed or were uploaded
+      if (finalVideos.length > 0 || existingProductVideos.length > 0) {
+        const mergedVariants = mergeCategoryAttributes(
+          productData.variants as Record<string, unknown>,
+          cleanCategoryAttributes,
+          { key: selectedProductType.key, label: selectedProductType.label },
+          finalVideos
+        );
+        const { error: videoUpdateError } = await supabase
+          .from("products")
+          .update({ variants: mergedVariants })
+          .eq("id", productId);
+
+        if (videoUpdateError) {
+          console.error("[SellerProducts] video metadata update failed", videoUpdateError);
+          mediaHadError = true;
+        }
+      }
+
       setExistingProductVideos(finalVideos);
     }
 
