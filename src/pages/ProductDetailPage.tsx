@@ -246,7 +246,7 @@ export default function ProductDetailPage() {
       <MarketplaceNavbar />
       <CartDrawer />
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] mb-4 transition-colors">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] mb-4 transition-colors" aria-label="Go back">
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
 
@@ -408,7 +408,8 @@ export default function ProductDetailPage() {
                 </button>
                 {user && (
                   <button onClick={() => { if (product) toggleWishlist(product.id); }}
-                    className={`h-12 w-12 flex items-center justify-center rounded-full border transition-colors ${isWishlisted(product?.id || "") ? "border-[#E53935] text-[#E53935]" : "border-[#E8E8E8] dark:border-[#222222] text-[#888880] hover:border-[#111111] dark:hover:border-[#555555]"}`}>
+                    className={`h-12 w-12 flex items-center justify-center rounded-full border transition-colors ${isWishlisted(product?.id || "") ? "border-[#E53935] text-[#E53935]" : "border-[#E8E8E8] dark:border-[#222222] text-[#888880] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                    aria-label={isWishlisted(product?.id || "") ? "Remove from wishlist" : "Add to wishlist"}>
                     <Heart className={`h-5 w-5 ${isWishlisted(product?.id || "") ? "fill-current" : ""}`} />
                   </button>
                 )}
@@ -582,9 +583,9 @@ export default function ProductDetailPage() {
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
             <img src={zoomedImage} alt="" className="max-w-full max-h-[85vh] object-contain rounded-2xl" style={{ transform: `scale(${zoomScale})`, transition: "transform 0.2s" }} />
             <div className="absolute top-4 right-4 flex gap-2">
-              <button onClick={() => setZoomScale(s => Math.min(3, s + 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors"><ZoomIn className="h-5 w-5" /></button>
-              <button onClick={() => setZoomScale(s => Math.max(1, s - 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors"><ZoomOut className="h-5 w-5" /></button>
-              <button onClick={() => setZoomedImage(null)} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors"><X className="h-5 w-5" /></button>
+              <button onClick={() => setZoomScale(s => Math.min(3, s + 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom in"><ZoomIn className="h-5 w-5" /></button>
+              <button onClick={() => setZoomScale(s => Math.max(1, s - 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom out"><ZoomOut className="h-5 w-5" /></button>
+              <button onClick={() => setZoomedImage(null)} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Close zoomed image"><X className="h-5 w-5" /></button>
             </div>
           </div>
         </div>

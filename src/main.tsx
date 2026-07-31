@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import "@/lib/i18n/config";
 import { applyTheme, getPreferredTheme } from "@/lib/theme";
 import { initSentry } from "@/lib/sentry";
 

@@ -9,6 +9,7 @@ import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import ThemeToggle from "@/components/ThemeToggle";
 import CurrencySelector from "@/components/CurrencySelector";
 import RegionalPreferences from "@/components/RegionalPreferences";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -97,7 +98,6 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   useEffect(() => {
     const loadNavigationCollections = async () => {
       // Try new show_in_navigation flag first, fall back to old placement check
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await (supabase.from("marketplace_collections") as any)
         .select("title,slug")
         .is("seller_id", null)
@@ -108,7 +108,6 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
       
       // If no results with show_in_navigation, fall back to old placement method
       if (!data || data.length === 0) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: oldData } = await (supabase.from("marketplace_collections") as any)
           .select("title,slug")
           .is("seller_id", null)
@@ -307,11 +306,14 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           )}
 
           {/* Right side icons */}
-          <div className="flex items-center gap-1 shrink-0 ml-auto">
-          <RegionalPreferences />
-          {/* Messages (logged-in only) */}
+          <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
+          {/* Language Switcher - hide on small mobile */}
+          <div className="hidden sm:block"><LanguageSwitcher /></div>
+          {/* RegionalPreferences - hide on small mobile */}
+          <div className="hidden sm:block"><RegionalPreferences /></div>
+          {/* Messages (logged-in only) - hide on small mobile */}
           {user && (
-            <Link to={chatPath} aria-label="Messages" className="relative p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
+            <Link to={chatPath} aria-label="Messages" className="relative p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden sm:inline-flex">
               <MessageSquare className="h-5 w-5" />
               {unread > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 flex h-5 min-w-[20px] px-1 items-center justify-center rounded-full bg-[#F6C75D] text-[10px] font-bold text-[#5C3A00]">
@@ -323,18 +325,18 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
           {/* Profile */}
           {user ? (
-            <Link to={dashboardPath} aria-label="Open dashboard" className="p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
+            <Link to={dashboardPath} aria-label="Open dashboard" className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
               <User className="h-5 w-5" />
             </Link>
           ) : (
-            <Link to="/auth/login" aria-label="Log in" className="p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
+            <Link to="/auth/login" aria-label="Log in" className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
               <User className="h-5 w-5" />
             </Link>
           )}
 
-          {/* Wishlist */}
+          {/* Wishlist - hide on small mobile */}
           {user && (
-            <Link to="/buyer/wishlist" aria-label="Wishlist" className="p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
+            <Link to="/buyer/wishlist" aria-label="Wishlist" className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden sm:inline-flex">
               <Heart className="h-5 w-5" />
             </Link>
           )}
@@ -342,7 +344,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           {/* Cart */}
           <button
             onClick={() => openCart(true)}
-            className="relative p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors"
+            className="relative p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors"
             aria-label="Open cart"
           >
             <ShoppingCart className="h-5 w-5" />
@@ -356,7 +358,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           {/* Hamburger drawer */}
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-2 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors" aria-label="Open navigation menu">
+              <button className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors" aria-label="Open navigation menu">
                 <Menu className="h-5 w-5" />
               </button>
             </SheetTrigger>
@@ -396,6 +398,10 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
               {/* Bottom selectors in sidebar */}
               <div className="border-t border-[#E8E8E8] dark:border-[#222222] pt-4 mt-auto space-y-4">
+                <div className="flex items-center justify-between px-3">
+                  <span className="text-xs text-[#888880] font-medium">Language</span>
+                  <LanguageSwitcher />
+                </div>
                 <div className="flex items-center justify-between px-3">
                   <span className="text-xs text-[#888880] font-medium">Currency</span>
                   <CurrencySelector />

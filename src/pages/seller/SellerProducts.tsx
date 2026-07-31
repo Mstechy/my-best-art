@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -16,7 +16,6 @@ import { COUNTRIES, countryName } from "@/lib/countries";
 import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, mergeCategoryAttributes } from "@/lib/categoryConfig";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Globe } from "lucide-react";
 import { uploadProductImagePair } from "@/lib/productImages";
 import ProductImage from "@/components/product/ProductImage";
 import { generateSku } from "@/lib/sku";
@@ -26,6 +25,21 @@ interface Category {
   id: string;
   name: string;
   slug: string;
+}
+
+interface ProductImage {
+  id: string;
+  image_url: string;
+  is_primary: boolean;
+  sort_order?: number;
+}
+
+interface ProductVariant {
+  id: string;
+  option_values: Record<string, string> | null;
+  sku: string | null;
+  price: number | null;
+  stock_quantity: number;
 }
 
 interface Product {
@@ -47,13 +61,52 @@ interface Product {
   color: string | null;
   condition: string;
   warranty: string | null;
+  warranty_period: string | null;
   shipping_info: string | null;
   key_features: string[] | null;
   tags: string[] | null;
   ships_to: string[] | null;
   variants: Record<string, unknown> | null;
+  show_sold_count: boolean | null;
+  flash_deal_discount_percent: number | null;
+  flash_deal_start_at: string | null;
+  flash_deal_end_at: string | null;
   created_at: string;
-  product_images: { id: string; image_url: string; is_primary: boolean; sort_order?: number }[];
+  product_images: ProductImage[];
+}
+
+// Raw row type from Supabase products table (snake_case fields)
+interface ProductRow {
+  id: string;
+  title: string;
+  description: string | null;
+  price: number;
+  compare_at_price: number | null;
+  currency: string;
+  category_id: string | null;
+  status: "draft" | "active" | "archived";
+  is_approved: boolean | null;
+  stock_quantity: number;
+  sku: string | null;
+  brand: string | null;
+  weight: string | null;
+  dimensions: string | null;
+  material: string | null;
+  color: string | null;
+  condition: string | null;
+  warranty: string | null;
+  warranty_period: string | null;
+  shipping_info: string | null;
+  key_features: string[] | null;
+  tags: string[] | null;
+  ships_to: string[] | null;
+  variants: Record<string, unknown> | null;
+  show_sold_count: boolean | null;
+  flash_deal_discount_percent: number | null;
+  flash_deal_start_at: string | null;
+  flash_deal_end_at: string | null;
+  created_at: string;
+  product_images: ProductImage[] | null;
 }
 
 type UploadState = "local" | "uploading" | "uploaded" | "error";
@@ -87,6 +140,29 @@ interface VideoMediaItem {
 
 interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; }
 type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; };
+
+function normalizeProductRow(row: ProductRow): Product {
+  const images = (row.product_images || []).sort(
+    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
+  );
+  return {
+    ...row,
+    product_images: images,
+    is_approved: row.is_approved ?? false,
+    brand: row.brand ?? null,
+    weight: row.weight ?? null,
+    dimensions: row.dimensions ?? null,
+    material: row.material ?? null,
+    color: row.color ?? null,
+    condition: row.condition ?? "new",
+    warranty: row.warranty ?? null,
+    shipping_info: row.shipping_info ?? null,
+    key_features: row.key_features ?? null,
+    tags: row.tags ?? null,
+    ships_to: row.ships_to ?? null,
+    variants: row.variants ?? null,
+  };
+}
 
 export default function SellerProducts() {
   const { user } = useAuth();
@@ -148,50 +224,31 @@ export default function SellerProducts() {
       .select("*, product_images(*)")
       .eq("seller_id", user.id)
       .order("created_at", { ascending: false });
-    if (!error && data) setProducts(data.map(p => {
-      const sortedImages = [...(((p as any).product_images || []) as Product["product_images"])].sort(
-        (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
-      );
-      return ({
-      ...p,
-      product_images: sortedImages,
-      is_approved: (p as any).is_approved ?? false,
-      brand: (p as any).brand ?? null,
-      weight: (p as any).weight ?? null,
-      dimensions: (p as any).dimensions ?? null,
-      material: (p as any).material ?? null,
-      color: (p as any).color ?? null,
-      condition: (p as any).condition ?? "new",
-      warranty: (p as any).warranty ?? null,
-      shipping_info: (p as any).shipping_info ?? null,
-      key_features: (p as any).key_features ?? null,
-      tags: (p as any).tags ?? null,
-      ships_to: (p as any).ships_to ?? null,
-      variants: (p as any).variants ?? null,
-    });
-    }) as unknown as Product[]);
+    if (!error && data) {
+      setProducts((data as unknown as ProductRow[]).map(normalizeProductRow));
+    }
     setLoading(false);
 
     // fetch per-product stats
-    const ids = (data || []).map((p: any) => p.id);
+    const ids = (data || []).map((p) => (p as unknown as ProductRow).id);
     if (ids.length) {
       const [viewsRes, savesRes, itemsRes] = await Promise.all([
-        supabase.from("product_views" as any).select("product_id").in("product_id", ids),
+        supabase.from("product_views").select("product_id").in("product_id", ids),
         supabase.from("wishlists").select("product_id").in("product_id", ids),
         supabase.from("order_items").select("product_id").in("product_id", ids),
       ]);
       const s: Record<string, { views: number; saves: number; orders: number }> = {};
       ids.forEach((id) => { s[id] = { views: 0, saves: 0, orders: 0 }; });
-      (viewsRes.data || []).forEach((r: any) => { if (s[r.product_id]) s[r.product_id].views++; });
-      (savesRes.data || []).forEach((r: any) => { if (s[r.product_id]) s[r.product_id].saves++; });
-      (itemsRes.data || []).forEach((r: any) => { if (s[r.product_id]) s[r.product_id].orders++; });
+      (viewsRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].views++; });
+      (savesRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].saves++; });
+      (itemsRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].orders++; });
       setStats(s);
     }
   }, [user]);
 
   const fetchCategories = useCallback(async () => {
     const { data } = await supabase.from("categories").select("*").order("sort_order");
-    if (data) setCategories(data);
+    if (data) setCategories(data as Category[]);
   }, []);
 
   useEffect(() => {
@@ -347,19 +404,19 @@ export default function SellerProducts() {
     setMaterial(product.material || "");
     setColor(product.color || "");
     setCondition(product.condition || "new");
-    setWarrantyPeriod(((product as any).warranty_period as string) || "none");
+    setWarrantyPeriod(product.warranty_period || "none");
     setShippingInfo(product.shipping_info || "");
     setKeyFeatures(product.key_features?.length ? product.key_features : [""]);
     setTagsInput(product.tags?.join(", ") || "");
     setShipsTo(product.ships_to || []);
-    setShowSoldCount(((product as any).show_sold_count as boolean) ?? true);
+    setShowSoldCount(product.show_sold_count ?? true);
     setProductTypeKey(getProductType(product.variants)?.key || "");
     const savedVideos = getProductVideos(product.variants);
     setExistingProductVideos(savedVideos);
-    setFlashDealEnabled(!!((product as any).flash_deal_discount_percent));
-    setFlashDealDiscount(((product as any).flash_deal_discount_percent ?? 0).toString());
-    setFlashDealStart(((product as any).flash_deal_start_at || "").slice(0, 16));
-    setFlashDealEnd(((product as any).flash_deal_end_at || "").slice(0, 16));
+    setFlashDealEnabled(!!product.flash_deal_discount_percent);
+    setFlashDealDiscount((product.flash_deal_discount_percent ?? 0).toString());
+    setFlashDealStart((product.flash_deal_start_at || "").slice(0, 16));
+    setFlashDealEnd((product.flash_deal_end_at || "").slice(0, 16));
     setImageItems(
       [...(product.product_images || [])]
         .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
@@ -395,7 +452,7 @@ export default function SellerProducts() {
     });
     setDocFile(null);
     const { data: variants } = await supabase.from("product_variants").select("id, option_values, sku, price, stock_quantity").eq("product_id", product.id).order("sort_order");
-    setVariantRows((variants ?? []).map((variant: any) => ({ key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity) })));
+    setVariantRows((variants ?? []).map((variant: ProductVariant) => ({ key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity) })));
     setFormTab("basic");
     setDialogOpen(true);
   };
@@ -471,7 +528,7 @@ export default function SellerProducts() {
           flash_deal_end_at: null,
         };
 
-    const productData = {
+    const productData: Record<string, unknown> = {
       seller_id: user.id,
       title: title.trim(),
       description: description.trim() || null,
@@ -506,13 +563,13 @@ export default function SellerProducts() {
     let productId = editingProduct?.id || savedProductId;
 
     if (productId) {
-      const { error } = await supabase.from("products").update(productData as any).eq("id", productId);
+      const { error } = await supabase.from("products").update(productData as never).eq("id", productId);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
     } else {
-      const { data, error } = await supabase.from("products").insert({ ...productData, status: "active" } as any).select("id").single();
+      const { data, error } = await supabase.from("products").insert({ ...productData, status: "active" } as never).select("id").single();
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
-      productId = data.id;
-      setSavedProductId(data.id);
+      productId = (data as { id: string }).id;
+      setSavedProductId((data as { id: string }).id);
     }
 
     if (productId) {
@@ -535,7 +592,7 @@ export default function SellerProducts() {
           const { error } = await supabase.from("product_images").update({
             sort_order: i,
             is_primary: item.isPrimary,
-          } as any).eq("id", item.dbId);
+          }).eq("id", item.dbId);
           if (error) {
             mediaHadError = true;
             updateImageUploadState(item.id, { status: "error", error: error.message });
@@ -555,9 +612,9 @@ export default function SellerProducts() {
             sort_order: i,
             visual_hash: visualHash.hash,
             visual_hash_buckets: visualHash.buckets,
-          } as any).select("id").single();
+          }).select("id").single();
           if (insertError) throw insertError;
-          updateImageUploadState(item.id, { dbId: (inserted as any).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
+          updateImageUploadState(item.id, { dbId: (inserted as { id: string }).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
         } catch (error) {
           mediaHadError = true;
           updateImageUploadState(item.id, {
@@ -581,7 +638,7 @@ export default function SellerProducts() {
       const { error: upErr } = await supabase.storage.from("product-images").upload(path, docFile);
       if (!upErr) {
         const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(path);
-        await (supabase as any).from("product_documents").insert({
+        await supabase.from("product_documents").insert({
           product_id: productId,
           url: urlData.publicUrl,
           label: docFile.name,
@@ -621,8 +678,8 @@ export default function SellerProducts() {
         }
       }
       const { error: videoUpdateError } = await supabase.from("products").update({
-        variants: mergeCategoryAttributes(productData.variants, cleanCategoryAttributes, { key: selectedProductType.key, label: selectedProductType.label }, finalVideos),
-      } as any).eq("id", productId);
+        variants: mergeCategoryAttributes(productData.variants as Record<string, unknown>, cleanCategoryAttributes, { key: selectedProductType.key, label: selectedProductType.label }, finalVideos),
+      }).eq("id", productId);
       if (videoUpdateError) mediaHadError = true;
       setExistingProductVideos(finalVideos);
     }
@@ -657,7 +714,7 @@ export default function SellerProducts() {
   };
 
   const archiveProduct = async (id: string) => {
-    await supabase.from("products").update({ status: "archived" as any }).eq("id", id);
+    await supabase.from("products").update({ status: "archived" }).eq("id", id);
     fetchProducts();
   };
 
