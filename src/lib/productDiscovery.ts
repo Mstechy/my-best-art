@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type DiscoveryEvent = "impression" | "view" | "click" | "wishlist" | "add_to_cart";
+export type DiscoveryEvent = "impression" | "view" | "click" | "wishlist" | "add_to_cart" | "buy_now";
 const VISITOR_KEY = "markethub_visitor_id";
 
 /**

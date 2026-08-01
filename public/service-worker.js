@@ -57,6 +57,14 @@ function isStorageUrl(url) {
   return url.includes('.supabase.co/storage/');
 }
 
+// Helper: is a video file (video players use Range requests and must NOT be intercepted/cached)
+function isVideoUrl(url) {
+  const urlObj = new URL(url);
+  const path = urlObj.pathname;
+  return /\.(mp4|mov|webm|ogg|m4v)$/i.test(path) ||
+         (isStorageUrl(url) && /\/video_/i.test(path));
+}
+
 // Helper: is an API/Supabase REST call
 function isApiUrl(url) {
   return url.includes('.supabase.co/rest/') || 
@@ -85,6 +93,9 @@ self.addEventListener('fetch', (event) => {
 
   // Skip non-GET requests and browser extensions
   if (request.method !== 'GET' || !url.startsWith('http')) return;
+
+  // Videos: let the browser handle natively (Range requests, large streams — NEVER cache these)
+  if (isVideoUrl(url)) return;
 
   // Fonts: cache-first (they rarely change)
   if (isFontUrl(url)) {

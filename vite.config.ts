@@ -26,12 +26,24 @@ export default defineConfig(({ mode }) => ({
           if (id.includes("recharts")) return "charts";
           if (id.includes("framer-motion")) return "motion";
           if (id.includes("lucide-react")) return "icons";
+          if (id.includes("@tanstack/react-query")) return "react-query";
+          if (id.includes("@tanstack/react-virtual")) return "react-virtual";
+          if (id.includes("react-hook-form") || id.includes("@hookform")) return "forms";
+          if (id.includes("zod")) return "validation";
+          if (id.includes("react-router")) return "router";
+          if (id.includes("sonner")) return "toast";
+          if (id.includes("i18next")) return "i18n";
+          if (id.includes("embla-carousel")) return "carousel";
+          if (id.includes("date-fns")) return "dates";
+          if (id.includes("dexie") || id.includes("idb")) return "db";
+          if (id.includes("@sentry")) return "sentry";
+          if (id.includes("framer-motion")) return "motion";
           if (id.includes("node_modules\\react") || id.includes("node_modules/react")) return "react";
           return "vendor";
         },
       },
     },
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 300,
     sourcemap: false,
     reportCompressedSize: false,
   },

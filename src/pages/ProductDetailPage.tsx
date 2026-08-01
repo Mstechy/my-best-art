@@ -121,12 +121,16 @@ export default function ProductDetailPage() {
   }, [product]);
 
   const carouselLockRef = useRef(false);
+  const lastRequestedIndexRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!carouselApi) return;
     const onSelect = () => {
+      // Ignore events triggered by our own programmatic scrollTo
       if (carouselLockRef.current) return;
-      setSelectedImage(carouselApi.selectedScrollSnap());
+      const snap = carouselApi.selectedScrollSnap();
+      // Only update state if the snap actually changed
+      setSelectedImage((prev) => (prev === snap ? prev : snap));
     };
     carouselApi.on("select", onSelect);
     onSelect();
@@ -134,12 +138,25 @@ export default function ProductDetailPage() {
   }, [carouselApi]);
 
   useEffect(() => {
-    if (!carouselApi || carouselLockRef.current) return;
-    if (carouselApi.selectedScrollSnap() !== selectedImage) {
-      carouselLockRef.current = true;
-      carouselApi.scrollTo(selectedImage);
-    }
-    return () => { carouselLockRef.current = false; };
+    if (!carouselApi) return;
+    const currentSnap = carouselApi.selectedScrollSnap();
+    // Skip if already at the target or if this is the same request we already handled
+    if (currentSnap === selectedImage || lastRequestedIndexRef.current === selectedImage) return;
+
+    lastRequestedIndexRef.current = selectedImage;
+    carouselLockRef.current = true;
+    carouselApi.scrollTo(selectedImage);
+
+    // Release the lock after the scroll animation completes
+    const timer = window.setTimeout(() => {
+      carouselLockRef.current = false;
+      lastRequestedIndexRef.current = null;
+    }, 400);
+
+    return () => {
+      window.clearTimeout(timer);
+      carouselLockRef.current = false;
+    };
   }, [selectedImage, carouselApi]);
 
   const [reviewRating, setReviewRating] = useState(5);
@@ -246,9 +263,19 @@ export default function ProductDetailPage() {
       <MarketplaceNavbar />
       <CartDrawer />
       <div className="mx-auto max-w-7xl px-4 lg:px-8 py-6">
-        <button onClick={() => navigate(-1)} className="flex items-center gap-1.5 text-xs text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] mb-4 transition-colors" aria-label="Go back">
-          <ArrowLeft className="h-3.5 w-3.5" /> Back
-        </button>
+        <nav aria-label="Breadcrumb" className="mb-4 text-xs text-[#888880]">
+          <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Home</Link>
+          <span className="mx-2">/</span>
+          <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Marketplace</Link>
+          {category && (
+            <>
+              <span className="mx-2">/</span>
+              <Link to={`/categories/${category.slug || category.name}`} className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">{category.name}</Link>
+            </>
+          )}
+          <span className="mx-2">/</span>
+          <span className="text-[#111111] dark:text-[#FAF5F2] line-clamp-1">{product?.title}</span>
+        </nav>
 
         {loading && !product ? (
           <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
@@ -285,15 +312,23 @@ export default function ProductDetailPage() {
                               <video
                                 src={item.url}
                                 controls={playingVideos[item.id]}
+                                autoPlay={playingVideos[item.id]}
+                                muted
+                                playsInline
+                                loop
                                 className="w-full h-full object-cover"
                                 onMouseEnter={() => setPlayingVideos(prev => ({ ...prev, [item.id]: true }))}
                                 onMouseLeave={() => setPlayingVideos(prev => ({ ...prev, [item.id]: false }))}
+                                onClick={() => setPlayingVideos(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
                               />
-                              {!playingVideos[item.id] && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                              <div
+                                className="absolute inset-0 flex items-center justify-center cursor-pointer"
+                                onClick={() => setPlayingVideos(prev => ({ ...prev, [item.id]: true }))}
+                              >
+                                {!playingVideos[item.id] && (
                                   <Play className="h-12 w-12 text-white drop-shadow-lg" />
-                                </div>
-                              )}
+                                )}
+                              </div>
                             </div>
                           ) : (
                             <>
@@ -576,6 +611,30 @@ export default function ProductDetailPage() {
             <RecentlyViewed />
           </div>
         )}
+      </div>
+
+      {/* Sticky mobile CTA bar */}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/90 dark:bg-[#121212]/90 backdrop-blur md:hidden">
+        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0] truncate">{product?.title}</p>
+            <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</p>
+          </div>
+          <button
+            onClick={handleAddToCart}
+            disabled={purchasableStock === 0}
+            className="rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] px-4 py-2 text-xs font-bold disabled:opacity-50"
+          >
+            Add to Cart
+          </button>
+          <button
+            onClick={() => { if (product) toggleWishlist(product.id); }}
+            className={`h-10 w-10 rounded-full border flex items-center justify-center ${isWishlisted(product?.id || "") ? "border-[#E53935] text-[#E53935]" : "border-[#E8E8E8] dark:border-[#222222] text-[#888880]"}`}
+            aria-label="Wishlist"
+          >
+            <Heart className={`h-4 w-4 ${isWishlisted(product?.id || "") ? "fill-current" : ""}`} />
+          </button>
+        </div>
       </div>
 
       {zoomedImage && (

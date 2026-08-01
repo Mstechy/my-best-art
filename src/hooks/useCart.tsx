@@ -21,6 +21,7 @@ interface CartContextType {
   items: CartItem[];
   loading: boolean;
   addItem: (item: Omit<CartItem, "quantity">) => void;
+  replaceItems: (items: Omit<CartItem, "quantity">[]) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -62,9 +63,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (user) {
         // ── Authenticated: load from Supabase DB ──
         // New tables not yet in generated types – use any-typed helpers
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cartsQuery = supabase.from("carts" as any) as any;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const itemsQuery = supabase.from("cart_items" as any) as any;
 
         const { data: cartRow } = await cartsQuery.select("id").eq("user_id", user.id).maybeSingle() as { data: { id: string } | null };
@@ -166,7 +165,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (!cartId) return;
 
       // cart_items table not yet in generated types – use any-typed helper
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const itemsTable = supabase.from("cart_items" as any) as any;
 
       try {
@@ -224,6 +222,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsOpen(true);
   }, [schedulePersist]);
 
+  const replaceItems = useCallback((newItems: Omit<CartItem, "quantity">[]) => {
+    setItems(prev => {
+      const next: CartItem[] = newItems.map(item => {
+        const existing = prev.find(i => i.id === item.id);
+        return { ...item, quantity: existing ? existing.quantity : 1 };
+      });
+      schedulePersist(next);
+      return next;
+    });
+  }, [schedulePersist]);
+
   const removeItem = useCallback((id: string) => {
     setItems(prev => {
       const next = prev.filter(i => i.id !== id);
@@ -249,7 +258,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const cartId = dbCartIdRef.current;
       if (cartId) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           await (supabase.from("cart_items" as any) as any).delete().eq("cart_id", cartId);
         } catch { /* silently ignore */ }
       }
@@ -271,9 +279,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const value = useMemo(() => ({
-    items, loading, addItem, removeItem, updateQuantity, clearCart,
+    items, loading, addItem, replaceItems, removeItem, updateQuantity, clearCart,
     totalItems, totalPrice, isOpen, setIsOpen, groupedBySeller,
-  }), [items, loading, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, groupedBySeller]);
+  }), [items, loading, addItem, replaceItems, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, groupedBySeller]);
 
   return (
     <CartContext.Provider value={value}>

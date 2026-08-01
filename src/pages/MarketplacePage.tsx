@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, CheckCircle2, Package, Flame, Heart, X, Sparkles, Globe } from "lucide-react";
+import { ShoppingCart, CheckCircle2, Package, Flame, Heart, X, Sparkles, Globe, Star } from "lucide-react";
+import FlashDealCountdown from "@/components/FlashDealCountdown";
 import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -19,7 +20,7 @@ import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { findCategoryConfig, getCategoryAttributes } from "@/lib/categoryConfig";
+import { findCategoryConfig, getCategoryAttributes, getProductVideos } from "@/lib/categoryConfig";
 import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/MarketplaceFilters";
 import ProductImage from "@/components/product/ProductImage";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
@@ -55,8 +56,12 @@ interface Product {
   created_at: string;
   average_rating: number;
   review_count: number;
-  variants: { categoryAttributes?: Record<string, string> } | null;
+  variants: { categoryAttributes?: Record<string, string>; productVideos?: string[] } | null;
   product_images: { image_url: string; is_primary: boolean }[];
+  flash_deal_discount_percent: number | null;
+  flash_deal_start_at: string | null;
+  flash_deal_end_at: string | null;
+  flash_deal_status: string | null;
 }
 
 interface Category { id: string; name: string; slug: string; icon: string; }
@@ -103,7 +108,8 @@ export default function MarketplacePage() {
   const cursorRef = useRef<CatalogueCursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
-  const { addItem } = useCart();
+  const { addItem, replaceItems } = useCart();
+  const navigate = useNavigate();
   const { handleMouseEnter, handleMouseLeave } = usePrefetchProduct();
   const { user } = useAuth();
   const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
@@ -172,11 +178,9 @@ export default function MarketplacePage() {
           p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE,
         });
         if (error) throw error;
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const ids = (matches || []).map((m: any) => m.product_id);
         if (!ids.length) { setProducts([]); setHasMore(false); setLoading(false); setLoadingMore(false); return; }
         const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const byId = new Map((productsData || []).map((p: any) => [p.id, p as unknown as Product]));
         const ordered = ids.map((id: string) => byId.get(id)).filter(Boolean) as Product[];
         setProducts(ordered);
@@ -277,6 +281,18 @@ export default function MarketplacePage() {
       image_url: primaryImage?.image_url || null, seller_id: product.seller_id,
       seller_name: seller?.full_name || "Seller", stock_quantity: product.stock_quantity,
     });
+  };
+
+  const handleBuyNow = (product: Product) => {
+    trackProductDiscovery(product.id, "buy_now");
+    const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+    const seller = sellerProfiles[product.seller_id];
+    replaceItems([{
+      id: product.id, product_id: product.id, title: product.title, price: product.price,
+      image_url: primaryImage?.image_url || null, seller_id: product.seller_id,
+      seller_name: seller?.full_name || "Seller", stock_quantity: product.stock_quantity,
+    }]);
+    navigate("/checkout");
   };
 
   useEffect(() => {
@@ -466,20 +482,46 @@ export default function MarketplacePage() {
                   {displayedProducts.map(product => {
                     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
                     const seller = sellerProfiles[product.seller_id];
-                    const discount = product.compare_at_price && product.compare_at_price > product.price
+                    const baseDiscount = product.compare_at_price && product.compare_at_price > product.price
                       ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
+                    const flashActive = product.flash_deal_status === "active" && product.flash_deal_discount_percent && product.flash_deal_discount_percent > 0;
+                    const discount = flashActive ? product.flash_deal_discount_percent : baseDiscount;
                     return (
                       <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
                         <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")} className="block">
                           <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
-                            {primaryImage ? (
-                              <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
-                            ) : (
-                              <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
-                                <Package className="h-8 w-8 text-[#888880] opacity-40" />
-                              </div>
-                            )}
-                            {discount ? (
+                            {(() => {
+                              const productVideos = getProductVideos(product.variants);
+                              const firstVideo = productVideos[0];
+                              return (
+                                <>
+                                  {primaryImage ? (
+                                    <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
+                                  ) : (
+                                    <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
+                                      <Package className="h-8 w-8 text-[#888880] opacity-40" />
+                                    </div>
+                                  )}
+                                  {firstVideo && (
+                                    <video
+                                      src={firstVideo}
+                                      muted
+                                      playsInline
+                                      loop
+                                      preload="none"
+                                      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                                      onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
+                                      onMouseLeave={(e) => { e.currentTarget.pause(); }}
+                                    />
+                                  )}
+                                </>
+                              );
+                            })()}
+                            {flashActive && product.flash_deal_end_at ? (
+                              <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center gap-1">
+                                <Flame className="h-2.5 w-2.5" /> FLASH
+                              </span>
+                            ) : discount ? (
                               <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">-{discount}%</span>
                             ) : product.stock_quantity <= 5 && product.stock_quantity > 0 ? (
                               <span className="absolute top-3 left-3 bg-[#FFA000] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center"><Flame className="h-2.5 w-2.5 mr-0.5" /> Hot</span>
@@ -495,27 +537,44 @@ export default function MarketplacePage() {
                             )}
                           </div>
                         </Link>
-                        <div className="p-0 flex flex-col flex-1 mt-2">
-                          <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")}>
+                        <div className="flex flex-col flex-1 mt-2">
+                          <Link to={`/product/${product.id}`} onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "click"); }}>
                             <h4 className="text-[12px] font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 hover:underline min-h-[32px] leading-snug">{product.title}</h4>
                           </Link>
-                          <div className="flex items-center justify-between mt-2.5">
+                          <div className="flex flex-col mt-2.5 gap-1">
                             <div className="flex items-baseline gap-1.5 min-w-0">
                               <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
-                              {product.compare_at_price && product.compare_at_price > product.price && (
+                              {!flashActive && product.compare_at_price && product.compare_at_price > product.price && (
                                 <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
                               )}
                             </div>
-                            <button onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
-                              className="bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] rounded-full p-2 h-8 w-8 flex items-center justify-center transition-colors duration-200 shrink-0"
-                              disabled={product.stock_quantity === 0} aria-label="Add to cart">
-                              <ShoppingCart className="h-3.5 w-3.5" />
-                            </button>
+                            {flashActive && product.flash_deal_end_at && (
+                              <FlashDealCountdown endAt={product.flash_deal_end_at} className="text-[#E53935]" />
+                            )}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <button onClick={(e) => { e.preventDefault(); handleBuyNow(product); }}
+                                className="bg-[#E53935] hover:bg-[#C62828] text-white rounded-full px-3 h-8 text-[10px] font-bold transition-colors duration-200"
+                                disabled={product.stock_quantity === 0} aria-label="Buy now">
+                                Buy Now
+                              </button>
+                              <button onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
+                                className="bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] rounded-full p-2 h-8 w-8 flex items-center justify-center transition-colors duration-200"
+                                disabled={product.stock_quantity === 0} aria-label="Add to cart">
+                                <ShoppingCart className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
                           </div>
                           {seller && (
                             <div className="flex items-center gap-1 mt-1.5 select-none">
                               <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller.full_name || "Seller"}</span>
                               {seller.is_verified && <CheckCircle2 className="h-2.5 w-2.5 text-[#F6C75D] shrink-0" />}
+                            </div>
+                          )}
+                          {product.average_rating > 0 && (
+                            <div className="flex items-center gap-1 mt-0.5 select-none">
+                              <Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />
+                              <span className="text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2]">{product.average_rating.toFixed(1)}</span>
+                              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">({product.review_count})</span>
                             </div>
                           )}
                           {shipsTo !== "all" && (
