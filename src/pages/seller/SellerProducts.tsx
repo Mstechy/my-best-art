@@ -18,6 +18,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Checkbox } from "@/components/ui/checkbox";
 import { uploadProductImagePair } from "@/lib/productImages";
 import ProductImage from "@/components/product/ProductImage";
+import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
 
@@ -1188,10 +1189,7 @@ export default function SellerProducts() {
                           <div key={item.id} className="rounded-xl border border-border bg-card p-3 shadow-sm">
                             <div className="flex gap-3">
                               <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg bg-black">
-                                <video src={item.url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                  <Play className="h-5 w-5 fill-white text-white" />
-                                </div>
+                                <ProductVideoPlayer src={item.url} compact alt={item.name} className="h-20 w-28" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-start justify-between gap-2">

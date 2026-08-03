@@ -25,6 +25,7 @@ import RecommendedProducts from "@/components/product/RecommendedProducts";
 import { formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
+import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackView } from "@/hooks/useBatchedViewTracking";
 
@@ -44,7 +45,6 @@ export default function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
-  const [playingVideos, setPlayingVideos] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
   const { add: addRecent } = useRecentlyViewed();
 
@@ -309,26 +309,12 @@ export default function ProductDetailPage() {
                         >
                           {item.type === "video" ? (
                             <div className="relative w-full h-full">
-                              <video
+                              <ProductVideoPlayer
                                 src={item.url}
-                                controls={playingVideos[item.id]}
-                                autoPlay={playingVideos[item.id]}
-                                muted
-                                playsInline
-                                loop
-                                className="w-full h-full object-cover"
-                                onMouseEnter={() => setPlayingVideos(prev => ({ ...prev, [item.id]: true }))}
-                                onMouseLeave={() => setPlayingVideos(prev => ({ ...prev, [item.id]: false }))}
-                                onClick={() => setPlayingVideos(prev => ({ ...prev, [item.id]: !prev[item.id] }))}
+                                compact={false}
+                                className="h-full w-full"
+                                alt="Product video"
                               />
-                              <div
-                                className="absolute inset-0 flex items-center justify-center cursor-pointer"
-                                onClick={() => setPlayingVideos(prev => ({ ...prev, [item.id]: true }))}
-                              >
-                                {!playingVideos[item.id] && (
-                                  <Play className="h-12 w-12 text-white drop-shadow-lg" />
-                                )}
-                              </div>
                             </div>
                           ) : (
                             <>
