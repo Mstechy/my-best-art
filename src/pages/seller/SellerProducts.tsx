@@ -33,6 +33,7 @@ interface ProductImage {
   image_url: string;
   is_primary: boolean;
   sort_order?: number;
+  alt?: string | null;
 }
 
 interface ProductVariant {
@@ -72,6 +73,10 @@ interface Product {
   flash_deal_discount_percent: number | null;
   flash_deal_start_at: string | null;
   flash_deal_end_at: string | null;
+  seo_slug: string | null;
+  meta_description: string | null;
+  low_stock_threshold: number | null;
+  description_images: { url: string; alt: string | null; order: number }[] | null;
   created_at: string;
   product_images: ProductImage[];
 }
@@ -106,6 +111,10 @@ interface ProductRow {
   flash_deal_discount_percent: number | null;
   flash_deal_start_at: string | null;
   flash_deal_end_at: string | null;
+  seo_slug: string | null;
+  meta_description: string | null;
+  low_stock_threshold: number | null;
+  description_images: { url: string; alt: string | null; order: number }[] | null;
   created_at: string;
   product_images: ProductImage[] | null;
 }
@@ -124,6 +133,18 @@ interface ImageMediaItem {
   url: string;
   name: string;
   isPrimary: boolean;
+  alt: string;
+  status: UploadState;
+  progress: number;
+  error?: string;
+}
+
+interface DescriptionImageItem {
+  id: string;
+  file?: File;
+  url: string;
+  name: string;
+  alt: string;
   status: UploadState;
   progress: number;
   error?: string;
@@ -140,7 +161,7 @@ interface VideoMediaItem {
 }
 
 interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; }
-type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; };
+type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
 
 function normalizeProductRow(row: ProductRow): Product {
   const images = (row.product_images || []).sort(
@@ -196,6 +217,16 @@ export default function SellerProducts() {
   const [flashDealDiscount, setFlashDealDiscount] = useState("");
   const [flashDealStart, setFlashDealStart] = useState("");
   const [flashDealEnd, setFlashDealEnd] = useState("");
+  const [seoSlug, setSeoSlug] = useState("");
+  const [metaDescription, setMetaDescription] = useState("");
+  const [lowStockThreshold, setLowStockThreshold] = useState("5");
+  const [descriptionImageItems, setDescriptionImageItems] = useState<DescriptionImageItem[]>([]);
+  const [removedDescriptionImageUrls, setRemovedDescriptionImageUrls] = useState<string[]>([]);
+  const [draggedDescriptionImageId, setDraggedDescriptionImageId] = useState<string | null>(null);
+  const [slugTouched, setSlugTouched] = useState(false);
+  const [compareAtError, setCompareAtError] = useState("");
+  const [descriptionError, setDescriptionError] = useState("");
+  const [altWarning, setAltWarning] = useState(false);
 
   // Form state — specifications
   const [brand, setBrand] = useState("");
@@ -217,6 +248,13 @@ export default function SellerProducts() {
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
   const draftKey = user ? `markethub:product-listing-draft:${user.id}` : "";
+
+  // Auto-generate slug from title until the seller edits it manually
+  useEffect(() => {
+    if (slugTouched) return;
+    const slug = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    setSeoSlug(slug);
+  }, [title, slugTouched]);
 
   const fetchProducts = useCallback(async () => {
     if (!user) return;
@@ -259,9 +297,9 @@ export default function SellerProducts() {
 
   useEffect(() => {
     if (!dialogOpen || editingProduct || !draftKey) return;
-    const draft: ProductFormDraft = { title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab };
+    const draft: ProductFormDraft = { title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab]);
+  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
   const revokeLocalMediaUrls = () => {
     imageItems.forEach((item) => {
@@ -289,6 +327,7 @@ export default function SellerProducts() {
           url: URL.createObjectURL(file),
           name: file.name,
           isPrimary: prev.length === 0 && index === 0,
+          alt: "",
           status: "local",
           progress: 0,
         })),
@@ -361,6 +400,54 @@ export default function SellerProducts() {
     setVideoItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
   };
 
+  const addDescriptionImageFiles = (files: File[]) => {
+    const remaining = 20 - descriptionImageItems.length;
+    const imageFiles = files.filter((file) => ACCEPTED_IMAGE_TYPES.has(file.type) && file.size <= MAX_IMAGE_SIZE_BYTES).slice(0, Math.max(0, remaining));
+    if (imageFiles.length === 0) {
+      toast({ title: "Description photos not added", description: "Use JPG, PNG, or WebP files up to 10 MB. A product can have up to 20 description photos.", variant: "destructive" });
+      return;
+    }
+    if (imageFiles.length < files.length) toast({ title: "Some photos skipped", description: "Use JPG, PNG, or WebP files up to 10 MB; maximum 20 description photos." });
+    setDescriptionImageItems((prev) => [
+      ...prev,
+      ...imageFiles.map((file, index): DescriptionImageItem => ({
+        id: `local-desc-image-${Date.now()}-${index}-${file.name}`,
+        file,
+        url: URL.createObjectURL(file),
+        name: file.name,
+        alt: "",
+        status: "local",
+        progress: 0,
+      })),
+    ].slice(0, 20));
+  };
+
+  const removeDescriptionImageItem = (id: string) => {
+    setDescriptionImageItems((prev) => {
+      const removed = prev.find((item) => item.id === id);
+      if (removed?.file) URL.revokeObjectURL(removed.url);
+      else if (removed) setRemovedDescriptionImageUrls((urls) => [...urls, removed.url]);
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const moveDescriptionImageItem = (fromId: string, toId: string) => {
+    if (fromId === toId) return;
+    setDescriptionImageItems((prev) => {
+      const fromIndex = prev.findIndex((item) => item.id === fromId);
+      const toIndex = prev.findIndex((item) => item.id === toId);
+      if (fromIndex < 0 || toIndex < 0) return prev;
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
+
+  const updateDescriptionImageState = (id: string, patch: Partial<DescriptionImageItem>) => {
+    setDescriptionImageItems((prev) => prev.map((item) => item.id === id ? { ...item, ...patch } : item));
+  };
+
   const resetForm = () => {
     revokeLocalMediaUrls();
     setTitle(""); setDescription(""); setPrice(""); setCompareAtPrice("");
@@ -427,6 +514,7 @@ export default function SellerProducts() {
           url: image.image_url,
           name: `Image ${index + 1}`,
           isPrimary: image.is_primary,
+          alt: image.alt || "",
           status: "uploaded" as const,
           progress: 100,
         }))
@@ -482,6 +570,7 @@ export default function SellerProducts() {
       return;
     }
     if (numericCompareAtPrice !== null && (!Number.isFinite(numericCompareAtPrice) || numericCompareAtPrice <= numericPrice)) {
+      setCompareAtError("Compare-at price must be higher than the sale price.");
       toast({ title: "Check compare-at price", description: "Compare-at price must be higher than the sale price.", variant: "destructive" });
       setFormTab("basic");
       return;
@@ -492,9 +581,14 @@ export default function SellerProducts() {
       return;
     }
     if (description.trim().length > 0 && description.trim().length < 30) {
+      setDescriptionError("Description must be at least 30 characters.");
       toast({ title: "Description too short", description: "Please write at least 30 characters.", variant: "destructive" });
+      setFormTab("basic");
       return;
     }
+    // Alt-text warning (non-blocking, per PRD)
+    const missingAlt = [...imageItems, ...descriptionImageItems].some(item => !item.alt.trim());
+    setAltWarning(missingAlt);
     const invalidVariant = variantRows.some(row => (!row.size.trim() && !row.color.trim()) || !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0 || (row.price && Number(row.price) <= 0));
     const variantKeys = variantRows.map(row => `${row.size.trim().toLowerCase()}|${row.color.trim().toLowerCase()}`);
     if (invalidVariant || new Set(variantKeys).size !== variantKeys.length) {
@@ -537,6 +631,9 @@ export default function SellerProducts() {
       compare_at_price: compareAtPrice ? parseFloat(compareAtPrice) : null,
       category_id: categoryId || null,
       stock_quantity: parseInt(stockQuantity) || 0,
+      seo_slug: seoSlug.trim() || null,
+      meta_description: metaDescription.trim() || null,
+      low_stock_threshold: parseInt(lowStockThreshold) || 5,
       sku: sku.trim() || null,
       brand: (attr("brand") || brand).trim() || null,
       weight: (attr("weight") || weight).trim() || null,
@@ -593,7 +690,8 @@ export default function SellerProducts() {
           const { error } = await supabase.from("product_images").update({
             sort_order: i,
             is_primary: item.isPrimary,
-          }).eq("id", item.dbId);
+            alt: item.alt.trim() || null,
+          } as never).eq("id", item.dbId);
           if (error) {
             mediaHadError = true;
             updateImageUploadState(item.id, { status: "error", error: error.message });
@@ -611,9 +709,10 @@ export default function SellerProducts() {
             image_url: originalUrl,
             is_primary: item.isPrimary,
             sort_order: i,
+            alt: item.alt.trim() || null,
             visual_hash: visualHash.hash,
             visual_hash_buckets: visualHash.buckets,
-          }).select("id").single();
+          } as never).select("id").single();
           if (insertError) throw insertError;
           updateImageUploadState(item.id, { dbId: (inserted as { id: string }).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
         } catch (error) {
@@ -631,6 +730,47 @@ export default function SellerProducts() {
             variant: "destructive",
           });
         }
+      }
+    }
+
+    // Upload description photos and save as JSONB in products.description_images
+    if (productId && descriptionImageItems.length > 0) {
+      const finalDescriptionImages: { url: string; alt: string | null; order: number }[] = [];
+      for (let i = 0; i < descriptionImageItems.length; i++) {
+        const item = descriptionImageItems[i];
+        if (!item.file) {
+          if (!removedDescriptionImageUrls.includes(item.url)) {
+            finalDescriptionImages.push({ url: item.url, alt: item.alt.trim() || null, order: i });
+          }
+          continue;
+        }
+        try {
+          updateDescriptionImageState(item.id, { status: "uploading", progress: 20, error: undefined });
+          const ext = item.file.name.split(".").pop();
+          const filePath = `${user.id}/${productId}/desc_${Date.now()}_${i}.${ext}`;
+          const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, item.file, {
+            contentType: item.file.type || "image/jpeg",
+            cacheControl: "3600",
+          });
+          if (uploadError) throw uploadError;
+          updateDescriptionImageState(item.id, { progress: 85 });
+          const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
+          finalDescriptionImages.push({ url: urlData.publicUrl, alt: item.alt.trim() || null, order: i });
+          updateDescriptionImageState(item.id, { file: undefined, url: urlData.publicUrl, status: "uploaded", progress: 100 });
+        } catch (error) {
+          mediaHadError = true;
+          const message = error instanceof Error ? error.message : "Upload failed";
+          updateDescriptionImageState(item.id, { status: "error", progress: 0, error: message });
+          toast({ title: "Description photo upload failed", description: message, variant: "destructive" });
+        }
+      }
+      const { error: descUpdateError } = await supabase
+        .from("products")
+        .update({ description_images: finalDescriptionImages } as never)
+        .eq("id", productId);
+      if (descUpdateError) {
+        console.error("[SellerProducts] description images update failed", descUpdateError);
+        mediaHadError = true;
       }
     }
 
@@ -847,10 +987,13 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Description <span className="text-xs text-muted-foreground font-normal">(min 30 characters)</span></label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
-                    {description.length > 0 && description.length < 30 && (
-                      <p className="mt-1 text-xs text-destructive">Description must be at least 30 characters ({description.length}/30)</p>
-                    )}
+                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{description.length}/5000</span>
+                      {description.length > 0 && description.length < 30 && (
+                        <span className="text-xs text-destructive">Must be at least 30 characters</span>
+                      )}
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -859,8 +1002,24 @@ export default function SellerProducts() {
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground">Compare at price</label>
-                      <Input type="number" step="0.01" value={compareAtPrice} onChange={(e) => setCompareAtPrice(e.target.value)} placeholder="Original price" className="mt-1" />
+                      <Input type="number" step="0.01" value={compareAtPrice} onChange={(e) => { setCompareAtPrice(e.target.value); setCompareAtError(""); }} placeholder="Original price" className="mt-1" />
+                      {compareAtError && <p className="mt-1 text-xs text-destructive">{compareAtError}</p>}
                     </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">URL Slug</label>
+                    <Input value={seoSlug} onChange={(e) => { setSeoSlug(e.target.value); setSlugTouched(true); }} placeholder="product-url-slug" className="mt-1" />
+                    <p className="mt-1 text-xs text-muted-foreground">Live URL: /product/{seoSlug || "your-slug"}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Meta Description <span className="text-xs text-muted-foreground font-normal">(optional, max 160 chars)</span></label>
+                    <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))} placeholder="Short search snippet for this product" className="mt-1" rows={2} />
+                    <p className="mt-1 text-xs text-muted-foreground">{metaDescription.length}/160</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Low Stock Threshold</label>
+                    <Input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} placeholder="5" className="mt-1" />
+                    <p className="mt-1 text-xs text-muted-foreground">Shows "Only X left" when stock drops to this number.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -1154,6 +1313,82 @@ export default function SellerProducts() {
                                 Set primary
                               </Button>
                             )}
+                            <Input
+                              value={item.alt}
+                              onChange={(e) => updateImageUploadState(item.id, { alt: e.target.value })}
+                              placeholder="Alt text (optional)"
+                              className="mt-2 h-8 text-xs"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-sm font-medium text-foreground">Description Photos <span className="text-xs text-muted-foreground font-normal">(optional)</span></label>
+                      <span className="text-xs text-muted-foreground">{descriptionImageItems.length}/20</span>
+                    </div>
+                    <label
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        addDescriptionImageFiles(Array.from(e.dataTransfer.files || []));
+                      }}
+                      className="mt-2 flex flex-col items-center gap-3 rounded-xl border border-dashed border-border bg-muted/20 px-6 py-5 cursor-pointer hover:bg-muted/40 transition-colors"
+                    >
+                      <ImagePlus className="h-7 w-7 text-muted-foreground" />
+                      <div className="text-center">
+                        <span className="text-sm font-medium text-foreground">Drop description photos here or browse files</span>
+                        <p className="text-xs text-muted-foreground mt-1">These show as a scrolling photo story below your description — great for extra angles, packaging, or proof shots.</p>
+                      </div>
+                      <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addDescriptionImageFiles(Array.from(e.target.files || []))} />
+                    </label>
+                    {descriptionImageItems.length > 0 && (
+                      <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {descriptionImageItems.map((item) => (
+                          <div
+                            key={item.id}
+                            draggable
+                            onDragStart={() => setDraggedDescriptionImageId(item.id)}
+                            onDragOver={(e) => e.preventDefault()}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              if (draggedDescriptionImageId) moveDescriptionImageItem(draggedDescriptionImageId, item.id);
+                              setDraggedDescriptionImageId(null);
+                            }}
+                            className="group rounded-xl border border-border bg-card p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+                          >
+                            <div className="relative aspect-square overflow-hidden rounded-lg bg-muted">
+                              <ProductImage src={item.url} alt={item.alt || item.name} className="group-hover:scale-105" loading="lazy" />
+                              <button
+                                type="button"
+                                onClick={() => removeDescriptionImageItem(item.id)}
+                                className="absolute right-2 top-2 rounded-full bg-white/90 p-1 text-foreground shadow-sm hover:text-destructive"
+                                aria-label="Remove description photo"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                              {item.status === "uploading" && (
+                                <div className="absolute inset-x-2 bottom-2 rounded-full bg-white/90 p-1 shadow-sm">
+                                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                                    <div className="h-full bg-primary transition-all" style={{ width: `${item.progress}%` }} />
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="mt-2">
+                              <p className="truncate text-xs font-medium text-foreground">{item.name}</p>
+                              <p className={`text-[11px] ${item.status === "error" ? "text-destructive" : "text-muted-foreground"}`}>
+                                {item.status === "uploaded" ? "Uploaded" : item.status === "uploading" ? `Uploading ${item.progress}%` : item.status === "error" ? item.error || "Upload failed" : "Ready"}
+                              </p>
+                              <Input
+                                value={item.alt}
+                                onChange={(e) => updateDescriptionImageState(item.id, { alt: e.target.value })}
+                                placeholder="Alt text (optional)"
+                                className="mt-2 h-8 text-xs"
+                              />
+                            </div>
                           </div>
                         ))}
                       </div>
