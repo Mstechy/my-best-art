@@ -6,7 +6,7 @@ import { fetchHeroCollections } from "@/lib/collectionResolver";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
 
 // ── Types ────────────────────────────────────────────────────────────────
-export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; average_rating: number; review_count: number; ships_to: string[] | null; product_images: { image_url: string; is_primary: boolean }[] };
+export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; product_images: { image_url: string; is_primary: boolean }[] };
 export type Category = { id: string; name: string; slug: string };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
@@ -73,7 +73,7 @@ export function useProductsByIds(ids: string[]) {
       if (ids.length === 0) return [] as Product[];
       const { data } = await supabase
         .from("products")
-        .select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,product_images(image_url,is_primary)")
+        .select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,flash_deal_end_at,product_images(image_url,is_primary)")
         .in("id", ids);
       return (data ?? []) as unknown as Product[];
     },
@@ -146,10 +146,12 @@ export function useHomepageData() {
           .flatMap((row: any) => {
             const p = productMap.get(row.product_id);
             if (!p) return [];
+            const flashDealEndAt = row.flash_deal_end_at || p.flash_deal_end_at || null;
             return [{
               ...p,
               sold_count: Number(row.sold_count),
               trend_score: Number(row.trend_score),
+              flash_deal_end_at: flashDealEndAt,
             }];
           });
         return [name, items];

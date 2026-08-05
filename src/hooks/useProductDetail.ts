@@ -28,8 +28,12 @@ export interface Product {
   average_rating: number;
   review_count: number;
   show_sold_count: boolean | null;
+  seo_slug: string | null;
+  meta_description: string | null;
+  low_stock_threshold: number | null;
+  description_images: { url: string; alt: string | null; order: number }[] | null;
   variants: { sizes?: string[]; colors?: string[]; categoryAttributes?: Record<string, string> } | null;
-  product_images: { id: string; image_url: string; is_primary: boolean }[];
+  product_images: { id: string; image_url: string; is_primary: boolean; alt?: string | null }[];
 }
 
 export interface ProductDoc { id: string; url: string; label: string | null; }

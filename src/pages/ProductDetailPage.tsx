@@ -50,7 +50,6 @@ export default function ProductDetailPage() {
 
   const [specsOpen, setSpecsOpen] = useState(false);
   const [descriptionOpen, setDescriptionOpen] = useState(false);
-  const [shippingOpen, setShippingOpen] = useState(false);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
 
   const {
@@ -381,7 +380,7 @@ export default function ProductDetailPage() {
                   </div>
                 )}
                 {soldCount > 0 && <span>{soldCount} sold</span>}
-                {purchasableStock <= 5 && purchasableStock > 0 && (
+                {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
                   <span className="text-[#E53935] font-semibold">Only {purchasableStock} left</span>
                 )}
                 {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
@@ -475,6 +474,28 @@ export default function ProductDetailPage() {
                   </div>
                 )}
               </div>
+
+              {/* Specifications table — renders the specs the seller entered in the form */}
+              {(() => {
+                const specs = getCategoryAttributes(product.variants);
+                const entries = Object.entries(specs).filter(([, value]) => value && value.trim());
+                if (entries.length === 0) return null;
+                return (
+                  <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] overflow-hidden">
+                    <div className="px-4 py-3 border-b border-[#E8E8E8] dark:border-[#222222]">
+                      <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Specifications</h2>
+                    </div>
+                    <dl className="divide-y divide-[#F2F3F5] dark:divide-[#222222]">
+                      {entries.map(([key, value]) => (
+                        <div key={key} className="grid grid-cols-3 gap-3 px-4 py-2.5">
+                          <dt className="text-xs text-[#888880] dark:text-[#A0A0A0] capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</dt>
+                          <dd className="col-span-2 text-xs font-medium text-[#111111] dark:text-[#FAF5F2]">{value}</dd>
+                        </div>
+                      ))}
+                    </dl>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -489,6 +510,23 @@ export default function ProductDetailPage() {
                 {product.description || "No description provided."}
               </CollapsibleContent>
             </Collapsible>
+
+            {/* Description photo feed — lazy-loaded, in order, with alt text */}
+            {product.description_images && product.description_images.length > 0 && (
+              <div className="space-y-4">
+                {[...product.description_images]
+                  .sort((a, b) => a.order - b.order)
+                  .map((img, idx) => (
+                    <img
+                      key={`${img.url}-${idx}`}
+                      src={img.url}
+                      alt={img.alt || product.title}
+                      loading="lazy"
+                      className="w-full rounded-2xl"
+                    />
+                  ))}
+              </div>
+            )}
 
             {product.key_features && product.key_features.length > 0 && (
               <Collapsible open={specsOpen} onOpenChange={setSpecsOpen}>
@@ -507,15 +545,6 @@ export default function ProductDetailPage() {
                 </CollapsibleContent>
               </Collapsible>
             )}
-
-            <Collapsible open={shippingOpen} onOpenChange={setShippingOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full py-3 border-b border-[#E8E8E8] dark:border-[#222222] text-sm font-bold">
-                Shipping & Returns <ChevronDown className={`h-4 w-4 transition-transform ${shippingOpen ? "rotate-180" : ""}`} />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4 text-sm text-[#666666] dark:text-[#A0A0A0] leading-relaxed">
-                {product.shipping_info || "Shipping costs calculated at checkout based on destination and weight."}
-              </CollapsibleContent>
-            </Collapsible>
 
             <div ref={reviewsRef}>
               <ReviewSummary
