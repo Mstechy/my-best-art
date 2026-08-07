@@ -57,6 +57,14 @@ const ProgressiveImage = memo(function ProgressiveImage({
   const [showPlaceholder, setShowPlaceholder] = useState(!!placeholderUrl.current);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // Reset state when src changes (e.g. fallback from card URL to original URL)
+  useEffect(() => {
+    setLoaded(false);
+    setError(false);
+    setShowPlaceholder(!!getPlaceholderUrl(src));
+    placeholderUrl.current = getPlaceholderUrl(src);
+  }, [src]);
+
   useEffect(() => {
     if (loading !== "lazy" || inView) return;
     observerRef.current = new IntersectionObserver(
@@ -86,9 +94,8 @@ const ProgressiveImage = memo(function ProgressiveImage({
   };
 
   const handleError = () => {
-    if (!placeholderUrl.current) {
-      setError(true);
-    }
+    // Always set error state so the fallback UI shows if the image truly fails
+    setError(true);
     setShowPlaceholder(false);
     onError?.();
   };

@@ -213,6 +213,9 @@ export default function LandingPage() {
           emptyText={feed.empty}
           itemWidth={220}
           gap={16}
+          autoScroll
+          autoScrollInterval={7000}
+          showDots
         >
           {feeds[feed.key].map(product => (
             <HorizontalProductCard

@@ -418,23 +418,45 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
         {showSearch && (
           <>
-            <form onSubmit={handleSubmit} className="mt-3 flex items-center gap-2 lg:hidden">
+            <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-2 lg:hidden">
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
                 <Input
                   value={localSearch}
-                  onChange={e => setLocalSearch(e.target.value)}
+                  onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
+                  onFocus={() => setSuggestionsOpen(true)}
+                  onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
                   placeholder="Search products"
                   className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
                 />
                 <button type="button" onClick={handleVisualClick} aria-label="Search by image" title="Search by image" className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+                {suggestionsOpen && suggestions.length > 0 && (
+                  <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
+                    <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#888880]">Suggestions</p>
+                    {suggestions.map((suggestion, index) => (
+                      <button
+                        key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`}
+                        type="button"
+                        onMouseDown={(event) => event.preventDefault()}
+                        onClick={() => chooseSuggestion(suggestion)}
+                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+                      >
+                        <Search className="h-3.5 w-3.5 text-[#888880]" />
+                        <span className="truncate">{suggestion.label}</span>
+                        <span className="ml-auto text-[10px] text-[#888880]">{suggestion.suggestion_type === "category" ? "Category" : "Product"}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-              <Button
-                type="submit"
-                className="h-11 rounded-full bg-[#111111] px-4 text-sm font-semibold text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111]"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="submit"
+                  className="h-11 rounded-full bg-[#111111] px-4 text-sm font-semibold text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111]"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </div>
             </form>
             <input
               ref={imageInputRef}

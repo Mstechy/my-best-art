@@ -21,18 +21,31 @@ export default function ProductImage({
   fetchPriority = "auto",
 }: ProductImageProps) {
   const hasSource = !!src && src.trim().length > 0;
-  const preferredSrc = useMemo(
+  const originalSrc = hasSource ? src : null;
+  const cardSrc = useMemo(
     () => {
-      if (!hasSource) return null;
-      return variant === "card" || variant === "thumb" ? getProductCardImageUrl(src) ?? src : src;
+      if (!originalSrc) return null;
+      return variant === "card" || variant === "thumb" ? getProductCardImageUrl(originalSrc) ?? originalSrc : originalSrc;
     },
-    [src, variant, hasSource],
+    [originalSrc, variant],
   );
-  const [currentSrc, setCurrentSrc] = useState<string | null>(preferredSrc);
+  const [currentSrc, setCurrentSrc] = useState<string | null>(cardSrc);
+  const [triedFallback, setTriedFallback] = useState(false);
 
   useEffect(() => {
-    setCurrentSrc(preferredSrc);
-  }, [preferredSrc]);
+    setCurrentSrc(cardSrc);
+    setTriedFallback(false);
+  }, [cardSrc]);
+
+  const handleError = () => {
+    // If we're showing the card-optimized URL and it fails, fall back to the original URL
+    if (!triedFallback && cardSrc && originalSrc && cardSrc !== originalSrc) {
+      setTriedFallback(true);
+      setCurrentSrc(originalSrc);
+      return;
+    }
+    setCurrentSrc(null);
+  };
 
   if (!currentSrc) {
     return (
@@ -52,9 +65,7 @@ export default function ProductImage({
           fetchPriority={fetchPriority}
           wrapperClassName="h-full w-full"
           className="group-hover:scale-105"
-          onError={() => {
-            setCurrentSrc(null);
-          }}
+          onError={handleError}
         />
       </div>
     );
@@ -69,9 +80,7 @@ export default function ProductImage({
       decoding="async"
       width={900}
       height={900}
-      onError={() => {
-        setCurrentSrc(null);
-      }}
+      onError={handleError}
       className={cn(
         "h-full w-full select-none transition-transform duration-300",
         variant === "detail" ? "object-contain" : "object-cover",

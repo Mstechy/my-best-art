@@ -15,8 +15,8 @@ import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
-import { usePrefetchProduct } from "@/hooks/usePrefetchProduct";
-import { useScrollRestoration } from "@/hooks/useScrollRestoration";
+import { useCachedFetch, cacheKeyFor } from "@/hooks/useCachedFetch";
+import { useProductViewTracking } from "@/hooks/useProductViewTracking";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
@@ -84,6 +84,66 @@ function ModalWrapper({ isOpen, onClose, title, children }: { isOpen: boolean; o
   );
 }
 
+function MarketplaceProductImpressionCard({
+  product,
+  seller,
+  formatPrice,
+}: {
+  product: Product;
+  seller?: { full_name: string | null; is_verified: boolean };
+  formatPrice: (amount: number, sourceCurrency?: string) => string;
+}) {
+  const { ref } = useProductViewTracking(product.id);
+  const primaryImage = product.product_images?.find(item => item.is_primary)?.image_url || product.product_images?.[0]?.image_url;
+  const baseDiscount = product.compare_at_price && product.compare_at_price > product.price
+    ? Math.round((1 - product.price / product.compare_at_price) * 100)
+    : null;
+  const flashActive = product.flash_deal_status === "active" && product.flash_deal_discount_percent && product.flash_deal_discount_percent > 0;
+  const discount = flashActive ? product.flash_deal_discount_percent : baseDiscount;
+
+  return (
+    <div ref={ref} className="shrink-0" style={{ width: 180 }}>
+      <Link
+        to={`/product/${product.id}`}
+        onClick={() => trackProductDiscovery(product.id, "click")}
+        className="group overflow-hidden rounded-3xl border border-[#E8E8E8] bg-white transition hover:-translate-y-0.5 hover:shadow-lg dark:border-[#222222] dark:bg-[#1E1E1E]"
+      >
+        <div className="relative aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E]">
+          {primaryImage ? (
+            <ProductImage src={primaryImage} alt={product.title} className="group-hover:scale-105" loading="lazy" />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <Package className="h-6 w-6 text-[#888880]" />
+            </div>
+          )}
+          {discount ? (
+            <span className="absolute left-3 top-3 rounded bg-[#E53935] px-2 py-0.5 text-[10px] font-bold text-white">
+              -{discount}%
+            </span>
+          ) : null}
+        </div>
+        <div className="p-3">
+          <h3 className="text-sm font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2">{product.title}</h3>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
+            {product.compare_at_price && product.compare_at_price > product.price ? (
+              <span className="text-[10px] text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
+            ) : null}
+          </div>
+          <p className="mt-2 text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller?.full_name || "Seller"}</p>
+          {product.average_rating > 0 && (
+            <div className="mt-2 flex items-center gap-1 text-[10px] text-[#111111] dark:text-[#FAF5F2]">
+              <Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />
+              <span className="font-semibold">{product.average_rating.toFixed(1)}</span>
+              <span className="text-[#888880] dark:text-[#A0A0A0]">({product.review_count})</span>
+            </div>
+          )}
+        </div>
+      </Link>
+    </div>
+  );
+}
+
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug: categoryRouteSlug } = useParams<{ slug?: string }>();
@@ -102,15 +162,15 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [shipsTo, setShipsTo] = useState<string>("all");
   const [filters, setFilters] = useState<MarketplaceFiltersState>(defaultFilters);
-  const [sortBy, setSortBy] = useState(() => ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended"].includes(sortParam || "") ? sortParam! : "relevance");
-  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState(() => ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended", "random"].includes(sortParam || "") ? sortParam! : "relevance");
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const cursorRef = useRef<CatalogueCursor | null>(null);
+  const [pageCursor, setPageCursor] = useState<CatalogueCursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
+  const [pageSeed] = useState(() => crypto.randomUUID());
   const { addItem, replaceItems } = useCart();
   const navigate = useNavigate();
-  const { handleMouseEnter, handleMouseLeave } = usePrefetchProduct();
   const { user } = useAuth();
   const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -133,7 +193,7 @@ export default function MarketplacePage() {
 
   useEffect(() => { if (searchParam !== null) setSearch(searchParam); }, [searchParam]);
   useEffect(() => {
-    const nextSort = ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended"].includes(sortParam || "") ? sortParam! : "relevance";
+    const nextSort = ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended", "random"].includes(sortParam || "") ? sortParam! : "relevance";
     setSortBy(current => current === nextSort ? current : nextSort);
   }, [sortParam]);
 
@@ -161,75 +221,165 @@ export default function MarketplacePage() {
     setSearchParams(next, { replace: true });
   };
 
+  const shuffleArray = <T,>(array: T[]) => {
+    const items = [...array];
+    for (let i = items.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [items[i], items[j]] = [items[j], items[i]];
+    }
+    return items;
+  };
+
   const fetchData = async () => {
     const { data: categoriesData } = await supabase.from("categories").select("*").order("sort_order");
     if (categoriesData) setCategories(categoriesData);
+    setCategoriesLoading(false);
   };
 
-  const fetchCatalogue = useCallback(async function fetchCatalogueInner(reset = false) {
-    if (reset) { cursorRef.current = null; } else { setLoadingMore(true); }
-    const pageCursor = reset ? null : cursorRef.current;
+  const catalogueCacheKey = useMemo(() => cacheKeyFor("marketplace_catalogue", {
+    search: search.trim() || null,
+    category: selectedCategory || null,
+    shipsTo: shipsTo === "all" ? null : shipsTo,
+    minPrice: filters.minPrice ?? null,
+    maxPrice: filters.maxPrice < 10000 ? filters.maxPrice : null,
+    minRating: filters.minRating ?? null,
+    inStockOnly: filters.inStockOnly ? 1 : 0,
+    condition: filters.condition === "any" ? null : filters.condition,
+    categoryAttributes: JSON.stringify(filters.categoryAttributes || {}),
+    sort: sortBy,
+    seed: sortBy === "random" ? pageSeed : null,
+    visualHash: visualHashParam || null,
+    pageSize: CATALOGUE_PAGE_SIZE,
+  }), [search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
 
-    try {
-      let result: { products: Product[]; has_more: boolean };
-
+  const {
+    data: catalogueData,
+    loading: catalogueLoading,
+    error: catalogueError,
+    refetch: refetchCatalogue,
+  } = useCachedFetch<{ products: Product[]; hasMore: boolean }>(
+    catalogueCacheKey,
+    async () => {
       if (visualHashParam) {
         const { data: matches, error } = await supabase.rpc("search_marketplace_product_ids_by_visual_hash", {
-          p_hash: visualHashParam, p_category_id: selectedCategory, p_limit: CATALOGUE_PAGE_SIZE,
+          p_hash: visualHashParam,
+          p_category_id: selectedCategory,
+          p_limit: CATALOGUE_PAGE_SIZE,
         });
         if (error) throw error;
         const ids = (matches || []).map((m: any) => m.product_id);
-        if (!ids.length) { setProducts([]); setHasMore(false); setLoading(false); setLoadingMore(false); return; }
+        if (!ids.length) {
+          return { products: [], hasMore: false };
+        }
         const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
         const byId = new Map((productsData || []).map((p: any) => [p.id, p as unknown as Product]));
         const ordered = ids.map((id: string) => byId.get(id)).filter(Boolean) as Product[];
-        setProducts(ordered);
-        result = { products: ordered, has_more: false };
-      } else {
-        const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
-          p_query: search.trim() || null,
-          p_category_id: selectedCategory || null,
-          p_country: shipsTo === "all" ? null : shipsTo,
-          p_min_price: filters.minPrice || null,
-          p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
-          p_min_rating: filters.minRating || null,
-          p_in_stock_only: filters.inStockOnly || null,
-          p_condition: filters.condition === "any" ? null : filters.condition,
-          p_sort: sortBy,
-          p_limit: CATALOGUE_PAGE_SIZE,
-          p_cursor_relevance: pageCursor?.relevance ?? null,
-          p_cursor_created_at: pageCursor?.createdAt ?? null,
-          p_cursor_id: pageCursor?.id ?? null,
-        });
-        if (error) throw error;
-        const parsed = typeof data === 'string' ? JSON.parse(data) : data;
-        result = { products: (parsed?.products || []) as Product[], has_more: !!parsed?.has_more };
+        return { products: ordered, hasMore: false };
       }
 
-      const sellerIds = [...new Set(result.products.map((p: Product) => p.seller_id).filter(Boolean))];
-      if (sellerIds.length > 0) {
-        const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
-        if (profiles) {
-          const map: Record<string, { full_name: string | null; is_verified: boolean }> = {};
-          profiles.forEach((p: SellerProfilePublic) => { if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified }; });
-          setSellerProfiles(map);
-        }
-      }
-
-      setProducts(result.products);
-      const last = result.products[result.products.length - 1];
-      cursorRef.current = last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null;
-      setHasMore(result.has_more);
-    } catch (e) {
-      console.error("Search failed", e);
-    }
-    setLoading(false);
-    setLoadingMore(false);
-  }, [search, selectedCategory, shipsTo, filters, sortBy, visualHashParam]);
+      const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
+        p_query: search.trim() || null,
+        p_category_id: selectedCategory || null,
+        p_country: shipsTo === "all" ? null : shipsTo,
+        p_min_price: filters.minPrice || null,
+        p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
+        p_min_rating: filters.minRating || null,
+        p_in_stock_only: filters.inStockOnly || null,
+        p_condition: filters.condition === "any" ? null : filters.condition,
+        p_sort: sortBy,
+        p_limit: CATALOGUE_PAGE_SIZE,
+        p_cursor_relevance: null,
+        p_cursor_created_at: null,
+        p_cursor_id: null,
+        p_seed: sortBy === "random" ? pageSeed : null,
+      });
+      if (error) throw error;
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      return {
+        products: (parsed?.products || []) as Product[],
+        hasMore: !!parsed?.has_more,
+      };
+    },
+    {
+      staleWhileRevalidate: true,
+      ttlMs: 3 * 60 * 1000,
+    },
+  );
 
   useEffect(() => {
-    fetchCatalogue(true);
-  }, [fetchCatalogue]);
+    setProducts([]);
+    setPageCursor(null);
+    setHasMore(false);
+  }, [catalogueCacheKey]);
+
+  useEffect(() => {
+    if (!catalogueData) return;
+    setProducts(catalogueData.products);
+    const last = catalogueData.products[catalogueData.products.length - 1];
+    setPageCursor(last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null);
+    setHasMore(catalogueData.hasMore);
+  }, [catalogueData]);
+
+  const fetchCatalogue = useCallback(async (reset = false) => {
+    if (reset) {
+      await refetchCatalogue(true);
+      return;
+    }
+
+    if (!pageCursor) return;
+
+    setLoadingMore(true);
+    try {
+      const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
+        p_query: search.trim() || null,
+        p_category_id: selectedCategory || null,
+        p_country: shipsTo === "all" ? null : shipsTo,
+        p_min_price: filters.minPrice || null,
+        p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
+        p_min_rating: filters.minRating || null,
+        p_in_stock_only: filters.inStockOnly || null,
+        p_condition: filters.condition === "any" ? null : filters.condition,
+        p_sort: sortBy,
+        p_limit: CATALOGUE_PAGE_SIZE,
+        p_cursor_relevance: pageCursor.relevance,
+        p_cursor_created_at: pageCursor.createdAt,
+        p_cursor_id: pageCursor.id,
+        p_seed: sortBy === "random" ? pageSeed : null,
+      });
+      if (error) throw error;
+      const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      const result = { products: (parsed?.products || []) as Product[], hasMore: !!parsed?.has_more };
+      setProducts(prev => [...prev, ...result.products]);
+      const last = result.products[result.products.length - 1];
+      setPageCursor(last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null);
+      setHasMore(result.hasMore);
+    } catch (error) {
+      console.error("Search failed", error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [filters, pageCursor, pageSeed, refetchCatalogue, search, selectedCategory, shipsTo, sortBy]);
+
+  useEffect(() => {
+    const fetchSellerProfiles = async () => {
+      const sellerIds = [...new Set(products.map((p: Product) => p.seller_id).filter(Boolean))];
+      if (sellerIds.length === 0) {
+        setSellerProfiles({});
+        return;
+      }
+      const { data: profiles } = await supabase.from("seller_profiles_public").select("user_id, full_name, is_verified").in("user_id", sellerIds);
+      if (profiles) {
+        const map: Record<string, { full_name: string | null; is_verified: boolean }> = {};
+        profiles.forEach((p: SellerProfilePublic) => {
+          if (p.user_id) map[p.user_id] = { full_name: p.full_name, is_verified: !!p.is_verified };
+        });
+        setSellerProfiles(map);
+      }
+    };
+    void fetchSellerProfiles();
+  }, [products]);
+
+  const pageLoading = catalogueLoading || categoriesLoading;
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
@@ -250,7 +400,10 @@ export default function MarketplacePage() {
     return products.filter(product => !selectedCategory || product.category_id === selectedCategory).slice(0, 12);
   }, [isVisualSearch, filtered.length, products, selectedCategory]);
 
-  const displayedProducts = filtered.length > 0 ? filtered : visualFallbackProducts;
+  const displayedProducts = useMemo(() => {
+    const baseProducts = filtered.length > 0 ? filtered : visualFallbackProducts;
+    return sortBy === "random" ? shuffleArray(baseProducts) : baseProducts;
+  }, [filtered, visualFallbackProducts, sortBy]);
 
   const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
@@ -296,8 +449,9 @@ export default function MarketplacePage() {
   };
 
   useEffect(() => {
-    if (displayedProducts.length && !loading) trackProductDiscovery(displayedProducts.map((product) => product.id), "impression");
-  }, [displayedProducts, loading]);
+    // Product impressions are tracked at the tile level via IntersectionObserver.
+    // Avoid sending a page-level mass impression event that could duplicate product views.
+  }, [displayedProducts, pageLoading]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
@@ -392,6 +546,7 @@ export default function MarketplacePage() {
                     <SelectItem value="best_sellers">Best sellers</SelectItem>
                     <SelectItem value="trending">Trending</SelectItem>
                     <SelectItem value="recommended">Recommended</SelectItem>
+                    <SelectItem value="random">Discover</SelectItem>
                     <SelectItem value="price_low">Price: low to high</SelectItem>
                     <SelectItem value="price_high">Price: high to low</SelectItem>
                   </SelectContent>
@@ -421,41 +576,19 @@ export default function MarketplacePage() {
                   showArrows
                   showDots
                 >
-                  {displayedProducts.slice(0, 20).map(product => {
-                    const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-                    const discount = product.compare_at_price && product.compare_at_price > product.price
-                      ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
-                    return (
-                      <Link
-                        key={product.id}
-                        to={`/product/${product.id}`}
-                        onClick={() => trackProductDiscovery(product.id, "click")}
-                        className="block w-[180px] shrink-0 rounded-xl overflow-hidden bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all"
-                      >
-                        <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E]">
-                          {primaryImage ? (
-                            <ProductImage src={primaryImage.image_url} alt={product.title} loading="lazy" />
-                          ) : (
-                            <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D]">
-                              <Package className="h-8 w-8 text-[#888880] opacity-40" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="p-2">
-                          {discount && (
-                            <span className="inline-block bg-[#E53935] text-white text-[9px] font-bold px-1.5 py-0.5 rounded mb-1">-{discount}%</span>
-                          )}
-                          <p className="text-xs font-semibold line-clamp-2">{product.title}</p>
-                          <p className="text-sm font-bold mt-1">{formatPrice(product.price)}</p>
-                        </div>
-                      </Link>
-                    );
-                  })}
+                  {displayedProducts.slice(0, 20).map(product => (
+                    <MarketplaceProductImpressionCard
+                      key={product.id}
+                      product={product}
+                      formatPrice={formatPrice}
+                      seller={sellerProfiles[product.seller_id]}
+                    />
+                  ))}
                 </HorizontalScrollSection>
               </AnimatedSection>
             )}
             <AnimatedSection variant="fade-up" delay={100}>
-              {loading && products.length === 0 ? (
+              {pageLoading && products.length === 0 ? (
                 <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {[...Array(10)].map((_, i) => (
                     <div key={i} className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
@@ -588,7 +721,7 @@ export default function MarketplacePage() {
                   })}
                 </div>
               )}
-              {hasMore && displayedProducts.length > 0 && !loading && (
+              {hasMore && displayedProducts.length > 0 && !pageLoading && (
                 <div className="mt-8 flex justify-center">
                   <Button type="button" variant="outline" onClick={() => fetchCatalogue(false)} disabled={loadingMore} className="rounded-full px-6">
                     {loadingMore ? "Loading products..." : "Load more products"}

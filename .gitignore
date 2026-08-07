@@ -26,3 +26,18 @@ dist-ssr
 # Environment variables
 .env
 .env.*.local
+
+# Unrelated sample project
+welcome-to-docker/
+
+# Temporary / generated files
+supabase/.temp/
+tsccheck.txt
+resolved-tsconfig.json
+tmp_tsc_errors.txt
+tmp.sql
+tsc_errors_temp.txt
+tsc_errors.txt
+tsc_output.txt
+tsccheck.txt
+vite.config.ts.timestamp-*.mjs

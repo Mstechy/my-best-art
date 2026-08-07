@@ -212,7 +212,7 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
 
           <div
             ref={scrollRef}
-            className="flex overflow-x-auto scrollbar-hide pb-2 -mb-2 select-none"
+            className={`flex-nowrap flex overflow-x-auto scrollbar-hide pb-2 -mb-2 select-none ${!canScrollLeft && !canScrollRight ? "justify-center" : "justify-start"}`}
             style={{ gap, scrollBehavior: "smooth", WebkitOverflowScrolling: "touch" }}
             onMouseDown={handleMouseDown}
             onMouseMove={handleMouseMove}
