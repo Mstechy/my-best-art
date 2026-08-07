@@ -1,8 +1,10 @@
-# TODO
+# Task: Update code to GitHub
 
-## Fix ProductDetailPage render loop / maximum update depth
-- [x] Inspect `src/pages/ProductDetailPage.tsx` for effects with unstable dependencies (functions or state setters) causing repeated renders.
-- [x] Implement standard React fix (move functions inside effects or memoize with `useCallback`, ensure effects run only when `id` changes).
-- [x] Ensure no cross-effect loops (e.g., `setState` inside effect triggers dependency change).
-- [x] Run typecheck/build to confirm no TS errors.
-- [ ] Run dev server and manually verify product page loads without looping.
+## Steps
+- [x] Analyze repository state (git status, remote, branch, log)
+- [x] Confirm exclusions with user (`welcome-to-docker/`, `supabase/.temp/`)
+- [x] Stage modified project files + new docs/migrations (excluding `welcome-to-docker/` and `supabase/.temp/`)
+- [x] Commit with descriptive message
+- [x] Push to `origin main`
+- [x] Verify push succeeded
+
