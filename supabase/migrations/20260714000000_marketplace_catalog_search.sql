@@ -27,15 +27,20 @@ BEFORE INSERT OR UPDATE OF title, brand, tags, key_features, description, color,
 ON public.products
 FOR EACH ROW EXECUTE FUNCTION public.refresh_product_search_document();
 
-UPDATE public.products
-SET search_document =
-  setweight(to_tsvector('simple', coalesce(title, '')), 'A') ||
-  setweight(to_tsvector('simple', coalesce(brand, '')), 'A') ||
-  setweight(to_tsvector('simple', coalesce(array_to_string(tags, ' '), '')), 'B') ||
-  setweight(to_tsvector('simple', coalesce(array_to_string(key_features, ' '), '')), 'B') ||
-  setweight(to_tsvector('simple', coalesce(description, '')), 'C') ||
-  setweight(to_tsvector('simple', coalesce(color, '') || ' ' || coalesce(material, '') || ' ' || coalesce(condition, ''), 'C')
-WHERE search_document IS NULL;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'products' AND column_name = 'search_document') THEN
+    UPDATE public.products
+    SET search_document =
+      setweight(to_tsvector('simple'::regconfig, coalesce(title, '')), 'A') ||
+      setweight(to_tsvector('simple'::regconfig, coalesce(brand, '')), 'A') ||
+      setweight(to_tsvector('simple'::regconfig, coalesce(array_to_string(tags, ' '), '')), 'B') ||
+      setweight(to_tsvector('simple'::regconfig, coalesce(array_to_string(key_features, ' '), '')), 'B') ||
+      setweight(to_tsvector('simple'::regconfig, coalesce(description, '')), 'C') ||
+      setweight(to_tsvector('simple'::regconfig, coalesce(color, '') || ' ' || coalesce(material, '') || ' ' || coalesce(condition, '')), 'C')
+    WHERE search_document IS NULL;
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_products_public_browse
   ON public.products (created_at DESC, id DESC)

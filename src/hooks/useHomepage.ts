@@ -1,5 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
 import { fetchHeroCollections } from "@/lib/collectionResolver";
@@ -54,11 +53,15 @@ export function useHomepageCategories() {
 }
 
 /** Raw feed data from a single RPC call (returns product IDs + metadata) */
-export function useHomepageFeed(feedName: FeedName) {
+export function useHomepageFeed(feedName: FeedName, discoverySeed: string) {
   return useSupabaseQuery(
-    supabaseKeys.rpcWithArgs("homepage_product_feed", { section: feedName }),
+    supabaseKeys.rpcWithArgs("homepage_product_feed", { section: feedName, discoverySeed }),
     async () => {
-      const { data } = await (supabase as any).rpc("homepage_product_feed", { p_section: feedName, p_limit: 10 });
+      const { data } = await (supabase as any).rpc("homepage_product_feed", {
+        p_section: feedName,
+        p_limit: 10,
+        p_seed: discoverySeed,
+      });
       return (data ?? []) as any[];
     },
     { staleTime: 3 * 60 * 1000 },
@@ -106,13 +109,23 @@ export function useSellerProfiles(userIds: string[]) {
 export function useHomepageData() {
   const hero = useHeroCollections();
   const categories = useHomepageCategories();
+  // A new seed is created for each page visit. It lets the database begin each
+  // rail at a different point in its indexed catalogue, so a browser refresh
+  // reveals different inventory without an expensive ORDER BY random().
+  const [discoverySeeds] = useState<Record<FeedName, string>>(() => ({
+    flash_deals: crypto.randomUUID(),
+    best_sellers: crypto.randomUUID(),
+    new_arrivals: crypto.randomUUID(),
+    trending: crypto.randomUUID(),
+    recommended: crypto.randomUUID(),
+  }));
 
   // Fetch all 5 feeds in parallel
-  const flashDeals = useHomepageFeed("flash_deals");
-  const bestSellers = useHomepageFeed("best_sellers");
-  const newArrivals = useHomepageFeed("new_arrivals");
-  const trending = useHomepageFeed("trending");
-  const recommended = useHomepageFeed("recommended");
+  const flashDeals = useHomepageFeed("flash_deals", discoverySeeds.flash_deals);
+  const bestSellers = useHomepageFeed("best_sellers", discoverySeeds.best_sellers);
+  const newArrivals = useHomepageFeed("new_arrivals", discoverySeeds.new_arrivals);
+  const trending = useHomepageFeed("trending", discoverySeeds.trending);
+  const recommended = useHomepageFeed("recommended", discoverySeeds.recommended);
 
   const feedResults = useMemo(
     () => [flashDeals, bestSellers, newArrivals, trending, recommended] as const,

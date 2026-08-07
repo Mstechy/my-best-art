@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, mergeCategoryAttributes } from "@/lib/categoryConfig";
+import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, getRequiredFields, mergeCategoryAttributes } from "@/lib/categoryConfig";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { uploadProductImagePair } from "@/lib/productImages";
@@ -308,6 +308,9 @@ export default function SellerProducts() {
     videoItems.forEach((item) => {
       if (item.file) URL.revokeObjectURL(item.url);
     });
+    descriptionImageItems.forEach((item) => {
+      if (item.file) URL.revokeObjectURL(item.url);
+    });
   };
 
   const addImageFiles = (files: File[]) => {
@@ -458,6 +461,7 @@ export default function SellerProducts() {
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
     setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]);
+    setDescriptionImageItems([]); setRemovedDescriptionImageUrls([]); setDraggedDescriptionImageId(null);
     setFlashDealEnabled(false); setFlashDealDiscount(""); setFlashDealStart(""); setFlashDealEnd("");
     setEditingProduct(null); setFormTab("basic");
   };
@@ -526,8 +530,22 @@ export default function SellerProducts() {
       status: "uploaded" as const,
       progress: 100,
     })));
+    setDescriptionImageItems(
+      (product.description_images || [])
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((image, index) => ({
+          id: `existing-desc-image-${index}-${image.url}`,
+          url: image.url,
+          name: `Description photo ${index + 1}`,
+          alt: image.alt || "",
+          status: "uploaded" as const,
+          progress: 100,
+        }))
+    );
     setRemovedImageIds([]);
     setRemovedVideoUrls([]);
+    setRemovedDescriptionImageUrls([]);
     setSavedProductId(product.id);
     setCategoryAttributes({
       brand: product.brand || "",
@@ -594,7 +612,6 @@ export default function SellerProducts() {
     if (invalidVariant || new Set(variantKeys).size !== variantKeys.length) {
       toast({ title: "Check variant rows", description: "Each variant needs a size or colour, whole stock, valid optional price, and a unique option combination.", variant: "destructive" }); setFormTab("variants"); return;
     }
-    setSaving(true);
 
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
@@ -609,6 +626,21 @@ export default function SellerProducts() {
     const selectedCategory = categories.find(c => c.id === categoryId);
     const selectedConfig = findCategoryConfig(selectedCategory);
     const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
+    const missingRequiredFields = getRequiredFields(selectedProductType)
+      .filter(key => !cleanCategoryAttributes[key]?.trim())
+      .map(key => selectedProductType.fields.find(field => field.key === key)?.label || key);
+    if (missingRequiredFields.length > 0) {
+      toast({
+        title: "Complete the required specifications",
+        description: `Add: ${missingRequiredFields.join(", ")}.`,
+        variant: "destructive",
+      });
+      setFormTab("specs");
+      return;
+    }
+
+    setSaving(true);
+
     const attr = (key: string) => cleanCategoryAttributes[key] || "";
 
     const flashDealFields = flashDealEnabled && flashDealDiscount && flashDealStart && flashDealEnd
@@ -734,10 +766,13 @@ export default function SellerProducts() {
     }
 
     // Upload description photos and save as JSONB in products.description_images
-    if (productId && descriptionImageItems.length > 0) {
+    if (productId && (descriptionImageItems.length > 0 || removedDescriptionImageUrls.length > 0)) {
       const finalDescriptionImages: { url: string; alt: string | null; order: number }[] = [];
       for (let i = 0; i < descriptionImageItems.length; i++) {
         const item = descriptionImageItems[i];
+        if (!item.url) {
+          continue;
+        }
         if (!item.file) {
           if (!removedDescriptionImageUrls.includes(item.url)) {
             finalDescriptionImages.push({ url: item.url, alt: item.alt.trim() || null, order: i });
@@ -799,7 +834,7 @@ export default function SellerProducts() {
     }
 
     // Upload optional product videos and save URLs in variants JSON.
-    if (productId && videoItems.length > 0) {
+    if (productId && (videoItems.length > 0 || removedVideoUrls.length > 0 || existingProductVideos.length > 0)) {
       const finalVideos: string[] = [];
       for (let i = 0; i < videoItems.slice(0, 3).length; i++) {
         const item = videoItems[i];
@@ -836,23 +871,20 @@ export default function SellerProducts() {
         }
       }
 
-      // Only update if videos changed or were uploaded
-      if (finalVideos.length > 0 || existingProductVideos.length > 0) {
-        const mergedVariants = mergeCategoryAttributes(
-          productData.variants as Record<string, unknown>,
-          cleanCategoryAttributes,
-          { key: selectedProductType.key, label: selectedProductType.label },
-          finalVideos
-        );
-        const { error: videoUpdateError } = await supabase
-          .from("products")
-          .update({ variants: mergedVariants })
-          .eq("id", productId);
+      const mergedVariants = mergeCategoryAttributes(
+        productData.variants as Record<string, unknown>,
+        cleanCategoryAttributes,
+        { key: selectedProductType.key, label: selectedProductType.label },
+        finalVideos
+      );
+      const { error: videoUpdateError } = await supabase
+        .from("products")
+        .update({ variants: mergedVariants })
+        .eq("id", productId);
 
-        if (videoUpdateError) {
-          console.error("[SellerProducts] video metadata update failed", videoUpdateError);
-          mediaHadError = true;
-        }
+      if (videoUpdateError) {
+        console.error("[SellerProducts] video metadata update failed", videoUpdateError);
+        mediaHadError = true;
       }
 
       setExistingProductVideos(finalVideos);

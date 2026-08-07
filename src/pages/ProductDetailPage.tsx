@@ -99,22 +99,29 @@ export default function ProductDetailPage() {
   const variantSizes = useMemo(() => product?.variants?.sizes?.length ? product.variants.sizes : [...new Set(productVariants.map(variant => variant.option_values.size).filter(Boolean))], [product, productVariants]);
   const variantColors = useMemo(() => product?.variants?.colors?.length ? product.variants.colors : [...new Set(productVariants.map(variant => variant.option_values.color).filter(Boolean))], [product, productVariants]);
   const selectedVariant = productVariants.find(variant =>
+    variant.is_active &&
     (!selectedSize || variant.option_values.size === selectedSize) &&
     (!selectedColor || variant.option_values.color === selectedColor) &&
     (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
   );
   const purchasableStock = selectedVariant ? selectedVariant.stock_quantity : (product?.stock_quantity ?? 0);
   const purchasablePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const hasAvailableVariant = (size?: string, color?: string) => productVariants.some(variant =>
+    variant.is_active &&
+    variant.stock_quantity > 0 &&
+    (!size || variant.option_values.size === size) &&
+    (!color || variant.option_values.color === color)
+  );
 
   const mediaItems = useMemo(() => {
-    const images = product?.product_images || [];
-    const productVideos = product ? getProductVideos(product.variants) : [];
+    const images = (product?.product_images || []).filter((img) => img.image_url?.trim().length > 0);
+    const productVideos = product ? getProductVideos(product.variants).filter((vurl) => vurl?.trim().length > 0) : [];
     const list: { type: "video" | "image"; url: string; id: string }[] = [];
     productVideos.forEach((vurl, idx) => {
       list.push({ type: "video", url: vurl, id: `video-${idx}` });
     });
     images.forEach(img => {
-      list.push({ type: "image", url: img.image_url, id: img.id });
+      list.push({ type: "image", url: img.image_url.trim(), id: img.id });
     });
     return list;
   }, [product]);
@@ -342,7 +349,7 @@ export default function ProductDetailPage() {
                           <Play className="h-4 w-4 text-[#888880]" />
                         </div>
                       ) : (
-                        <img src={item.url} alt="" className="w-full h-full object-cover" loading="lazy" />
+                        <ProductImage src={item.url} alt="Product thumbnail" className="w-full h-full object-cover" loading="lazy" />
                       )}
                     </button>
                   ))}
@@ -391,8 +398,13 @@ export default function ProductDetailPage() {
                   <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#888880]">{selectedSize || "Select"}</span></p>
                   <div className="flex flex-wrap gap-2">
                     {variantSizes.map(size => (
-                      <button key={size} onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}>
+                      <button
+                        key={size}
+                        type="button"
+                        disabled={productVariants.length > 0 && !hasAvailableVariant(size, selectedColor || undefined)}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                      >
                         {size}
                       </button>
                     ))}
@@ -404,8 +416,13 @@ export default function ProductDetailPage() {
                   <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#888880]">{selectedColor || "Select"}</span></p>
                   <div className="flex flex-wrap gap-2">
                     {variantColors.map(color => (
-                      <button key={color} onClick={() => setSelectedColor(color)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}>
+                      <button
+                        key={color}
+                        type="button"
+                        disabled={productVariants.length > 0 && !hasAvailableVariant(selectedSize || undefined, color)}
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                      >
                         {color}
                       </button>
                     ))}
@@ -434,6 +451,16 @@ export default function ProductDetailPage() {
                   </button>
                 )}
               </div>
+
+              {user && user.id !== product.seller_id && purchasableStock > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOfferOpen(true)}
+                  className="w-full rounded-full border border-[#111111] py-2.5 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+                >
+                  Make an Offer
+                </button>
+              )}
 
               {product && (
                 <MakeOfferDialog
@@ -513,19 +540,40 @@ export default function ProductDetailPage() {
 
             {/* Description photo feed — lazy-loaded, in order, with alt text */}
             {product.description_images && product.description_images.length > 0 && (
-              <div className="space-y-4">
-                {[...product.description_images]
-                  .sort((a, b) => a.order - b.order)
-                  .map((img, idx) => (
-                    <img
-                      key={`${img.url}-${idx}`}
-                      src={img.url}
-                      alt={img.alt || product.title}
-                      loading="lazy"
-                      className="w-full rounded-2xl"
-                    />
-                  ))}
-              </div>
+              <section className="space-y-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Product story photos</h2>
+                    <p className="mt-1 text-sm text-[#888880] dark:text-[#A0A0A0]">Seller-uploaded detail images and lifestyle shots help buyers understand the product better.</p>
+                  </div>
+                  <span className="inline-flex items-center gap-2 rounded-full border border-[#E8E8E8] bg-[#F9F7F3] px-3 py-1 text-xs font-semibold text-[#111111] dark:border-[#222222] dark:bg-[#1C1C1E] dark:text-[#FAF5F2]">
+                    <ImagePlus className="h-3.5 w-3.5" /> {product.description_images.length} photos
+                  </span>
+                </div>
+
+                <div className="grid gap-4 grid-cols-1 md:grid-cols-[1.8fr_1fr]">
+                  {[...product.description_images]
+                    .sort((a, b) => a.order - b.order)
+                    .map((img, idx) => (
+                      <div
+                        key={`${img.url}-${idx}`}
+                        className={`${idx === 0 ? "md:col-span-2 md:min-h-[360px]" : "min-h-[200px]"} overflow-hidden rounded-2xl bg-[#F7F7F5] dark:bg-[#1E1E1E]`}
+                      >
+                        <img
+                          src={img.url}
+                          alt={img.alt || product.title}
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                        {img.alt && (
+                          <div className="px-4 py-3 bg-white/80 dark:bg-[#111111]/80 backdrop-blur">
+                            <p className="text-xs text-[#666666] dark:text-[#A0A0A0]">{img.alt}</p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </section>
             )}
 
             {product.key_features && product.key_features.length > 0 && (
@@ -655,7 +703,7 @@ export default function ProductDetailPage() {
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <img src={zoomedImage} alt="" className="max-w-full max-h-[85vh] object-contain rounded-2xl" style={{ transform: `scale(${zoomScale})`, transition: "transform 0.2s" }} />
+            <ProductImage src={zoomedImage} alt="Zoomed product image" className="max-w-full max-h-[85vh] object-contain rounded-2xl" />
             <div className="absolute top-4 right-4 flex gap-2">
               <button onClick={() => setZoomScale(s => Math.min(3, s + 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom in"><ZoomIn className="h-5 w-5" /></button>
               <button onClick={() => setZoomScale(s => Math.max(1, s - 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom out"><ZoomOut className="h-5 w-5" /></button>

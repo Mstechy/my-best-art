@@ -3,7 +3,7 @@ CREATE INDEX IF NOT EXISTS idx_products_category_attributes
 
 DROP FUNCTION IF EXISTS public.search_marketplace_product_ids(text, uuid, text, numeric, numeric, numeric, boolean, text, integer, real, timestamptz, uuid);
 
-CREATE FUNCTION public.search_marketplace_product_ids(
+CREATE OR REPLACE FUNCTION public.search_marketplace_product_ids(
   p_query text DEFAULT '', p_category_id uuid DEFAULT NULL, p_country text DEFAULT NULL,
   p_min_price numeric DEFAULT NULL, p_max_price numeric DEFAULT NULL, p_min_rating numeric DEFAULT NULL,
   p_in_stock_only boolean DEFAULT false, p_condition text DEFAULT NULL, p_attribute_filters jsonb DEFAULT '{}'::jsonb,

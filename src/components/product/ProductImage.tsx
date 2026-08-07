@@ -4,7 +4,7 @@ import { getProductCardImageUrl } from "@/lib/productImages";
 import ProgressiveImage from "@/components/ui/ProgressiveImage";
 
 interface ProductImageProps {
-  src: string;
+  src?: string | null;
   alt: string;
   variant?: "card" | "detail" | "thumb";
   className?: string;
@@ -20,15 +20,27 @@ export default function ProductImage({
   loading = "lazy",
   fetchPriority = "auto",
 }: ProductImageProps) {
+  const hasSource = !!src && src.trim().length > 0;
   const preferredSrc = useMemo(
-    () => (variant === "card" || variant === "thumb" ? getProductCardImageUrl(src) ?? src : src),
-    [src, variant],
+    () => {
+      if (!hasSource) return null;
+      return variant === "card" || variant === "thumb" ? getProductCardImageUrl(src) ?? src : src;
+    },
+    [src, variant, hasSource],
   );
-  const [currentSrc, setCurrentSrc] = useState(preferredSrc);
+  const [currentSrc, setCurrentSrc] = useState<string | null>(preferredSrc);
 
   useEffect(() => {
     setCurrentSrc(preferredSrc);
   }, [preferredSrc]);
+
+  if (!currentSrc) {
+    return (
+      <div className={cn("h-full w-full rounded-xl bg-[#F2F3F5] text-[#888880] flex items-center justify-center", className)}>
+        <span className="text-xs uppercase tracking-[0.15em]">No image</span>
+      </div>
+    );
+  }
 
   if (variant === "card") {
     return (
@@ -41,7 +53,7 @@ export default function ProductImage({
           wrapperClassName="h-full w-full"
           className="group-hover:scale-105"
           onError={() => {
-            if (currentSrc !== src) setCurrentSrc(src);
+            setCurrentSrc(null);
           }}
         />
       </div>
@@ -58,7 +70,7 @@ export default function ProductImage({
       width={900}
       height={900}
       onError={() => {
-        if (currentSrc !== src) setCurrentSrc(src);
+        setCurrentSrc(null);
       }}
       className={cn(
         "h-full w-full select-none transition-transform duration-300",

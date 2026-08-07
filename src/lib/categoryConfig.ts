@@ -805,5 +805,5 @@ export const mergeCategoryAttributes = (
   ...(variants && typeof variants === "object" ? variants as Record<string, unknown> : {}),
   categoryAttributes,
   ...(productType ? { productType } : {}),
-  ...(productVideos ? { productVideos } : {}),
+  ...(productVideos !== undefined ? { productVideos } : {}),
 });
