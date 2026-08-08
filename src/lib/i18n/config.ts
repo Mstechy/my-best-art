@@ -33,4 +33,10 @@ i18n
     returnObjects: false,
   });
 
+i18n.on("languageChanged", (lng) => {
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = lng;
+  }
+});
+
 export default i18n;

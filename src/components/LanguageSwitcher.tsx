@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 export default function LanguageSwitcher() {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   const currentLang = i18n.language?.split("-")[0] || "en";
   const supported = Object.keys(LANGUAGE_NAMES) as SupportedLanguage[];
@@ -26,7 +26,7 @@ export default function LanguageSwitcher() {
           variant="ghost"
           size="sm"
           className="h-9 w-9 rounded-full p-0"
-          aria-label="Switch language"
+          aria-label={t("nav.switchLanguage")}
         >
           <Languages className="h-4 w-4" />
         </Button>

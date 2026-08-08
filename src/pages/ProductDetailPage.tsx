@@ -26,6 +26,7 @@ import { formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/pro
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
+import ProductRichDescription from "@/components/product/ProductRichDescription";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackView } from "@/hooks/useBatchedViewTracking";
 
@@ -49,7 +50,6 @@ export default function ProductDetailPage() {
   const { add: addRecent } = useRecentlyViewed();
 
   const [specsOpen, setSpecsOpen] = useState(false);
-  const [descriptionOpen, setDescriptionOpen] = useState(false);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
 
   const {
@@ -175,7 +175,6 @@ export default function ProductDetailPage() {
 
   const overviewRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
-  const descriptionRef = useRef<HTMLDivElement>(null);
   const recommendedRef = useRef<HTMLDivElement>(null);
   const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "description" | "recommended">("overview");
 
@@ -502,80 +501,13 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              {/* Specifications table — renders the specs the seller entered in the form */}
-              {(() => {
-                const specs = getCategoryAttributes(product.variants);
-                const entries = Object.entries(specs).filter(([, value]) => value && value.trim());
-                if (entries.length === 0) return null;
-                return (
-                  <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] overflow-hidden">
-                    <div className="px-4 py-3 border-b border-[#E8E8E8] dark:border-[#222222]">
-                      <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Specifications</h2>
-                    </div>
-                    <dl className="divide-y divide-[#F2F3F5] dark:divide-[#222222]">
-                      {entries.map(([key, value]) => (
-                        <div key={key} className="grid grid-cols-3 gap-3 px-4 py-2.5">
-                          <dt className="text-xs text-[#888880] dark:text-[#A0A0A0] capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</dt>
-                          <dd className="col-span-2 text-xs font-medium text-[#111111] dark:text-[#FAF5F2]">{value}</dd>
-                        </div>
-                      ))}
-                    </dl>
-                  </div>
-                );
-              })()}
+              {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
           </div>
         )}
 
         {product && (
           <div className="mt-12 space-y-6">
-            <Collapsible open={descriptionOpen} onOpenChange={setDescriptionOpen}>
-              <CollapsibleTrigger className="flex items-center justify-between w-full py-3 border-b border-[#E8E8E8] dark:border-[#222222] text-sm font-bold">
-                Description <ChevronDown className={`h-4 w-4 transition-transform ${descriptionOpen ? "rotate-180" : ""}`} />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-4 text-sm text-[#666666] dark:text-[#A0A0A0] leading-relaxed whitespace-pre-line">
-                {product.description || "No description provided."}
-              </CollapsibleContent>
-            </Collapsible>
-
-            {/* Description photo feed — lazy-loaded, in order, with alt text */}
-            {product.description_images && product.description_images.length > 0 && (
-              <section className="space-y-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-                  <div>
-                    <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Product story photos</h2>
-                    <p className="mt-1 text-sm text-[#888880] dark:text-[#A0A0A0]">Seller-uploaded detail images and lifestyle shots help buyers understand the product better.</p>
-                  </div>
-                  <span className="inline-flex items-center gap-2 rounded-full border border-[#E8E8E8] bg-[#F9F7F3] px-3 py-1 text-xs font-semibold text-[#111111] dark:border-[#222222] dark:bg-[#1C1C1E] dark:text-[#FAF5F2]">
-                    <ImagePlus className="h-3.5 w-3.5" /> {product.description_images.length} photos
-                  </span>
-                </div>
-
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-[1.8fr_1fr]">
-                  {[...product.description_images]
-                    .sort((a, b) => a.order - b.order)
-                    .map((img, idx) => (
-                      <div
-                        key={`${img.url}-${idx}`}
-                        className={`${idx === 0 ? "md:col-span-2 md:min-h-[360px]" : "min-h-[200px]"} overflow-hidden rounded-2xl bg-[#F7F7F5] dark:bg-[#1E1E1E]`}
-                      >
-                        <img
-                          src={img.url}
-                          alt={img.alt || product.title}
-                          loading="lazy"
-                          className="h-full w-full object-cover"
-                        />
-                        {img.alt && (
-                          <div className="px-4 py-3 bg-white/80 dark:bg-[#111111]/80 backdrop-blur">
-                            <p className="text-xs text-[#666666] dark:text-[#A0A0A0]">{img.alt}</p>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                </div>
-              </section>
-            )}
-
             {product.key_features && product.key_features.length > 0 && (
               <Collapsible open={specsOpen} onOpenChange={setSpecsOpen}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-3 border-b border-[#E8E8E8] dark:border-[#222222] text-sm font-bold">
@@ -666,6 +598,15 @@ export default function ProductDetailPage() {
             </div>
 
             <QAndASection productId={product.id} />
+
+            <ProductRichDescription
+              images={product.description_images}
+              description={product.description}
+              specs={(() => {
+                const s = getCategoryAttributes(product.variants);
+                return Object.keys(s).length ? s : null;
+              })()}
+            />
 
             <div ref={recommendedRef}>
               <RecommendedProducts productId={product.id} categoryId={product.category_id} />
