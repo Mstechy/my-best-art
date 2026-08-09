@@ -4,6 +4,7 @@ import { ChevronDown, Grid3X3, List, Package } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
+import { Container } from "@/components/ui/Container";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
 import { resolveCollectionProducts, trackCollectionView } from "@/lib/collectionResolver";
@@ -187,9 +188,9 @@ export default function CollectionPage() {
     return (
       <div className="min-h-screen bg-background">
         <MarketplaceNavbar />
-        <main className="mx-auto max-w-7xl px-4 py-20 text-center text-muted-foreground">
+        <Container className="py-20 text-center text-muted-foreground">
           Loading collection…
-        </main>
+        </Container>
       </div>
     );
   }
@@ -198,13 +199,13 @@ export default function CollectionPage() {
     return (
       <div className="min-h-screen bg-background">
         <MarketplaceNavbar />
-        <main className="mx-auto max-w-7xl px-4 py-20 text-center">
+        <Container className="py-20 text-center">
           <h1 className="text-2xl font-bold">Collection unavailable</h1>
           <p className="mt-2 text-muted-foreground">This collection may have been removed or is no longer active.</p>
           <Link to="/marketplace" className="mt-4 inline-block underline">
             Browse marketplace
           </Link>
-        </main>
+        </Container>
       </div>
     );
   }
@@ -217,13 +218,13 @@ export default function CollectionPage() {
 
       {/* Breadcrumb */}
       <div className="border-b border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
-        <div className="mx-auto max-w-7xl px-4 py-3 md:px-8">
+        <Container className="py-3">
           <nav className="flex items-center gap-2 text-xs text-[#888880]">
             <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2]">Home</Link>
             <span>/</span>
             <span className="text-[#111111] dark:text-[#FAF5F2] font-medium">{collection.title}</span>
           </nav>
-        </div>
+        </Container>
       </div>
 
       <main>
@@ -243,7 +244,7 @@ export default function CollectionPage() {
                 }}
               />
               <div className="absolute inset-0 flex items-center">
-                <div className="mx-auto w-full max-w-7xl px-4 md:px-8">
+                <Container className="w-full">
                   <div className="max-w-xl">
                     {collection.badge && (
                       <span className="mb-3 inline-block rounded-full bg-[#F6C75D] px-3 py-1 text-xs font-bold text-[#5C3A00]">
@@ -259,13 +260,13 @@ export default function CollectionPage() {
                       </p>
                     )}
                   </div>
-                </div>
+                </Container>
               </div>
             </div>
           </section>
         ) : (
           <section className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
-            <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
+            <Container className="py-10 md:py-14">
               {collection.badge && (
                 <span className="mb-3 inline-block rounded-full bg-[#F6C75D] px-3 py-1 text-xs font-bold text-[#5C3A00]">
                   {collection.badge}
@@ -279,12 +280,12 @@ export default function CollectionPage() {
                   {collection.description}
                 </p>
               )}
-            </div>
+            </Container>
           </section>
         )}
 
         {/* Products section */}
-        <section className="mx-auto max-w-7xl px-4 py-8 md:px-8">
+        <Container className="py-8">
           {/* Controls bar */}
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
@@ -506,7 +507,7 @@ export default function CollectionPage() {
               </button>
             </div>
           )}
-        </section>
+        </Container>
       </main>
 
       <SiteFooter />

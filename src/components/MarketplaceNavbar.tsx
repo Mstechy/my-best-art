@@ -11,7 +11,6 @@ import ThemeToggle from "@/components/ThemeToggle";
 import CurrencySelector from "@/components/CurrencySelector";
 import RegionalPreferences from "@/components/RegionalPreferences";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
-import CategoryDrawer from "@/components/CategoryDrawer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -71,7 +70,6 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [navigationCollections, setNavigationCollections] = useState<NavigationCollection[]>([]);
   const [localSearch, setLocalSearch] = useState(search);
-  const [categoryDrawerOpen, setCategoryDrawerOpen] = useState(false);
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 

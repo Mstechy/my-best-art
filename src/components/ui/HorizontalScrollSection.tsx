@@ -1,5 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect, memo, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Container } from "@/components/ui/Container";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 
 interface HorizontalScrollSectionProps {
   title: string;
@@ -146,18 +148,12 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
   ) : null;
 
   return (
-    <section className={`mx-auto max-w-7xl px-4 py-7 lg:px-8 ${className}`}>
-      {/* Header */}
-      <div className="mb-5 flex items-center justify-between">
-        <div>
-          {subtitle && (
-            <p className="text-xs font-bold uppercase tracking-[.18em] text-[#888880]">
-              {subtitle}
-            </p>
-          )}
-          <h2 className="text-2xl font-bold">{title}</h2>
-        </div>
-        <div className="flex items-center gap-3">
+    <Container className={`py-7 ${className}`}>
+      <SectionHeader
+        className="mb-5"
+        title={title}
+        subtitle={subtitle}
+        action={<div className="flex items-center gap-3">
           {/* Navigation arrows */}
           {showArrows && (
             <div className="hidden sm:flex items-center gap-1.5">
@@ -197,8 +193,8 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
               {viewAllText}
             </a>
           ) : null}
-        </div>
-      </div>
+        </div>}
+      />
 
       {/* Scrollable content */}
       {loading ? (
@@ -257,7 +253,7 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
           ))}
         </div>
       )}
-    </section>
+    </Container>
   );
 });
 

@@ -232,3 +232,228 @@ Before considering any task complete:
 6. **Always support dark mode** — every change needs `dark:` variants
 7. **Always use i18n** — no hardcoded user-facing strings
 8. **Keep it full-stack** — design changes must not break data flow (Supabase, React Query, cart context)
+
+---
+
+## 11b. Design-First Audit Rule (CRITICAL)
+
+> **Before ANY implementation, perform a visual audit of the CURRENT website first.**
+
+1. **NEVER blindly apply a prompt's classes** — every component must be evaluated against the actual current page layout.
+2. **Place things where they make sense** — don't just stack elements; consider spacing, hierarchy, and visual breathing room.
+3. **Fix broken layouts first** — if the current page has jam-packed/overcrowded sections, misaligned grids, or overlapping elements, fix those BEFORE adding new features.
+4. **Respect visual hierarchy** — titles, prices, CTAs, and badges each have a place; don't cram them together.
+5. **No clutter** — if a design would cause elements to "jam pack together" (as the user described), redesign it to breathe.
+6. **Balance designer + engineer rules** — a design that breaks functionality is wrong; functionality that looks ugly is also wrong. Both must pass.
+7. **Website-specific adaptation** — the prompts reference AliExpress/gray-based styles, but **MarketHub has its own brand colors** (`--primary` indigo, `--accent` teal, `--seller` amber, `--buyer` teal). Adapt every design to MarketHub's brand, not copy AliExpress's gray/blue blindly.
+8. **Audit before implement** — for EACH stored prompt, first:
+   - Read the current component/page code
+   - Check the current visual structure
+   - Identify if the prompt would improve or clutter
+   - Adapt the design to fit MarketHub's existing patterns
+   - Only then implement
+
+---
+
+## 11. Pending Prompts (Stored — NOT Implemented)
+
+> **STATUS: PLANNING PHASE — Do NOT implement until user says "start"**
+
+### Prompt 1: Enterprise Category Drawer (Slide-over)
+
+**Role:** Senior Frontend Engineer
+**Task:** Refactor/Implement an enterprise-grade slide-over Category Drawer component for MarketHub with nested multi-level navigation and smooth transitions.
+
+#### 1. Overlay & Drawer Backdrop
+- Backdrop: `fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-opacity duration-300`
+- `onClick` on backdrop → `onClose()`
+- Panel: `fixed inset-y-0 left-0 w-full max-w-xs sm:max-w-sm bg-white dark:bg-gray-900 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out`
+- Slide: `-translate-x-full` (closed) → `translate-x-0` (active)
+
+#### 2. Drawer Header
+- Header: `p-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800`
+- Title + icon: "All Departments" / "Categories" — `text-base font-bold text-gray-900 dark:text-white flex items-center gap-2`
+- Dismiss: `p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-500`
+
+#### 3. Nested Accordion Category List
+- Category item: `w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800/50 rounded-lg transition-colors`
+- Chevron indicator: `ChevronRight` / `ChevronDown` on expandable parents
+- Sub-category panel: smooth height/opacity transitions
+- Sub-item links: `pl-8 pr-4 py-2 text-xs font-normal text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white flex items-center gap-2`
+
+#### 4. Drawer Footer Utilities
+- `mt-auto border-t border-gray-100 p-4`
+- Language/Currency selector: e.g., `NGN (₦) • English`
+- Vendor CTA: "Become a Seller" / "Vendor Dashboard"
+
+#### 5. Accessibility & UX
+- Trap focus inside drawer when open
+- Close on `Escape` key
+- Body scroll lock: `document.body.style.overflow = 'hidden'` when open
+
+> **Note:** A `CategoryDrawer.tsx` component file already exists (created earlier) but is NOT wired into the navbar. It will be wired when implementation begins.
+
+### Prompt 2: Product Grid Layout & Card Arrangement
+
+**Role:** Senior Frontend Engineer
+**Task:** Refactor the product grid layout and card arrangement component for MarketHub to ensure strict structural alignment, visual consistency, and responsive grid flow across all viewport sizes.
+
+#### 1. Responsive Product Grid Container (`ProductGrid` / `CatalogGrid`)
+- Grid columns: `grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 lg:gap-6`
+- Parent padding: `p-4 max-w-7xl mx-auto`
+
+#### 2. Product Card Structural Standard (`ProductCard`)
+- Card base: `group relative flex flex-col h-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all duration-200`
+- Image box: `relative w-full aspect-square bg-gray-100 dark:bg-gray-800 overflow-hidden`
+- Image: `<img className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300" />`
+- Discount badge (top-left): `bg-red-600 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-br-md absolute top-0 left-0 z-10`
+- Wishlist heart (top-right): `absolute top-2 right-2 z-10 p-1.5 rounded-full bg-white/80 dark:bg-gray-900/80 hover:bg-white backdrop-blur-sm text-gray-600 dark:text-gray-300 transition-colors`
+
+#### 3. Card Typography & Hierarchy
+- Body: `p-3 flex-1 flex flex-col justify-between`
+- Title: `text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-100 line-clamp-2 min-h-[2.5rem] leading-snug`
+- Rating row: `flex items-center gap-1.5 text-[11px] text-gray-500 my-1.5` with amber star + `•` + sold count / "New"
+- Vendor pill: `inline-block text-[10px] font-medium text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded mb-2 w-fit` — `by {sellerName}`
+- Price row (bottom via `mt-auto`): `mt-auto pt-2 border-t border-gray-100 dark:border-gray-800 flex items-center justify-between gap-2` with sale price + original price strikethrough + cart button
+
+#### 4. Empty & Skeleton Loading States
+- Skeleton cards with `animate-pulse` matching container dimensions (`aspect-square` thumbnail + line placeholders) to eliminate layout shift during loading
+
+### Prompt 3: Product-to-Direct-Message (Conversational Commerce)
+
+**Role:** Senior Full-Stack Engineer
+**Task:** Implement a seamless Product-to-Direct-Message (Conversational Commerce) flow for MarketHub, allowing buyers to initiate a seller chat directly from product cards or detail pages with auto-attached product context.
+
+#### 1. Navigation & Route Context Transfer (`ProductCard` Component)
+- Update product card click handlers / links to route to the chat page while attaching context:
+  - Route structure: `/chat/${vendorId}?productId=${productId}`
+  - Alternatively, pass state via router: `navigate('/chat', { state: { product, vendor } })`.
+
+#### 2. Chat Interface Product Context Header (`ChatWindow` Component)
+- At the top of the active chat panel, render a sticky, high-density **Product Preview Bar**:
+  ```tsx
+  <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+    <img src={product.image} alt={product.title} className="w-12 h-12 object-cover rounded-lg border" />
+    <div className="flex-1 min-w-0">
+      <h4 className="text-xs font-semibold text-gray-900 dark:text-white truncate">{product.title}</h4>
+      <p className="text-xs font-bold text-gray-900 dark:text-gray-100">{product.price}</p>
+    </div>
+    <button className="px-3 py-1.5 bg-gray-900 text-white text-xs font-medium rounded-lg hover:bg-gray-800">
+      Buy Now
+    </button>
+  </div>
+  ```
+
+### Prompt 4: Bundle Deals Aggregator Page (Mobile-optimized)
+
+**Role:** Senior Frontend Engineer
+**Task:** Build a mobile-optimized "Bundle Deals Aggregator" page layout inspired by enterprise e-commerce platforms (AliExpress Bundle Deals style).
+
+#### 1. Sticky Header & App Promotion Banner
+- App Download Top Bar: dismissible promo bar — `flex items-center justify-between p-2 bg-pink-50 border-b` — logo, rating stars, text ("Try the app & save"), "Open" button
+- Navigation Header: fixed header — `h-12 bg-blue-600 text-white flex items-center justify-between px-4` — Back chevron, title "Bundle deals", Search icon, Help icon
+
+#### 2. Tiered Promotion & Incentive Section
+- Multi-Tier Savings Card: two-column split container with yellow/white background accent
+  - Left: `US $3 OFF` / `On 3+ items & over US $3`
+  - Right: `US $4 OFF` / `On 4+ items & over US $4`
+- Free Shipping Banner: full-width below tiers — `bg-sky-100 text-sky-800 text-xs font-semibold py-2 px-4 flex items-center gap-2` — truck icon + "Free shipping on orders of 3+ items"
+
+#### 3. "Hot Picks" Horizontal Carousel
+- Horizontal Scroll Wrapper: `flex overflow-x-auto gap-3 p-4 no-scrollbar`
+- Mini Product Card: `w-32 flex-shrink-0 bg-white rounded-xl p-2 border relative flex flex-col`
+  - `aspect-square` thumbnail with absolute positioned `+` add button on bottom right
+  - Price + sales volume text (`₦3,010.99`, `🔥 50,000+ sold` in bold red)
+
+#### 4. Category Filter Chips (`HorizontalNav`)
+- Horizontally scrollable chip list
+- Active chip: `bg-black text-white px-4 py-1.5 rounded-full text-xs font-bold`
+- Inactive chips: `bg-gray-100 text-gray-700 px-4 py-1.5 rounded-full text-xs font-medium hover:bg-gray-200`
+
+#### 5. Vertical Feed Cards & Sticky Bottom Bar
+- Product Feed Grid: `grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 pb-24`
+- Card: Image, product title (2-line clamp), rating star + score, order volume, pricing row (sale price + original price + discount percentage badge `-61%`)
+- Sticky Floating Checkout Bar: `fixed bottom-0 inset-x-0 bg-gray-900 text-white p-3 flex items-center justify-between shadow-2xl z-40`
+  - Left: Basket icon + progress text ("Pick items for free shipping")
+  - Right: Disabled/Active CTA button ("Checkout ₦0")
+
+### Prompt 5: Mobile-optimized Product Detail Page (PDP)
+
+**Role:** Lead Frontend Engineer
+**Task:** Implement a high-converting, mobile-optimized Product Detail Page (PDP) layout modeled after top-tier e-commerce platforms (AliExpress PDP standard).
+
+#### 1. Sticky Navigation & Media Viewer (`ProductMediaGallery`)
+- Header Bar: `sticky top-0 z-30 bg-white dark:bg-gray-900 flex items-center justify-between px-4 h-12 border-b`
+  - Left: Back arrow (`ChevronLeft`), Category Menu (`Menu`)
+  - Right: Search (`Search`), Account (`User`), Cart (`ShoppingCart`)
+- Image Carousel: `relative w-full aspect-square bg-gray-50 dark:bg-gray-800 overflow-hidden`
+- Pagination pill (bottom-left): `absolute bottom-3 left-3 bg-black/60 text-white text-[11px] px-2.5 py-1 rounded-full backdrop-blur-sm` — "Item 1/6"
+- Wishlist action (bottom-right): `absolute bottom-3 right-3 p-2.5 rounded-full bg-white dark:bg-gray-900 shadow-md text-gray-700 dark:text-gray-200 hover:text-red-500 transition-colors`
+
+#### 2. Title, Social Proof, & Pricing Section (`ProductMainDetails`)
+- Title: `text-sm sm:text-base font-semibold text-gray-900 dark:text-white line-clamp-2 mt-3 px-4`
+- Social Proof Bar: `px-4 mt-2 flex items-center gap-2 text-xs text-gray-500` — star rating `★ 3.7` (amber bold), `10,000+ sold` (gray-900 bold)
+- Campaign Pricing Banner: `mx-4 my-2 p-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg text-white font-bold text-xs flex justify-between items-center`
+- Main Price Display:
+  ```tsx
+  <div className="px-4 flex items-baseline gap-2">
+    <span className="text-xl sm:text-2xl font-extrabold text-gray-900 dark:text-white">₦2,103.16</span>
+    <span className="text-xs text-gray-400 line-through">₦6,728.31</span>
+    <span className="text-[10px] bg-red-100 text-red-600 font-bold px-1.5 py-0.5 rounded">New shopper only</span>
+  </div>
+  ```
+
+#### 3. SKU Options & Trust Guarantee Badges
+- Variant Selector: selectable SKU option chips (`Color: 1pc`) inside `border rounded-lg p-3 mx-4 my-2`
+- Platform Commitments: `bg-gray-50 dark:bg-gray-800/50 p-3 mx-4 rounded-xl space-y-2 text-xs`
+  - Free Shipping badge + delivery window (`Aug 15 - 23`)
+  - Return & Refund policy link with right chevron
+  - Security & Privacy guarantee text
+
+#### 4. Verified Reviews & Q&A Sections
+- Review Summary Widget: `mx-4 my-4 p-4 border rounded-xl` — score display (`3.7 / 5`), rating breakdown bars, tag chips (`"good quality"`, `"meets expectations"`)
+- Review Items: individual reviewer blocks with date, rating stars, selected variant, review text
+- Q&A Accordion: section header + expandable list for community questions and buyer responses
+
+#### 5. Recommended Products Grid ("More to Love")
+- Header: `px-4 text-base font-bold text-gray-900 dark:text-white mb-3` — "More to love"
+- Grid: `grid grid-cols-2 gap-3 px-4 pb-24`
+- Standard product cards: `aspect-square` thumbnail, price, discount badge (`-70%`), sales volume (`2,000+ sold`), shipping badge (`Free shipping over ₦15,130.62`)
+
+### Prompt 6: Rich Visual Product Description (Lazy-loaded)
+
+**Role:** Senior Frontend Engineer
+**Task:** Implement an ultra-fast, responsive, lazy-loaded "Rich Visual Product Description" section for product detail pages (PDP) to render rich media banners smoothly without layout shifts.
+
+#### 1. Section Container & Heading (`ProductRichDescription`)
+- Container Layout: `w-full max-w-4xl mx-auto px-4 py-6 border-t border-gray-100 dark:border-gray-800`
+- Section Header: bold title (`Product Description` / `Item Details`) — `text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center justify-between`
+
+#### 2. High-Performance Image Gallery Feed
+- **Image Stream Stack**: stack description images vertically using `flex flex-col w-full`
+- **Lazy Loading & Layout Shift Prevention (`DescriptionImage` Component)**:
+  - Image Wrapper: `relative w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-lg mb-2 min-h-[200px]`
+  - Native Lazy Loading & Responsive Srcset:
+    ```tsx
+    <img
+      src={image.url}
+      alt={image.altText || "Product detail description graphic"}
+      loading="lazy"
+      decoding="async"
+      className="w-full h-auto object-cover transition-opacity duration-300 opacity-0 data-[loaded=true]:opacity-100"
+      onLoad={(e) => e.currentTarget.setAttribute('data-loaded', 'true')}
+    />
+    ```
+
+#### 3. Fallback Text & Specification Accordion
+- Beneath the image stream, provide a fallback HTML specifications block for SEO crawling and screen-reader accessibility:
+  ```tsx
+  <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800/50 rounded-xl space-y-2 text-xs">
+    <h4 className="font-bold text-gray-900 dark:text-white mb-2">Specifications</h4>
+    <div className="grid grid-cols-2 gap-2 text-gray-600 dark:text-gray-300">
+      <div><span className="font-semibold text-gray-800 dark:text-gray-200">Material:</span> Soft HD Film</div>
+      <div><span className="font-semibold text-gray-800 dark:text-gray-200">Hardness:</span> 9H Scratch Resistant</div>
+      <div><span className="font-semibold text-gray-800 dark:text-gray-200">Compatibility:</span> JBL Live Beam 3</div>
+    </div>
+  </div>
+  ```

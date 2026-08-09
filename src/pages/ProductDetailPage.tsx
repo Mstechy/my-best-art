@@ -12,6 +12,7 @@ import { useProductDetailData, useCanReview, type Product, type ProductDoc, type
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
+import { Container } from "@/components/ui/Container";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
@@ -267,7 +268,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
       <MarketplaceNavbar />
       <CartDrawer />
-      <div className="mx-auto max-w-7xl px-4 lg:px-8 py-6">
+      <Container className="py-6">
         <nav aria-label="Breadcrumb" className="mb-4 text-xs text-[#888880]">
           <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Home</Link>
           <span className="mx-2">/</span>
@@ -615,11 +616,11 @@ export default function ProductDetailPage() {
             <RecentlyViewed />
           </div>
         )}
-      </div>
+      </Container>
 
       {/* Sticky mobile CTA bar */}
       <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/90 dark:bg-[#121212]/90 backdrop-blur md:hidden">
-        <div className="mx-auto max-w-7xl px-4 py-2 flex items-center gap-2">
+        <Container className="flex items-center gap-2 py-2">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0] truncate">{product?.title}</p>
             <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</p>
@@ -638,7 +639,7 @@ export default function ProductDetailPage() {
           >
             <Heart className={`h-4 w-4 ${isWishlisted(product?.id || "") ? "fill-current" : ""}`} />
           </button>
-        </div>
+        </Container>
       </div>
 
       {zoomedImage && (

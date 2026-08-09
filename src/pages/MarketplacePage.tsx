@@ -12,6 +12,7 @@ import CartDrawer from "@/components/CartDrawer";
 import SiteFooter from "@/components/SiteFooter";
 import CategorySidebar from "@/components/CategorySidebar";
 import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
+import { Container } from "@/components/ui/Container";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,6 +25,7 @@ import { COUNTRIES, countryName } from "@/lib/countries";
 import { findCategoryConfig, getCategoryAttributes, getProductVideos } from "@/lib/categoryConfig";
 import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/MarketplaceFilters";
 import ProductImage from "@/components/product/ProductImage";
+import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -470,7 +472,7 @@ export default function MarketplacePage() {
         }}
       />
       <CartDrawer />
-      <div className="mx-auto max-w-7xl px-4 lg:px-8 py-8">
+      <Container className="py-8">
         <div className="flex gap-6">
           <div className="hidden lg:block w-60 shrink-0">
             <div className="sticky top-24">
@@ -624,102 +626,23 @@ export default function MarketplacePage() {
                     const flashActive = product.flash_deal_status === "active" && product.flash_deal_discount_percent && product.flash_deal_discount_percent > 0;
                     const discount = flashActive ? product.flash_deal_discount_percent : baseDiscount;
                     return (
-                      <div key={product.id} className="group rounded-2xl bg-[#F5F5F5] dark:bg-[#1E1E1E] overflow-hidden flex flex-col p-4 relative border border-[#E8E8E8]/40 dark:border-[#222222]/60 hover:border-[#888880]/60 dark:hover:border-[#555555] transition-all duration-200 h-full">
-                        <Link to={`/product/${product.id}`} onClick={() => trackProductDiscovery(product.id, "click")} className="block">
-                          <div className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] flex items-center justify-center relative overflow-hidden shrink-0 rounded-xl">
-                            {(() => {
-                              const productVideos = getProductVideos(product.variants);
-                              const firstVideo = productVideos[0];
-                              return (
-                                <>
-                                  {primaryImage ? (
-                                    <ProductImage src={primaryImage.image_url} alt={product.title} className="group-hover:scale-105" loading="lazy" />
-                                  ) : (
-                                    <div className="flex items-center justify-center h-full w-full bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded-xl">
-                                      <Package className="h-8 w-8 text-[#888880] opacity-40" />
-                                    </div>
-                                  )}
-                                  {firstVideo && (
-                                    <video
-                                      src={firstVideo}
-                                      muted
-                                      playsInline
-                                      loop
-                                      preload="none"
-                                      className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                                      onMouseEnter={(e) => { e.currentTarget.play().catch(() => {}); }}
-                                      onMouseLeave={(e) => { e.currentTarget.pause(); }}
-                                    />
-                                  )}
-                                </>
-                              );
-                            })()}
-                            {flashActive && product.flash_deal_end_at ? (
-                              <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center gap-1">
-                                <Flame className="h-2.5 w-2.5" /> {t("marketplace.flash")}
-                              </span>
-                            ) : discount ? (
-                              <span className="absolute top-3 left-3 bg-[#E53935] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">-{discount}%</span>
-                            ) : product.stock_quantity <= 5 && product.stock_quantity > 0 ? (
-                              <span className="absolute top-3 left-3 bg-[#FFA000] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none flex items-center"><Flame className="h-2.5 w-2.5 mr-0.5" /> {t("marketplace.labelHot")}</span>
-                            ) : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? (
-                              <span className="absolute top-3 left-3 bg-[#2E7D32] text-white text-[9px] font-bold px-2 py-0.5 rounded-[3px] z-10 shadow-sm select-none">{t("marketplace.labelNew")}</span>
-                            ) : null}
-                            {user && (
-                              <button onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
-                                className={`absolute top-3 right-3 h-8 w-8 flex items-center justify-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 backdrop-blur shadow-sm transition-colors duration-200 ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935] dark:hover:text-[#E53935]"}`}
-                                aria-label={isWishlisted(product.id) ? t("marketplace.removeFromWishlist") : t("marketplace.addToWishlist")}>
-                                <Heart className={`h-3.5 w-3.5 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
-                              </button>
-                            )}
-                          </div>
-                        </Link>
-                        <div className="flex flex-col flex-1 mt-2">
-                          <Link to={`/product/${product.id}`} onClick={(e) => { e.preventDefault(); trackProductDiscovery(product.id, "click"); }}>
-                            <h4 className="text-[12px] font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 hover:underline min-h-[32px] leading-snug">{product.title}</h4>
-                          </Link>
-                          <div className="flex flex-col mt-2.5 gap-1">
-                            <div className="flex items-baseline gap-1.5 min-w-0">
-                              <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
-                              {!flashActive && product.compare_at_price && product.compare_at_price > product.price && (
-                                <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
-                              )}
-                            </div>
-                            {flashActive && product.flash_deal_end_at && (
-                              <FlashDealCountdown endAt={product.flash_deal_end_at} className="text-[#E53935]" />
-                            )}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <button onClick={(e) => { e.preventDefault(); handleBuyNow(product); }}
-                                className="bg-[#E53935] hover:bg-[#C62828] text-white rounded-full px-3 h-8 text-[10px] font-bold transition-colors duration-200"
-                                disabled={product.stock_quantity === 0} aria-label={t("product.buyNow")}>{t("product.buyNow")}</button>
-                              <button onClick={(e) => { e.preventDefault(); handleAddToCart(product); }}
-                                className="bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] rounded-full p-2 h-8 w-8 flex items-center justify-center transition-colors duration-200"
-                                disabled={product.stock_quantity === 0} aria-label={t("product.addToCart")}
-                              >
-                                <ShoppingCart className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                          {seller && (
-                            <div className="flex items-center gap-1 mt-1.5 select-none">
-                              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller.full_name || t("marketplace.seller")}</span>
-                              {seller.is_verified && <CheckCircle2 className="h-2.5 w-2.5 text-[#F6C75D] shrink-0" />}
-                            </div>
-                          )}
-                          {product.average_rating > 0 && (
-                            <div className="flex items-center gap-1 mt-0.5 select-none">
-                              <Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />
-                              <span className="text-[10px] font-semibold text-[#111111] dark:text-[#FAF5F2]">{product.average_rating.toFixed(1)}</span>
-                              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">({product.review_count})</span>
-                            </div>
-                          )}
-                          {shipsTo !== "all" && (
-                            <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
-                              <Globe className="h-2.5 w-2.5" /> {t("marketplace.shipsToLabel")} {countryName(shipsTo)}
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                      <ProductCard
+                        key={product.id}
+                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url, flashDealEndAt: flashActive ? product.flash_deal_end_at : null, videoUrl: getProductVideos(product.variants)[0], badge: flashActive && product.flash_deal_end_at ? { label: t("marketplace.flash"), tone: "destructive" } : discount ? { label: `-${discount}%`, tone: "destructive" } : product.stock_quantity <= 5 && product.stock_quantity > 0 ? { label: t("marketplace.labelHot"), tone: "seller" } : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? { label: t("marketplace.labelNew"), tone: "accent" } : null }}
+                        formatPrice={formatPrice}
+                        sellerName={seller?.full_name || t("marketplace.seller")}
+                        sellerVerified={seller?.is_verified ?? false}
+                        onProductClick={() => trackProductDiscovery(product.id, "click")}
+                        onBuyNow={() => handleBuyNow(product)}
+                        onAddToCart={() => handleAddToCart(product)}
+                        showWishlist={!!user}
+                        isWishlisted={isWishlisted(product.id)}
+                        onToggleWishlist={() => { trackProductDiscovery(product.id, "wishlist"); toggleWishlist(product.id); }}
+                        buyNowLabel={t("product.buyNow")}
+                        addToCartLabel={t("product.addToCart")}
+                        addToWishlistLabel={t("marketplace.addToWishlist")}
+                        removeFromWishlistLabel={t("marketplace.removeFromWishlist")}
+                      />
                     );
                   })}
                 </div>
@@ -734,7 +657,7 @@ export default function MarketplacePage() {
             </AnimatedSection>
           </div>
         </div>
-      </div>
+      </Container>
       <ModalWrapper isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} title={t("marketplace.deliveryDestination")}> 
         {isLocationConfirmScreen ? (
           <div className="text-center space-y-4 select-none">

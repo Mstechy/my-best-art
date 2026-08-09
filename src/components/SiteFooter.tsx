@@ -1,13 +1,14 @@
 import { Link } from "react-router-dom";
 import { Mail } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { Container } from "@/components/ui/Container";
 
 export default function SiteFooter() {
   const { t } = useTranslation();
   const year = new Date().getFullYear();
   return (
     <footer className="border-t border-[#E8E8E8] dark:border-[#222222] bg-[#F2F3F5] dark:bg-[#111111] text-[#111111] dark:text-[#FAF5F2] w-full pt-12 pb-6">
-      <div className="mx-auto max-w-7xl px-4 lg:px-8">
+      <Container>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
             <h4 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.shop")}</h4>
@@ -48,7 +49,7 @@ export default function SiteFooter() {
             <Mail className="h-3.5 w-3.5" /> support@markethub.com
           </div>
         </div>
-      </div>
+      </Container>
     </footer>
   );
 }
