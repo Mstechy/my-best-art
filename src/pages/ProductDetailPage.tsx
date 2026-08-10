@@ -330,6 +330,16 @@ export default function ProductDetailPage() {
                               </div>
                             </>
                           )}
+                          {user && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
+                              className={`absolute top-3 right-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 shadow-sm backdrop-blur transition-colors ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935]"}`}
+                              aria-label={isWishlisted(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+                            >
+                              <Heart className={`h-4 w-4 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
+                            </button>
+                          )}
                         </div>
                       </CarouselItem>
                     ))}
@@ -443,13 +453,6 @@ export default function ProductDetailPage() {
                 >
                   {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
                 </button>
-                {user && (
-                  <button onClick={() => { if (product) toggleWishlist(product.id); }}
-                    className={`h-12 w-12 flex items-center justify-center rounded-full border transition-colors ${isWishlisted(product?.id || "") ? "border-[#E53935] text-[#E53935]" : "border-[#E8E8E8] dark:border-[#222222] text-[#888880] hover:border-[#111111] dark:hover:border-[#555555]"}`}
-                    aria-label={isWishlisted(product?.id || "") ? "Remove from wishlist" : "Add to wishlist"}>
-                    <Heart className={`h-5 w-5 ${isWishlisted(product?.id || "") ? "fill-current" : ""}`} />
-                  </button>
-                )}
               </div>
 
               {user && user.id !== product.seller_id && purchasableStock > 0 && (
@@ -631,13 +634,6 @@ export default function ProductDetailPage() {
             className="rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] px-4 py-2 text-xs font-bold disabled:opacity-50"
           >
             Add to Cart
-          </button>
-          <button
-            onClick={() => { if (product) toggleWishlist(product.id); }}
-            className={`h-10 w-10 rounded-full border flex items-center justify-center ${isWishlisted(product?.id || "") ? "border-[#E53935] text-[#E53935]" : "border-[#E8E8E8] dark:border-[#222222] text-[#888880]"}`}
-            aria-label="Wishlist"
-          >
-            <Heart className={`h-4 w-4 ${isWishlisted(product?.id || "") ? "fill-current" : ""}`} />
           </button>
         </Container>
       </div>

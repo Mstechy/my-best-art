@@ -230,7 +230,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-[#FFFFFF]/96 text-[#111111] backdrop-blur dark:border-[#222222] dark:bg-[#111111]/96 dark:text-[#FAF5F2]">
+    <nav className="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white text-[#111111] dark:border-[#222222] dark:bg-[#111111] dark:text-[#FAF5F2]">
       <div className="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">
         <div className="flex items-center gap-3">
           {/* Logo block */}
@@ -424,7 +424,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
         {showSearch && (
           <>
-            <form onSubmit={handleSubmit} className="mt-3 flex flex-col gap-2 lg:hidden">
+            <form onSubmit={handleSubmit} className="mt-3 lg:hidden">
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
                 <Input
@@ -433,9 +433,10 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                   onFocus={() => setSuggestionsOpen(true)}
                   onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
                   placeholder={t("nav.searchPlaceholderMobile")}
-                  className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
+                  className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-20 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
                 />
-                <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+                <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-11 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+                <button type="submit" aria-label={t("nav.search")} className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-[#111111] text-white transition-colors hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-[#E8E8E8]"><ArrowRight className="h-4 w-4" /></button>
                 {suggestionsOpen && suggestions.length > 0 && (
                   <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
                     <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#888880]">{t("nav.suggestions")}</p>
@@ -454,14 +455,6 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                     ))}
                   </div>
                 )}
-              </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  type="submit"
-                  className="h-11 rounded-full bg-[#111111] px-4 text-sm font-semibold text-white hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111]"
-                >
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
               </div>
             </form>
             <input

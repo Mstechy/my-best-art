@@ -258,6 +258,106 @@ Before considering any task complete:
 ## 11. Pending Prompts (Stored — NOT Implemented)
 
 > **STATUS: PLANNING PHASE — Do NOT implement until user says "start"**
+>
+> ## ⭐ PRIORITY #1 — MASTER TASK: MarketHub Redesign & Fix (Mobile-First)
+>
+> **Role & Context:** Senior product designer + frontend engineer. Full audit + redesign pass on MarketHub multi-vendor marketplace. Benchmark: AliExpress mobile web — not to copy branding, but because spacing/hierarchy/component design/IA are intentional and professional. Ours looks like default/generic UI-kit output with broken elements, inconsistent styling, misplaced components.
+>
+> **CRITICAL: Mobile-first (viewport ~375-428px). Build and test mobile first. Desktop is separate — adapt with standard responsive best practices (sidebar nav, wider grids, hover states), but mobile is priority and source of truth.**
+>
+> ### ⚡ AUDIT RULES (must follow before any implementation)
+> 1. Audit and list every affected file/component BEFORE making changes
+> 2. Fix root causes (broken/misplaced elements, missing design tokens) — not surface patches
+> 3. Implement shared, reusable components — not page-specific one-off code
+> 4. Report every file changed with explanation after implementation for review before committing
+> 5. **Do NOT spoil the website** — make sure everything fits the existing design before applying; no blind code/implement
+> 6. Don't touch product data/content — layout/component/design-system work only (except flagging spec-data bug in Part 1.4)
+>
+> ### PART 1: Confirmed bugs to fix (actual broken elements)
+> 1. **Floating black circular button with arrow (→)** fixed top-left on every page, overlapping content. Investigate purpose — if no function, delete entirely. If scroll-to-top remnant, reposition to bottom-right, hidden until scroll, 16-24px edge spacing.
+> 2. **Blurred/smeared gradient artifact behind header bar** — ghosted color smear behind "markethub" logo. Broken/stuck state (unhidden loading skeleton, leftover placeholder bg, broken image ref). Remove — header background must be clean solid (white or brand color), zero noise.
+> 3. **Wishlist (heart) icon wrong location.** Remove red circular heart next to "Add to Cart". Wishlist icon should live INSIDE the image gallery — small semi-transparent circular icon overlay top-right of hero image. Scrolls away with image, does NOT reappear elsewhere. No duplicate wishlist anywhere.
+> 4. **Mismatched spec data** ("iPhone 16 Pro Max 6.9'" title vs "Model: iPhone 12 Pro Max / Screen Size: 6.1" specs) — data integrity bug in product content layer. Flag for product/seed layer correction (fields should pull from actual listing variant/spec data, not placeholders).
+>
+> ### PART 2: Header system — two DISTINCT components
+> - **2a. HomeHeader (mobile)**: top row (logo + delivery/location indicator grouped), full-width search bar with camera/visual-search icon, horizontal icon shortcut row (Deals, Categories, Promotions, etc. — icon + label underneath). No back arrow.
+> - **2b. PageHeader (mobile)**: compact single row — back arrow (←) + hamburger (☰) + logo, search/cart/account icons right-aligned. SEPARATE component from HomeHeader — not one header with conditional branching. Renders on every non-home page. Below header on product pages: breadcrumb trail (Part 4).
+>
+> ### PART 3: Navigation drawer (hamburger menu)
+> - Tapping ☰ opens full-height panel sliding in from LEFT (not dropdown, not centered modal)
+> - Contents top→bottom: Home icon/logo header with close; "Popular Category" expandable (category rows with thumbnail + label, sourced dynamically, not hardcoded); secondary section (curated collections/trending); "Settings" section at bottom
+> - Dimmed non-interactive overlay behind; closes via overlay tap, close icon, or Escape (desktop)
+> - Reusable `<NavDrawer />` component, category list driven by data source/API
+> - Animate slide: CSS transform + transition ~250-300ms ease-out
+> - Accessible: focus trap, `role="dialog"`, `aria-modal="true"`
+>
+> ### PART 4: Breadcrumb component
+> - "Home / Marketplace / Electronics / [Product Name]" below product page header
+> - Small font (~13-14px), muted gray for non-current, current/last slightly darker/bolder
+> - Consistent horizontal padding matching page spacing scale
+> - Shared `<Breadcrumb />` component reused across all category/product pages
+>
+> ### PART 5: Bottom-sheet modal pattern
+> - Specs, Shipping, Return & refund, Security & Privacy open as BOTTOM SHEET (not inline accordions)
+> - Tapping row slides panel UP from bottom, ~70-90% viewport height
+> - Title bar with section name + X close button (top-right); scrollable content; dimmed overlay, tap to close
+> - ONE reusable `<BottomSheet title onClose>{children}</BottomSheet>` — every info panel reuses it
+> - Rows triggering bottom sheet need chevron (>) affordance on right
+> - **Description**: short preview on page + "View full description" row opens same `<BottomSheet>` (or dedicated full-page view — match existing MarketHub detail-view convention for consistency)
+>
+> ### PART 6: Card system — stop reusing one generic card
+> - **SellerCard**: distinct visual treatment — subtle tinted bg or different elevation, better avatar/verified-badge/name/rating/stats alignment, not like a spec table row
+> - **InfoCard** (shipping, buyer protection, warranty): own consistent but visually distinct treatment
+> - **ReviewCard**: own treatment
+> - Define 2-3 distinct reusable components (`<SellerCard />`, `<InfoCard />`, `<ReviewCard />`) rather than one generic `<Card>` everywhere
+>
+> ### PART 7: Design system foundation
+> - **Color tokens**: primary, secondary, neutral grays, success/error/warning/accent — replace ad-hoc colors (e.g. mismatched red wishlist circle)
+> - **Border-radius scale**: don't mix sharp, slightly-rounded, pill randomly
+> - **Shadow/elevation scale**: subtle intentional levels
+> - **Spacing scale** (4/8/12/16px): gaps between images, spec rows, description blocks, card padding — eliminate both excessive whitespace and cramped crowding
+> - **Typography scale**: consistent sizes/weights for headings, body, captions, prices
+>
+> ### PART 8: Page structure & information architecture
+> - **Product page (mobile), top→bottom**: Images (in-gallery wishlist) → breadcrumb → title/price → variant selector (if applicable) → Add to Cart/Buy Now (sticky bottom bar, flush, safe-area aware) → seller card → service commitment rows (shipping/returns/security — tappable, open bottom sheets) → reviews summary + list → Q&A → specifications (tappable → bottom sheet or inline table) → description (preview + "view full")
+> - **Home page**: clear visual sections (deals, categories, recommendations) each with heading + "see all" — no undifferentiated wall of content
+>
+> ### PART 9: Sticky/fixed positioning requirements
+> - **Bottom action bar** (Add to Cart/Buy Now): `position: fixed; bottom: 0; left: 0; right: 0;` ZERO gap. `padding-bottom: env(safe-area-inset-bottom, 0px)`. Add matching padding-bottom to page scrollable content so nothing hides behind.
+> - **Seller card**: `position: sticky` (not fixed) with appropriate `top` offset. Check ancestor chain for `overflow: hidden/auto` breaking sticky. Confirm z-index doesn't conflict with fixed bottom bar.
+>
+> ### PART 10: Navigation behavior — search, account, bottom tab bar
+> 1. **Search icon, not bar, on inner pages.** `<PageHeader />` shows magnifying-glass ICON only — not expanded input. Tapping navigates to dedicated search page/screen (reuse home search bar UI, pre-focused). Only `<HomeHeader />` shows full search bar inline.
+> 2. **Account icon — direct auth navigation, no dropdown.** Tapping checks auth: logged OUT → login/signup screen; logged IN → account/profile page.
+> 3. **Persistent bottom tab bar** (Home, Category, Cart, Account), icon + label, reusable `<BottomTabBar />`.
+>    - Cart: logged OUT → login/signup; logged IN → cart page
+>    - Account: same auth-gated behavior
+>    - Home → home page; Category → category browsing page
+>    - Active tab has visual indicator (color/icon fill change)
+>    - Separate from product page fixed action bar (different page types)
+>
+> ### Acceptance criteria
+> 1. No floating/broken UI artifacts (arrow button, header smear) anywhere
+> 2. Wishlist icon lives only inside image gallery (AliExpress placement/behavior)
+> 3. Home and product pages use distinct purpose-built headers
+> 4. Hamburger opens left slide-in drawer with dynamically-sourced categories
+> 5. Specs/Shipping/Returns/Security open in shared bottom-sheet component
+> 6. Seller, info, review cards visually distinct — not one generic box
+> 7. Real design system (color/radius/shadow/spacing/type tokens) defined + applied
+> 8. Bottom action bar flush to screen edge, safe-area aware
+> 9. Works cleanly at mobile widths (375-428px)
+> 10. Inner pages show search icon (not bar) → dedicated search screen on tap
+> 11. Account icon → login/signup (logged out) or profile (logged in) — no dropdown
+> 12. Persistent bottom tab bar (Home/Category/Cart/Account), Cart+Account trigger login when unauthenticated
+>
+> ### 🏗️ New reusable components to build (shared library)
+> `<NavDrawer />`, `<BottomSheet />`, `<PageHeader />`, `<HomeHeader />`, `<SellerCard />`, `<InfoCard />`, `<ReviewCard />`, `<Breadcrumb />`, `<BottomTabBar />`
+>
+> ### 📁 General engineering requirements
+> - Match existing project conventions (Tailwind styling via existing classes)
+> - Mobile-first: build/test at 375px, 390px, 428px first; desktop adapts responsively (drawer → persistent sidebar okay)
+> - Accessible: ARIA roles, focus management, keyboard closeability
+> - Don't touch product data/content (except flagging spec mismatch)
 
 ### Prompt 1: Enterprise Category Drawer (Slide-over)
 
