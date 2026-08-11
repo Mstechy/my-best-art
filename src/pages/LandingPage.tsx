@@ -14,6 +14,7 @@ import HeroSlider from "@/components/HeroSlider";
 import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useHomepageData, FEEDS, type FeedItem, type Seller } from "@/hooks/useHomepage";
@@ -26,8 +27,9 @@ export default function LandingPage() {
 
   const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
 
-  return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2]">
+  return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
     <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
+    <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="pb-8">
       {/* Hero area — 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}

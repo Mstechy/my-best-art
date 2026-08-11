@@ -11,6 +11,7 @@ import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import SiteFooter from "@/components/SiteFooter";
 import CategorySidebar from "@/components/CategorySidebar";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import { Container } from "@/components/ui/Container";
 import { useCart } from "@/hooks/useCart";
@@ -460,7 +461,7 @@ export default function MarketplacePage() {
   }, [displayedProducts, pageLoading]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-16">
       <MarketplaceNavbar
         search={search}
         onSearchChange={setSearch}
@@ -708,6 +709,7 @@ export default function MarketplacePage() {
         </div>
       </ModalWrapper>
       <SiteFooter />
+      <BottomTabBar />
     </div>
   );
 }

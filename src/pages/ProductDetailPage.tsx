@@ -14,6 +14,8 @@ import CartDrawer from "@/components/CartDrawer";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/Container";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
+import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
@@ -265,23 +267,19 @@ export default function ProductDetailPage() {
   }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2]">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-16">
       <MarketplaceNavbar />
       <CartDrawer />
       <Container className="py-6">
-        <nav aria-label="Breadcrumb" className="mb-4 text-xs text-[#888880]">
-          <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Home</Link>
-          <span className="mx-2">/</span>
-          <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Marketplace</Link>
-          {category && (
-            <>
-              <span className="mx-2">/</span>
-              <Link to={`/categories/${category.slug || category.name}`} className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">{category.name}</Link>
-            </>
-          )}
-          <span className="mx-2">/</span>
-          <span className="text-[#111111] dark:text-[#FAF5F2] line-clamp-1">{product?.title}</span>
-        </nav>
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Marketplace", href: "/marketplace" },
+            ...(category ? [{ label: category.name, href: `/categories/${category.slug || category.name}` }] : []),
+            { label: product?.title || "Product" },
+          ]}
+          className="mb-4"
+        />
 
         {loading && !product ? (
           <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
@@ -638,6 +636,7 @@ export default function ProductDetailPage() {
         </Container>
       </div>
 
+      <BottomTabBar />
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
