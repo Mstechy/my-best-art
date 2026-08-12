@@ -594,3 +594,38 @@ Before considering any task complete:
 - `Login/Register` → `/auth/login?redirect=/buyer/dashboard`
 
 This differentiates entry points so auth knows the user's intent and redirects to the correct role dashboard after login/registration.
+
+---
+
+## 8. Cart Drawer & Product Detail Page (PDP) — MarketHub-Adapted Standards
+
+> **Rule:** These are adapted to MarketHub's own brand tokens (`--primary` indigo, `--accent` teal, `--seller` amber, `--buyer` teal) and existing component conventions — NOT a blind copy of AliExpress gray/blue. All changes must preserve existing data flow (cart context, Supabase, React Query) and dark mode.
+
+### 8.1 Cart Drawer (`src/components/CartDrawer.tsx`)
+
+**Verified Issues:**
+- Header uses `ml-auto` on the item count inside a flex title — can collide with the close (X) button on narrow widths.
+- Item image is `h-16 w-16` (64px) — smaller than the 80px standard; title uses `truncate` (single line) instead of 2-line clamp.
+- Empty state has no "More to Love" feed — leaves vast blank space.
+- Summary bar is in normal flow (not sticky/fixed) — can be clipped when many items.
+
+**Fixes Applied (MarketHub-adapted):**
+1. **Header layout:** Use `flex items-center justify-between gap-3` with brand logo/name on left, item count + close on right. No `ml-auto` collision.
+2. **Item cards:** Image `h-20 w-20` (80px) `object-cover`; title `line-clamp-2`; seller name de-emphasized (`text-[#888880]`); stepper (`- qty +`) bottom-right of card.
+3. **Empty state:** Centered illustration + bold primary CTA ("Browse Products") + scrollable "More to Love" recommended grid below.
+4. **Sticky summary bar:** `sticky bottom-0` within the drawer with `z-10`, solid background, and `pb-[env(safe-area-inset-bottom,0px)]`; scrollable list gets `pb-4` so nothing is clipped.
+
+### 8.2 Product Detail Page (`src/pages/ProductDetailPage.tsx`)
+
+**Verified Issues:**
+- Both a "Sticky mobile CTA bar" (Add to Cart only) AND the global `<BottomTabBar />` render at `bottom-0` on mobile — they overlap.
+- Bottom CTA has only "Add to Cart" — no "Buy Now" (Buy Now exists in the inline card but not the sticky bar).
+- No high-visibility discount banner above the price block.
+- Social proof (rating, sold count) is below the price, not grouped above the fold.
+
+**Fixes Applied (MarketHub-adapted):**
+1. **Remove `<BottomTabBar />` from PDP** — product pages use their own fixed bottom action bar (PRD Part 9), not the global tab bar.
+2. **Upgrade sticky CTA bar** to two buttons: "Add to Cart" (outline/secondary) + "Buy Now" (high-contrast primary fill). Keep `md:hidden`, `z-40`, safe-area aware, and add `pb-[env(safe-area-inset-bottom,0px)]`.
+3. **Add discount banner** above the price block when `compare_at_price > price` (e.g., "Limited Offer — Save X%") using MarketHub `--seller` amber accent.
+4. **Group social proof** (rating, sold count, low-stock) directly under the title above the fold.
+5. **Data binding:** Spec/description already pull from the dynamic product via `useProductDetailData(id)` — verified no hardcoded iPhone 12 specs on iPhone 16 pages (the earlier mismatch was in seed data, flagged in Part 1.4).

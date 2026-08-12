@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown, Flame } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -15,7 +15,6 @@ import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/com
 import { Container } from "@/components/ui/Container";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
-import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
@@ -36,7 +35,7 @@ import { trackView } from "@/hooks/useBatchedViewTracking";
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addItem } = useCart();
+  const { addItem, replaceItems } = useCart();
   const { user } = useAuth();
   const { formatPrice } = useCurrency();
 
@@ -266,6 +265,35 @@ export default function ProductDetailPage() {
     toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
   }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
 
+  const handleBuyNow = useCallback(() => {
+    if (!product || !seller) return;
+    if (user?.id === product.seller_id) {
+      toast.error("Sellers cannot purchase their own products.");
+      return;
+    }
+    if (variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
+    if (variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
+    if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
+    if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
+    const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+    const variantSuffix = [selectedSize, selectedColor].filter(Boolean).join("/");
+    const cartId = variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
+    const titleSuffix = variantSuffix ? ` (${variantSuffix})` : "";
+    const items = Array.from({ length: quantity }, () => ({
+      id: cartId,
+      product_id: product.id,
+      product_variant_id: selectedVariant?.id,
+      title: product.title + titleSuffix,
+      price: purchasablePrice,
+      image_url: primaryImage?.image_url || null,
+      seller_id: product.seller_id,
+      seller_name: seller.full_name || "Seller",
+      stock_quantity: purchasableStock,
+    }));
+    replaceItems(items);
+    navigate("/checkout");
+  }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-16">
       <MarketplaceNavbar />
@@ -373,6 +401,12 @@ export default function ProductDetailPage() {
                   </Link>
                 )}
                 <h1 className="text-2xl font-bold mt-1">{product.title}</h1>
+                {product.compare_at_price && product.compare_at_price > product.price && (
+                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#F6C75D]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#5C3A00] dark:text-[#F6C75D]">
+                    <Flame className="h-3 w-3" />
+                    Limited Offer — Save {Math.round((1 - product.price / product.compare_at_price) * 100)}%
+                  </div>
+                )}
                 <div className="flex items-baseline gap-3 mt-3">
                   <span className="text-3xl font-black">{formatPrice(purchasablePrice)}</span>
                   {product.compare_at_price && product.compare_at_price > product.price && (
@@ -619,8 +653,8 @@ export default function ProductDetailPage() {
         )}
       </Container>
 
-      {/* Sticky mobile CTA bar */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/90 dark:bg-[#121212]/90 backdrop-blur md:hidden">
+      {/* Sticky mobile CTA bar - Add to Cart + Buy Now */}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom,0px)]">
         <Container className="flex items-center gap-2 py-2">
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0] truncate">{product?.title}</p>
@@ -629,14 +663,19 @@ export default function ProductDetailPage() {
           <button
             onClick={handleAddToCart}
             disabled={purchasableStock === 0}
-            className="rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] px-4 py-2 text-xs font-bold disabled:opacity-50"
+            className="rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] px-4 py-2 text-xs font-bold disabled:opacity-50"
           >
             Add to Cart
           </button>
+          <button
+            onClick={handleBuyNow}
+            disabled={purchasableStock === 0}
+            className="rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] px-4 py-2 text-xs font-bold disabled:opacity-50"
+          >
+            Buy Now
+          </button>
         </Container>
       </div>
-
-      <BottomTabBar />
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
