@@ -77,12 +77,12 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
     { icon: Home, label: t("nav.home"), href: "/" },
     { icon: Package, label: t("nav.browseProducts"), href: "/marketplace" },
     ...navigationCollections.map(collection => ({ icon: Package, label: collection.title, href: `/collections/${collection.slug}` })),
-    { icon: Store, label: t("nav.sellWithUs"), href: "/auth/register" },
+    { icon: Store, label: t("nav.sellWithUs"), href: "/auth/register?redirect=/seller/dashboard" },
     ...(user ? [
       { icon: ClipboardList, label: t("nav.myOrders"), href: role === "seller" ? "/seller/orders" : "/buyer/orders" },
       { icon: User, label: t("nav.dashboard"), href: dashboardPath },
     ] : [
-      { icon: LogIn, label: t("nav.loginRegister"), href: "/auth/login" },
+      { icon: LogIn, label: t("nav.loginRegister"), href: "/auth/login?redirect=/buyer/dashboard" },
     ]),
     { icon: HelpCircle, label: t("nav.help"), href: "/" },
   ];
@@ -329,13 +329,13 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             </Link>
           )}
 
-          {/* Profile */}
+          {/* Profile - hidden on mobile (BottomTabBar handles Account on mobile) */}
           {user ? (
-            <Link to={dashboardPath} aria-label={t("nav.openDashboard")} className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
+            <Link to={dashboardPath} aria-label={t("nav.openDashboard")} className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden md:inline-flex">
               <User className="h-5 w-5" />
             </Link>
           ) : (
-            <Link to="/auth/login" aria-label={t("nav.login")} className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors">
+            <Link to="/auth/login" aria-label={t("nav.login")} className="p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden md:inline-flex">
               <User className="h-5 w-5" />
             </Link>
           )}
@@ -347,10 +347,10 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             </Link>
           )}
 
-          {/* Cart */}
+          {/* Cart - hidden on mobile (BottomTabBar handles Cart on mobile) */}
           <button
             onClick={() => openCart(true)}
-            className="relative p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors"
+            className="relative p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden md:inline-flex"
             aria-label={t("nav.openCart")}
           >
             <ShoppingCart className="h-5 w-5" />

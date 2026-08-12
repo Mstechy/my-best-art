@@ -557,3 +557,40 @@ Before considering any task complete:
     </div>
   </div>
   ```
+
+---
+
+## 7. Accessibility & Mobile UX Parity (AliExpress Comparison)
+
+### 7.1 Marquee / Ticker DOM Duplication
+**Verified Issue:** `src/components/MarqueeBanner.tsx` renders two identical `<Track>` components back-to-back for the CSS infinite scroll loop. The duplicate track was NOT hidden from screen readers or keyboard navigation, causing assistive tech and Tab key to hit every promo link twice.
+
+**Fix Applied:**
+- Wrapped the duplicate track in `<div aria-hidden="true">` so screen readers ignore it.
+- Added `tabIndex={-1}` to the duplicate track's links so keyboard users don't tab into them.
+- The primary track remains fully accessible.
+
+```tsx
+<Track items={ITEMS} />
+{/* Duplicate track for seamless CSS loop — hidden from screen readers & keyboard tab order */}
+<div aria-hidden="true">
+  <Track items={ITEMS} tabIndex={-1} />
+</div>
+```
+
+### 7.2 Mobile UI & Action Component Overlap
+**Verified Issue:** The top header (`MarketplaceNavbar`) showed Cart and Account icons at ALL screen sizes, while the sticky bottom nav (`BottomTabBar`) also showed Cart and Account on mobile — duplicating the same actions simultaneously.
+
+**Fix Applied (AliExpress separation of concerns):**
+- **Top Header** (`MarketplaceNavbar`): Cart and Account icons now use `hidden md:inline-flex` — visible only on desktop where the bottom nav is hidden.
+- **Bottom Nav** (`BottomTabBar`): now uses `md:hidden` — visible only on mobile.
+- Result: On mobile, the top header handles search/location context; the bottom nav handles global navigation & user actions (Home, Category, Cart, Account).
+
+### 7.3 Route Duplication & Generic Auth Fallbacks
+**Verified Issue:** The `redirect` query-param mechanism already existed in `LoginPage.tsx` (reads `?redirect=` and navigates after auth) and was used by `StoreFollowButton` and `QAndASection`. However, key navigation entry points in the navbar menu did NOT pass redirect context, so "Sell With Us" and "Login/Register" led to generic auth without intent.
+
+**Fix Applied:**
+- `Sell With Us` → `/auth/register?redirect=/seller/dashboard`
+- `Login/Register` → `/auth/login?redirect=/buyer/dashboard`
+
+This differentiates entry points so auth knows the user's intent and redirects to the correct role dashboard after login/registration.

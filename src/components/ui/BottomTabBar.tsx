@@ -38,7 +38,7 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
       aria-label="Bottom navigation"
       className={cn(
         "fixed bottom-0 inset-x-0 z-50 border-t border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#111111]",
-        "pb-[env(safe-area-inset-bottom,0px)]",
+        "pb-[env(safe-area-inset-bottom,0px)] md:hidden",
         className
       )}
     >
