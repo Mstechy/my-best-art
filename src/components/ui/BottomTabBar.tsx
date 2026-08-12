@@ -17,21 +17,13 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { totalItems } = useCart();
+  const { totalItems, setIsOpen: openCart } = useCart();
 
   const path = location.pathname;
   const isHome = path === "/";
   const isCategory = path.startsWith("/marketplace") || path.startsWith("/categories") || path.startsWith("/collections");
   const isCart = path.startsWith("/cart") || path.startsWith("/checkout");
   const isAccount = path.startsWith("/buyer") || path.startsWith("/seller") || path.startsWith("/admin") || path.startsWith("/auth");
-
-  const handleGated = (destination: string) => {
-    if (!user) {
-      navigate("/auth/login");
-      return;
-    }
-    navigate(destination);
-  };
 
   return (
     <nav
@@ -57,7 +49,7 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
 
         {/* Category */}
         <Link
-          to="/marketplace"
+          to="/categories"
           className={cn(
             "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
             isCategory ? "text-[#F6C75D]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
@@ -67,9 +59,9 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
           Category
         </Link>
 
-        {/* Cart */}
+        {/* Cart - opens the cart drawer */}
         <button
-          onClick={() => handleGated(user ? "/buyer/orders" : "/auth/login")}
+          onClick={() => openCart(true)}
           className={cn(
             "relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
             isCart ? "text-[#F6C75D]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
