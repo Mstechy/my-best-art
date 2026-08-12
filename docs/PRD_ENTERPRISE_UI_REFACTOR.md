@@ -615,17 +615,26 @@ This differentiates entry points so auth knows the user's intent and redirects t
 3. **Empty state:** Centered illustration + bold primary CTA ("Browse Products") + scrollable "More to Love" recommended grid below.
 4. **Sticky summary bar:** `sticky bottom-0` within the drawer with `z-10`, solid background, and `pb-[env(safe-area-inset-bottom,0px)]`; scrollable list gets `pb-4` so nothing is clipped.
 
-### 8.2 Product Detail Page (`src/pages/ProductDetailPage.tsx`)
+### 8.2 Product Detail Page (`src/pages/ProductDetailPage.tsx`) — Top-to-Bottom Parity Audit
 
-**Verified Issues:**
-- Both a "Sticky mobile CTA bar" (Add to Cart only) AND the global `<BottomTabBar />` render at `bottom-0` on mobile — they overlap.
-- Bottom CTA has only "Add to Cart" — no "Buy Now" (Buy Now exists in the inline card but not the sticky bar).
-- No high-visibility discount banner above the price block.
-- Social proof (rating, sold count) is below the price, not grouped above the fold.
+**Audit vs AliExpress mobile (structure only — colors adapted to MarketHub brand, no gray/blue copy):**
+
+| # | AliExpress Section | MarketHub Current State | Action |
+|---|---------------------|------------------------|--------|
+| 1 | Sticky header (back, hamburger, logo, search/user/cart) | `MarketplaceNavbar` sticky z-50 solid bg ✅; back button lives in `PageHeader` (Part 2b, not yet wired to PDP) | Defer to Part 2b |
+| 2 | Media gallery: `aspect-square`, image index badge (Item 1/X) bottom-left, wishlist bottom-right | `aspect-square` carousel ✅; wishlist in-gallery top-right ✅ | **ADD image index pill bottom-left** |
+| 3 | Title → ratings row directly under title | Title ✅; ratings/social proof currently BELOW price | **MOVE social proof under title** |
+| 4 | SuperDeals promo banner (gradient, price inside) | Discount pill exists; price not inside banner | **UPGRADE to full-width promo container** |
+| 5 | Variant pills (active = dark stroke) + trust badges below | Size/color pills with dark active ✅; trust badges exist but lower | **REORDER trust badges closer to variants** |
+| 6 | Reviews gallery, spec table, recommendations | ReviewSummary + Q&A + ProductRichDescription + RecommendedProducts ✅ | Verified OK |
+| 7 | Sticky bottom bar: Add to cart (outline) + Buy now (solid), pb-90px on main | Two-button fixed bar ✅; root `pb-16` (64px) too tight | **BUMP root padding to `pb-24` (96px)** |
 
 **Fixes Applied (MarketHub-adapted):**
-1. **Remove `<BottomTabBar />` from PDP** — product pages use their own fixed bottom action bar (PRD Part 9), not the global tab bar.
-2. **Upgrade sticky CTA bar** to two buttons: "Add to Cart" (outline/secondary) + "Buy Now" (high-contrast primary fill). Keep `md:hidden`, `z-40`, safe-area aware, and add `pb-[env(safe-area-inset-bottom,0px)]`.
-3. **Add discount banner** above the price block when `compare_at_price > price` (e.g., "Limited Offer — Save X%") using MarketHub `--seller` amber accent.
-4. **Group social proof** (rating, sold count, low-stock) directly under the title above the fold.
-5. **Data binding:** Spec/description already pull from the dynamic product via `useProductDetailData(id)` — verified no hardcoded iPhone 12 specs on iPhone 16 pages (the earlier mismatch was in seed data, flagged in Part 1.4).
+1. **Remove `<BottomTabBar />` from PDP** — product pages use their own fixed bottom action bar, not the global tab bar.
+2. **Two-button sticky CTA** — "Add to Cart" (outline) + "Buy Now" (solid high-contrast fill), `md:hidden`, `z-40`, safe-area aware.
+3. **Image index badge** — `Item N/X` oval pill overlaid on media gallery bottom-left.
+4. **Ratings under title** — Star rating + sold count + low-stock grouped directly below product title (above fold).
+5. **Promo pricing banner** — full-width dark/indigo container (MarketHub-adapted `#1f2937`-style) containing: active price (large bold), stock urgency, strikethrough original, discount badge.
+6. **Trust badges reordered** — Free Shipping / Buyer Protection / Warranty moved directly below variant selectors (above seller card).
+7. **Root padding** — `pb-16` → `pb-24` so the fixed CTA bar never clips content.
+8. **Data binding** — specs/description already pull from dynamic product via `useProductDetailData(id)` (no hardcoded iPhone 12 specs on iPhone 16 pages).

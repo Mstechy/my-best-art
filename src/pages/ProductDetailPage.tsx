@@ -295,7 +295,7 @@ export default function ProductDetailPage() {
   }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-16">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
       <MarketplaceNavbar />
       <CartDrawer />
       <Container className="py-6">
@@ -333,12 +333,16 @@ export default function ProductDetailPage() {
               {mediaItems.length > 0 && (
                 <Carousel setApi={setCarouselApi} className="w-full">
                   <CarouselContent>
-                    {mediaItems.map((item) => (
+                    {mediaItems.map((item, index) => (
                       <CarouselItem key={item.id}>
                         <div
                           className="aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E] rounded-2xl overflow-hidden cursor-zoom-in relative group"
                           onClick={() => { if (item.type === "image") setZoomedImage(item.url); }}
                         >
+                          {/* Image index badge (AliExpress parity) */}
+                          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/60 text-white text-[11px] px-2.5 py-1 backdrop-blur-sm">
+                            Item {index + 1}/{mediaItems.length}
+                          </span>
                           {item.type === "video" ? (
                             <div className="relative w-full h-full">
                               <ProductVideoPlayer
@@ -401,38 +405,51 @@ export default function ProductDetailPage() {
                   </Link>
                 )}
                 <h1 className="text-2xl font-bold mt-1">{product.title}</h1>
-                {product.compare_at_price && product.compare_at_price > product.price && (
-                  <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#F6C75D]/15 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#5C3A00] dark:text-[#F6C75D]">
-                    <Flame className="h-3 w-3" />
-                    Limited Offer — Save {Math.round((1 - product.price / product.compare_at_price) * 100)}%
-                  </div>
-                )}
-                <div className="flex items-baseline gap-3 mt-3">
-                  <span className="text-3xl font-black">{formatPrice(purchasablePrice)}</span>
-                  {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-lg text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
-                  )}
-                  {product.compare_at_price && product.compare_at_price > product.price && (
-                    <span className="text-xs font-bold text-[#E53935] bg-[#E53935]/10 px-2 py-0.5 rounded-full">
-                      -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
-                    </span>
-                  )}
-                </div>
-              </div>
 
-              <div className="flex items-center gap-4 text-xs text-[#888880]">
-                {product.review_count > 0 && (
-                  <div className="flex items-center gap-1">
-                    <Star className="h-3.5 w-3.5 fill-[#F6C75D] text-[#F6C75D]" />
-                    <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{product.average_rating.toFixed(1)}</span>
-                    <span>({product.review_count})</span>
+                {/* Social proof directly under title (AliExpress parity) */}
+                <div className="flex items-center gap-4 text-xs text-[#888880] mt-2">
+                  {product.review_count > 0 && (
+                    <div className="flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5 fill-[#F6C75D] text-[#F6C75D]" />
+                      <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{product.average_rating.toFixed(1)}</span>
+                      <span>({product.review_count})</span>
+                    </div>
+                  )}
+                  {soldCount > 0 && <span>{soldCount} sold</span>}
+                  {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
+                </div>
+
+                {/* Promo pricing banner (MarketHub-adapted) */}
+                {product.compare_at_price && product.compare_at_price > product.price ? (
+                  <div className="mt-4 rounded-2xl bg-[#1A1A1A] dark:bg-[#252525] text-white px-4 py-3">
+                    <div className="flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#F6C75D]">
+                        <Flame className="h-3 w-3" />
+                        Limited Offer
+                      </span>
+                      <span className="text-[10px] font-bold text-[#888880]">
+                        Save {Math.round((1 - product.price / product.compare_at_price) * 100)}%
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap items-baseline gap-2 mt-2">
+                      <span className="text-3xl font-black text-white">{formatPrice(purchasablePrice)}</span>
+                      <span className="text-base text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
+                      <span className="text-xs font-bold text-[#E53935] bg-[#E53935]/20 px-2 py-0.5 rounded-full">
+                        -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
+                      </span>
+                    </div>
+                    {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
+                      <p className="mt-2 text-[10px] font-bold text-[#F6C75D]">Only {purchasableStock} left in stock</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="mt-3 flex items-baseline gap-3">
+                    <span className="text-3xl font-black">{formatPrice(purchasablePrice)}</span>
+                    {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
+                      <span className="text-xs font-semibold text-[#E53935]">Only {purchasableStock} left</span>
+                    )}
                   </div>
                 )}
-                {soldCount > 0 && <span>{soldCount} sold</span>}
-                {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
-                  <span className="text-[#E53935] font-semibold">Only {purchasableStock} left</span>
-                )}
-                {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
               </div>
 
               {variantSizes.length > 0 && (
@@ -508,18 +525,6 @@ export default function ProductDetailPage() {
                 />
               )}
 
-              {seller && (
-                <SellerMiniCard
-                  sellerId={seller.user_id}
-                  name={seller.full_name || "Seller"}
-                  isVerified={seller.is_verified}
-                  avatarUrl={null}
-                  followers={sellerFollowers}
-                  rating={sellerAvgRating}
-                  soldCount={sellerTotalSold}
-                />
-              )}
-
               <div className="space-y-2">
                 <div className="flex items-center gap-2 text-xs text-[#888880]">
                   <Truck className="h-4 w-4" />
@@ -536,6 +541,18 @@ export default function ProductDetailPage() {
                   </div>
                 )}
               </div>
+
+              {seller && (
+                <SellerMiniCard
+                  sellerId={seller.user_id}
+                  name={seller.full_name || "Seller"}
+                  isVerified={seller.is_verified}
+                  avatarUrl={null}
+                  followers={sellerFollowers}
+                  rating={sellerAvgRating}
+                  soldCount={sellerTotalSold}
+                />
+              )}
 
               {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
