@@ -45,8 +45,10 @@ Make the product listing experience match Amazon/AliExpress standards so the mar
 - **Search bar hidden on PDP** ✓ — `MarketplaceNavbar showSearch={false}`; a search icon in the header navigates to `/marketplace`
 - **Breadcrumb removed from above gallery** ✓ — no text precedes the hero image
 - **Variant selector: IMPLEMENTED** ✓ — generic `VariantSelector` component detects all attribute dimensions from `product_variants.option_values` (size, color, storage, etc.), renders labeled chips with selected state + checkmark, updates price/stock, and wires `product_variant_id` into cart/checkout
-- **Store icon in sticky mobile CTA** ✓ — leftmost circular button navigates to seller chat (role-based `/buyer/chat` or `/seller/chat`), avoiding redundancy with the seller card's "Visit Store"
-- **Specifications table: MISSING** (specs saved by seller never shown) — variant attribute keys are excluded from specs to avoid duplication with the selector
+- **Store icon in sticky mobile CTA** ✓ — leftmost circular button navigates to the seller's store page (`/seller/${product.seller_id}`), with the price shown left and full-width Add to Cart + Buy Now buttons
+- **Specifications table: MISSING** (specs saved by seller never shown) — variant attribute keys AND system keys (`categoryGroup`, `productTypeKey`) are excluded from specs to avoid duplication and raw internal strings
+- **Review photo gallery** ✓ — horizontal "Customer Photos" scroll row above review cards, tap to open lightbox
+- **Review filter chips** ✓ — zero-count filters (e.g. `3★ (0)`) are hidden
 - **Shipping shown twice** (inline icons + accordion) — needs dedupe
 - **Description photos: MISSING**
 - **JSON-LD structured data: MISSING**
