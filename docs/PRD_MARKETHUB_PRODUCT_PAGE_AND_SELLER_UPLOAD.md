@@ -41,13 +41,15 @@ Make the product listing experience match Amazon/AliExpress standards so the mar
 - Client validation exists for price/stock/description length but is partial
 
 ### Buyer page (`ProductDetailPage.tsx`)
-- Render order: breadcrumb → gallery → title/price → rating/sold/low-stock → variants → buy box → seller card → shipping icons → description → key features → shipping & returns accordion → reviews → Q&A → recommended → recently viewed → sticky mobile CTA
-- **Specifications table: MISSING** (specs saved by seller never shown)
+- Render order: header (search icon only — no persistent search bar, no breadcrumb above gallery) → gallery → title/price → rating/sold/low-stock → variant selector → buy box → seller card → shipping icons → description → key features → reviews → Q&A → recommended → recently viewed → sticky mobile CTA (store icon + Add to Cart + Buy Now)
+- **Search bar hidden on PDP** ✓ — `MarketplaceNavbar showSearch={false}`; a search icon in the header navigates to `/marketplace`
+- **Breadcrumb removed from above gallery** ✓ — no text precedes the hero image
+- **Variant selector: IMPLEMENTED** ✓ — generic `VariantSelector` component detects all attribute dimensions from `product_variants.option_values` (size, color, storage, etc.), renders labeled chips with selected state + checkmark, updates price/stock, and wires `product_variant_id` into cart/checkout
+- **Store icon in sticky mobile CTA** ✓ — leftmost circular button navigates to seller chat (role-based `/buyer/chat` or `/seller/chat`), avoiding redundancy with the seller card's "Visit Store"
+- **Specifications table: MISSING** (specs saved by seller never shown) — variant attribute keys are excluded from specs to avoid duplication with the selector
 - **Shipping shown twice** (inline icons + accordion) — needs dedupe
 - **Description photos: MISSING**
 - **JSON-LD structured data: MISSING**
-- `soldCount` comes from real RPC `product_sold_count` ✓ (never fabricated)
-- Sticky mobile CTA bar: EXISTS ✓
 
 ### Libraries available
 - `zod` ✓ (validation)

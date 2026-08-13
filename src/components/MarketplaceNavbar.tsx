@@ -230,7 +230,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white text-[#111111] dark:border-[#222222] dark:bg-[#111111] dark:text-[#FAF5F2]">
+    <nav className="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2]">
       <div className="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">
         <div className="flex items-center gap-3">
           {/* Logo block */}

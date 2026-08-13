@@ -49,6 +49,7 @@ export default function ProductDetailPage() {
   const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
+  const [titleExpanded, setTitleExpanded] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -347,7 +348,7 @@ export default function ProductDetailPage() {
                           onClick={() => { if (item.type === "image") setZoomedImage(item.url); }}
                         >
                           {/* Image index badge (AliExpress parity) */}
-                          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/60 text-white text-[11px] px-2.5 py-1 backdrop-blur-sm">
+                          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/65 text-white text-[11px] px-2 py-1 backdrop-blur-md">
                             Item {index + 1}/{mediaItems.length}
                           </span>
                           {item.type === "video" ? (
@@ -389,7 +390,7 @@ export default function ProductDetailPage() {
                     <button
                       key={item.id}
                       onClick={() => setSelectedImage(idx)}
-                      className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${idx === selectedImage ? "border-[#111111] dark:border-[#FAF5F2]" : "border-transparent hover:border-[#C8C8C0] dark:hover:border-[#444444]"}`}
+                      className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${idx === selectedImage ? "border-[#111111] ring-2 ring-[#111111]/20 dark:border-[#FAF5F2] dark:ring-[#FAF5F2]/20 scale-[1.05]" : "border-transparent hover:border-[#C8C8C0] dark:hover:border-[#444444]"}`}
                     >
                       {item.type === "video" ? (
                         <div className="relative w-full h-full bg-[#F2F3F5] dark:bg-[#202020] flex items-center justify-center">
@@ -405,13 +406,34 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="space-y-5">
-              <div>
+              {/* Breadcrumb container (Home > Marketplace > Category) */}
+              <div className="flex items-center gap-1.5 text-xs text-[#666666] dark:text-[#A0A0A0]">
+                <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Home</Link>
+                <ChevronRight className="h-3 w-3 opacity-60" />
+                <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Marketplace</Link>
                 {category && (
-                  <Link to={`/categories/${category.slug || category.name}`} className="text-[10px] font-bold uppercase tracking-wider text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
-                    {category.name}
-                  </Link>
+                  <>
+                    <ChevronRight className="h-3 w-3 opacity-60" />
+                    <Link to={`/categories/${category.slug || category.name}`} className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors truncate max-w-[160px]">
+                      {category.name}
+                    </Link>
+                  </>
                 )}
-                <h1 className="text-2xl font-bold mt-1">{product.title}</h1>
+              </div>
+
+              <div>
+                {/* Condition pill + title (2-line clamp with expand) */}
+                {product.condition && (
+                  <span className="inline-block mb-2 rounded-md bg-[#F2F3F5] dark:bg-[#202020] px-2 py-0.5 text-[11px] font-semibold text-[#666666] dark:text-[#A0A0A0]">
+                    {product.condition}
+                  </span>
+                )}
+                <h1 className={`text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title}</h1>
+                {product.title.length > 90 && (
+                  <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] underline">
+                    {titleExpanded ? "Less" : "More"}
+                  </button>
+                )}
 
                 {/* Social proof directly under title (AliExpress parity) */}
                 <div className="flex items-center gap-4 text-xs text-[#888880] mt-2">
@@ -426,6 +448,7 @@ export default function ProductDetailPage() {
                   {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
                 </div>
 
+                {/* Compatible price block (no quantity selector here - moved to variant section) */}
                 {/* Promo pricing banner (MarketHub-adapted) */}
                 {product.compare_at_price && product.compare_at_price > product.price ? (
                   <div className="mt-4 rounded-2xl bg-[#1A1A1A] dark:bg-[#252525] text-white px-4 py-3">
@@ -685,33 +708,27 @@ export default function ProductDetailPage() {
         )}
       </Container>
 
-      {/* Sticky mobile CTA bar - Add to Cart + Buy Now with store icon */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom,0px)]">
+      {/* Sticky mobile CTA bar - store icon + full-width Add to Cart + Buy Now (title hidden on mobile) */}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden" style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
         <Container className="flex items-center gap-2 py-2">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate(chatPath)}
-              className="rounded-full bg-[#111111]/80 dark:bg-[#1E1E1E]/80 p-2 transition-colors hover:bg-[#111111]/90 dark:hover:bg-[#FAF5F2]/90"
-              aria-label="Message seller"
-            >
-              <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
-            </button>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0] truncate">{product?.title}</p>
-            <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</p>
-          </div>
+          <button
+            onClick={() => navigate(chatPath)}
+            className="shrink-0 rounded-full bg-[#111111]/80 dark:bg-[#1E1E1E]/80 p-2 transition-colors hover:bg-[#111111]/90 dark:hover:bg-[#FAF5F2]/90"
+            aria-label="Message seller"
+          >
+            <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
+          </button>
           <button
             onClick={handleAddToCart}
             disabled={purchasableStock === 0}
-            className="rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] px-4 py-2 text-xs font-bold disabled:opacity-50"
+            className="flex-1 h-[44px] rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] text-sm font-semibold disabled:opacity-50"
           >
             Add to Cart
           </button>
           <button
             onClick={handleBuyNow}
             disabled={purchasableStock === 0}
-            className="rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] px-4 py-2 text-xs font-bold disabled:opacity-50"
+            className="flex-1 h-[44px] rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold disabled:opacity-50"
           >
             Buy Now
           </button>
