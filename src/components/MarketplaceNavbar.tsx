@@ -313,6 +313,17 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
           {/* Right side icons */}
           <div className="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
+          {/* Search icon - shown when the search bar is hidden (e.g. product detail page) */}
+          {!showSearch && (
+            <button
+              type="button"
+              onClick={() => navigate("/marketplace")}
+              aria-label={t("nav.search")}
+              className="grid h-9 w-9 place-items-center rounded-full text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+            >
+              <Search className="h-5 w-5" />
+            </button>
+          )}
           {/* Language Switcher - hide on small mobile */}
           <div className="hidden sm:block"><LanguageSwitcher /></div>
           {/* RegionalPreferences - hide on small mobile */}

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown, Flame } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown, Flame, Store } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -18,6 +18,7 @@ import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
 import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
+import VariantSelector from "@/components/product/VariantSelector";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import SellerMiniCard from "@/components/product/SellerMiniCard";
 import ReviewSummary from "@/components/product/ReviewSummary";
@@ -36,14 +37,16 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addItem, replaceItems } = useCart();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { formatPrice } = useCurrency();
+  const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [selectedImage, setSelectedImage] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [offerOpen, setOfferOpen] = useState(false);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
@@ -98,14 +101,26 @@ export default function ProductDetailPage() {
     trackView(id, viewerId);
   }, [id, user?.id]);
 
+  const hasProductVariants = productVariants.length > 0;
   const variantSizes = useMemo(() => product?.variants?.sizes?.length ? product.variants.sizes : [...new Set(productVariants.map(variant => variant.option_values.size).filter(Boolean))], [product, productVariants]);
   const variantColors = useMemo(() => product?.variants?.colors?.length ? product.variants.colors : [...new Set(productVariants.map(variant => variant.option_values.color).filter(Boolean))], [product, productVariants]);
-  const selectedVariant = productVariants.find(variant =>
-    variant.is_active &&
-    (!selectedSize || variant.option_values.size === selectedSize) &&
-    (!selectedColor || variant.option_values.color === selectedColor) &&
-    (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
-  );
+  const variantAttributeKeys = useMemo(() => {
+    const keys = new Set<string>();
+    productVariants.forEach(v => {
+      Object.keys(v.option_values || {}).forEach(k => {
+        if (v.option_values[k]) keys.add(k);
+      });
+    });
+    return keys;
+  }, [productVariants]);
+  const selectedVariant = hasProductVariants
+    ? (productVariants.find(variant => variant.id === selectedVariantId) ?? null)
+    : (productVariants.find(variant =>
+        variant.is_active &&
+        (!selectedSize || variant.option_values.size === selectedSize) &&
+        (!selectedColor || variant.option_values.color === selectedColor) &&
+        (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
+      ) ?? null);
   const purchasableStock = selectedVariant ? selectedVariant.stock_quantity : (product?.stock_quantity ?? 0);
   const purchasablePrice = selectedVariant?.price ?? product?.price ?? 0;
   const hasAvailableVariant = (size?: string, color?: string) => productVariants.some(variant =>
@@ -241,8 +256,9 @@ export default function ProductDetailPage() {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    if (variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
-    if (variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
+    if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
+    if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
+    if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
     if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
@@ -263,7 +279,7 @@ export default function ProductDetailPage() {
       });
     }
     toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
-  }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
+  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
 
   const handleBuyNow = useCallback(() => {
     if (!product || !seller) return;
@@ -271,8 +287,9 @@ export default function ProductDetailPage() {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    if (variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
-    if (variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
+    if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
+    if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
+    if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
     if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
@@ -292,23 +309,13 @@ export default function ProductDetailPage() {
     }));
     replaceItems(items);
     navigate("/checkout");
-  }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
+  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
-      <MarketplaceNavbar />
+      <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
       <Container className="py-6">
-        <Breadcrumb
-          items={[
-            { label: "Home", href: "/" },
-            { label: "Marketplace", href: "/marketplace" },
-            ...(category ? [{ label: category.name, href: `/categories/${category.slug || category.name}` }] : []),
-            { label: product?.title || "Product" },
-          ]}
-          className="mb-4"
-        />
-
         {loading && !product ? (
           <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
             <div className="aspect-square bg-[#F2F3F5] dark:bg-[#202020] rounded-2xl" />
@@ -451,111 +458,118 @@ export default function ProductDetailPage() {
                   </div>
                 )}
               </div>
+            </div>
 
-              {variantSizes.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#888880]">{selectedSize || "Select"}</span></p>
-                  <div className="flex flex-wrap gap-2">
-                    {variantSizes.map(size => (
-                      <button
-                        key={size}
-                        type="button"
-                        disabled={productVariants.length > 0 && !hasAvailableVariant(size, selectedColor || undefined)}
-                        onClick={() => setSelectedSize(size)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {variantColors.length > 0 && (
-                <div>
-                  <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#888880]">{selectedColor || "Select"}</span></p>
-                  <div className="flex flex-wrap gap-2">
-                    {variantColors.map(color => (
-                      <button
-                        key={color}
-                        type="button"
-                        disabled={productVariants.length > 0 && !hasAvailableVariant(selectedSize || undefined, color)}
-                        onClick={() => setSelectedColor(color)}
-                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
-                      >
-                        {color}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-4">
-                <div className="flex items-center border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
-                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">−</button>
-                  <span className="h-10 w-12 flex items-center justify-center text-sm font-semibold border-x border-[#E8E8E8] dark:border-[#222222]">{quantity}</span>
-                  <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">+</button>
-                </div>
-                <button
-                  onClick={handleAddToCart}
-                  disabled={purchasableStock === 0}
-                  className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
-                >
-                  {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
-                </button>
-              </div>
-
-              {user && user.id !== product.seller_id && purchasableStock > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setOfferOpen(true)}
-                  className="w-full rounded-full border border-[#111111] py-2.5 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
-                >
-                  Make an Offer
-                </button>
-              )}
-
-              {product && (
-                <MakeOfferDialog
-                  productId={product.id}
-                  productTitle={product.title}
-                  productPrice={purchasablePrice}
-                  open={offerOpen}
-                  onOpenChange={setOfferOpen}
-                  onSent={() => {}}
-                />
-              )}
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-xs text-[#888880]">
-                  <Truck className="h-4 w-4" />
-                  <span>{product.shipping_info || "Shipping calculated at checkout"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-[#888880]">
-                  <Shield className="h-4 w-4" />
-                  <span>Buyer protection — full refund if not as described</span>
-                </div>
-                {product.warranty && (
-                  <div className="flex items-center gap-2 text-xs text-[#888880]">
-                    <Info className="h-4 w-4" />
-                    <span>{formatWarranty(product.warranty)}</span>
+            {hasProductVariants ? (
+              <VariantSelector variants={productVariants} selectedVariantId={selectedVariantId} onSelect={setSelectedVariantId} />
+            ) : (
+              <>
+                {variantSizes.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#888880]">{selectedSize || "Select"}</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      {variantSizes.map(size => (
+                        <button
+                          key={size}
+                          type="button"
+                          disabled={!hasAvailableVariant(size, selectedColor || undefined)}
+                          onClick={() => setSelectedSize(size)}
+                          className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {variantColors.length > 0 && (
+                  <div>
+                    <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#888880]">{selectedColor || "Select"}</span></p>
+                    <div className="flex flex-wrap gap-2">
+                      {variantColors.map(color => (
+                        <button
+                          key={color}
+                          type="button"
+                          disabled={!hasAvailableVariant(selectedSize || undefined, color)}
+                          onClick={() => setSelectedColor(color)}
+                          className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                        >
+                          {color}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="flex items-center gap-4">
+              <div className="flex items-center border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">−</button>
+                <span className="h-10 w-12 flex items-center justify-center text-sm font-semibold border-x border-[#E8E8E8] dark:border-[#222222]">{quantity}</span>
+                <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">+</button>
               </div>
-
-              {seller && (
-                <SellerMiniCard
-                  sellerId={seller.user_id}
-                  name={seller.full_name || "Seller"}
-                  isVerified={seller.is_verified}
-                  avatarUrl={null}
-                  followers={sellerFollowers}
-                  rating={sellerAvgRating}
-                  soldCount={sellerTotalSold}
-                />
-              )}
-
-              {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
+              <button
+                onClick={handleAddToCart}
+                disabled={purchasableStock === 0}
+                className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
+              >
+                {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
+              </button>
             </div>
+
+            {user && user.id !== product.seller_id && purchasableStock > 0 && (
+              <button
+                type="button"
+                onClick={() => setOfferOpen(true)}
+                className="w-full rounded-full border border-[#111111] py-2.5 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+              >
+                Make an Offer
+              </button>
+            )}
+
+            {product && (
+              <MakeOfferDialog
+                productId={product.id}
+                productTitle={product.title}
+                productPrice={purchasablePrice}
+                open={offerOpen}
+                onOpenChange={setOfferOpen}
+                onSent={() => {}}
+              />
+            )}
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-[#888880]">
+                <Truck className="h-4 w-4" />
+                <span>{product.shipping_info || "Shipping calculated at checkout"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-[#888880]">
+                <Shield className="h-4 w-4" />
+                <span>Buyer protection — full refund if not as described</span>
+              </div>
+              {product.warranty && (
+                <div className="flex items-center gap-2 text-xs text-[#888880]">
+                  <Info className="h-4 w-4" />
+                  <span>{formatWarranty(product.warranty)}</span>
+                </div>
+              )}
+            </div>
+
+            {seller && (
+              <SellerMiniCard
+                sellerId={seller.user_id}
+                name={seller.full_name || "Seller"}
+                isVerified={seller.is_verified}
+                avatarUrl={null}
+                followers={sellerFollowers}
+                rating={sellerAvgRating}
+                soldCount={sellerTotalSold}
+              />
+            )}
+
+            {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
           </div>
         )}
 
@@ -657,7 +671,8 @@ export default function ProductDetailPage() {
               description={product.description}
               specs={(() => {
                 const s = getCategoryAttributes(product.variants);
-                return Object.keys(s).length ? s : null;
+                const filtered = Object.fromEntries(Object.entries(s).filter(([k]) => !variantAttributeKeys.has(k)));
+                return Object.keys(filtered).length ? filtered : null;
               })()}
             />
 
@@ -670,9 +685,18 @@ export default function ProductDetailPage() {
         )}
       </Container>
 
-      {/* Sticky mobile CTA bar - Add to Cart + Buy Now */}
+      {/* Sticky mobile CTA bar - Add to Cart + Buy Now with store icon */}
       <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom,0px)]">
         <Container className="flex items-center gap-2 py-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate(chatPath)}
+              className="rounded-full bg-[#111111]/80 dark:bg-[#1E1E1E]/80 p-2 transition-colors hover:bg-[#111111]/90 dark:hover:bg-[#FAF5F2]/90"
+              aria-label="Message seller"
+            >
+              <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
+            </button>
+          </div>
           <div className="flex-1 min-w-0">
             <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0] truncate">{product?.title}</p>
             <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</p>
