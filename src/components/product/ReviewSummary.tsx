@@ -32,14 +32,14 @@ export default function ReviewSummary({ average, total, positive, neutral, negat
   );
 
   const filters = [
-    { key: "all", label: `All (${total})` },
-    { key: "photos", label: `With Photos (${photoCount})` },
-    { key: "5", label: `5★ (${starCounts[5] ?? 0})` },
-    { key: "4", label: `4★ (${starCounts[4] ?? 0})` },
-    { key: "3", label: `3★ (${starCounts[3] ?? 0})` },
-    { key: "2", label: `2★ (${starCounts[2] ?? 0})` },
-    { key: "1", label: `1★ (${starCounts[1] ?? 0})` },
-  ];
+    { key: "all", label: `All (${total})`, count: total },
+    { key: "photos", label: `With Photos (${photoCount})`, count: photoCount },
+    { key: "5", label: `5★ (${starCounts[5] ?? 0})`, count: starCounts[5] ?? 0 },
+    { key: "4", label: `4★ (${starCounts[4] ?? 0})`, count: starCounts[4] ?? 0 },
+    { key: "3", label: `3★ (${starCounts[3] ?? 0})`, count: starCounts[3] ?? 0 },
+    { key: "2", label: `2★ (${starCounts[2] ?? 0})`, count: starCounts[2] ?? 0 },
+    { key: "1", label: `1★ (${starCounts[1] ?? 0})`, count: starCounts[1] ?? 0 },
+  ].filter(f => f.count > 0 || f.key === "all" || f.key === "photos");
 
   return (
     <div className="rounded-xl border border-border/60 p-5 bg-card">

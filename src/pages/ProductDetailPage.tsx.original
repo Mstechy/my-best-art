@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown, Flame, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown, Flame } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -18,7 +18,6 @@ import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
 import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
-import VariantSelector from "@/components/product/VariantSelector";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import SellerMiniCard from "@/components/product/SellerMiniCard";
 import ReviewSummary from "@/components/product/ReviewSummary";
@@ -37,19 +36,16 @@ export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addItem, replaceItems } = useCart();
-  const { user, role } = useAuth();
+  const { user } = useAuth();
   const { formatPrice } = useCurrency();
-  const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
 
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [selectedImage, setSelectedImage] = useState(0);
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [offerOpen, setOfferOpen] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
-  const [titleExpanded, setTitleExpanded] = useState(false);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,26 +98,14 @@ export default function ProductDetailPage() {
     trackView(id, viewerId);
   }, [id, user?.id]);
 
-  const hasProductVariants = productVariants.length > 0;
   const variantSizes = useMemo(() => product?.variants?.sizes?.length ? product.variants.sizes : [...new Set(productVariants.map(variant => variant.option_values.size).filter(Boolean))], [product, productVariants]);
   const variantColors = useMemo(() => product?.variants?.colors?.length ? product.variants.colors : [...new Set(productVariants.map(variant => variant.option_values.color).filter(Boolean))], [product, productVariants]);
-  const variantAttributeKeys = useMemo(() => {
-    const keys = new Set<string>();
-    productVariants.forEach(v => {
-      Object.keys(v.option_values || {}).forEach(k => {
-        if (v.option_values[k]) keys.add(k);
-      });
-    });
-    return keys;
-  }, [productVariants]);
-  const selectedVariant = hasProductVariants
-    ? (productVariants.find(variant => variant.id === selectedVariantId) ?? null)
-    : (productVariants.find(variant =>
-        variant.is_active &&
-        (!selectedSize || variant.option_values.size === selectedSize) &&
-        (!selectedColor || variant.option_values.color === selectedColor) &&
-        (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
-      ) ?? null);
+  const selectedVariant = productVariants.find(variant =>
+    variant.is_active &&
+    (!selectedSize || variant.option_values.size === selectedSize) &&
+    (!selectedColor || variant.option_values.color === selectedColor) &&
+    (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
+  );
   const purchasableStock = selectedVariant ? selectedVariant.stock_quantity : (product?.stock_quantity ?? 0);
   const purchasablePrice = selectedVariant?.price ?? product?.price ?? 0;
   const hasAvailableVariant = (size?: string, color?: string) => productVariants.some(variant =>
@@ -257,9 +241,8 @@ export default function ProductDetailPage() {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
-    if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
-    if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
+    if (variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
+    if (variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
     if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
@@ -280,7 +263,7 @@ export default function ProductDetailPage() {
       });
     }
     toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
-  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
+  }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
 
   const handleBuyNow = useCallback(() => {
     if (!product || !seller) return;
@@ -288,9 +271,8 @@ export default function ProductDetailPage() {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
-    if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
-    if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
+    if (variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
+    if (variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
     if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
@@ -310,13 +292,23 @@ export default function ProductDetailPage() {
     }));
     replaceItems(items);
     navigate("/checkout");
-  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
+  }, [product, seller, user, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
-      <MarketplaceNavbar showSearch={false} />
+      <MarketplaceNavbar />
       <CartDrawer />
       <Container className="py-6">
+        <Breadcrumb
+          items={[
+            { label: "Home", href: "/" },
+            { label: "Marketplace", href: "/marketplace" },
+            ...(category ? [{ label: category.name, href: `/categories/${category.slug || category.name}` }] : []),
+            { label: product?.title || "Product" },
+          ]}
+          className="mb-4"
+        />
+
         {loading && !product ? (
           <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
             <div className="aspect-square bg-[#F2F3F5] dark:bg-[#202020] rounded-2xl" />
@@ -348,7 +340,7 @@ export default function ProductDetailPage() {
                           onClick={() => { if (item.type === "image") setZoomedImage(item.url); }}
                         >
                           {/* Image index badge (AliExpress parity) */}
-                          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/65 text-white text-[11px] px-2 py-1 backdrop-blur-md">
+                          <span className="absolute bottom-3 left-3 z-10 rounded-full bg-black/60 text-white text-[11px] px-2.5 py-1 backdrop-blur-sm">
                             Item {index + 1}/{mediaItems.length}
                           </span>
                           {item.type === "video" ? (
@@ -390,7 +382,7 @@ export default function ProductDetailPage() {
                     <button
                       key={item.id}
                       onClick={() => setSelectedImage(idx)}
-                      className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${idx === selectedImage ? "border-[#111111] ring-2 ring-[#111111]/20 dark:border-[#FAF5F2] dark:ring-[#FAF5F2]/20 scale-[1.05]" : "border-transparent hover:border-[#C8C8C0] dark:hover:border-[#444444]"}`}
+                      className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-colors ${idx === selectedImage ? "border-[#111111] dark:border-[#FAF5F2]" : "border-transparent hover:border-[#C8C8C0] dark:hover:border-[#444444]"}`}
                     >
                       {item.type === "video" ? (
                         <div className="relative w-full h-full bg-[#F2F3F5] dark:bg-[#202020] flex items-center justify-center">
@@ -406,34 +398,13 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="space-y-5">
-              {/* Breadcrumb container (Home > Marketplace > Category) */}
-              <div className="flex items-center gap-1.5 text-xs text-[#666666] dark:text-[#A0A0A0]">
-                <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Home</Link>
-                <ChevronRight className="h-3 w-3 opacity-60" />
-                <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Marketplace</Link>
-                {category && (
-                  <>
-                    <ChevronRight className="h-3 w-3 opacity-60" />
-                    <Link to={`/categories/${category.slug || category.name}`} className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors truncate max-w-[160px]">
-                      {category.name}
-                    </Link>
-                  </>
-                )}
-              </div>
-
               <div>
-                {/* Condition pill + title (2-line clamp with expand) */}
-                {product.condition && (
-                  <span className="inline-block mb-2 rounded-md bg-[#F2F3F5] dark:bg-[#202020] px-2 py-0.5 text-[11px] font-semibold text-[#666666] dark:text-[#A0A0A0]">
-                    {product.condition}
-                  </span>
+                {category && (
+                  <Link to={`/categories/${category.slug || category.name}`} className="text-[10px] font-bold uppercase tracking-wider text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
+                    {category.name}
+                  </Link>
                 )}
-                <h1 className={`text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title}</h1>
-                {product.title.length > 90 && (
-                  <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] underline">
-                    {titleExpanded ? "Less" : "More"}
-                  </button>
-                )}
+                <h1 className="text-2xl font-bold mt-1">{product.title}</h1>
 
                 {/* Social proof directly under title (AliExpress parity) */}
                 <div className="flex items-center gap-4 text-xs text-[#888880] mt-2">
@@ -448,7 +419,6 @@ export default function ProductDetailPage() {
                   {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
                 </div>
 
-                {/* Compatible price block (no quantity selector here - moved to variant section) */}
                 {/* Promo pricing banner (MarketHub-adapted) */}
                 {product.compare_at_price && product.compare_at_price > product.price ? (
                   <div className="mt-4 rounded-2xl bg-[#1A1A1A] dark:bg-[#252525] text-white px-4 py-3">
@@ -481,118 +451,111 @@ export default function ProductDetailPage() {
                   </div>
                 )}
               </div>
-            </div>
 
-            {hasProductVariants ? (
-              <VariantSelector variants={productVariants} selectedVariantId={selectedVariantId} onSelect={setSelectedVariantId} />
-            ) : (
-              <>
-                {variantSizes.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#888880]">{selectedSize || "Select"}</span></p>
-                    <div className="flex flex-wrap gap-2">
-                      {variantSizes.map(size => (
-                        <button
-                          key={size}
-                          type="button"
-                          disabled={!hasAvailableVariant(size, selectedColor || undefined)}
-                          onClick={() => setSelectedSize(size)}
-                          className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
-                        >
-                          {size}
-                        </button>
-                      ))}
-                    </div>
+              {variantSizes.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#888880]">{selectedSize || "Select"}</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    {variantSizes.map(size => (
+                      <button
+                        key={size}
+                        type="button"
+                        disabled={productVariants.length > 0 && !hasAvailableVariant(size, selectedColor || undefined)}
+                        onClick={() => setSelectedSize(size)}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                      >
+                        {size}
+                      </button>
+                    ))}
                   </div>
-                )}
-
-                {variantColors.length > 0 && (
-                  <div>
-                    <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#888880]">{selectedColor || "Select"}</span></p>
-                    <div className="flex flex-wrap gap-2">
-                      {variantColors.map(color => (
-                        <button
-                          key={color}
-                          type="button"
-                          disabled={!hasAvailableVariant(selectedSize || undefined, color)}
-                          onClick={() => setSelectedColor(color)}
-                          className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
-                        >
-                          {color}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">−</button>
-                <span className="h-10 w-12 flex items-center justify-center text-sm font-semibold border-x border-[#E8E8E8] dark:border-[#222222]">{quantity}</span>
-                <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">+</button>
-              </div>
-              <button
-                onClick={handleAddToCart}
-                disabled={purchasableStock === 0}
-                className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
-              >
-                {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
-              </button>
-            </div>
-
-            {user && user.id !== product.seller_id && purchasableStock > 0 && (
-              <button
-                type="button"
-                onClick={() => setOfferOpen(true)}
-                className="w-full rounded-full border border-[#111111] py-2.5 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
-              >
-                Make an Offer
-              </button>
-            )}
-
-            {product && (
-              <MakeOfferDialog
-                productId={product.id}
-                productTitle={product.title}
-                productPrice={purchasablePrice}
-                open={offerOpen}
-                onOpenChange={setOfferOpen}
-                onSent={() => {}}
-              />
-            )}
-
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-[#888880]">
-                <Truck className="h-4 w-4" />
-                <span>{product.shipping_info || "Shipping calculated at checkout"}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[#888880]">
-                <Shield className="h-4 w-4" />
-                <span>Buyer protection — full refund if not as described</span>
-              </div>
-              {product.warranty && (
-                <div className="flex items-center gap-2 text-xs text-[#888880]">
-                  <Info className="h-4 w-4" />
-                  <span>{formatWarranty(product.warranty)}</span>
                 </div>
               )}
+              {variantColors.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#888880]">{selectedColor || "Select"}</span></p>
+                  <div className="flex flex-wrap gap-2">
+                    {variantColors.map(color => (
+                      <button
+                        key={color}
+                        type="button"
+                        disabled={productVariants.length > 0 && !hasAvailableVariant(selectedSize || undefined, color)}
+                        onClick={() => setSelectedColor(color)}
+                        className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                      >
+                        {color}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center gap-4">
+                <div className="flex items-center border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
+                  <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">−</button>
+                  <span className="h-10 w-12 flex items-center justify-center text-sm font-semibold border-x border-[#E8E8E8] dark:border-[#222222]">{quantity}</span>
+                  <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">+</button>
+                </div>
+                <button
+                  onClick={handleAddToCart}
+                  disabled={purchasableStock === 0}
+                  className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
+                >
+                  {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
+                </button>
+              </div>
+
+              {user && user.id !== product.seller_id && purchasableStock > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOfferOpen(true)}
+                  className="w-full rounded-full border border-[#111111] py-2.5 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+                >
+                  Make an Offer
+                </button>
+              )}
+
+              {product && (
+                <MakeOfferDialog
+                  productId={product.id}
+                  productTitle={product.title}
+                  productPrice={purchasablePrice}
+                  open={offerOpen}
+                  onOpenChange={setOfferOpen}
+                  onSent={() => {}}
+                />
+              )}
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-xs text-[#888880]">
+                  <Truck className="h-4 w-4" />
+                  <span>{product.shipping_info || "Shipping calculated at checkout"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-[#888880]">
+                  <Shield className="h-4 w-4" />
+                  <span>Buyer protection — full refund if not as described</span>
+                </div>
+                {product.warranty && (
+                  <div className="flex items-center gap-2 text-xs text-[#888880]">
+                    <Info className="h-4 w-4" />
+                    <span>{formatWarranty(product.warranty)}</span>
+                  </div>
+                )}
+              </div>
+
+              {seller && (
+                <SellerMiniCard
+                  sellerId={seller.user_id}
+                  name={seller.full_name || "Seller"}
+                  isVerified={seller.is_verified}
+                  avatarUrl={null}
+                  followers={sellerFollowers}
+                  rating={sellerAvgRating}
+                  soldCount={sellerTotalSold}
+                />
+              )}
+
+              {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
-
-            {seller && (
-              <SellerMiniCard
-                sellerId={seller.user_id}
-                name={seller.full_name || "Seller"}
-                isVerified={seller.is_verified}
-                avatarUrl={null}
-                followers={sellerFollowers}
-                rating={sellerAvgRating}
-                soldCount={sellerTotalSold}
-              />
-            )}
-
-            {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
           </div>
         )}
 
@@ -630,28 +593,6 @@ export default function ProductDetailPage() {
                 starCounts={{ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }}
                 allVerified={false}
               />
-              {/* Review photo gallery (AliExpress-style horizontal scroll) */}
-              {(() => {
-                const allPhotos = reviews.flatMap(r => r.photos.map(p => ({ url: p.url, reviewId: r.id })));
-                if (allPhotos.length === 0) return null;
-                return (
-                  <div className="mt-4">
-                    <p className="text-xs font-bold mb-2">Customer Photos</p>
-                    <div className="flex gap-2 overflow-x-auto pb-1">
-                      {allPhotos.map((photo, idx) => (
-                        <button
-                          key={`${photo.reviewId}-${idx}`}
-                          type="button"
-                          onClick={() => setZoomedImage(photo.url)}
-                          className="shrink-0 w-20 h-20 rounded-xl overflow-hidden border border-[#E8E8E8] dark:border-[#222222]"
-                        >
-                          <ProductImage src={photo.url} alt="Customer review photo" className="w-full h-full object-cover" loading="lazy" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })()}
               <div className="mt-4 space-y-4">
                 {reviews
                   .filter(r => reviewFilter === "all" || r.rating === Number(reviewFilter))
@@ -716,9 +657,7 @@ export default function ProductDetailPage() {
               description={product.description}
               specs={(() => {
                 const s = getCategoryAttributes(product.variants);
-                const SYSTEM_KEYS = new Set(["categoryGroup", "productTypeKey"]);
-                const filtered = Object.fromEntries(Object.entries(s).filter(([k]) => !variantAttributeKeys.has(k) && !SYSTEM_KEYS.has(k)));
-                return Object.keys(filtered).length ? filtered : null;
+                return Object.keys(s).length ? s : null;
               })()}
             />
 
@@ -731,28 +670,24 @@ export default function ProductDetailPage() {
         )}
       </Container>
 
-      {/* Sticky mobile CTA bar - store icon (→ seller page) + price left + full-width Add to Cart + Buy Now */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden" style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
+      {/* Sticky mobile CTA bar - Add to Cart + Buy Now */}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden pb-[env(safe-area-inset-bottom,0px)]">
         <Container className="flex items-center gap-2 py-2">
-          <button
-            onClick={() => product && navigate(`/seller/${product.seller_id}`)}
-            className="shrink-0 rounded-full bg-[#111111]/80 dark:bg-[#1E1E1E]/80 p-2 transition-colors hover:bg-[#111111]/90 dark:hover:bg-[#FAF5F2]/90"
-            aria-label="Visit store"
-          >
-            <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
-          </button>
-          <span className="shrink-0 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</span>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0] truncate">{product?.title}</p>
+            <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</p>
+          </div>
           <button
             onClick={handleAddToCart}
             disabled={purchasableStock === 0}
-            className="flex-1 h-[44px] rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] text-sm font-semibold disabled:opacity-50"
+            className="rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] px-4 py-2 text-xs font-bold disabled:opacity-50"
           >
             Add to Cart
           </button>
           <button
             onClick={handleBuyNow}
             disabled={purchasableStock === 0}
-            className="flex-1 h-[44px] rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold disabled:opacity-50"
+            className="rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] px-4 py-2 text-xs font-bold disabled:opacity-50"
           >
             Buy Now
           </button>
