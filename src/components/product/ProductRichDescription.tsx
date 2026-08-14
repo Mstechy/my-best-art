@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { ChevronDown } from "lucide-react";
 import DescriptionImage from "./DescriptionImage";
 
 type DescImage = { url: string; alt?: string | null; order?: number };
@@ -16,31 +17,42 @@ export default function ProductRichDescription({
     ? Object.entries(specs)
     : null;
 
+  const [specsOpen, setSpecsOpen] = useState(false);
+
   return (
     <section className="w-full max-w-4xl mx-auto">
-      {/* Specifications table — AliExpress style, shows before description */}
+      {/* Specifications — AliExpress-style collapsible dropdown */}
       {specsEntries && specsEntries.length > 0 && (
-        <div className="mb-8">
-          <h3 className="text-base font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Specifications</h3>
-          <div className="border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
-            <table className="w-full text-sm">
-              <tbody>
-                {specsEntries.map(([key, value], idx) => (
-                  <tr
-                    key={key}
-                    className={idx % 2 === 0 ? "bg-[#F9F9F8] dark:bg-[#1A1A1C]" : "bg-white dark:bg-[#1E1E1E]"}
-                  >
-                    <td className="px-4 py-3 text-xs text-[#888880] dark:text-[#A0A0A0] w-2/5 capitalize border-r border-[#E8E8E8] dark:border-[#222222]">
-                      {key.replace(/([A-Z])/g, " $1").trim()}
-                    </td>
-                    <td className="px-4 py-3 text-xs font-medium text-[#111111] dark:text-[#FAF5F2]">
-                      {value}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="mb-8 border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setSpecsOpen(o => !o)}
+            className="flex w-full items-center justify-between px-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A1C] text-left"
+          >
+            <span className="text-base font-bold text-[#111111] dark:text-[#FAF5F2]">Specifications</span>
+            <ChevronDown className={`h-4 w-4 text-[#888880] transition-transform ${specsOpen ? "rotate-180" : ""}`} />
+          </button>
+          {specsOpen && (
+            <div className="border-t border-[#E8E8E8] dark:border-[#222222]">
+              <table className="w-full text-sm">
+                <tbody>
+                  {specsEntries.map(([key, value], idx) => (
+                    <tr
+                      key={key}
+                      className={idx % 2 === 0 ? "bg-[#F9F9F8] dark:bg-[#1A1A1C]" : "bg-white dark:bg-[#1E1E1E]"}
+                    >
+                      <td className="px-4 py-3 text-xs text-[#888880] dark:text-[#A0A0A0] w-2/5 capitalize border-r border-[#E8E8E8] dark:border-[#222222]">
+                        {key.replace(/([A-Z])/g, " $1").trim()}
+                      </td>
+                      <td className="px-4 py-3 text-xs font-medium text-[#111111] dark:text-[#FAF5F2]">
+                        {value}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

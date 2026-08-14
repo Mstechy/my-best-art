@@ -135,6 +135,10 @@ export default function ProductDetailPage() {
     const images = (product?.product_images || []).filter((img) => img.image_url?.trim().length > 0);
     const productVideos = product ? getProductVideos(product.variants).filter((vurl) => vurl?.trim().length > 0) : [];
     const list: { type: "video" | "image"; url: string; id: string }[] = [];
+    // If a variant with its own image is selected, show that image first (AliExpress behavior)
+    if (selectedVariant?.image_url?.trim()) {
+      list.push({ type: "image", url: selectedVariant.image_url.trim(), id: `variant-${selectedVariant.id}` });
+    }
     productVideos.forEach((vurl, idx) => {
       list.push({ type: "video", url: vurl, id: `video-${idx}` });
     });
@@ -142,7 +146,7 @@ export default function ProductDetailPage() {
       list.push({ type: "image", url: img.image_url.trim(), id: img.id });
     });
     return list;
-  }, [product]);
+  }, [product, selectedVariant]);
 
   const carouselLockRef = useRef(false);
   const lastRequestedIndexRef = useRef<number | null>(null);

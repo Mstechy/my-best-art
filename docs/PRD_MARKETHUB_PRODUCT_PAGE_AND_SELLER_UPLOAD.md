@@ -45,6 +45,7 @@ Make the product listing experience match Amazon/AliExpress standards so the mar
 - **Search bar hidden on PDP** ✓ — `MarketplaceNavbar showSearch={false}`; a search icon in the header navigates to `/marketplace`
 - **Breadcrumb removed from above gallery** ✓ — no text precedes the hero image
 - **Variant selector: IMPLEMENTED** ✓ — generic `VariantSelector` component detects all attribute dimensions from `product_variants.option_values` (size, color, storage, etc.), renders labeled chips with selected state + checkmark, updates price/stock, and wires `product_variant_id` into cart/checkout
+- **Variant image swap: IMPLEMENTED** ✓ — `product_variants.image_url` is selected by the PDP hook; when a variant with its own image is selected, that image is shown first in the gallery (AliExpress behavior). Seller form Variants tab now has an "Image URL (optional)" field per variant row, saved to `image_url` on insert and loaded back on edit.
 - **Store icon in sticky mobile CTA** ✓ — leftmost circular button navigates to the seller's store page (`/seller/${product.seller_id}`), with the price shown left and full-width Add to Cart + Buy Now buttons
 - **Specifications table: MISSING** (specs saved by seller never shown) — variant attribute keys AND system keys (`categoryGroup`, `productTypeKey`) are excluded from specs to avoid duplication and raw internal strings
 - **Review photo gallery** ✓ — horizontal "Customer Photos" scroll row above review cards, tap to open lightbox

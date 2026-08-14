@@ -37,7 +37,7 @@ export interface Product {
 }
 
 export interface ProductDoc { id: string; url: string; label: string | null; }
-export interface ProductVariant { id: string; option_values: Record<string, string>; price: number | null; stock_quantity: number; is_active: boolean; }
+export interface ProductVariant { id: string; option_values: Record<string, string>; price: number | null; stock_quantity: number; is_active: boolean; image_url: string | null; }
 export interface SellerInfo { user_id: string; full_name: string | null; is_verified: boolean; avatar_url: string | null; }
 export interface CategoryInfo { name: string; slug?: string | null; }
 export interface ReviewData {
@@ -144,7 +144,7 @@ export function useProductVariants(productId: string | undefined) {
       if (!productId) return [] as ProductVariant[];
       const { data } = await supabase
         .from("product_variants")
-        .select("id, option_values, price, stock_quantity, is_active")
+        .select("id, option_values, price, stock_quantity, is_active, image_url")
         .eq("product_id", productId)
         .eq("is_active", true)
         .order("sort_order");

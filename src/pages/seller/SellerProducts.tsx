@@ -42,6 +42,7 @@ interface ProductVariant {
   sku: string | null;
   price: number | null;
   stock_quantity: number;
+  image_url: string | null;
 }
 
 interface Product {
@@ -160,7 +161,7 @@ interface VideoMediaItem {
   error?: string;
 }
 
-interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; }
+interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; imageUrl: string; }
 type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
 
 function normalizeProductRow(row: ProductRow): Product {
@@ -559,7 +560,7 @@ export default function SellerProducts() {
     });
     setDocFile(null);
     const { data: variants } = await supabase.from("product_variants").select("id, option_values, sku, price, stock_quantity").eq("product_id", product.id).order("sort_order");
-    setVariantRows((variants ?? []).map((variant: ProductVariant) => ({ key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity) })));
+    setVariantRows((variants ?? []).map((variant: ProductVariant) => ({ key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity), imageUrl: variant.image_url || "" })));
     setFormTab("basic");
     setDialogOpen(true);
   };
@@ -704,7 +705,7 @@ export default function SellerProducts() {
 
     if (productId) {
       const { error: removeVariantsError } = await supabase.from("product_variants").delete().eq("product_id", productId);
-      const { error: addVariantsError } = variantRows.length ? await supabase.from("product_variants").insert(variantRows.map((row, sort_order) => ({ product_id: productId, option_values: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}) }, sku: row.sku.trim() || null, price: row.price ? Number(row.price) : null, stock_quantity: Number(row.stock), sort_order }))) : { error: null };
+      const { error: addVariantsError } = variantRows.length ? await supabase.from("product_variants").insert(variantRows.map((row, sort_order) => ({ product_id: productId, option_values: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}) }, sku: row.sku.trim() || null, price: row.price ? Number(row.price) : null, stock_quantity: Number(row.stock), image_url: row.imageUrl.trim() || null, sort_order }))) : { error: null };
       if (removeVariantsError || addVariantsError) { toast({ title: "Could not save variants", description: removeVariantsError?.message || addVariantsError?.message, variant: "destructive" }); setSaving(false); return; }
     }
 
@@ -1096,17 +1097,18 @@ export default function SellerProducts() {
                   </div>
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
-                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-6">
+                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-7">
                         <Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="Size" />
                         <Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="Colour" />
                         <Input value={row.sku} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, sku: e.target.value } : item))} placeholder="SKU" />
                         <Input type="number" min="0.01" step="0.01" value={row.price} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} placeholder="Price (optional)" />
                         <Input type="number" min="0" step="1" value={row.stock} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, stock: e.target.value } : item))} placeholder="Stock" />
+                        <Input value={row.imageUrl} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, imageUrl: e.target.value } : item))} placeholder="Image URL (optional)" className="col-span-2 sm:col-span-1" />
                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setVariantRows(rows => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0" }])}><Plus className="h-4 w-4" /> Add size / colour SKU</Button>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add size / colour SKU</Button>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">
