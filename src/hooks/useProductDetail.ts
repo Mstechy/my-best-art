@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
