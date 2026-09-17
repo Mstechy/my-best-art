@@ -121,12 +121,106 @@ separately, and two look like **real runtime defects**:
 
 ---
 
+## PHASE 3 — Shared primitives ✅ DONE & VERIFIED
+
+Built the shared components the design reuses everywhere, so the same
+star-rating, price and section-heading logic is never re-implemented per page
+(the doc's "don't create a second version of any of these" rule).
+
+### New: `src/components/ui/StarRating.tsx`
+Implements the design's `.pc-rating` / `.pd-meta` pattern.
+- Sizes `xs`/`sm`/`md`/`lg` (12→20px star, `text-xs`→`text-base`).
+- `showStars` renders a **true 5-star row with fractional fill** — a grey track
+  plus a colour overlay clipped to `rating/5*100%`, so 4.4 fills 88% with no
+  half-star icon. `role="img"` + `aria-label="4.4 out of 5"`.
+- Composes `★ 4.7 · 2,108 sold` / `★ 4.4 · 318 reviews · 620 sold` from
+  optional `reviewCount` + `soldCount` with thousands separators.
+- **Amazon/AliExpress convention built in:** an unrated product shows **"New"**
+  rather than `0.0`, which reads as a bad rating to shoppers
+  (`showNewWhenUnrated`, overridable via `newLabel`).
+
+### New: `src/components/product/PriceDisplay.tsx`
+- Sizes `sm` (card: 15px/800) / `md` / `lg` (PDP: 28px/800), struck-through
+  original at 12px/15px — exactly the design's `.pc-price` and `.pd-price-row`.
+- Current price uses **`text-deal`**, not `text-primary`, per the design.
+- `formatPrice` is injected rather than imported, so the component stays
+  presentational and testable.
+- Exports **`discountPercent(price, compareAt)`** so callers can render the
+  `-30%` badge on the image (design's `.pc-badge`) **without duplicating the
+  maths** — several pages currently recompute this by hand.
+
+### Updated: `src/components/ui/SectionHeader.tsx` → design's `.section-head`
+`items-baseline` · `border-b border-line` · `pb-3` · `h2` 19px/`font-extrabold` ·
+link 13px/`font-bold`/`text-brand-dark`. All existing props kept, so
+`LandingPage` and `HorizontalScrollSection` keep working.
+**Deliberate:** the title uses `text-foreground`, **not** `text-ink`. `--ink`
+is re-declared in dark mode, so `text-ink` would render dark-on-dark; the
+`foreground` HSL triplet inverts correctly.
+
+### Updated: `src/components/ui/button.tsx` → brand variants
+Added `brand` (Buy Now), `brandOutline` (Add to Cart), `outlineStrong`
+(Message / Visit Store), `onInk` (white button on the hero/rail dark surface),
+`deal`; plus pill sizes `pill` / `pillSm` / `pillLg`.
+
+**Hover rule encoded in comments:** `bg-brand` resolves to `var(--brand)`, an
+opaque raw value, so `hover:bg-brand/90` emits **nothing**. Brand hovers step to
+the neighbouring **solid** token (`brand` → `brand-dark`).
+
+**Contrast decision:** the sketch's `.btn-add` uses white on `#ff7a1a`, which is
+**2.6:1 and fails WCAG AA**. The design's own `.pill` already uses ink-on-orange,
+so `brand` follows that (≈7:1). One class to revert if the literal white is wanted.
+
+### 🔴 Newly found: the entire test suite was dead
+`vitest.config.ts` has always pointed `setupFiles` at `./src/test/setup.ts`, but
+**`src/test/` did not exist** — so `npm test` failed before collecting a single
+test. `docs/E2E_CHECKLIST.md` even references `src/test/productRefCard.test.ts`,
+which was never committed.
+Then a second layer: `@testing-library/react@16.3.2` declares
+`@testing-library/dom@^10` as a **required peer**, and it was **not installed**.
+
+Fixed both:
+- Created `src/test/setup.ts` (jest-dom + `matchMedia` / `ResizeObserver` /
+  `IntersectionObserver` stubs — Radix primitives throw in jsdom without them).
+- Installed `@testing-library/dom@10.4.2` as a devDependency.
+- Added `src/test/priceDisplay.test.tsx` (8 tests) and
+  `src/test/starRating.test.tsx` (9 tests).
+
+### Evidence
+```
+npx vitest run  →  Test Files  2 passed (2)
+                   Tests      17 passed (17)
+npm run build   →  ✓ built in 6.87s   (CSS 123.6 KB)
+```
+Confirmed generated in CSS: `.text-deal` `.text-quiet` `.text-ink-soft`
+`.border-line` `.bg-brand` `.bg-deal` `.text-star` `.fill-star` `.bg-panel`
+`.border-line-strong` `.border-foreground` `.hover:bg-brand-dark`
+`.hover:bg-brand-tint` `.hover:border-brand` `.hover:text-brand-dark` ✅
+
+---
+
+##  Defect register (found while working — none caused by this redesign)
+
+| # | Location | Issue | Status |
+| --- | --- | --- | --- |
+| 1 | `tailwind.config.ts` | `--success`, `--price`, `--ink`, `--gradient-deal` referenced but never defined → those classes emitted nothing | ✅ **fixed in Phase 1** |
+| 2 | `src/index.css` | `hsl(var(--ink))` with a hex `--ink` = invalid CSS | ✅ **fixed in Phase 1** |
+| 3 | `index.html` | Inter weight 800 never loaded → synthesised faux-bold headings | ✅ **fixed in Phase 1** |
+| 4 | `src/test/` | Missing → `npm test` could never run | ✅ **fixed in Phase 3** |
+| 5 | deps | `@testing-library/dom` peer not installed → tests uncollectable | ✅ **fixed in Phase 3** |
+| 6 | `hooks/useCurrency.tsx` | `formatPrice(usdPrice)` takes **one** arg, but `LandingPage` calls `formatPrice(amount, product.currency)` — the currency is **silently ignored**, so non-USD products render at USD-converted rates | 🔴 **open** |
+| 7 | `pages/buyer/BuyerWishlist.tsx:75` | `addItem(...)` omits required `product_id` → likely breaks add-to-cart from Wishlist | 🔴 **open** |
+| 8 | `components/RecentlyViewed.tsx:79` | Same as #7 | 🔴 **open** |
+| 9 | `components/OffersReceivedCard.tsx:86` / `OffersSentCard.tsx:79` | `amount` typed `string`, DB returns `number` | 🟠 **open** |
+| 10 | `lib/sku.ts:2` | `replaceAll` needs `lib: es2021+` in tsconfig | 🟢 **open** |
+
+---
+
 ## Next phases
 
-3. Shared components: `StarRating`, `PriceDisplay`, `SectionHeader`, `Button` variants
-4. `CategoryRail` + homepage restructure
-5. `ProductCard` refinements
-6. `MarketplacePage` — persistent filter sidebar (resolved by `style.css`)
+4. `CategoryRail` + homepage restructure (Conflict 5 — needs the sketch-vs-PRD call)
+5. `ProductCard` restyle onto the new primitives
+6. `MarketplacePage` — persistent sticky filter sidebar
 7. PDP — Specifications table (documented missing), shipping-info dedupe
-8. Cart + account pages (new routes)
+8. Cart + account pages at `/cart` and `/account`
 9. Hex sweep (≈200 hard-coded hexes → tokens across ≈15 components)
+10. Defects #6–#10

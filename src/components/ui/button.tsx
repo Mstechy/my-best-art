@@ -15,12 +15,37 @@ const buttonVariants = cva(
         secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+
+        /* ── MarketHub brand variants ─────────────────────────────────────
+           NOTE ON HOVER: `bg-brand` resolves to `var(--brand)`, an opaque raw
+           value, so `hover:bg-brand/90` would emit nothing. Brand hovers
+           therefore step to the neighbouring SOLID token (brand → brand-dark).
+           Same rule everywhere: raw-var tokens cannot take an alpha modifier.
+           ────────────────────────────────────────────────────────────── */
+        // Primary commerce CTA ("Buy Now"). Ink-on-orange per the design's own
+        // .pill rule — white on #ff7a1a is only 2.6:1 and fails WCAG AA.
+        brand: "bg-brand text-ink hover:bg-brand-dark",
+        // Secondary CTA ("Add to Cart") — outlined, fills with brand tint.
+        brandOutline:
+          "border-[1.5px] border-foreground bg-panel text-foreground hover:border-brand hover:bg-brand-tint hover:text-brand-dark",
+        // Neutral outlined action (Message / Visit Store).
+        outlineStrong:
+          "border border-line-strong bg-panel text-foreground hover:bg-accent hover:text-accent-foreground",
+        // Light button placed ON a dark surface (hero card, category rail).
+        // Pinned to a white background, so dark ink text is correct in BOTH themes.
+        onInk: "bg-white text-ink hover:bg-brand-tint",
+        // Sale / urgency action.
+        deal: "bg-deal text-white hover:bg-destructive",
       },
       size: {
         default: "h-10 px-4 py-2",
         sm: "h-9 rounded-md px-3",
         lg: "h-11 rounded-md px-8",
         icon: "h-10 w-10",
+        /* Pill family from the design (radius 999px). */
+        pill: "h-11 rounded-full px-6 text-sm font-bold",
+        pillSm: "h-9 rounded-full px-4 text-[13px] font-bold",
+        pillLg: "h-12 rounded-full px-7 text-sm font-bold",
       },
     },
     defaultVariants: {
