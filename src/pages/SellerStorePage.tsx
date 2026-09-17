@@ -143,7 +143,7 @@ export default function SellerStorePage() {
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-2xl font-bold text-foreground">{seller.full_name || "Seller Store"}</h1>
                 {seller.is_verified && (
-                  <Badge className="bg-accent/10 text-accent border-accent/20 gap-1">
+                  <Badge className="bg-success/10 text-success border-success/20 gap-1">
                     <CheckCircle2 className="h-3 w-3" /> Verified
                   </Badge>
                 )}
@@ -178,7 +178,7 @@ export default function SellerStorePage() {
             )}
             {store?.return_policy && (
               <div className="rounded-2xl border border-border/60 bg-card p-5">
-                <div className="flex items-center gap-2 mb-2"><RotateCcw className="h-4 w-4 text-accent" /><h3 className="font-display font-semibold text-foreground">Return Policy</h3></div>
+                <div className="flex items-center gap-2 mb-2"><RotateCcw className="h-4 w-4 text-success" /><h3 className="font-display font-semibold text-foreground">Return Policy</h3></div>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{store.return_policy}</p>
               </div>
             )}
@@ -215,7 +215,7 @@ export default function SellerStorePage() {
                       )}
                       {discount && <Badge className="absolute top-1.5 left-1.5 bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0 font-bold">-{discount}%</Badge>}
                       {isHot && <Badge className="absolute top-1.5 right-1.5 bg-orange-500 text-white text-[10px] px-1.5 py-0"><Flame className="h-2.5 w-2.5 mr-0.5" /> Hot</Badge>}
-                      {!isHot && isNew && <Badge className="absolute top-1.5 right-1.5 bg-accent text-accent-foreground text-[10px] px-1.5 py-0"><Sparkles className="h-2.5 w-2.5 mr-0.5" /> New</Badge>}
+                      {!isHot && isNew && <Badge className="absolute top-1.5 right-1.5 bg-success text-success-foreground text-[10px] px-1.5 py-0"><Sparkles className="h-2.5 w-2.5 mr-0.5" /> New</Badge>}
                     </div>
                     <div className="p-3">
                       <h3 className="text-xs font-medium text-foreground line-clamp-2 min-h-[2rem]">{product.title}</h3>

@@ -125,7 +125,7 @@ export default function ProductRefCard({ productId, orderId, offerPrice, attachm
             <div className="shrink-0 text-right">
               {offerPrice != null ? (
                 <div className="flex flex-col items-end">
-                  <span className="inline-flex items-center gap-1 text-sm font-bold text-accent">
+                  <span className="inline-flex items-center gap-1 text-sm font-bold text-success">
                     <Tag className="h-3 w-3" /> ${offerPrice.toFixed(2)}
                   </span>
                   <span className="text-[10px] text-muted-foreground line-through">${product.price.toFixed(2)}</span>

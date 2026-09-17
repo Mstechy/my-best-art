@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE SKETCH — NOT PART OF THE BUILD.
+  Source: Claude desktop redesign concept (piece 2, COMPLETE) — the CATEGORY / LISTING page.
+  Concept filename: category.html   <title>Electronics — MarketHub</title>
+
+  NOTE: the owner labelled this paste "product html", but it is NOT the product
+  detail page — it is the category/listing page. It supersedes the earlier
+  truncated paste of the same page and fills in the previously missing
+  Brand/Rating/Shipping groups, the listing toolbar and the full 8-card grid.
+
+  Companion file: style.css (STILL NOT RECEIVED).
+  Design tokens referenced but UNDEFINED in this repo: --line-strong, --panel
+  (plus --line / --panel etc. known only from style.css: still unseen).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Electronics — MarketHub</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .filter-toggle{display:none}
+  @media (max-width:760px){
+    .filter-toggle{
+      display:inline-flex; align-items:center; gap:6px;
+      border:1px solid var(--line-strong); border-radius:8px;
+      padding:8px 12px; font-size:13px; font-weight:600; background:var(--panel);
+    }
+    .filter-toggle svg{width:15px;height:15px}
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo"><span class="mkt">market</span><span class="hub">hub</span></a>
+    <form class="search-form" role="search">
+      <input type="text" value="Electronics" aria-label="Search products">
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </form>
+    <nav class="header-actions">
+      <a href="#" class="icon-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        Saved
+      </a>
+      <a href="cart.html" class="icon-link">
+        <span class="badge">3</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+        Cart
+      </a>
+      <a href="account.html" class="icon-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Account
+      </a>
+    </nav>
+  </div>
+</header>
+
+<nav class="category-rail" aria-label="Categories">
+  <div class="container">
+    <a href="category.html" class="all">All Categories</a>
+    <a href="category.html?c=electronics" class="active">Electronics</a>
+    <a href="category.html?c=phones">Phones &amp; Accessories</a>
+    <a href="category.html?c=fashion">Fashion</a>
+    <a href="category.html?c=home">Home &amp; Living</a>
+    <a href="category.html?c=beauty">Beauty &amp; Health</a>
+    <a href="category.html?c=jewelry">Jewelry &amp; Watches</a>
+    <a href="category.html?c=sports">Sports &amp; Outdoors</a>
+    <a href="category.html?c=toys">Toys &amp; Kids</a>
+  </div>
+</nav>
+
+<main class="container">
+
+  <p class="breadcrumb"><a href="index.html">Home</a> / <a href="category.html">Categories</a> / Electronics</p>
+
+  <div class="listing">
+
+    <!-- FILTER SIDEBAR: the actual mechanism that prevents heavy scrolling -->
+    <aside class="filters" id="filters">
+      <div class="filter-group">
+        <h5>Price</h5>
+        <div class="price-inputs">
+          <input type="number" placeholder="Min" aria-label="Minimum price">
+          <span>–</span>
+          <input type="number" placeholder="Max" aria-label="Maximum price">
+        </div>
+      </div>
+      <div class="filter-group">
+        <h5>Category</h5>
+        <label class="filter-row"><input type="checkbox" checked> Phones (3,210)</label>
+        <label class="filter-row"><input type="checkbox"> Laptops (1,048)</label>
+        <label class="filter-row"><input type="checkbox"> Headphones (2,377)</label>
+        <label class="filter-row"><input type="checkbox"> Smartwatches (912)</label>
+        <label class="filter-row"><input type="checkbox"> Accessories (5,660)</label>
+      </div>
+      <div class="filter-group">
+        <h5>Brand</h5>
+        <label class="filter-row"><input type="checkbox"> Apex</label>
+        <label class="filter-row"><input type="checkbox"> TrueSound</label>
+        <label class="filter-row"><input type="checkbox"> FitTrack</label>
+        <label class="filter-row"><input type="checkbox"> KeyForge</label>
+      </div>
+      <div class="filter-group">
+        <h5>Rating</h5>
+        <label class="filter-row"><input type="radio" name="rating"> 4★ &amp; up</label>
+        <label class="filter-row"><input type="radio" name="rating"> 3★ &amp; up</label>
+      </div>
+      <div class="filter-group">
+        <h5>Shipping</h5>
+        <label class="filter-row"><input type="checkbox"> Free shipping</label>
+        <label class="filter-row"><input type="checkbox"> Ships in 3 days</label>
+      </div>
+      <button class="btn-clear">Clear all filters</button>
+    </aside>
+
+    <!-- RESULTS -->
+    <div>
+      <button class="filter-toggle" onclick="document.getElementById('filters').classList.toggle('open')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="1.6" fill="currentColor"/><circle cx="15" cy="12" r="1.6" fill="currentColor"/><circle cx="9" cy="18" r="1.6" fill="currentColor"/></svg>
+        Filters
+      </button>
+
+      <div class="listing-toolbar">
+        <span class="result-count">2,481 results in Electronics</span>
+        <select class="sort-select" aria-label="Sort by">
+          <option>Sort: Relevance</option>
+          <option>Price: Low to High</option>
+          <option>Price: High to Low</option>
+          <option>Newest first</option>
+          <option>Best rated</option>
+        </select>
+      </div>
+
+      <div class="listing-grid">
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><span class="pc-badge">-30%</span><img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&q=80" alt="Smartphone"></div>
+          <div class="pc-body">
+            <div class="pc-title">Apex X16 Pro 256GB, 6.7" AMOLED, 5G Unlocked</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.4 · 318 sold</div>
+            <div class="pc-price"><span class="now">$489.00</span><span class="was">$699.00</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><span class="pc-badge">-38%</span><img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&q=80" alt="Wireless earbuds"></div>
+          <div class="pc-body">
+            <div class="pc-title">TrueSound Pro Wireless Earbuds, Active Noise Cancelling</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.7 · 2,108 sold</div>
+            <div class="pc-price"><span class="now">$24.99</span><span class="was">$39.99</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><span class="pc-badge">-52%</span><img src="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&q=80" alt="Smart watch"></div>
+          <div class="pc-body">
+            <div class="pc-title">FitTrack GT3 Smartwatch, Heart Rate &amp; SpO2 Monitor</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.5 · 963 sold</div>
+            <div class="pc-price"><span class="now">$18.40</span><span class="was">$38.00</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><img src="https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400&q=80" alt="Mechanical keyboard"></div>
+          <div class="pc-body">
+            <div class="pc-title">KeyForge 75% Mechanical Keyboard, Hot-Swappable Switches</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.9 · 734 sold</div>
+            <div class="pc-price"><span class="now">$42.50</span><span class="was">$49.99</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><span class="pc-badge">-45%</span><img src="https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&q=80" alt="Phone case"></div>
+          <div class="pc-body">
+            <div class="pc-title">ClearArmor Shockproof Case for iPhone 16 Pro Max, 3-Pack</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.6 · 1,290 sold</div>
+            <div class="pc-price"><span class="now">$6.60</span><span class="was">$11.99</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><span class="pc-badge">-20%</span><img src="https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?w=400&q=80" alt="Bluetooth speaker"></div>
+          <div class="pc-body">
+            <div class="pc-title">BoomBox Mini Portable Bluetooth Speaker, IPX7 Waterproof</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.8 · 5,442 sold</div>
+            <div class="pc-price"><span class="now">$15.99</span><span class="was">$19.99</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><img src="https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&q=80" alt="Laptop backpack"></div>
+          <div class="pc-body">
+            <div class="pc-title">UrbanCarry Anti-Theft Laptop Backpack, USB Charging Port</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.3 · 288 sold</div>
+            <div class="pc-price"><span class="now">$33.20</span></div>
+          </div>
+        </a>
+        <a class="product-card" href="product.html">
+          <div class="pc-media"><img src="https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400&q=80" alt="Ring light"></div>
+          <div class="pc-body">
+            <div class="pc-title">HaloGlow 10" Ring Light with Tripod Stand and Phone Clip</div>
+            <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> New</div>
+            <div class="pc-price"><span class="now">$21.00</span></div>
+          </div>
+        </a>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>MarketHub</h4>
+        <p style="font-size:13px;color:#a8a696;max-width:280px">Connecting buyers with verified independent sellers. Escrow payments and buyer protection on every order.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul><li><a href="#">All products</a></li><li><a href="#">Categories</a></li><li><a href="#">Top sellers</a></li><li><a href="#">Deals</a></li></ul>
+      </div>
+      <div>
+        <h4>Sell</h4>
+        <ul><li><a href="#">Become a vendor</a></li><li><a href="#">Seller dashboard</a></li><li><a href="#">Seller guidelines</a></li></ul>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <ul><li><a href="#">Buyer center</a></li><li><a href="#">Shipping &amp; delivery</a></li><li><a href="#">Payment &amp; escrow guard</a></li><li><a href="#">Contact support</a></li></ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 MarketHub. All rights reserved.</span>
+      <span>support@markethub.com</span>
+    </div>
+  </div>
+</footer>
+
+<nav class="bottom-nav">
+  <div class="container">
+    <a href="index.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+      Home
+    </a>
+    <a href="category.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Category
+    </a>
+    <a href="cart.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+      Cart
+    </a>
+    <a href="account.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      Account
+    </a>
+  </div>
+</nav>
+
+</body>
+</html>

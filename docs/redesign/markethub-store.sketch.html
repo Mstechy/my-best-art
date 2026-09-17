@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE SKETCH — NOT PART OF THE BUILD.
+  Source: Claude desktop redesign concept — piece 7: SELLER STORE page (store.html).
+  Concept filename: store.html   <title>Apex Official Store — MarketHub</title>
+
+  Structure: .store-banner (gradient) → .store-id (overlapping logo) →
+  .store-actions (Follow / Message) → .store-metrics (3 trust metrics) →
+  .store-tabs (All products / Categories / Reviews / About) → .product-grid
+  Uses --shadow-pop, --brand, --brand-dark, --ink, --line, --radius-m.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex Official Store — MarketHub</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .store-banner{height:120px;border-radius:var(--radius-m);background:linear-gradient(135deg,var(--ink),#2b2a24);margin-top:16px}
+  .store-id{display:flex;gap:16px;align-items:flex-end;margin-top:-32px;padding:0 16px}
+  .store-logo{width:72px;height:72px;border-radius:14px;background:#fff;border:3px solid #fff;box-shadow:var(--shadow-pop);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:var(--brand-dark)}
+  .store-actions{display:flex;gap:10px;margin-top:14px}
+  .store-metrics{display:flex;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin-top:16px;padding:14px 0}
+  .store-metrics div{flex:1;text-align:center;border-left:1px solid var(--line)}
+  .store-metrics div:first-child{border-left:none}
+  .store-tabs{display:flex;gap:24px;margin-top:16px;border-bottom:1px solid var(--line)}
+  .store-tabs span{font-size:13px;font-weight:600;color:var(--muted);padding-bottom:10px}
+  .store-tabs span.active{color:var(--ink);border-bottom:2px solid var(--brand)}
+</style>
+</head>
+<body>
+<header class="site-header"><div class="container">
+  <a href="index.html" class="logo"><span class="mkt">market</span><span class="hub">hub</span></a>
+  <form class="search-form"><input type="text" placeholder="Search in this store"><button type="submit">🔍</button></form>
+  <nav class="header-actions"><a href="cart.html" class="icon-link">🛒 Cart</a></nav>
+</div></header>
+
+<main class="container">
+  <div class="store-banner"></div>
+  <div class="store-id">
+    <div class="store-logo">A</div>
+    <div>
+      <div style="font-size:18px;font-weight:800">Apex Official Store</div>
+      <div style="font-size:12px;color:var(--muted)">★ 4.8 · 98.6% positive · 12.4k followers</div>
+    </div>
+  </div>
+  <div class="store-actions">
+    <button class="btn-primary" style="background:var(--brand);color:#fff;padding:9px 20px;border-radius:8px;font-size:13px">+ Follow</button>
+    <button class="btn-primary" style="background:#fff;color:var(--ink);border:1px solid var(--line-strong);padding:9px 20px;border-radius:8px;font-size:13px">Message</button>
+  </div>
+
+  <div class="store-metrics">
+    <div><div style="font-weight:800">4.8</div><div style="font-size:11px;color:var(--muted)">Item as described</div></div>
+    <div><div style="font-weight:800">96%</div><div style="font-size:11px;color:var(--muted)">Ships on time</div></div>
+    <div><div style="font-weight:800">2h</div><div style="font-size:11px;color:var(--muted)">Avg. response</div></div>
+  </div>
+
+  <div class="store-tabs"><span class="active">All products (142)</span><span>Categories</span><span>Reviews</span><span>About</span></div>
+
+  <section class="section">
+    <div class="product-grid">
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&q=80" alt="Apex X16 Pro"></div>
+        <div class="pc-body"><div class="pc-title">Apex X16 Pro 256GB</div><div class="pc-rating">★4.4 · 318 sold</div><div class="pc-price"><span class="now">$489</span></div></div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&q=80" alt="Apex Buds Air"></div>
+        <div class="pc-body"><div class="pc-title">Apex Buds Air, ANC</div><div class="pc-rating">★4.6 · 502 sold</div><div class="pc-price"><span class="now">$39</span></div></div>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><span>© 2026 MarketHub.</span><span>support@markethub.com</span></div></div></footer>
+</body>
+</html>

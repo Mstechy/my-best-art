@@ -229,7 +229,7 @@ export default function AdminSellers() {
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
                             {user.roles.includes("admin") && <Badge className="bg-primary/10 text-primary border-primary/20 gap-1"><Crown className="h-3 w-3" /> Admin</Badge>}
-                            {user.seller_capable && <Badge className="bg-accent/10 text-accent border-accent/20 gap-1"><Store className="h-3 w-3" /> Seller</Badge>}
+                            {user.seller_capable && <Badge className="bg-success/10 text-success border-success/20 gap-1"><Store className="h-3 w-3" /> Seller</Badge>}
                             {user.roles.includes("buyer") && !user.seller_capable && <Badge variant="secondary" className="gap-1"><ShoppingBag className="h-3 w-3" /> Buyer</Badge>}
                           </div>
                         </TableCell>
@@ -240,14 +240,14 @@ export default function AdminSellers() {
                             ) : user.is_frozen ? (
                               <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20">Frozen</Badge>
                             ) : user.seller_capable && user.is_approved ? (
-                              <Badge className="bg-accent/10 text-accent border-accent/20">Approved</Badge>
+                              <Badge className="bg-success/10 text-success border-success/20">Approved</Badge>
                             ) : user.roles.includes("seller") ? (
                               <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">Pending</Badge>
                             ) : (
                               <Badge variant="secondary">Active</Badge>
                             )}
                             {user.is_verified && (
-                              <Badge className="bg-accent/10 text-accent border-accent/20 gap-1"><CheckCircle2 className="h-3 w-3" /> Verified</Badge>
+                              <Badge className="bg-success/10 text-success border-success/20 gap-1"><CheckCircle2 className="h-3 w-3" /> Verified</Badge>
                             )}
                           </div>
                         </TableCell>
@@ -257,7 +257,7 @@ export default function AdminSellers() {
                         <TableCell>
                           <div className="flex gap-1 justify-end flex-wrap">
                             {!user.seller_capable ? (
-                              <Button size="sm" onClick={() => updateSellerAccess(user, true)} className="gap-1 bg-accent hover:bg-accent/90 text-accent-foreground">
+                              <Button size="sm" onClick={() => updateSellerAccess(user, true)} className="gap-1 bg-success hover:bg-success/90 text-success-foreground">
                                 <UserCheck className="h-3 w-3" /> Make Seller
                               </Button>
                             ) : !user.roles.includes("admin") && user.roles.includes("seller") ? (
@@ -266,7 +266,7 @@ export default function AdminSellers() {
                               </Button>
                             ) : null}
                             {user.roles.includes("seller") && !user.is_approved ? (
-                              <Button size="sm" onClick={() => updateAccount(user.user_id, { is_approved: true }, "Seller approved")} className="gap-1 bg-accent hover:bg-accent/90 text-accent-foreground">
+                              <Button size="sm" onClick={() => updateAccount(user.user_id, { is_approved: true }, "Seller approved")} className="gap-1 bg-success hover:bg-success/90 text-success-foreground">
                                 <UserCheck className="h-3 w-3" /> Approve
                               </Button>
                             ) : user.roles.includes("seller") && !user.roles.includes("admin") ? (
@@ -275,7 +275,7 @@ export default function AdminSellers() {
                               </Button>
                             ) : null}
                             {!user.is_verified ? (
-                              <Button size="sm" variant="outline" onClick={() => updateAccount(user.user_id, { is_verified: true }, "User verified")} className="gap-1 text-accent">
+                              <Button size="sm" variant="outline" onClick={() => updateAccount(user.user_id, { is_verified: true }, "User verified")} className="gap-1 text-success">
                                 <ShieldCheck className="h-3 w-3" /> Verify
                               </Button>
                             ) : !user.roles.includes("admin") ? (

@@ -43,7 +43,7 @@ export default function SellerAds() {
   ];
 
   const statusColors: Record<string, string> = {
-    active: "bg-accent/10 text-accent",
+    active: "bg-success/10 text-success",
     paused: "bg-yellow-500/10 text-yellow-600",
     ended: "bg-muted text-muted-foreground",
   };

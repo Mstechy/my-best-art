@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE SKETCH — NOT PART OF THE BUILD.
+  Source: Claude desktop redesign concept — piece 6: ACCOUNT page (account.html).
+  Concept filename: account.html   <title>Your Account — MarketHub</title>
+
+  Structure: .acct-wrap = 200px nav + 1fr content.
+  Account nav: Orders / Wishlist / Addresses / Payment methods / Notifications / Settings
+  Order cards: .status.delivered (ok-tint/ok), .status.shipped (brand-tint/brand-dark)
+  Mobile (<=760px): .acct-nav becomes a horizontal scroller.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Account — MarketHub</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .acct-wrap{display:grid;grid-template-columns:200px 1fr;gap:24px;margin-top:20px}
+  .acct-nav a{display:block;padding:9px 12px;border-radius:8px;font-size:13px;color:var(--ink-soft);margin-bottom:4px}
+  .acct-nav a.active{background:var(--brand-tint);color:var(--brand-dark);font-weight:700}
+  .order-card{border:1px solid var(--line);border-radius:var(--radius-m);padding:14px;margin-bottom:12px}
+  .order-head{display:flex;justify-content:space-between;font-size:13px}
+  .status{font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px}
+  .status.delivered{background:var(--ok-tint);color:var(--ok)}
+  .status.shipped{background:var(--brand-tint);color:var(--brand-dark)}
+  .order-item{display:flex;gap:10px;margin-top:10px}
+  .order-item img{width:48px;height:48px;border-radius:6px;object-fit:cover}
+  .order-actions{display:flex;gap:8px;margin-top:10px}
+  .order-actions a{font-size:12px;border:1px solid var(--line-strong);border-radius:8px;padding:5px 12px;font-weight:600}
+  @media (max-width:760px){.acct-wrap{grid-template-columns:1fr}.acct-nav{display:flex;overflow-x:auto;gap:6px}.acct-nav a{white-space:nowrap;margin-bottom:0}}
+</style>
+</head>
+<body>
+<header class="site-header"><div class="container">
+  <a href="index.html" class="logo"><span class="mkt">market</span><span class="hub">hub</span></a>
+  <form class="search-form"><input type="text" placeholder="Search products, brands, sellers…"><button type="submit">🔍</button></form>
+  <nav class="header-actions"><a href="cart.html" class="icon-link">🛒 Cart</a></nav>
+</div></header>
+
+<main class="container">
+  <div class="acct-wrap">
+    <nav class="acct-nav">
+      <a class="active" href="account.html">Orders</a>
+      <a href="wishlist.html">Wishlist</a>
+      <a href="addresses.html">Addresses</a>
+      <a href="payments.html">Payment methods</a>
+      <a href="notifications.html">Notifications</a>
+      <a href="#">Settings</a>
+    </nav>
+
+    <div>
+      <h1 style="font-size:18px;margin-top:6px">My Orders</h1>
+
+      <div class="order-card">
+        <div class="order-head"><span style="font-weight:600">Order #10234</span><span class="status delivered">Delivered</span></div>
+        <div class="order-item">
+          <img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=100&q=80" alt="Earbuds">
+          <div style="font-size:12px;color:var(--muted);align-self:center">TrueSound Pro Earbuds · Qty 2</div>
+        </div>
+        <div class="order-actions"><a href="#">Buy again</a><a href="#">Leave a review</a></div>
+      </div>
+
+      <div class="order-card">
+        <div class="order-head"><span style="font-weight:600">Order #10229</span><span class="status shipped">Shipped</span></div>
+        <div class="order-item">
+          <img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=100&q=80" alt="Apex X16 Pro">
+          <div style="font-size:12px;color:var(--muted);align-self:center">Apex X16 Pro · Qty 1</div>
+        </div>
+        <div class="order-actions"><a href="tracking.html">Track order</a></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><span>© 2026 MarketHub.</span><span>support@markethub.com</span></div></div></footer>
+<nav class="bottom-nav"><div class="container">
+  <a href="index.html">🏠 Home</a><a href="category.html">▦ Category</a><a href="cart.html">🛒 Cart</a><a href="account.html" class="active">👤 Account</a>
+</div></nav>
+</body>
+</html>

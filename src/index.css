@@ -4,98 +4,222 @@
 
 @layer base {
   :root {
+    /* ══════════════════════════════════════════════════════════════
+       TYPOGRAPHY
+       Inter is the body font (per style.css). Weight 800 is loaded in
+       index.html for the extrabold headings the design uses.
+       ══════════════════════════════════════════════════════════════ */
     --font-display: 'Space Grotesk', sans-serif;
     --font-body: 'Inter', sans-serif;
 
-    --background: 0 0% 99%;
-    --foreground: 222 47% 11%;
+    /* ══════════════════════════════════════════════════════════════
+       RAW BRAND PALETTE  (source of truth: style.css)
+       These are COMPLETE colour values, consumed as `var(--x)` with NO
+       hsl() wrapper. Consequence: they do NOT support Tailwind opacity
+       modifiers (`bg-ink/50` produces nothing). Use HSL-triplet tokens
+       below for anything needing alpha.
+       NOTE: the sketch's `--muted` means muted TEXT, which collides
+       with shadcn's `--muted` (a muted SURFACE). It is renamed `--quiet`.
+       ══════════════════════════════════════════════════════════════ */
+    --ink: #14140f;
+    --ink-soft: #33322b;
+    --ink-foreground: #ffffff;
+    --paper: #fafaf9;
+    --panel: #ffffff;
+    --line: #e7e4dc;
+    --line-strong: #d8d4c8;
+    --quiet: #6e6c64;
+    --brand: #ff7a1a;
+    --brand-dark: #e0630a;
+    --brand-tint: #fff1e6;
+    --deal: #e0281b;
+    --deal-tint: #fdecea;
+    --ok: #1a7a4c;
+    --ok-tint: #e9f7ef;
+    --star: #f5a623;
+
+    /* Geometry + elevation */
+    --radius-s: 6px;
+    --radius-m: 10px;
+    --shadow-card: 0 1px 2px rgba(20, 20, 15, .04);
+    --shadow-pop: 0 12px 32px rgba(20, 20, 15, .14);
+
+    /* Sticky-stack heights (nav + category rail) */
+    --header-h: 60px;
+    --catbar-h: 44px;
+
+    /* ══════════════════════════════════════════════════════════════
+       shadcn SEMANTIC LAYER — HSL triplets, so /alpha modifiers work.
+       Retuned from cool-grey/purple/teal to the warm ink+orange system.
+       `accent` is deliberately NEUTRAL (shadcn convention) because
+       button.tsx outline/ghost variants hover with bg-accent.
+       ══════════════════════════════════════════════════════════════ */
+    --background: 60 9% 98%;          /* --paper  #fafaf9 */
+    --foreground: 60 14% 7%;          /* --ink    #14140f */
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 60 14% 7%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 60 14% 7%;
 
-    --primary: 252 62% 55%;
+    --primary: 25 100% 55%;           /* --brand       #ff7a1a */
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 14% 96%;
-    --secondary-foreground: 222 47% 20%;
+    --secondary: 45 20% 96%;
+    --secondary-foreground: 52 9% 18%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 32%;
+    --muted: 45 20% 96%;              /* muted SURFACE (meaning unchanged) */
+    --muted-foreground: 48 5% 41%;    /* --quiet #6e6c64 — muted TEXT */
 
-    --accent: 173 58% 39%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 45 20% 96%;             /* NEUTRAL hover surface — see note */
+    --accent-foreground: 52 9% 18%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 4 78% 49%;         /* --deal  #e0281b */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
-    --ring: 252 62% 55%;
+    --success: 151 65% 29%;           /* --ok  #1a7a4c  (was undefined!) */
+    --success-foreground: 0 0% 100%;
 
-    --radius: 0.5rem;
+    --info: 210 79% 46%;
+    --info-foreground: 0 0% 100%;
 
-    --navbar: 222 47% 11%;
-    --navbar-foreground: 220 14% 96%;
+    --price: 4 78% 49%;               /* --deal — all price displays */
 
-    --seller: 45 93% 47%;
-    --seller-foreground: 45 93% 10%;
-    --buyer: 173 58% 39%;
-    --buyer-foreground: 173 58% 10%;
-    --admin: 252 62% 55%;
+    --border: 44 19% 88%;             /* --line        #e7e4dc */
+    --input: 45 17% 82%;              /* --line-strong #d8d4c8 */
+    --ring: 25 91% 46%;               /* --brand-dark  #e0630a */
+
+    /* rounded-lg = 10px (--radius-m), rounded-sm = 6px (--radius-s) */
+    --radius: 0.625rem;
+
+    --navbar: 60 14% 7%;
+    --navbar-foreground: 45 20% 96%;
+
+    --seller: 25 100% 55%;            /* brand orange */
+    --seller-foreground: 25 100% 12%;
+    --buyer: 151 65% 29%;             /* ok green */
+    --buyer-foreground: 0 0% 100%;
+    --admin: 52 9% 18%;               /* ink-soft neutral */
     --admin-foreground: 0 0% 100%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(252, 62%, 55%), hsl(270, 60%, 60%));
-    --gradient-seller: linear-gradient(135deg, hsl(45, 93%, 47%), hsl(30, 95%, 55%));
-    --gradient-buyer: linear-gradient(135deg, hsl(173, 58%, 39%), hsl(180, 55%, 45%));
-    --gradient-admin: linear-gradient(135deg, hsl(252, 62%, 55%), hsl(220, 70%, 45%));
+    --gradient-primary: linear-gradient(135deg, #ff7a1a, #e0630a);
+    --gradient-deal: linear-gradient(135deg, #e0281b, #b71c12);
+    --gradient-seller: linear-gradient(135deg, #ff7a1a, #ffa04d);
+    --gradient-buyer: linear-gradient(135deg, #1a7a4c, #2aa06a);
+    --gradient-admin: linear-gradient(135deg, #33322b, #14140f);
 
-    --shadow-sm: 0 1px 2px hsl(220 30% 10% / 0.05);
-    --shadow-md: 0 4px 12px hsl(220 30% 10% / 0.08);
-    --shadow-lg: 0 12px 40px hsl(220 30% 10% / 0.1);
+    --shadow-sm: 0 1px 2px rgba(20, 20, 15, .05);
+    --shadow-md: 0 4px 12px rgba(20, 20, 15, .08);
+    --shadow-lg: 0 12px 40px rgba(20, 20, 15, .10);
 
     --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 20%;
-    --sidebar-primary: 252 62% 55%;
+    --sidebar-foreground: 52 9% 18%;
+    --sidebar-primary: 25 100% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 14% 96%;
-    --sidebar-accent-foreground: 222 47% 20%;
-    --sidebar-border: 220 14% 92%;
-    --sidebar-ring: 252 62% 55%;
+    --sidebar-accent: 45 20% 96%;
+    --sidebar-accent-foreground: 52 9% 18%;
+    --sidebar-border: 44 19% 88%;
+    --sidebar-ring: 25 91% 46%;
   }
 
   .dark {
-    --background: 222 47% 6%;
-    --foreground: 220 14% 95%;
-    --card: 222 47% 9%;
-    --card-foreground: 220 14% 95%;
-    --popover: 222 47% 9%;
-    --popover-foreground: 220 14% 95%;
-    --primary: 252 62% 65%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 222 30% 14%;
-    --secondary-foreground: 220 14% 90%;
-    --muted: 222 30% 14%;
-    --muted-foreground: 220 10% 38%;
-    --accent: 173 58% 44%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 0 62% 50%;
+    /* ══════════════════════════════════════════════════════════════
+       DARK THEME  (designed — style.css ships NO dark rules at all)
+       Strategy for a marketplace at scale:
+       • Raw brand tokens are re-declared so `bg-ink`, `bg-brand` etc.
+         re-theme at runtime with NO rebuild and NO `dark:` variants.
+       • `--ink` stays DARK and goes *deeper* than the page, so the
+         dark brand surfaces (category rail, hero card, footer) read as
+         recessed elevation — the standard dark-mode treatment.
+         ⚠ Consequence: never use `text-ink` for body copy. Use
+         semantic `text-foreground`, which inverts correctly.
+       • `--brand` lightens for WCAG contrast on dark backgrounds.
+       ══════════════════════════════════════════════════════════════ */
+    --ink: #0b0b09;
+    --ink-soft: #d9d6cd;
+    --ink-foreground: #14140f;
+    --paper: #161613;
+    --panel: #1c1c19;
+    --line: #2e2d28;
+    --line-strong: #45433c;
+    --quiet: #a5a29a;
+    --brand: #ff8f3d;
+    --brand-dark: #ff7a1a;
+    --brand-tint: #3a2413;
+    --deal: #ff6a5e;
+    --deal-tint: #3a1a17;
+    --ok: #4ade80;
+    --ok-tint: #16301f;
+    --star: #f5a623;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, .40);
+    --shadow-pop: 0 12px 32px rgba(0, 0, 0, .55);
+
+    --background: 60 6% 8%;
+    --foreground: 45 20% 94%;
+
+    --card: 60 5% 11%;
+    --card-foreground: 45 20% 94%;
+
+    --popover: 60 5% 11%;
+    --popover-foreground: 45 20% 94%;
+
+    --primary: 25 100% 62%;
+    --primary-foreground: 25 100% 8%;
+
+    --secondary: 60 5% 16%;
+    --secondary-foreground: 45 20% 90%;
+
+    --muted: 60 5% 16%;
+    --muted-foreground: 45 8% 62%;
+
+    --accent: 60 5% 16%;
+    --accent-foreground: 45 20% 92%;
+
+    --destructive: 4 70% 58%;
     --destructive-foreground: 0 0% 100%;
-    --border: 222 30% 16%;
-    --input: 222 30% 16%;
-    --ring: 252 62% 65%;
-    --navbar: 222 47% 8%;
-    --navbar-foreground: 220 14% 90%;
-    --sidebar-background: 222 47% 8%;
-    --sidebar-foreground: 220 14% 90%;
-    --sidebar-primary: 252 62% 65%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 30% 14%;
-    --sidebar-accent-foreground: 220 14% 90%;
-    --sidebar-border: 222 30% 16%;
-    --sidebar-ring: 252 62% 65%;
+
+    --success: 151 50% 45%;
+    --success-foreground: 151 60% 8%;
+
+    --info: 210 70% 58%;
+    --info-foreground: 210 70% 8%;
+
+    --price: 4 70% 58%;
+
+    --border: 60 5% 20%;
+    --input: 60 5% 24%;
+    --ring: 25 91% 55%;
+
+    --navbar: 60 7% 6%;
+    --navbar-foreground: 45 20% 90%;
+
+    --seller: 25 100% 62%;
+    --seller-foreground: 25 100% 8%;
+    --buyer: 151 50% 45%;
+    --buyer-foreground: 151 60% 8%;
+    --admin: 45 20% 90%;
+    --admin-foreground: 60 7% 8%;
+
+    --gradient-primary: linear-gradient(135deg, #ff8f3d, #ff7a1a);
+    --gradient-deal: linear-gradient(135deg, #ff6a5e, #d92d1f);
+    --gradient-seller: linear-gradient(135deg, #ff8f3d, #ffb374);
+    --gradient-buyer: linear-gradient(135deg, #4ade80, #22a960);
+    --gradient-admin: linear-gradient(135deg, #45433c, #0b0b09);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, .40);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, .50);
+    --shadow-lg: 0 12px 40px rgba(0, 0, 0, .60);
+
+    --sidebar-background: 60 6% 9%;
+    --sidebar-foreground: 45 20% 90%;
+    --sidebar-primary: 25 100% 62%;
+    --sidebar-primary-foreground: 25 100% 8%;
+    --sidebar-accent: 60 5% 16%;
+    --sidebar-accent-foreground: 45 20% 90%;
+    --sidebar-border: 60 5% 20%;
+    --sidebar-ring: 25 91% 55%;
   }
 }
 
@@ -116,6 +240,9 @@
 @layer components {
   .gradient-primary {
     background: var(--gradient-primary);
+  }
+  .gradient-deal {
+    background: var(--gradient-deal);
   }
   .gradient-seller {
     background: var(--gradient-seller);

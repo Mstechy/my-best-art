@@ -14,8 +14,11 @@ export default {
     },
     extend: {
       fontFamily: {
+        // Inter is the marketplace body font (style.css body rule).
+        // Overriding `sans` fixes the homepage, which used undefined `font-sans`.
+        sans: ["'Inter'", "system-ui", "-apple-system", "'Segoe UI'", "sans-serif"],
         display: ["'Space Grotesk'", "sans-serif"],
-        body: ["'DM Sans'", "sans-serif"],
+        body: ["'Inter'", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -43,6 +46,50 @@ export default {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
+        },
+        price: "hsl(var(--price))",
+
+        // ─── MarketHub brand layer ────────────────────────────────────
+        // Raw `var()` values, NO hsl() wrapper. These are complete colour
+        // values from style.css. IMPORTANT: because they're opaque vars,
+        // Tailwind opacity modifiers do NOT work on them —
+        // `bg-ink/50` emits nothing. Use the HSL-triplet semantic tokens
+        // above (`bg-primary/10`, `text-foreground/70`) when you need alpha.
+        ink: {
+          DEFAULT: "var(--ink)",
+          soft: "var(--ink-soft)",
+          foreground: "var(--ink-foreground)",
+        },
+        paper: "var(--paper)",
+        panel: "var(--panel)",
+        line: {
+          DEFAULT: "var(--line)",
+          strong: "var(--line-strong)",
+        },
+        // sketch's "muted text" — renamed because shadcn already owns
+        // `muted` as a SURFACE. `text-quiet` == muted body copy.
+        quiet: "var(--quiet)",
+        brand: {
+          DEFAULT: "var(--brand)",
+          dark: "var(--brand-dark)",
+          tint: "var(--brand-tint)",
+        },
+        deal: {
+          DEFAULT: "var(--deal)",
+          tint: "var(--deal-tint)",
+        },
+        ok: {
+          DEFAULT: "var(--ok)",
+          tint: "var(--ok-tint)",
+        },
+        star: "var(--star)",
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -82,10 +129,30 @@ export default {
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
+        // Sketch tokens: 6px / 10px. Named semantically rather than `s`/`m`
+        // because `rounded-s` would read as a typo of `rounded-sm`, and
+        // Tailwind already reserves the s/e prefix for logical corners.
+        chip: "var(--radius-s)",
+        card: "var(--radius-m)",
       },
       boxShadow: {
         "glow-seller": "0 0 30px hsl(var(--seller) / 0.15)",
         "glow-buyer": "0 0 30px hsl(var(--buyer) / 0.15)",
+        card: "var(--shadow-card)",
+        "card-hover": "0 6px 18px rgba(20, 20, 15, .10)",
+        header: "0 1px 0 rgba(20, 20, 15, .06)",
+        pop: "var(--shadow-pop)",
+      },
+      spacing: {
+        // Enables h-header / top-header / h-catbar for the sticky stack.
+        header: "var(--header-h)",
+        catbar: "var(--catbar-h)",
+      },
+      screens: {
+        // style.css breaks at 1080px and 760px.
+        // 760px → snapped to Tailwind's `md` (768px; 8px drift, imperceptible).
+        // 1080px → NO Tailwind equivalent (lg=1024, xl=1280), so it's added.
+        xlg: "1080px",
       },
       keyframes: {
         "accordion-down": {

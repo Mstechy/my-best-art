@@ -118,7 +118,7 @@ export default function AdminAnalytics() {
     grid: "hsl(var(--border))",
     text: "hsl(var(--muted-foreground))",
     primary: "hsl(var(--primary))",
-    accent: "hsl(var(--accent))",
+    success: "hsl(var(--success))",
   };
 
   const tooltipStyle = {
@@ -184,7 +184,7 @@ export default function AdminAnalytics() {
                     <XAxis dataKey="week" stroke={chartTheme.text} fontSize={11} />
                     <YAxis stroke={chartTheme.text} fontSize={11} allowDecimals={false} />
                     <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="value" fill={chartTheme.accent} radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="value" fill={chartTheme.success} radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -230,7 +230,7 @@ export default function AdminAnalytics() {
                     <XAxis type="number" stroke={chartTheme.text} fontSize={11} allowDecimals={false} />
                     <YAxis type="category" dataKey="title" stroke={chartTheme.text} fontSize={11} width={130} />
                     <Tooltip contentStyle={tooltipStyle} />
-                    <Bar dataKey="total" fill={chartTheme.accent} radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="total" fill={chartTheme.success} radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}

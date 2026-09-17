@@ -52,7 +52,7 @@ export default function CopyLinkButton({
         />
         <Check
           className={cn(
-            "h-4 w-4 absolute text-accent transition-all duration-200",
+            "h-4 w-4 absolute text-success transition-all duration-200",
             copied ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 -rotate-90"
           )}
         />

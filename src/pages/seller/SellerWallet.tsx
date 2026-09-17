@@ -20,7 +20,7 @@ interface WalletTx {
 type Filter = "all" | "sale" | "fee" | "withdrawal";
 
 const TYPE_BADGE: Record<string, string> = {
-  sale: "bg-accent/15 text-accent border-accent/30",
+  sale: "bg-success/15 text-success border-success/30",
   fee: "bg-muted text-muted-foreground border-border",
   withdrawal: "bg-purple-500/15 text-purple-600 border-purple-500/30",
   refund: "bg-destructive/15 text-destructive border-destructive/30",
@@ -172,7 +172,7 @@ export default function SellerWallet() {
                                 <p className="text-[11px] text-muted-foreground">{new Date(tx.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</p>
                               </div>
                             </div>
-                            <span className={`font-display font-bold shrink-0 ${isNegative ? "text-destructive" : "text-accent"}`}>
+                            <span className={`font-display font-bold shrink-0 ${isNegative ? "text-destructive" : "text-success"}`}>
                               {isNegative ? "-" : "+"}${Math.abs(Number(tx.amount)).toFixed(2)}
                             </span>
                           </div>

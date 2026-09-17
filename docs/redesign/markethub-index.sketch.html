@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE SKETCH — NOT PART OF THE BUILD.
+  Source: Claude desktop redesign concept — piece 1: HOMEPAGE (index.html), now COMPLETE.
+  Supersedes the earlier truncated paste. The previously missing ~10,342 chars
+  (flash deals, trust strip, new arrivals, recommended) are now present.
+
+  ⚠️ COMPARE AGAINST docs/PRD_HOMEPAGE_ALIEXPRESS_LAYOUT.md — this sketch REVERSES
+  two of that PRD's decisions (see MAPPING.md):
+    1. It DELETES the 3-column hero (category tree | carousel | promo tiles)
+       and replaces it with a single 640px-wide dark .hero-inner.
+    2. It moves the category grid UP to directly after the hero.
+  Companion: style.css (saved as docs/redesign/style.reference.css).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketHub — Shop verified sellers</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- HEADER: search + account always reachable, never scrolls away -->
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo"><span class="mkt">market</span><span class="hub">hub</span></a>
+    <form class="search-form" role="search">
+      <input type="text" placeholder="Search products, brands, sellers…" aria-label="Search products">
+      <button type="submit" aria-label="Search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+    </form>
+    <nav class="header-actions">
+      <a href="#" class="icon-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>
+        Saved
+      </a>
+      <a href="cart.html" class="icon-link">
+        <span class="badge">3</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+        Cart
+      </a>
+      <a href="account.html" class="icon-link">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+        Account
+      </a>
+    </nav>
+  </div>
+</header>
+
+<!-- CATEGORY RAIL: the fast path — always one tap away from any page -->
+<nav class="category-rail" aria-label="Categories">
+  <div class="container">
+    <a href="category.html" class="all">All Categories</a>
+    <a href="category.html?c=electronics" class="active">Electronics</a>
+    <a href="category.html?c=phones">Phones &amp; Accessories</a>
+    <a href="category.html?c=fashion">Fashion</a>
+    <a href="category.html?c=home">Home &amp; Living</a>
+    <a href="category.html?c=beauty">Beauty &amp; Health</a>
+    <a href="category.html?c=jewelry">Jewelry &amp; Watches</a>
+    <a href="category.html?c=sports">Sports &amp; Outdoors</a>
+    <a href="category.html?c=toys">Toys &amp; Kids</a>
+  </div>
+</nav>
+
+<main class="container">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="pill">Best Seller</span>
+      <h1>Electronics, sorted by trust.</h1>
+      <p>Phones, laptops, and accessories from verified sellers — with buyer protection on every order.</p>
+      <a href="category.html?c=electronics" class="btn-primary">Explore Electronics</a>
+    </div>
+  </section>
+
+  <!-- QUICK CATEGORY ACCESS: placed right after hero, above any deal rail -->
+  <section class="section">
+    <div class="section-head">
+      <h2>Shop by category</h2>
+      <a href="category.html" class="view-all">All categories</a>
+    </div>
+    <div class="cat-grid">
+      <a class="cat-card" href="category.html?c=phones">
+        <span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="7" y="2" width="10" height="20" rx="2"/><line x1="11" y1="18" x2="13" y2="18"/></svg></span>
+        <b>Phones</b><span>3,210 items</span>
+      </a>
+      <a class="cat-card" href="category.html?c=laptops">
+        <span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="12" rx="1"/><line x1="2" y1="20" x2="22" y2="20"/></svg></span>
+        <b>Laptops</b><span>1,048 items</span>
+      </a>
+      <a class="cat-card" href="category.html?c=fashion">
+        <span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3l6 3 6-3 3 5-4 2v11H7V10L3 8z"/></svg></span>
+        <b>Fashion</b><span>8,904 items</span>
+      </a>
+      <a class="cat-card" href="category.html?c=home">
+        <span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg></span>
+        <b>Home</b><span>4,552 items</span>
+      </a>
+      <a class="cat-card" href="category.html?c=beauty">
+        <span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2v6M9 5h6"/><path d="M7 8h10l-1 13H8z"/></svg></span>
+        <b>Beauty</b><span>2,317 items</span>
+      </a>
+      <a class="cat-card" href="category.html?c=jewelry">
+        <span class="cat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12l4 6-10 12L2 9z"/></svg></span>
+        <b>Jewelry</b><span>963 items</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- FLASH DEALS -->
+  <!-- NOTE: the countdown lives in the SECTION HEADING ("ends in 04:12:39"), i.e. it
+       assumes ONE shared deal window for the whole rail. Your schema has a per-product
+       flash_deal_end_at, so a single rail-wide countdown would be wrong unless all
+       deals share an end time. Current impl uses FlashDealCountdown per card. -->
+  <section class="section">
+    <div class="section-head">
+      <h2>Flash Deals · ends in 04:12:39</h2>
+      <a href="category.html?deal=flash" class="view-all">View all</a>
+    </div>
+    <div class="rail">
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-38%</span><img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&q=80" alt="Wireless earbuds in charging case"></div>
+        <div class="pc-body">
+          <div class="pc-title">TrueSound Pro Wireless Earbuds, Active Noise Cancelling</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.7 · 2,108 sold</div>
+          <div class="pc-price"><span class="now">$24.99</span><span class="was">$39.99</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-52%</span><img src="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&q=80" alt="Smart watch on wrist"></div>
+        <div class="pc-body">
+          <div class="pc-title">FitTrack GT3 Smartwatch, Heart Rate &amp; SpO2 Monitor</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.5 · 963 sold</div>
+          <div class="pc-price"><span class="now">$18.40</span><span class="was">$38.00</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-20%</span><img src="https://images.unsplash.com/photo-1585790050230-5dd28404ccb9?w=400&q=80" alt="Portable bluetooth speaker"></div>
+        <div class="pc-body">
+          <div class="pc-title">BoomBox Mini Portable Bluetooth Speaker, IPX7 Waterproof</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.8 · 5,442 sold</div>
+          <div class="pc-price"><span class="now">$15.99</span><span class="was">$19.99</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-45%</span><img src="https://images.unsplash.com/photo-1583394838336-acd977736f90?w=400&q=80" alt="Phone case collection"></div>
+        <div class="pc-body">
+          <div class="pc-title">ClearArmor Shockproof Case for iPhone 16 Pro Max, 3-Pack</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.6 · 1,290 sold</div>
+          <div class="pc-price"><span class="now">$6.60</span><span class="was">$11.99</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-15%</span><img src="https://images.unsplash.com/photo-1587825140708-dfaf72ae4b04?w=400&q=80" alt="Mechanical keyboard"></div>
+        <div class="pc-body">
+          <div class="pc-title">KeyForge 75% Mechanical Keyboard, Hot-Swappable Switches</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.9 · 734 sold</div>
+          <div class="pc-price"><span class="now">$42.50</span><span class="was">$49.99</span></div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- TRUST STRIP -->
+  <section class="trust-strip">
+    <div class="trust-item">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l8 4v6c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10V6z"/></svg></span>
+      <div><b>Verified sellers</b><span>Every store reviewed</span></div>
+    </div>
+    <div class="trust-item">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="7" width="15" height="10" rx="1"/><path d="M16 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="1.6"/><circle cx="18" cy="19" r="1.6"/></svg></span>
+      <div><b>Fast delivery</b><span>Track every order</span></div>
+    </div>
+    <div class="trust-item">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M20 10a8 8 0 0 0-14.9-3M4 14a8 8 0 0 0 14.9 3"/></svg></span>
+      <div><b>Easy returns</b><span>Hassle-free refunds</span></div>
+    </div>
+    <div class="trust-item">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 0 1 18 0M21 12v4a2 2 0 0 1-2 2h-1M3 12v4a2 2 0 0 0 2 2h1"/><rect x="1" y="12" width="5" height="6" rx="1"/><rect x="18" y="12" width="5" height="6" rx="1"/></svg></span>
+      <div><b>24/7 support</b><span>We're here to help</span></div>
+    </div>
+  </section>
+
+  <!-- NEW ARRIVALS -->
+  <section class="section">
+    <div class="section-head">
+      <h2>New Arrivals</h2>
+      <a href="category.html?sort=newest" class="view-all">View all</a>
+    </div>
+    <div class="rail">
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1518444065439-e933c06ce9cd?w=400&q=80" alt="Sneakers"></div>
+        <div class="pc-body">
+          <div class="pc-title">StrideMax Running Shoes, Breathable Knit Upper</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> New</div>
+          <div class="pc-price"><span class="now">$29.90</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&q=80" alt="Backpack"></div>
+        <div class="pc-body">
+          <div class="pc-title">UrbanCarry Anti-Theft Laptop Backpack, USB Charging Port</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> New</div>
+          <div class="pc-price"><span class="now">$33.20</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=400&q=80" alt="Sunglasses"></div>
+        <div class="pc-body">
+          <div class="pc-title">SolFlare Polarized Sunglasses, UV400 Protection</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> New</div>
+          <div class="pc-price"><span class="now">$14.75</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1585771724684-38269d6639fd?w=400&q=80" alt="Ring light"></div>
+        <div class="pc-body">
+          <div class="pc-title">HaloGlow 10" Ring Light with Tripod Stand and Phone Clip</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> New</div>
+          <div class="pc-price"><span class="now">$21.00</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1601924994987-69e26d50dc26?w=400&q=80" alt="Water bottle"></div>
+        <div class="pc-body">
+          <div class="pc-title">GlacierFlow Insulated Steel Bottle, Keeps Cold 24h</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> New</div>
+          <div class="pc-price"><span class="now">$12.30</span></div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+  <!-- RECOMMENDED -->
+  <section class="section">
+    <div class="section-head">
+      <h2>Recommended for you</h2>
+      <a href="category.html?sort=relevance" class="view-all">View all</a>
+    </div>
+    <div class="rail">
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-30%</span><img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&q=80" alt="Smartphone"></div>
+        <div class="pc-body">
+          <div class="pc-title">Apex X16 Pro 256GB, 6.7" AMOLED, 5G Unlocked</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.4 · 318 sold</div>
+          <div class="pc-price"><span class="now">$489.00</span><span class="was">$699.00</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1591370874773-6702e8f12fd8?w=400&q=80" alt="Handbag"></div>
+        <div class="pc-body">
+          <div class="pc-title">Maison Vela Vegan Leather Tote Bag, Everyday Carry</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.6 · 802 sold</div>
+          <div class="pc-price"><span class="now">$27.40</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-25%</span><img src="https://images.unsplash.com/photo-1585499104047-04b258236a4a?w=400&q=80" alt="Air fryer"></div>
+        <div class="pc-body">
+          <div class="pc-title">CrispAir 5.5L Digital Air Fryer, 8 Presets</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.7 · 1,540 sold</div>
+          <div class="pc-price"><span class="now">$44.99</span><span class="was">$59.99</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400&q=80" alt="Skincare set"></div>
+        <div class="pc-body">
+          <div class="pc-title">PureBloom Vitamin C Serum &amp; Moisturizer Set</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.5 · 2,890 sold</div>
+          <div class="pc-price"><span class="now">$19.60</span></div>
+        </div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><span class="pc-badge">-10%</span><img src="https://images.unsplash.com/photo-1587304194601-6dd12c0c6ea9?w=400&q=80" alt="Necklace"></div>
+        <div class="pc-body">
+          <div class="pc-title">Lumen &amp; Co. Sterling Silver Layered Necklace</div>
+          <div class="pc-rating"><svg viewBox="0 0 24 24"><path d="M12 2l3 7h7l-5.5 4.5 2 7L12 16l-6.5 4.5 2-7L2 9h7z"/></svg> 4.8 · 411 sold</div>
+          <div class="pc-price"><span class="now">$16.20</span><span class="was">$18.00</span></div>
+        </div>
+      </a>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>MarketHub</h4>
+        <p style="font-size:13px;color:#a8a696;max-width:280px">Connecting buyers with verified independent sellers. Escrow payments and buyer protection on every order.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul><li><a href="#">All products</a></li><li><a href="#">Categories</a></li><li><a href="#">Top sellers</a></li><li><a href="#">Deals</a></li></ul>
+      </div>
+      <div>
+        <h4>Sell</h4>
+        <ul><li><a href="#">Become a vendor</a></li><li><a href="#">Seller dashboard</a></li><li><a href="#">Seller guidelines</a></li></ul>
+      </div>
+      <div>
+        <h4>Support</h4>
+        <ul><li><a href="#">Buyer center</a></li><li><a href="#">Shipping &amp; delivery</a></li><li><a href="#">Payment &amp; escrow guard</a></li><li><a href="#">Contact support</a></li></ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 MarketHub. All rights reserved.</span>
+      <span>support@markethub.com</span>
+    </div>
+  </div>
+</footer>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="container">
+    <a href="index.html" class="active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+      Home
+    </a>
+    <a href="category.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Category
+    </a>
+    <a href="cart.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
+      Cart
+    </a>
+    <a href="account.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>
+      Account
+    </a>
+  </div>
+</nav>
+
+</body>
+</html>

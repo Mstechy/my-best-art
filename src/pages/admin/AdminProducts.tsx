@@ -190,7 +190,7 @@ export default function AdminProducts() {
                               {product.status}
                             </Badge>
                             {product.is_approved ? (
-                              <Badge className="bg-accent/10 text-accent border-accent/20 gap-1 text-xs">
+                              <Badge className="bg-success/10 text-success border-success/20 gap-1 text-xs">
                                 <CheckCircle2 className="h-3 w-3" /> Approved
                               </Badge>
                             ) : product.status === "active" ? (
@@ -203,7 +203,7 @@ export default function AdminProducts() {
                         <TableCell>
                           <div className="flex gap-1 justify-end flex-wrap">
                             {product.status === "active" && !product.is_approved && (
-                              <Button size="sm" onClick={() => approveProduct(product.id)} className="gap-1 bg-accent hover:bg-accent/90 text-accent-foreground">
+                              <Button size="sm" onClick={() => approveProduct(product.id)} className="gap-1 bg-success hover:bg-success/90 text-success-foreground">
                                 <CheckCircle2 className="h-3 w-3" /> Approve
                               </Button>
                             )}

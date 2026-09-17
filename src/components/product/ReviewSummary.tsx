@@ -55,14 +55,14 @@ export default function ReviewSummary({ average, total, positive, neutral, negat
             <div className="mt-1 text-xs text-muted-foreground">{total} rating{total !== 1 ? "s" : ""}</div>
           </div>
           {allVerified && total > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 text-accent px-2 py-1 text-[10px] font-semibold border border-accent/20">
+            <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-1 text-[10px] font-semibold border border-success/20">
               <ShieldCheck className="h-3 w-3" /> All from verified purchases
             </span>
           )}
         </div>
 
         <div className="space-y-2">
-          <Bar label="Positive" value={positive} percent={positivePct} color="bg-accent" />
+          <Bar label="Positive" value={positive} percent={positivePct} color="bg-success" />
           <Bar label="Neutral" value={neutral} percent={neutralPct} color="bg-yellow-500" />
           <Bar label="Negative" value={negative} percent={negativePct} color="bg-destructive" />
         </div>

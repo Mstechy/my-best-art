@@ -66,13 +66,13 @@ export default function StoreCredibilityCard({ sellerId, onDetails }: { sellerId
             <div key={s.label} className="flex items-center gap-3 text-sm">
               <span className="w-40 text-muted-foreground">{s.label}</span>
               <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
-                <div className="h-full bg-accent" style={{ width: `${(s.value / 5) * 100}%` }} />
+                <div className="h-full bg-success" style={{ width: `${(s.value / 5) * 100}%` }} />
               </div>
               <span className="w-10 text-right text-foreground font-medium">{Number(s.value).toFixed(1)}</span>
             </div>
           ))}
           <div className="mt-4 pt-4 border-t border-border/60 space-y-1.5">
-            <BarRow label="Positive" pct={positivePct} count={data.positive} color="bg-accent" />
+            <BarRow label="Positive" pct={positivePct} count={data.positive} color="bg-success" />
             <BarRow label="Neutral" pct={neutralPct} count={data.neutral} color="bg-yellow-500" />
             <BarRow label="Negative" pct={negativePct} count={data.negative} color="bg-destructive" />
             <div className="pt-1 text-xs text-muted-foreground">{positivePct}% positive reviews · {data.total} total</div>

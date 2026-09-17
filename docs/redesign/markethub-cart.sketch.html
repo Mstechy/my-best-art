@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE SKETCH — NOT PART OF THE BUILD.
+  Source: Claude desktop redesign concept — piece 4: CART page (cart.html).
+  Concept filename: cart.html   <title>Your Cart — MarketHub</title>
+
+  *** HIGH VALUE: this paste carries an inline <style> block, which is the first
+  time we see the real DESIGN TOKENS. Tokens referenced here (NONE of which are
+  currently defined in src/index.css):
+      --line, --line-strong      borders
+      --ink, --ink-soft          primary / softer text
+      --muted                    muted text
+      --brand, --brand-dark      brand + link colour
+      --deal                     discount / deal colour
+      --panel                    surface background
+      --radius-m                 medium corner radius
+  Companion file: style.css (STILL NOT RECEIVED — likely WHERE these are defined).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Cart — MarketHub</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .cart-wrap{display:grid;grid-template-columns:1fr 340px;gap:28px;margin-top:20px}
+  .seller-group{border:1px solid var(--line);border-radius:var(--radius-m);padding:16px;margin-bottom:14px}
+  .seller-group h4{font-size:13px;margin:0 0 12px}
+  .cart-item{display:flex;gap:12px;padding:10px 0;border-top:1px solid var(--line)}
+  .cart-item:first-of-type{border-top:none}
+  .cart-item img{width:64px;height:64px;object-fit:cover;border-radius:8px}
+  .cart-item .ci-title{font-size:13px}
+  .cart-item .ci-meta{font-size:12px;color:var(--muted);margin-top:4px;display:flex;gap:10px}
+  .cart-item .ci-meta a{color:var(--brand-dark);font-weight:600}
+  .cart-item .ci-price{margin-left:auto;font-weight:700;font-size:14px;align-self:center}
+  .summary{border:1px solid var(--line);border-radius:var(--radius-m);padding:18px;align-self:start;position:sticky;top:100px}
+  .summary-row{display:flex;justify-content:space-between;font-size:13px;color:var(--ink-soft);margin-bottom:8px}
+  .summary-row.total{border-top:1px solid var(--line);padding-top:10px;margin-top:6px;font-weight:800;font-size:16px;color:var(--ink)}
+  .coupon-input{display:flex;gap:6px;margin:12px 0}
+  .coupon-input input{flex:1;border:1px solid var(--line-strong);border-radius:6px;padding:8px}
+  @media (max-width:760px){.cart-wrap{grid-template-columns:1fr}.summary{position:static}}
+</style>
+</head>
+<body>
+<header class="site-header"><div class="container">
+  <a href="index.html" class="logo"><span class="mkt">market</span><span class="hub">hub</span></a>
+  <form class="search-form"><input type="text" placeholder="Search products, brands, sellers…"><button type="submit">🔍</button></form>
+  <nav class="header-actions">
+    <a href="wishlist.html" class="icon-link">♡ Saved</a>
+    <a href="cart.html" class="icon-link"><span class="badge">3</span>🛒 Cart</a>
+    <a href="account.html" class="icon-link">👤 Account</a>
+  </nav>
+</div></header>
+
+<main class="container">
+  <h1 style="font-size:20px;margin-top:20px">Your Cart (3 items)</h1>
+  <div class="cart-wrap">
+    <div>
+      <div class="seller-group">
+        <h4>Apex Official Store</h4>
+        <div class="cart-item">
+          <img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=200&q=80" alt="Apex X16 Pro">
+          <div>
+            <div class="ci-title">Apex X16 Pro 256GB, Black</div>
+            <div class="ci-meta"><span>Qty: 1</span><a href="#">Remove</a><a href="#">Save for later</a></div>
+          </div>
+          <div class="ci-price">$489.00</div>
+        </div>
+      </div>
+      <div class="seller-group">
+        <h4>TrueSound Store</h4>
+        <div class="cart-item">
+          <img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=200&q=80" alt="TrueSound earbuds">
+          <div>
+            <div class="ci-title">TrueSound Pro Wireless Earbuds</div>
+            <div class="ci-meta"><span>Qty: 2</span><a href="#">Remove</a><a href="#">Save for later</a></div>
+          </div>
+          <div class="ci-price">$49.98</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-row"><span>Subtotal</span><span>$538.98</span></div>
+      <div class="summary-row"><span>Shipping</span><span>Free</span></div>
+      <div class="coupon-input"><input type="text" placeholder="Coupon code"><button class="btn-primary" style="background:var(--ink);color:#fff;padding:8px 14px;border-radius:6px">Apply</button></div>
+      <div class="summary-row"><span>Coupon SHIP5</span><span style="color:var(--deal)">-$5.00</span></div>
+      <div class="summary-row total"><span>Total</span><span>$533.98</span></div>
+      <a href="checkout.html" class="btn-primary" style="display:block;text-align:center;background:var(--brand);color:#fff;margin-top:10px">Proceed to Checkout</a>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer"><div class="container"><div class="footer-bottom"><span>© 2026 MarketHub.</span><span>support@markethub.com</span></div></div></footer>
+<nav class="bottom-nav"><div class="container">
+  <a href="index.html">🏠 Home</a><a href="category.html">▦ Category</a><a href="cart.html" class="active">🛒 Cart</a><a href="account.html">👤 Account</a>
+</div></nav>
+</body>
+</html>

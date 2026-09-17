@@ -974,13 +974,13 @@ export default function SellerProducts() {
   const getApprovalBadge = (product: Product) => {
     if (product.status !== "active") return null;
     if (product.is_approved) {
-      return <Badge className="bg-accent/10 text-accent border-accent/20 gap-1 text-xs"><CheckCircle2 className="h-3 w-3" /> Approved</Badge>;
+      return <Badge className="bg-success/10 text-success border-success/20 gap-1 text-xs"><CheckCircle2 className="h-3 w-3" /> Approved</Badge>;
     }
     return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 gap-1 text-xs"><Clock className="h-3 w-3" /> Pending Approval</Badge>;
   };
 
   const statusColors: Record<string, string> = {
-    active: "bg-accent/10 text-accent border-accent/20",
+    active: "bg-success/10 text-success border-success/20",
     draft: "bg-muted text-muted-foreground border-border",
     archived: "bg-destructive/10 text-destructive border-destructive/20",
   };
@@ -1377,7 +1377,7 @@ export default function SellerProducts() {
                                 </p>
                               </div>
                               {item.status === "uploaded" ? (
-                                <CheckCircle2 className="h-4 w-4 shrink-0 text-accent" />
+                                <CheckCircle2 className="h-4 w-4 shrink-0 text-success" />
                               ) : item.status === "error" ? (
                                 <Button type="button" size="sm" variant="ghost" className="h-7 px-2" onClick={handleSave} disabled={saving}>
                                   <RotateCcw className="h-3.5 w-3.5" />

@@ -16,7 +16,7 @@ export type ProductCardProduct = {
   reviewCount?: number;
   imageUrl?: string | null;
   flashDealEndAt?: string | null;
-  badge?: { label: string; tone?: "destructive" | "seller" | "accent" } | null;
+  badge?: { label: string; tone?: "destructive" | "seller" | "brand" | "success" } | null;
   videoUrl?: string | null;
 };
 
@@ -41,7 +41,10 @@ type ProductCardProps = {
 const badgeTone = {
   destructive: "bg-destructive text-destructive-foreground",
   seller: "bg-seller text-seller-foreground",
-  accent: "bg-accent text-accent-foreground",
+  // "New" badge. Ink-on-brand is used deliberately: white on #ff7a1a is only
+  // ~2.6:1 contrast (fails WCAG AA), while #14140f on #ff7a1a is ~7:1.
+  brand: "bg-brand text-ink",
+  success: "bg-success text-success-foreground",
 };
 
 /**

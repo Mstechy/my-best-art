@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<!--
+  REFERENCE SKETCH — NOT PART OF THE BUILD.
+  Source: Claude desktop redesign concept — the PRODUCT DETAIL PAGE (product.html).
+  <title>Apex X16 Pro — MarketHub</title>
+  Maps to src/pages/ProductDetailPage.tsx (779 lines).
+
+  ⚠️ REGRESSES 4 THINGS THE PRD ALREADY SHIPPED — see MAPPING.md.
+  docs/PRD_MARKETHUB_PRODUCT_PAGE_AND_SELLER_UPLOAD.md states:
+    - "Search bar hidden on PDP ✓ (MarketplaceNavbar showSearch={false})"
+      -> this sketch SHOWS a full search bar on the PDP.
+    - "Breadcrumb removed from above gallery ✓ — no text precedes the hero image"
+      -> this sketch ADDS a breadcrumb directly above the gallery.
+    - sticky mobile CTA (store icon + Add to Cart + Buy Now) is implemented
+      -> this sketch has NO sticky mobile CTA.
+    - infinite "You May Also Like" via InfiniteScrollTrigger
+      -> this sketch shows a static 2-card rail.
+
+  ✅ It DOES add one documented MISSING item: the Specifications table
+     ("Specifications table: MISSING (specs saved by seller never shown)").
+
+  New classes: .pd-wrap .pd-gallery-main .pd-thumbs .pd-title .pd-meta
+  .pd-price-row .pd-section-label .swatch-row .swatch(.active/.oos) .pd-actions
+  .btn-secondary .btn-add .pd-info-line .pd-tabs .spec-table .seller-card
+  .seller-avatar .seller-actions
+  NOTE: no quantity selector, no wishlist button in the buy area.
+  "Add to Cart" is SECONDARY (outline) and "Buy Now" is PRIMARY (orange brand).
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Apex X16 Pro — MarketHub</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .pd-wrap{display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-top:20px}
+  .pd-gallery-main{aspect-ratio:1/1;background:#f1f0eb;border-radius:var(--radius-m);border:1px solid var(--line);overflow:hidden}
+  .pd-gallery-main img{width:100%;height:100%;object-fit:cover}
+  .pd-thumbs{display:flex;gap:8px;margin-top:8px}
+  .pd-thumbs img{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1.5px solid var(--line-strong);cursor:pointer}
+  .pd-thumbs img.active{border-color:var(--brand)}
+  .pd-title{font-size:20px;font-weight:700;line-height:1.3}
+  .pd-meta{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);margin-top:6px}
+  .pd-meta a{color:var(--brand-dark);font-weight:600}
+  .pd-price-row{display:flex;align-items:baseline;gap:10px;margin-top:16px}
+  .pd-price-row .now{font-size:28px;font-weight:800;color:var(--deal)}
+  .pd-price-row .was{font-size:15px;color:var(--muted);text-decoration:line-through}
+  .pd-section-label{font-size:12px;color:var(--muted);margin-top:18px;margin-bottom:6px}
+  .swatch-row{display:flex;gap:8px}
+  .swatch{padding:6px 14px;border:1.5px solid var(--line-strong);border-radius:8px;font-size:13px;cursor:pointer}
+  .swatch.active{border-color:var(--ink);font-weight:700}
+  .swatch.oos{color:var(--muted);border-style:dashed;cursor:not-allowed}
+  .pd-actions{display:flex;gap:10px;margin-top:18px}
+  .btn-secondary{flex:1;border:1.5px solid var(--ink);background:#fff;border-radius:999px;padding:12px;font-weight:700;font-size:14px}
+  .btn-add{flex:1;border:none;background:var(--brand);color:#fff;border-radius:999px;padding:12px;font-weight:700;font-size:14px}
+  .pd-info-line{font-size:12.5px;color:var(--muted);margin-top:14px;display:flex;flex-direction:column;gap:6px}
+  .pd-tabs{display:flex;gap:20px;border-bottom:1px solid var(--line);margin-top:28px}
+  .pd-tabs span{font-size:13px;font-weight:600;padding-bottom:10px;color:var(--muted)}
+  .pd-tabs span.active{color:var(--ink);border-bottom:2px solid var(--brand)}
+  .spec-table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px}
+  .spec-table td{padding:8px 0;border-bottom:1px solid var(--line)}
+  .spec-table td:first-child{color:var(--muted);width:140px}
+  .seller-card{border:1px solid var(--line);border-radius:var(--radius-m);padding:16px;display:flex;align-items:center;gap:12px;margin-top:16px}
+  .seller-avatar{width:44px;height:44px;border-radius:10px;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800}
+  .seller-actions{margin-left:auto;display:flex;gap:8px}
+  .seller-actions a{font-size:12px;border:1px solid var(--line-strong);border-radius:8px;padding:6px 12px;font-weight:600}
+  @media (max-width:760px){.pd-wrap{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container">
+    <a href="index.html" class="logo"><span class="mkt">market</span><span class="hub">hub</span></a>
+    <form class="search-form" role="search">
+      <input type="text" placeholder="Search products, brands, sellers…">
+      <button type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
+    </form>
+    <nav class="header-actions">
+      <a href="wishlist.html" class="icon-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 1 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"/></svg>Saved</a>
+      <a href="cart.html" class="icon-link"><span class="badge">3</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>Cart</a>
+      <a href="account.html" class="icon-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>Account</a>
+    </nav>
+  </div>
+</header>
+
+<nav class="category-rail" aria-label="Categories">
+  <div class="container">
+    <a href="category.html" class="all">All Categories</a>
+    <a href="category.html?c=electronics" class="active">Electronics</a>
+    <a href="category.html?c=phones">Phones &amp; Accessories</a>
+    <a href="category.html?c=fashion">Fashion</a>
+  </div>
+</nav>
+
+<main class="container">
+  <p class="breadcrumb"><a href="index.html">Home</a> / <a href="category.html">Electronics</a> / <a href="category.html">Phones</a></p>
+
+  <div class="pd-wrap">
+    <div>
+      <div class="pd-gallery-main"><img src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=700&q=80" alt="Apex X16 Pro smartphone, front view"></div>
+      <div class="pd-thumbs">
+        <img class="active" src="https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=100&q=80" alt="Front view thumbnail">
+        <img src="https://images.unsplash.com/photo-1598327105666-5b89351aff97?w=100&q=80" alt="Back view thumbnail">
+        <img src="https://images.unsplash.com/photo-1585060544812-6b45742d762f?w=100&q=80" alt="Side view thumbnail">
+      </div>
+    </div>
+
+    <div>
+      <div class="pd-title">Apex X16 Pro 256GB, 6.7" AMOLED, 5G Unlocked Smartphone</div>
+      <div class="pd-meta">★ 4.4 · 318 reviews · 620 sold &nbsp;·&nbsp; Sold by <a href="store.html">Apex Official Store</a></div>
+
+      <div class="pd-price-row"><span class="now">$489.00</span><span class="was">$699.00</span></div>
+
+      <div class="pd-section-label">Color</div>
+      <div class="swatch-row">
+        <div class="swatch active">Black</div>
+        <div class="swatch">Silver</div>
+        <div class="swatch oos">Gold (out of stock)</div>
+      </div>
+
+      <div class="pd-section-label">Storage</div>
+      <div class="swatch-row">
+        <div class="swatch">128GB</div>
+        <div class="swatch active">256GB</div>
+        <div class="swatch">512GB</div>
+      </div>
+
+      <div class="pd-actions">
+        <button class="btn-secondary">Add to Cart</button>
+        <button class="btn-add">Buy Now</button>
+      </div>
+
+      <div class="pd-info-line">
+        <span>🚚 Get it by <strong>Sep 22</strong></span>
+        <span>🛡️ Buyer protection · Full refund if item is not as described</span>
+        <span>↺ 30-day easy returns</span>
+      </div>
+
+      <div class="seller-card">
+        <div class="seller-avatar">A</div>
+        <div>
+          <div style="font-size:13px;font-weight:700">Apex Official Store</div>
+          <div style="font-size:11px;color:var(--muted)">★ 4.8 · 98.6% positive · 2h avg response</div>
+        </div>
+        <div class="seller-actions">
+          <a href="store.html">Visit Store</a>
+          <a href="#">Message</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pd-tabs"><span class="active">Description</span><span>Specifications</span><span>Reviews (318)</span></div>
+  <table class="spec-table">
+    <tr><td>Model</td><td>Apex X16 Pro</td></tr>
+    <tr><td>Storage</td><td>256GB</td></tr>
+    <tr><td>Display</td><td>6.7" AMOLED, 120Hz</td></tr>
+    <tr><td>Network</td><td>5G Unlocked</td></tr>
+    <tr><td>Color</td><td>Black</td></tr>
+  </table>
+
+  <section class="section">
+    <div class="section-head"><h2>You may also like</h2></div>
+    <div class="rail">
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?w=400&q=80" alt="Wireless earbuds"></div>
+        <div class="pc-body"><div class="pc-title">TrueSound Pro Wireless Earbuds</div><div class="pc-rating">★ 4.7 · 2,108 sold</div><div class="pc-price"><span class="now">$24.99</span></div></div>
+      </a>
+      <a class="product-card" href="product.html">
+        <div class="pc-media"><img src="https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=400&q=80" alt="Smart watch"></div>
+        <div class="pc-body"><div class="pc-title">FitTrack GT3 Smartwatch</div><div class="pc-rating">★ 4.5 · 963 sold</div><div class="pc-price"><span class="now">$18.40</span></div></div>
+      </a>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-bottom"><span>© 2026 MarketHub. All rights reserved.</span><span>support@markethub.com</span></div>
+  </div>
+</footer>
+
+<nav class="bottom-nav">
+  <div class="container">
+    <a href="index.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>Home</a>
+    <a href="category.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Category</a>
+    <a href="cart.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>Cart</a>
+    <a href="account.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/></svg>Account</a>
+  </div>
+</nav>
+
+</body>
+</html>

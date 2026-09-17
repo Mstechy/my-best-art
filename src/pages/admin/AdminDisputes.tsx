@@ -112,7 +112,7 @@ export default function AdminDisputes() {
   const statusColors: Record<string, string> = {
     open: "bg-destructive/10 text-destructive",
     investigating: "bg-yellow-500/10 text-yellow-600",
-    resolved: "bg-accent/10 text-accent",
+    resolved: "bg-success/10 text-success",
     dismissed: "bg-muted text-muted-foreground",
   };
 

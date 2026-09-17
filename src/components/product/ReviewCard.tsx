@@ -54,7 +54,7 @@ export default function ReviewCard({ review }: { review: ReviewData }) {
               <span className="text-[11px] text-muted-foreground">Variant: {review.variant}</span>
             )}
             {review.is_verified_purchase && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-accent/10 text-accent px-2 py-0.5 text-[10px] font-semibold border border-accent/20">
+              <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-0.5 text-[10px] font-semibold border border-success/20">
                 <ShieldCheck className="h-3 w-3" /> Verified Purchase
               </span>
             )}

@@ -73,7 +73,7 @@ export default function StoreFollowButton({ sellerId, className }: { sellerId: s
       onClick={toggle}
       disabled={busy}
       variant="outline"
-      className={`gap-2 ${following ? "border-accent text-accent hover:bg-accent/10" : "border-accent text-accent hover:bg-accent/10"} ${className || ""}`}
+      className={`gap-2 ${following ? "border-success text-success hover:bg-success/10" : "border-success text-success hover:bg-success/10"} ${className || ""}`}
     >
       {following ? <Check className="h-4 w-4" /> : <Heart className="h-4 w-4" />}
       {following ? "Following" : "Follow"}

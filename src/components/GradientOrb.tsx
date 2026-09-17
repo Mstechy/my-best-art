@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 interface GradientOrbProps {
   className?: string;
-  color?: "primary" | "seller" | "buyer" | "accent";
+  color?: "primary" | "seller" | "buyer" | "success";
   size?: "sm" | "md" | "lg" | "xl";
 }
 
@@ -10,7 +10,7 @@ const colorMap = {
   primary: "from-primary/30 to-primary/5",
   seller: "from-seller/30 to-seller/5",
   buyer: "from-buyer/30 to-buyer/5",
-  accent: "from-accent/30 to-accent/5",
+  success: "from-success/30 to-success/5",
 };
 
 const sizeMap = {
