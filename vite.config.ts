@@ -23,6 +23,9 @@ export default defineConfig(({ mode }) => ({
           if (!id.includes("node_modules")) return;
           if (id.includes("@supabase")) return "supabase";
           if (id.includes("@radix-ui")) return "radix-ui";
+          // Buyer and admin analytics still use Recharts. Keep it isolated so
+          // public shopping routes and the lightweight seller dashboard never
+          // download this analytics-only dependency.
           if (id.includes("recharts")) return "charts";
           if (id.includes("framer-motion")) return "motion";
           if (id.includes("lucide-react")) return "icons";

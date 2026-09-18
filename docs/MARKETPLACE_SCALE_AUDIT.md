@@ -1,6 +1,6 @@
 # Marketplace Scale Audit
 
-Last updated: 2026-09-18
+Last updated: 2026-09-19
 
 ## Verified foundations
 
@@ -16,11 +16,14 @@ Last updated: 2026-09-18
 - Added exact-title priority and variant/category-attribute indexing in `20260918040000_catalogue_exact_title_and_variant_search.sql`.
 - Added unavailable-combination states to the buyer option selector.
 - Added seller bulk draft/archive actions and inventory-health alerts.
-- Deferred the seller revenue chart behind a feature-level lazy import.
+- Added reviewed bulk base price/stock edits and a listing-health filter. Variant SKU price and stock are deliberately excluded from bulk base updates.
+- Hid empty homepage merchandising rails; a rail appears only after it has real, de-duplicated products.
+- Added editorial collection cards and live product counts to the category entry page.
+- Replaced the seller revenue chart dependency with a lightweight native SVG chart.
 
 ## P0 — must verify in a deployed environment
 
-1. Apply every pending Supabase migration, including the exact-title search migration.
+1. Apply every pending Supabase migration, including the exact-title search migration. The linked project currently has a migration-history backlog from `20260714004000` onward, so applying only the two latest migrations would be unsafe; reconcile and review the full pending set before `supabase db push`.
 2. Run every item in `docs/E2E_CHECKLIST.md` using real buyer, seller, and admin accounts.
 3. Test catalogue search with:
    - an exact full title;
@@ -40,7 +43,7 @@ Last updated: 2026-09-18
 
 ## P1 — performance and reliability
 
-- The chart library remains a 400 KB deferred chunk. Replace it with a smaller chart implementation or load it only after the dashboard becomes idle if field data confirms it hurts seller-dashboard interaction.
+- Route and feature-level code splitting are in place. Keep new dependencies out of the public route unless they are lazy-loaded and justified by field performance data.
 - Add real-user performance monitoring for LCP, INP, image failures, search latency, and checkout failures.
 - Add integration tests for product variants, search ranking, and order inventory locking. Current unit tests cover display/contracts only.
 

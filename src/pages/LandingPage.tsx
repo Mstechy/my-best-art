@@ -195,7 +195,7 @@ export default function LandingPage() {
 
       {/* Product Feeds - Horizontal Scroll */}
       <div className="order-4">
-        {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
+        {FEEDS.filter(feed => feeds[feed.key].length > 0).map(feed => (
           <HorizontalScrollSection
             key={feed.key}
             title={feed.title}

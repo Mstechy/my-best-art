@@ -120,6 +120,19 @@ interface ProductRow {
   product_images: ProductImage[] | null;
 }
 
+type ListingHealthIssue = { message: string; tone: "warning" | "critical" };
+
+function getListingHealth(product: Product): ListingHealthIssue[] {
+  const issues: ListingHealthIssue[] = [];
+  if (product.product_images.length === 0) issues.push({ message: "Add a main product image", tone: "critical" });
+  if (!product.description || product.description.trim().length < 30) issues.push({ message: "Add a fuller description", tone: "warning" });
+  if (!product.key_features?.some((feature) => feature.trim())) issues.push({ message: "Add key features", tone: "warning" });
+  if (product.stock_quantity <= 0) issues.push({ message: "Restock this listing", tone: "critical" });
+  else if (product.stock_quantity <= (product.low_stock_threshold ?? 5)) issues.push({ message: "Low stock", tone: "warning" });
+  if (product.status === "active" && !product.is_approved) issues.push({ message: "Waiting for approval", tone: "warning" });
+  return issues;
+}
+
 type UploadState = "local" | "uploading" | "uploaded" | "error";
 const MAX_PRODUCT_IMAGES = 12;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
@@ -197,6 +210,10 @@ export default function SellerProducts() {
   const [search, setSearch] = useState("");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [bulkSaving, setBulkSaving] = useState(false);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkPrice, setBulkPrice] = useState("");
+  const [bulkStock, setBulkStock] = useState("");
+  const [needsAttentionOnly, setNeedsAttentionOnly] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formTab, setFormTab] = useState("basic");
@@ -611,9 +628,9 @@ export default function SellerProducts() {
       setFormTab("basic");
       return;
     }
-    if (description.trim().length > 0 && description.trim().length < 30) {
+    if (description.trim().length < 30) {
       setDescriptionError("Description must be at least 30 characters.");
-      toast({ title: "Description too short", description: "Please write at least 30 characters.", variant: "destructive" });
+      toast({ title: "Add a product description", description: "Write at least 30 characters so buyers know exactly what they are getting.", variant: "destructive" });
       setFormTab("basic");
       return;
     }
@@ -627,6 +644,11 @@ export default function SellerProducts() {
     }
 
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
+    if (cleanFeatures.length < 3) {
+      toast({ title: "Add key features", description: "Add at least three buyer-facing highlights, such as condition, compatibility, or what is included.", variant: "destructive" });
+      setFormTab("media");
+      return;
+    }
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
     const cleanCategoryAttributes = Object.fromEntries(
       Object.entries(categoryAttributes)
@@ -981,6 +1003,45 @@ export default function SellerProducts() {
     fetchProducts();
   };
 
+  const applyBulkPriceAndStock = async () => {
+    if (selectedProductIds.length === 0) return;
+    const updates: { price?: number; stock_quantity?: number } = {};
+    if (bulkPrice.trim()) {
+      const value = Number(bulkPrice);
+      if (!Number.isFinite(value) || value <= 0) {
+        toast({ title: "Check the price", description: "Enter a price greater than zero, or leave it blank.", variant: "destructive" });
+        return;
+      }
+      updates.price = value;
+    }
+    if (bulkStock.trim()) {
+      const value = Number(bulkStock);
+      if (!Number.isInteger(value) || value < 0) {
+        toast({ title: "Check the stock", description: "Enter a whole number of zero or more, or leave it blank.", variant: "destructive" });
+        return;
+      }
+      updates.stock_quantity = value;
+    }
+    if (Object.keys(updates).length === 0) {
+      toast({ title: "Nothing to update", description: "Enter a base price or stock quantity first.", variant: "destructive" });
+      return;
+    }
+
+    setBulkSaving(true);
+    const { error } = await supabase.from("products").update(updates).in("id", selectedProductIds);
+    setBulkSaving(false);
+    if (error) {
+      toast({ title: "Could not update selected products", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: "Selected listings updated", description: `${selectedProductIds.length} base listing${selectedProductIds.length === 1 ? "" : "s"} updated.` });
+    setBulkEditOpen(false);
+    setBulkPrice("");
+    setBulkStock("");
+    setSelectedProductIds([]);
+    fetchProducts();
+  };
+
   const deleteProduct = async (id: string) => {
     await supabase.from("products").delete().eq("id", id);
     toast({ title: "Product deleted" });
@@ -995,8 +1056,9 @@ export default function SellerProducts() {
     setKeyFeatures(updated);
   };
 
-  const filtered = products.filter(p =>
-    p.title.toLowerCase().includes(search.toLowerCase())
+  const filtered = products.filter((product) =>
+    product.title.toLowerCase().includes(search.toLowerCase()) &&
+    (!needsAttentionOnly || getListingHealth(product).length > 0)
   );
 
   const selectedCategory = categories.find(c => c.id === categoryId) || null;
@@ -1651,14 +1713,45 @@ export default function SellerProducts() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-10 h-11" />
           </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant={needsAttentionOnly ? "secondary" : "outline"} onClick={() => setNeedsAttentionOnly((value) => !value)}>
+              {needsAttentionOnly ? "Showing listing health issues" : "Show listing health issues"}
+            </Button>
+          </div>
           {selectedProductIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
               <span className="mr-1 text-sm font-medium text-foreground">{selectedProductIds.length} selected</span>
+              <Button type="button" size="sm" variant="outline" disabled={bulkSaving} onClick={() => setBulkEditOpen(true)}>Edit base price / stock</Button>
               <Button type="button" size="sm" variant="outline" disabled={bulkSaving} onClick={() => updateSelectedProductStatus("draft")}>Move to drafts</Button>
               <Button type="button" size="sm" variant="outline" className="text-destructive" disabled={bulkSaving} onClick={() => updateSelectedProductStatus("archived")}>Archive selected</Button>
               <Button type="button" size="sm" variant="ghost" disabled={bulkSaving} onClick={() => setSelectedProductIds([])}>Clear</Button>
             </div>
           )}
+          <Dialog open={bulkEditOpen} onOpenChange={setBulkEditOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle>Review bulk listing changes</DialogTitle>
+              </DialogHeader>
+              <p className="text-sm text-muted-foreground">
+                Apply the same base price or base stock quantity to {selectedProductIds.length} selected listing{selectedProductIds.length === 1 ? "" : "s"}. Leave either field empty to keep its current value.
+              </p>
+              <div className="grid gap-4 py-2 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-medium">Base price
+                  <Input inputMode="decimal" value={bulkPrice} onChange={(event) => setBulkPrice(event.target.value)} placeholder="Keep current" />
+                </label>
+                <label className="grid gap-1.5 text-sm font-medium">Base stock
+                  <Input inputMode="numeric" value={bulkStock} onChange={(event) => setBulkStock(event.target.value)} placeholder="Keep current" />
+                </label>
+              </div>
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                This changes only the base listing. Variant SKU prices and inventory remain unchanged; edit a product’s Variants tab when each SKU needs a different value.
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setBulkEditOpen(false)} disabled={bulkSaving}>Cancel</Button>
+                <Button type="button" onClick={applyBulkPriceAndStock} disabled={bulkSaving}>{bulkSaving ? "Updating..." : "Apply changes"}</Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </AnimatedSection>
 
@@ -1695,6 +1788,7 @@ export default function SellerProducts() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((product) => {
               const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+              const healthIssues = getListingHealth(product);
               return (
                 <Card key={product.id} className="border-border/60 overflow-hidden group">
                   <div className="aspect-video bg-muted relative">
@@ -1741,6 +1835,12 @@ export default function SellerProducts() {
                             : `${product.ships_to.length} countries`}
                       </Badge>
                     </div>
+                    {healthIssues.length > 0 && (
+                      <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                        <p className="font-semibold">Listing health: needs attention</p>
+                        <p className="mt-0.5">{healthIssues.slice(0, 2).map((issue) => issue.message).join(" · ")}{healthIssues.length > 2 ? ` · +${healthIssues.length - 2} more` : ""}</p>
+                      </div>
+                    )}
                     <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-muted/30 px-2 py-1.5 text-center">
                       <div className="flex flex-col items-center" title="Views">
                         <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><Eye className="h-3 w-3" /> Views</div>
