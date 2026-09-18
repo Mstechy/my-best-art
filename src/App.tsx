@@ -24,6 +24,7 @@ const CheckoutPage = lazy(() => import("@/pages/CheckoutPage"));
 const OrderSuccessPage = lazy(() => import("@/pages/OrderSuccessPage"));
 const LoginPage = lazy(() => import("@/pages/auth/LoginPage"));
 const RegisterPage = lazy(() => import("@/pages/auth/RegisterPage"));
+const ForgotPasswordPage = lazy(() => import("@/pages/auth/ForgotPasswordPage"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
 const PublicWishlistPage = lazy(() => import("@/pages/PublicWishlistPage"));
 const TermsPage = lazy(() => import("@/pages/legal/TermsPage"));
@@ -136,9 +137,10 @@ function AppRoutes() {
           <Route path="/product/:id" element={<RouteSuspense><ProductDetailPage /></RouteSuspense>} />
           <Route path="/seller/:id" element={<RouteSuspense><SellerStorePage /></RouteSuspense>} />
           <Route path="/checkout" element={<RouteSuspense><CheckoutPage /></RouteSuspense>} />
-          <Route path="/order-success/:id" element={<RouteSuspense><OrderSuccessPage /></RouteSuspense>} />
+          <Route path="/order-success/:id" element={<ProtectedRoute allowedRoles={["buyer"]}><RouteSuspense><OrderSuccessPage /></RouteSuspense></ProtectedRoute>} />
           <Route path="/auth/login" element={<RouteSuspense><LoginPage /></RouteSuspense>} />
           <Route path="/auth/register" element={<RouteSuspense><RegisterPage /></RouteSuspense>} />
+          <Route path="/auth/forgot-password" element={<RouteSuspense><ForgotPasswordPage /></RouteSuspense>} />
           <Route path="/wishlist/:userId" element={<RouteSuspense><PublicWishlistPage /></RouteSuspense>} />
           <Route path="/terms" element={<RouteSuspense><TermsPage /></RouteSuspense>} />
           <Route path="/privacy" element={<RouteSuspense><PrivacyPage /></RouteSuspense>} />

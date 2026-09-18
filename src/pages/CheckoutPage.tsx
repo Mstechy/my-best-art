@@ -51,10 +51,8 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (!user) return;
     (async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data } = await supabase.from("addresses" as any)
         .select("*").eq("user_id", user.id).order("is_default", { ascending: false }).order("created_at", { ascending: false });
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const list = (data as any) as SavedAddress[] || [];
       setSaved(list);
       const def = list.find(a => a.is_default) || list[0];
@@ -83,12 +81,10 @@ export default function CheckoutPage() {
       }
 
       if (saveAfter) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await supabase.from("addresses" as any).insert({
           user_id: user.id, label: addressLabel || null, recipient: address.name,
           line1: address.street, city: address.city, region: address.state || null,
           postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
         } as any);
       }
 
@@ -98,8 +94,9 @@ export default function CheckoutPage() {
         sellerGroups[item.seller_id].push(item);
       });
 
+      const orderIds: string[] = [];
       for (const [sellerId, sellerItems] of Object.entries(sellerGroups)) {
-        const { error } = await supabase.rpc("place_marketplace_order", {
+        const { data: orderId, error } = await supabase.rpc("place_marketplace_order", {
           p_seller_id: sellerId,
           p_shipping_address: address,
           p_items: sellerItems.map(item => ({
@@ -107,13 +104,15 @@ export default function CheckoutPage() {
             product_variant_id: item.product_variant_id || null,
             quantity: item.quantity,
           })),
-          p_idempotency_key: idempotencyKey,
+          p_idempotency_key: `${idempotencyKey}:${sellerId}`,
         });
         if (error) throw error;
+        if (orderId) orderIds.push(orderId);
       }
       clearCart();
       toast.success("Order placed successfully!");
-      navigate("/buyer/orders");
+      if (orderIds.length === 1) navigate(`/order-success/${orderIds[0]}`);
+      else navigate("/buyer/orders");
     }, [user, address, saveAfter, addressLabel, saved.length, items, clearCart, navigate]),
     useCallback(() => "place-order", []),
   );
@@ -153,10 +152,8 @@ export default function CheckoutPage() {
           </div>
           <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Your cart is empty</h2>
           <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">Add some products before checking out.</p>
-          <Link to="/marketplace" className="mt-6">
-            <button className="px-6 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
-              Browse Products
-            </button>
+          <Link to="/marketplace" className="mt-6 inline-flex px-6 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
+            Browse Products
           </Link>
         </div>
       </div>
@@ -204,27 +201,27 @@ export default function CheckoutPage() {
 
               <div className="grid gap-3">
                 <div>
-                  <label className={labelCls}>Full Name *</label>
-                  <input className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" />
+                  <label htmlFor="checkout-name" className={labelCls}>Full Name *</label>
+                  <input id="checkout-name" className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" />
                 </div>
                 <div>
-                  <label className={labelCls}>Street Address *</label>
-                  <input className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" />
+                  <label htmlFor="checkout-street" className={labelCls}>Street Address *</label>
+                  <input id="checkout-street" className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>City *</label>
-                    <input className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" />
+                    <label htmlFor="checkout-city" className={labelCls}>City *</label>
+                    <input id="checkout-city" className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" />
                   </div>
                   <div>
-                    <label className={labelCls}>State</label>
-                    <input className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
+                    <label htmlFor="checkout-state" className={labelCls}>State</label>
+                    <input id="checkout-state" className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelCls}>ZIP Code</label>
-                    <input className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
+                    <label htmlFor="checkout-zip" className={labelCls}>ZIP Code</label>
+                    <input id="checkout-zip" className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
                   </div>
                   <div>
                     <label className={labelCls}>Country *</label>
@@ -283,7 +280,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-[#888880]">Shipping</span>
-                  <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Free</span>
+                  <span className="text-[#888880] dark:text-[#A0A0A0] font-semibold">Calculated at checkout</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2] pt-2 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
                   <span>Total</span><span>{formatPrice(totalPrice)}</span>
@@ -299,14 +296,14 @@ export default function CheckoutPage() {
               </button>
 
               <p className="text-[10px] text-[#888880] text-center mt-3 flex items-center justify-center gap-1">
-                <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Secure checkout with escrow protection
+                <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Order protection and secure processing
               </p>
 
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {[
                   { icon: Lock, label: "SSL Encrypted" },
                   { icon: ShieldCheck, label: "Buyer Protection" },
-                  { icon: CreditCard, label: "PCI Compliant" },
+                  { icon: CreditCard, label: "Payment secured" },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex flex-col items-center gap-1 rounded-xl border border-[#F2F3F5] dark:border-[#1E1E1E] py-2 text-[9px] text-[#888880] dark:text-[#A0A0A0]">
                     <Icon className="h-3.5 w-3.5 text-[#111111] dark:text-[#FAF5F2]" />{label}

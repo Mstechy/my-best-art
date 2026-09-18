@@ -65,11 +65,11 @@ export function PriceDisplay({
       <span className={cn(now, "text-deal", priceClassName)}>
         {formatPrice(price)}
       </span>
-      {showCompareAt && onSale ? (
+      {showCompareAt && onSale && (
         <span className={cn(was, "text-quiet line-through")}>
           {formatPrice(compareAtPrice as number)}
         </span>
-      ) : null}
+      )}
     </div>
   );
 }

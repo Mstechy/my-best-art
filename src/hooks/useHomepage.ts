@@ -12,7 +12,6 @@ export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
 
 export const FEEDS: { key: FeedName; title: string; subtitle: string; href: string; empty: string }[] = [
-  { key: "flash_deals", title: "Flash Deals", subtitle: "Limited time offers", href: "/marketplace?promo=summer20", empty: "No live deals right now." },
   { key: "best_sellers", title: "Best Sellers", subtitle: "Most popular this week", href: "/marketplace?sort=best_sellers", empty: "Sales will appear here once orders are delivered." },
   { key: "new_arrivals", title: "New Arrivals", subtitle: "Fresh from sellers", href: "/marketplace?sort=newest", empty: "New approved listings will appear here." },
   { key: "trending", title: "Trending", subtitle: "What shoppers love", href: "/marketplace?sort=trending", empty: "Trending products will appear as shoppers engage with them." },
@@ -152,13 +151,15 @@ export function useHomepageData() {
     const productMap = new Map((products.data ?? []).map(p => [p.id, p]));
     const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending", "recommended"];
 
+    const usedProductIds = new Set<string>();
     return Object.fromEntries(
       feedNames.map((name, index) => {
         const rawData = feedResults[index].data ?? [];
         const items: FeedItem[] = rawData
           .flatMap((row: any) => {
             const p = productMap.get(row.product_id);
-            if (!p) return [];
+            if (!p || usedProductIds.has(p.id)) return [];
+            usedProductIds.add(p.id);
             const flashDealEndAt = row.flash_deal_end_at || p.flash_deal_end_at || null;
             return [{
               ...p,

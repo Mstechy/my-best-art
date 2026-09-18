@@ -31,7 +31,7 @@ export default function LandingPage() {
     <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
-    <main className="pb-8">
+    <main className="flex flex-col pb-8">
       {/* Hero area — 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
@@ -40,7 +40,7 @@ export default function LandingPage() {
             <div className="hidden lg:block">
               <CategorySidebar
                 selectedCategory={null}
-                onSelect={(slug) => { if (slug) navigate(`/categories/${slug}`); }}
+                onSelect={(slug) => { navigate(slug ? `/categories/${slug}` : "/marketplace"); }}
                 categories={categories.map(category => ({ id: category.id, name: category.name, slug: category.slug }))}
               />
             </div>
@@ -56,7 +56,7 @@ export default function LandingPage() {
                   <div className="text-center">
                     <Sparkles className="mx-auto mb-3 h-9 w-9 text-[#F6C75D]" />
                     <p className="font-semibold text-lg">{t("home.campaignsAppearHere")}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Manage hero slides in Admin → Collections.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Featured collections will appear here soon.</p>
                   </div>
                 </div>
               )}
@@ -92,7 +92,7 @@ export default function LandingPage() {
 
       {/* Flash Deal Rail — real countdowns from flash_deal_end_at */}
       {feeds.flash_deals.length > 0 && (
-        <Container className="py-10">
+        <Container className="order-2 py-10">
           <SectionHeader title={t("home.flashDeals")} subtitle={<span className="inline-flex items-center gap-2"><Flame className="h-4 w-4 text-destructive" />{t("home.limitedTime")}</span>} href="/marketplace?sort=flash_deals" linkLabel={t("common.viewAll")} className="mb-5" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {feeds.flash_deals.slice(0, 5).map(product => {
@@ -140,7 +140,7 @@ export default function LandingPage() {
       )}
 
       {/* Trust / value props */}
-      <section className="border-y border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
+      <section className="order-3 border-y border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
         <Container className="py-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {[
@@ -164,7 +164,7 @@ export default function LandingPage() {
       </section>
 
       {/* Shop by Category - Grid */}
-      <Container className="py-10">
+      <Container className="order-1 py-10">
         <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} href="/categories" linkLabel={t("home.allCategories")} className="mb-5" />
         {loading ? (
           <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
@@ -194,31 +194,31 @@ export default function LandingPage() {
       </Container>
 
       {/* Product Feeds - Horizontal Scroll */}
-      {FEEDS.map(feed => (
-        <HorizontalScrollSection
-          key={feed.key}
-          title={feed.title}
-          subtitle={feed.subtitle}
-          href={feed.href}
-          loading={loading}
-          loadingCount={8}
-          emptyText={feed.empty}
-          itemWidth={220}
-          gap={16}
-          autoScroll
-          autoScrollInterval={7000}
-          showDots
-        >
-          {feeds[feed.key].map(product => (
-            <HorizontalProductCard
-              key={product.id}
-              product={product}
-              seller={sellers.get(product.seller_id)}
-              formatPrice={formatPrice}
-            />
-          ))}
-        </HorizontalScrollSection>
-      ))}
+      <div className="order-4">
+        {FEEDS.map(feed => (
+          <HorizontalScrollSection
+            key={feed.key}
+            title={feed.title}
+            subtitle={feed.subtitle}
+            href={feed.href}
+            loading={loading}
+            loadingCount={8}
+            emptyText={feed.empty}
+            itemWidth={220}
+            gap={16}
+            showDots
+          >
+            {feeds[feed.key].map(product => (
+              <HorizontalProductCard
+                key={product.id}
+                product={product}
+                seller={sellers.get(product.seller_id)}
+                formatPrice={formatPrice}
+              />
+            ))}
+          </HorizontalScrollSection>
+        ))}
+      </div>
     </main>
     <SiteFooter />
   </div>;

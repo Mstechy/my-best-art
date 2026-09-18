@@ -16,14 +16,9 @@ const buttonVariants = cva(
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
 
-        /* ── MarketHub brand variants ─────────────────────────────────────
-           NOTE ON HOVER: `bg-brand` resolves to `var(--brand)`, an opaque raw
-           value, so `hover:bg-brand/90` would emit nothing. Brand hovers
-           therefore step to the neighbouring SOLID token (brand → brand-dark).
-           Same rule everywhere: raw-var tokens cannot take an alpha modifier.
-           ────────────────────────────────────────────────────────────── */
+        /* MarketHub brand variants use solid token hovers for raw CSS variables. */
         // Primary commerce CTA ("Buy Now"). Ink-on-orange per the design's own
-        // .pill rule — white on #ff7a1a is only 2.6:1 and fails WCAG AA.
+        // .pill rule: white on #ff7a1a is only 2.6:1 and fails WCAG AA.
         brand: "bg-brand text-ink hover:bg-brand-dark",
         // Secondary CTA ("Add to Cart") — outlined, fills with brand tint.
         brandOutline:

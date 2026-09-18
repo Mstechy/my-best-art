@@ -67,7 +67,7 @@ export default function AdFormDialog({ open, onOpenChange, ad, onSaved }: Props)
   const handleUpload = async (file: File) => {
     if (!user) return;
     setUploading(true);
-    const path = `${user.id}/ads/${Date.now()}-${file.name.replace(/[^a-z0-9.\-]/gi, "_")}`;
+    const path = `${user.id}/ads/${Date.now()}-${file.name.replace(/[^a-z0-9.-]/gi, "_")}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
     if (error) {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });

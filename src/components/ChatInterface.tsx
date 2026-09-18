@@ -110,7 +110,7 @@ export default function ChatInterface({ role }: { role: "buyer" | "seller" }) {
         const { data: product } = await supabase.from("products").select("id, title, price").eq("id", productId).maybeSingle();
         if (product) {
           setPinnedProduct({ id: product.id, title: product.title, price: Number(product.price) });
-          if (role === "buyer") setDraft(`Hi! I'm interested in \"${product.title}\". Is the price negotiable?`);
+          if (role === "buyer") setDraft(`Hi! I'm interested in "${product.title}". Is the price negotiable?`);
         }
       }
       setSearchParams({}, { replace: true });

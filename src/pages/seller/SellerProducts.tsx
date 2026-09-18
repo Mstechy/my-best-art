@@ -462,6 +462,7 @@ export default function SellerProducts() {
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
     setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]);
+    setSlugTouched(false); setSeoSlug(""); setMetaDescription(""); setLowStockThreshold("5");
     setDescriptionImageItems([]); setRemovedDescriptionImageUrls([]); setDraggedDescriptionImageId(null);
     setFlashDealEnabled(false); setFlashDealDiscount(""); setFlashDealStart(""); setFlashDealEnd("");
     setEditingProduct(null); setFormTab("basic");
@@ -473,7 +474,7 @@ export default function SellerProducts() {
     if (saved) {
       try {
         const draft = JSON.parse(saved) as ProductFormDraft;
-        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic");
+        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
         toast({ title: "Unfinished listing restored", description: "Your text and settings were recovered. Please reselect any files before submitting." });
       } catch { localStorage.removeItem(draftKey); }
     }
@@ -499,6 +500,10 @@ export default function SellerProducts() {
     setCondition(product.condition || "new");
     setWarrantyPeriod(product.warranty_period || "none");
     setShippingInfo(product.shipping_info || "");
+    setSeoSlug(product.seo_slug || "");
+    setMetaDescription(product.meta_description || "");
+    setLowStockThreshold(String(product.low_stock_threshold ?? 5));
+    setSlugTouched(Boolean(product.seo_slug));
     setKeyFeatures(product.key_features?.length ? product.key_features : [""]);
     setTagsInput(product.tags?.join(", ") || "");
     setShipsTo(product.ships_to || []);
@@ -1223,7 +1228,15 @@ export default function SellerProducts() {
                   <div>
                     <label className="text-sm font-medium text-foreground">User Manual / Guide (optional PDF)</label>
                     <input type="file" accept="application/pdf"
-                      onChange={(e) => setDocFile(e.target.files?.[0] || null)}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file && file.size > MAX_DOCUMENT_SIZE_BYTES) {
+                          toast({ title: "Document too large", description: "PDF guides must be 10 MB or smaller.", variant: "destructive" });
+                          e.currentTarget.value = "";
+                          return;
+                        }
+                        setDocFile(file || null);
+                      }}
                       className="mt-1 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-2 file:text-xs file:font-medium file:text-foreground hover:file:bg-muted/80" />
                     {docFile && <p className="mt-1 text-xs text-muted-foreground">Selected: {docFile.name}</p>}
                   </div>

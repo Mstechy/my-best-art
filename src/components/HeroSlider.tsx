@@ -131,7 +131,7 @@ const HeroSlider = memo(function HeroSlider({
     >
       {/* Slides container */}
       <div
-        className="relative aspect-[21/9] min-h-[320px] w-full md:min-h-[420px] lg:min-h-[520px]"
+        className="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]"
         style={{ backgroundColor: "#1C1C1E" }}
       >
         {slides.map((s, index) => {
@@ -198,12 +198,15 @@ const HeroSlider = memo(function HeroSlider({
                         {s.description}
                       </p>
                     )}
-                    <Link
-                      to={s.hero_cta_link || `/collections/${s.slug}`}
-                      className="mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#111111] transition-all hover:bg-[#F6C75D] hover:shadow-lg"
-                    >
-                      {s.cta_label || "Shop now"}
-                    </Link>
+                    {(() => {
+                      const destination = s.hero_cta_link || `/collections/${s.slug}`;
+                      const className = "mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#111111] transition-all hover:bg-[#F6C75D] hover:shadow-lg";
+                      return /^https?:\/\//i.test(destination) ? (
+                        <a href={destination} target="_blank" rel="noreferrer" className={className}>{s.cta_label || "Shop now"}</a>
+                      ) : (
+                        <Link to={destination} className={className}>{s.cta_label || "Shop now"}</Link>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>
@@ -239,6 +242,7 @@ const HeroSlider = memo(function HeroSlider({
             <button
               key={s.id}
               onClick={() => goTo(index)}
+              aria-current={index === current ? "true" : undefined}
               className={`h-2 rounded-full transition-all ${
                 index === current ? "w-8 bg-white" : "w-2 bg-white/40 hover:bg-white/60"
               }`}

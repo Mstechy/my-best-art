@@ -19,15 +19,8 @@ interface ProgressiveImageProps {
 }
 
 function getPlaceholderUrl(src: string): string | null {
-  if (!src) return null;
-  if (src.includes(".supabase.co/storage/")) {
-    const renderSrc = src.replace(
-      "/storage/v1/object/public/",
-      "/storage/v1/render/image/public/"
-    );
-    const separator = renderSrc.includes("?") ? "&" : "?";
-    return `${renderSrc}${separator}width=20&quality=10`;
-  }
+  // Supabase image transforms are not enabled for every existing public asset.
+  // The shimmer background remains reliable while the full image loads.
   return null;
 }
 

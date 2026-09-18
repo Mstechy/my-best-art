@@ -39,7 +39,7 @@ export default function OrderSuccessPage() {
 
       const { data: itemsData } = await supabase.from("order_items").select("id, quantity, unit_price, product_id").eq("order_id", id);
       const productIds = (itemsData || []).filter(i => i.product_id).map(i => i.product_id!);
-      let productMap: Record<string, { title: string; image: string | null }> = {};
+      const productMap: Record<string, { title: string; image: string | null }> = {};
       if (productIds.length > 0) {
         const [{ data: products }, { data: images }] = await Promise.all([
           supabase.from("products").select("id, title").in("id", productIds),
@@ -101,7 +101,7 @@ export default function OrderSuccessPage() {
     );
   }
 
-  const currentStatusIdx = STATUS_ORDER.indexOf(order.status);
+  const currentStatusIdx = Math.max(0, STATUS_ORDER.indexOf(order.status));
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">

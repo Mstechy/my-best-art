@@ -21,6 +21,19 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
 
   if (!user) return <Navigate to="/auth/login" replace />;
 
+  if (allowedRoles && !role) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-4">
+        <div className="max-w-md text-center space-y-4">
+          <ShieldCheck className="mx-auto h-10 w-10 text-destructive" />
+          <h1 className="font-display text-2xl font-bold text-foreground">Access unavailable</h1>
+          <p className="text-sm text-muted-foreground">Your account role could not be verified. Please sign out and sign in again.</p>
+          <Button variant="outline" onClick={signOut}>Sign out</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (profile?.is_banned || profile?.is_frozen) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-4">

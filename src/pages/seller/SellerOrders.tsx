@@ -41,7 +41,10 @@ export default function SellerOrders() {
       if (order) setShipDialogOrder(order);
       return;
     }
-    const { error } = await supabase.from("orders").update({ status: newStatus }).eq("id", orderId);
+    const { error } = await supabase.rpc("update_seller_order_fulfillment" as never, {
+      p_order_id: orderId,
+      p_status: newStatus,
+    } as never);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
     toast({ title: `Order marked as ${newStatus}` });
     ordersQuery.refetch();
@@ -49,12 +52,13 @@ export default function SellerOrders() {
 
   const confirmShip = async (data: { carrier: string; tracking_number: string; estimated_delivery: string | null }) => {
     if (!shipDialogOrder || !user) return;
-    const { error } = await supabase.from("orders").update({
-      status: "shipped",
-      carrier: data.carrier,
-      tracking_number: data.tracking_number,
-      estimated_delivery: data.estimated_delivery,
-    }).eq("id", shipDialogOrder.id);
+    const { error } = await supabase.rpc("update_seller_order_fulfillment" as never, {
+      p_order_id: shipDialogOrder.id,
+      p_status: "shipped",
+      p_carrier: data.carrier,
+      p_tracking_number: data.tracking_number,
+      p_estimated_delivery: data.estimated_delivery,
+    } as never);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
 
     await supabase.from("messages").insert({

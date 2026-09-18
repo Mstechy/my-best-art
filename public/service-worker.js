@@ -1,7 +1,7 @@
 // MarketHub Service Worker v2
 // Advanced caching: Stale-While-Revalidate for API, Cache-First for assets
 
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 const STATIC_CACHE = `markethub-static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `markethub-images-${CACHE_VERSION}`;
 const API_CACHE = `markethub-api-${CACHE_VERSION}`;
@@ -111,6 +111,9 @@ self.addEventListener('fetch', (event) => {
 
   // API calls: stale-while-revalidate (fast UI updates)
   if (isApiUrl(url)) {
+    // Never cache authenticated responses. Cache keys do not include the
+    // Authorization header, so caching them could replay private data.
+    if (request.headers.has('Authorization')) return;
     event.respondWith(staleWhileRevalidate(request, API_CACHE));
     return;
   }

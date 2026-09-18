@@ -4,8 +4,9 @@ import { ArrowRight, Package, Search } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import SiteFooter from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
 
-type Category = { id: string; name: string; slug: string; icon: string | null; };
+type Category = { id: string; name: string; slug: string; icon: string | null; image_url?: string | null; };
 
 /** A stable browse entry point: shoppers can choose a department before seeing products. */
 export default function CategoriesPage() {
@@ -13,12 +14,27 @@ export default function CategoriesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from("categories").select("id,name,slug,icon").order("sort_order")
-      .then(({ data }) => { setCategories((data || []) as Category[]); setLoading(false); });
+    const load = async () => {
+      const { data } = await supabase.from("categories").select("id,name,slug,icon").order("sort_order");
+      const categoryRows = (data || []) as Category[];
+      const { data: products } = categoryRows.length
+        ? await supabase.from("products").select("category_id, product_images(image_url, is_primary)").eq("status", "active").eq("is_approved", true).not("category_id", "is", null).limit(200)
+        : { data: [] };
+      const imageByCategory = new Map<string, string>();
+      (products || []).forEach((product: any) => {
+        if (imageByCategory.has(product.category_id)) return;
+        const image = product.product_images?.find((item: any) => item.is_primary)?.image_url || product.product_images?.[0]?.image_url;
+        if (image) imageByCategory.set(product.category_id, image);
+      });
+      setCategories(categoryRows.map(category => ({ ...category, image_url: imageByCategory.get(category.id) || null })));
+      setLoading(false);
+    };
+    void load();
   }, []);
 
   return <div className="min-h-screen bg-[#FAFAFA] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
     <MarketplaceNavbar showSearch={false} categories={categories.map(category => ({ label: category.name, value: category.id }))} />
+    <BottomTabBar />
     <main className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
       <nav aria-label="Breadcrumb" className="mb-3 text-xs text-[#888880]"><Link to="/" className="hover:underline">Home</Link><span className="mx-2">/</span><span>Categories</span></nav>
       <div className="max-w-2xl">
@@ -28,7 +44,9 @@ export default function CategoriesPage() {
       </div>
       {loading ? <div className="mt-10 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">{Array.from({ length: 8 }).map((_, index) => <div key={index} className="h-36 animate-pulse rounded-2xl bg-muted" />)}</div> : categories.length === 0 ? <div className="mt-10 rounded-2xl border bg-card p-10 text-center"><Package className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="font-semibold">Categories are being prepared.</p><Link to="/marketplace" className="mt-3 inline-flex items-center gap-2 text-sm underline">Browse all products <ArrowRight className="h-4 w-4" /></Link></div> : <section className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {categories.map(category => <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="group rounded-2xl border border-[#E8E8E8] bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-[#111111] hover:shadow-lg dark:border-[#222222] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2]">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#F8F3F0] text-lg dark:bg-[#252528]">{category.icon || <Package className="h-5 w-5" />}</div>
+          <div className="relative flex h-28 items-center justify-center overflow-hidden rounded-xl bg-[#F8F3F0] text-lg dark:bg-[#252528]">
+            {category.image_url ? <img src={category.image_url} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" loading="lazy" /> : <span>{category.icon || <Package className="h-5 w-5" />}</span>}
+          </div>
           <h2 className="mt-5 text-lg font-bold">{category.name}</h2>
           <span className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-[#888880] group-hover:text-[#111111] dark:group-hover:text-[#FAF5F2]">Explore products <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span>
         </Link>)}

@@ -44,14 +44,14 @@ export default function VariantSelector({ variants, selectedVariantId, onSelect 
   if (attributeKeys.length === 0) return null;
 
   const handleSelect = (key: string, value: string) => {
-    // Find a variant matching the newly selected value + all other currently selected values
-    const candidate = variants.find(v =>
-      v.option_values[key] === value &&
-      attributeKeys.every(k => {
-        const current = selectedValues[k];
-        return !current || k === key || v.option_values[k] === current;
-      })
-    );
+    // Prefer the closest compatible active variant, but allow changing one
+    // dimension when the previous combination no longer exists.
+    const candidates = variants.filter(v => v.is_active && v.option_values[key] === value);
+    const candidate = candidates.sort((a, b) => {
+      const score = (variant: ProductVariant) => attributeKeys.reduce((total, k) =>
+        total + (k !== key && selectedValues[k] && variant.option_values[k] === selectedValues[k] ? 1 : 0), 0);
+      return score(b) - score(a);
+    })[0];
     if (candidate) onSelect(candidate.id);
   };
 
@@ -75,6 +75,7 @@ export default function VariantSelector({ variants, selectedVariantId, onSelect 
                     onClick={() => handleSelect(key, value)}
                     className={`relative px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${isSelected ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
                   >
+                    {key.toLowerCase() === "color" && <span className="mr-1.5 inline-block h-3 w-3 rounded-full border border-black/15" style={{ backgroundColor: value.toLowerCase() }} aria-hidden="true" />}
                     {value}
                     {isSelected && (
                       <Check className="absolute -top-1 -right-1 h-3 w-3 text-white bg-[#111111] dark:bg-[#FAF5F2] dark:text-[#111111] rounded-full p-0.5" />

@@ -10,6 +10,7 @@ interface ProductImageProps {
   className?: string;
   loading?: "lazy" | "eager";
   fetchPriority?: "high" | "low" | "auto";
+  style?: React.CSSProperties;
 }
 
 export default function ProductImage({
@@ -19,6 +20,7 @@ export default function ProductImage({
   className,
   loading = "lazy",
   fetchPriority = "auto",
+  style,
 }: ProductImageProps) {
   const hasSource = !!src && src.trim().length > 0;
   const originalSrc = hasSource ? src : null;
@@ -81,6 +83,7 @@ export default function ProductImage({
       width={900}
       height={900}
       onError={handleError}
+      style={style}
       className={cn(
         "h-full w-full select-none transition-transform duration-300",
         variant === "detail" ? "object-contain" : "object-cover",

@@ -29,6 +29,7 @@ import { formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/pro
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
+import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import ProductRichDescription from "@/components/product/ProductRichDescription";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackView } from "@/hooks/useBatchedViewTracking";
@@ -264,25 +265,26 @@ export default function ProductDetailPage() {
     if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
     if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
     if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
-    if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
+    if (productVariants.length > 0 && (!selectedVariant || !selectedVariant.is_active)) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-    const variantSuffix = [selectedSize, selectedColor].filter(Boolean).join("/");
-    const cartId = variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
+    const variantSuffix = selectedVariant
+      ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(", ")
+      : [selectedSize, selectedColor].filter(Boolean).join("/");
+    const cartId = selectedVariant ? `${product.id}::variant:${selectedVariant.id}` : variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
     const titleSuffix = variantSuffix ? ` (${variantSuffix})` : "";
-    for (let i = 0; i < quantity; i++) {
-      addItem({
-        id: cartId,
-        product_id: product.id,
-        product_variant_id: selectedVariant?.id,
-        title: product.title + titleSuffix,
-        price: purchasablePrice,
-        image_url: primaryImage?.image_url || null,
-        seller_id: product.seller_id,
-        seller_name: seller.full_name || "Seller",
-        stock_quantity: purchasableStock,
-      });
-    }
+    addItem({
+      id: cartId,
+      product_id: product.id,
+      product_variant_id: selectedVariant?.id,
+      title: product.title + titleSuffix,
+      price: purchasablePrice,
+      image_url: primaryImage?.image_url || null,
+      seller_id: product.seller_id,
+      seller_name: seller.full_name || "Seller",
+      stock_quantity: purchasableStock,
+      quantity,
+    });
     toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
   }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
 
@@ -295,13 +297,15 @@ export default function ProductDetailPage() {
     if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
     if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
     if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
-    if (productVariants.length > 0 && !selectedVariant) { toast.error("That option combination is unavailable."); return; }
+    if (productVariants.length > 0 && (!selectedVariant || !selectedVariant.is_active)) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-    const variantSuffix = [selectedSize, selectedColor].filter(Boolean).join("/");
-    const cartId = variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
+    const variantSuffix = selectedVariant
+      ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(", ")
+      : [selectedSize, selectedColor].filter(Boolean).join("/");
+    const cartId = selectedVariant ? `${product.id}::variant:${selectedVariant.id}` : variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
     const titleSuffix = variantSuffix ? ` (${variantSuffix})` : "";
-    const items = Array.from({ length: quantity }, () => ({
+    const item = {
       id: cartId,
       product_id: product.id,
       product_variant_id: selectedVariant?.id,
@@ -311,8 +315,9 @@ export default function ProductDetailPage() {
       seller_id: product.seller_id,
       seller_name: seller.full_name || "Seller",
       stock_quantity: purchasableStock,
-    }));
-    replaceItems(items);
+      quantity,
+    };
+    replaceItems([item]);
     navigate("/checkout");
   }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
 
@@ -320,6 +325,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
       <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
+      <BottomTabBar />
       <Container className="py-6">
         {loading && !product ? (
           <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
@@ -765,7 +771,7 @@ export default function ProductDetailPage() {
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <ProductImage src={zoomedImage} alt="Zoomed product image" className="max-w-full max-h-[85vh] object-contain rounded-2xl" />
+            <ProductImage src={zoomedImage} alt="Zoomed product image" className="max-w-full max-h-[85vh] object-contain rounded-2xl" style={{ transform: `scale(${zoomScale})` }} />
             <div className="absolute top-4 right-4 flex gap-2">
               <button onClick={() => setZoomScale(s => Math.min(3, s + 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom in"><ZoomIn className="h-5 w-5" /></button>
               <button onClick={() => setZoomScale(s => Math.max(1, s - 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom out"><ZoomOut className="h-5 w-5" /></button>

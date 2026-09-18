@@ -103,7 +103,7 @@ export default function BuyerDashboard() {
               .in("id", productIds);
 
             const catIds = [...new Set((products || []).filter(p => p.category_id).map(p => p.category_id!))];
-            let catMap: Record<string, string> = {};
+            const catMap: Record<string, string> = {};
             if (catIds.length > 0) {
               const { data: categories } = await supabase
                 .from("categories")

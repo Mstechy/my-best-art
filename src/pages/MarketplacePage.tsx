@@ -28,6 +28,8 @@ import MarketplaceFilters, { countActive, defaultFilters, type MarketplaceFilter
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
+import { dedupeProducts, isMarketplaceSort } from "@/lib/marketplaceContracts";
+import { toast } from "sonner";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
 
@@ -60,17 +62,38 @@ interface Product {
   created_at: string;
   average_rating: number;
   review_count: number;
-  variants: { categoryAttributes?: Record<string, string>; productVideos?: string[] } | null;
+  variants: { sizes?: string[]; colors?: string[]; categoryAttributes?: Record<string, string>; productVideos?: string[] } | null;
   product_images: { image_url: string; is_primary: boolean }[];
   flash_deal_discount_percent: number | null;
   flash_deal_start_at: string | null;
   flash_deal_end_at: string | null;
   flash_deal_status: string | null;
+  relevance?: number;
 }
 
 interface Category { id: string; name: string; slug: string; icon: string; }
 interface CatalogueCursor { relevance: number; createdAt: string; id: string; }
 const CATALOGUE_PAGE_SIZE = 24;
+
+async function hydrateVariantMetadata(products: Product[]): Promise<Product[]> {
+  const productIds = products.map(product => product.id);
+  if (productIds.length === 0) return products;
+  const { data } = await supabase.from("product_variants").select("product_id, option_values, is_active").in("product_id", productIds).eq("is_active", true);
+  const byProduct = new Map<string, { sizes: string[]; colors: string[] }>();
+  (data || []).forEach((variant: any) => {
+    const current = byProduct.get(variant.product_id) || { sizes: [], colors: [] };
+    const size = variant.option_values?.size;
+    const color = variant.option_values?.color;
+    if (size && !current.sizes.includes(size)) current.sizes.push(size);
+    if (color && !current.colors.includes(color)) current.colors.push(color);
+    byProduct.set(variant.product_id, current);
+  });
+  return products.map(product => {
+    const metadata = byProduct.get(product.id);
+    if (!metadata) return product;
+    return { ...product, variants: { ...(product.variants || {}), sizes: metadata.sizes, colors: metadata.colors } };
+  });
+}
 
 function ModalWrapper({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
   const { t } = useTranslation();
@@ -168,7 +191,7 @@ export default function MarketplacePage() {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [shipsTo, setShipsTo] = useState<string>("all");
   const [filters, setFilters] = useState<MarketplaceFiltersState>(defaultFilters);
-  const [sortBy, setSortBy] = useState(() => ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended", "random"].includes(sortParam || "") ? sortParam! : "relevance");
+  const [sortBy, setSortBy] = useState(() => isMarketplaceSort(sortParam) ? sortParam : "relevance");
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageCursor, setPageCursor] = useState<CatalogueCursor | null>(null);
@@ -200,7 +223,7 @@ export default function MarketplacePage() {
 
   useEffect(() => { if (searchParam !== null) setSearch(searchParam); }, [searchParam]);
   useEffect(() => {
-    const nextSort = ["relevance", "newest", "rating", "price_low", "price_high", "best_sellers", "trending", "recommended", "random"].includes(sortParam || "") ? sortParam! : "relevance";
+    const nextSort = isMarketplaceSort(sortParam) ? sortParam : "relevance";
     setSortBy(current => current === nextSort ? current : nextSort);
   }, [sortParam]);
 
@@ -226,15 +249,6 @@ export default function MarketplacePage() {
     const next = new URLSearchParams(searchParams);
     next.delete("promo");
     setSearchParams(next, { replace: true });
-  };
-
-  const shuffleArray = <T,>(array: T[]) => {
-    const items = [...array];
-    for (let i = items.length - 1; i > 0; i -= 1) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [items[i], items[j]] = [items[j], items[i]];
-    }
-    return items;
   };
 
   const fetchData = async () => {
@@ -293,6 +307,7 @@ export default function MarketplacePage() {
         p_min_rating: filters.minRating || null,
         p_in_stock_only: filters.inStockOnly || null,
         p_condition: filters.condition === "any" ? null : filters.condition,
+        p_attribute_filters: filters.categoryAttributes || {},
         p_sort: sortBy,
         p_limit: CATALOGUE_PAGE_SIZE,
         p_cursor_relevance: null,
@@ -302,8 +317,9 @@ export default function MarketplacePage() {
       });
       if (error) throw error;
       const parsed = typeof data === "string" ? JSON.parse(data) : data;
+      const resultProducts = await hydrateVariantMetadata((parsed?.products || []) as Product[]);
       return {
-        products: (parsed?.products || []) as Product[],
+        products: resultProducts,
         hasMore: !!parsed?.has_more,
       };
     },
@@ -323,7 +339,7 @@ export default function MarketplacePage() {
     if (!catalogueData) return;
     setProducts(catalogueData.products);
     const last = catalogueData.products[catalogueData.products.length - 1];
-    setPageCursor(last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null);
+    setPageCursor(last ? { relevance: last.relevance ?? 0, createdAt: last.created_at, id: last.id } : null);
     setHasMore(catalogueData.hasMore);
   }, [catalogueData]);
 
@@ -346,6 +362,7 @@ export default function MarketplacePage() {
         p_min_rating: filters.minRating || null,
         p_in_stock_only: filters.inStockOnly || null,
         p_condition: filters.condition === "any" ? null : filters.condition,
+        p_attribute_filters: filters.categoryAttributes || {},
         p_sort: sortBy,
         p_limit: CATALOGUE_PAGE_SIZE,
         p_cursor_relevance: pageCursor.relevance,
@@ -355,10 +372,10 @@ export default function MarketplacePage() {
       });
       if (error) throw error;
       const parsed = typeof data === "string" ? JSON.parse(data) : data;
-      const result = { products: (parsed?.products || []) as Product[], hasMore: !!parsed?.has_more };
-      setProducts(prev => [...prev, ...result.products]);
+      const result = { products: await hydrateVariantMetadata((parsed?.products || []) as Product[]), hasMore: !!parsed?.has_more };
+      setProducts(prev => [...prev, ...dedupeProducts(result.products, prev)]);
       const last = result.products[result.products.length - 1];
-      setPageCursor(last ? { relevance: 0, createdAt: last.created_at, id: last.id } : null);
+      setPageCursor(last ? { relevance: last.relevance ?? 0, createdAt: last.created_at, id: last.id } : null);
       setHasMore(result.hasMore);
     } catch (error) {
       console.error("Search failed", error);
@@ -409,8 +426,8 @@ export default function MarketplacePage() {
 
   const displayedProducts = useMemo(() => {
     const baseProducts = filtered.length > 0 ? filtered : visualFallbackProducts;
-    return sortBy === "random" ? shuffleArray(baseProducts) : baseProducts;
-  }, [filtered, visualFallbackProducts, sortBy]);
+    return baseProducts;
+  }, [filtered, visualFallbackProducts]);
 
   const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
@@ -433,6 +450,11 @@ export default function MarketplacePage() {
   const activeFilterCount = countActive(filters);
 
   const handleAddToCart = (product: Product) => {
+    if (product.variants && (product.variants.sizes?.length || product.variants.colors?.length || product.variants.categoryAttributes)) {
+      toast.info("Choose your options on the product page first.");
+      navigate(`/product/${product.id}`);
+      return;
+    }
     trackProductDiscovery(product.id, "add_to_cart");
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
@@ -444,6 +466,11 @@ export default function MarketplacePage() {
   };
 
   const handleBuyNow = (product: Product) => {
+    if (product.variants && (product.variants.sizes?.length || product.variants.colors?.length || product.variants.categoryAttributes)) {
+      toast.info("Choose your options on the product page first.");
+      navigate(`/product/${product.id}`);
+      return;
+    }
     trackProductDiscovery(product.id, "buy_now");
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
@@ -544,7 +571,7 @@ export default function MarketplacePage() {
                   categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
                   categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
                 />
-                <Select value={sortBy} onValueChange={setSortBy}>
+                <Select value={sortBy} onValueChange={(value) => { if (isMarketplaceSort(value)) setSortBy(value); }}>
                   <SelectTrigger className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="relevance">{t("marketplace.sort.bestMatch")}</SelectItem>
@@ -553,6 +580,7 @@ export default function MarketplacePage() {
                     <SelectItem value="best_sellers">{t("marketplace.sort.bestSellers")}</SelectItem>
                     <SelectItem value="trending">{t("marketplace.sort.trending")}</SelectItem>
                     <SelectItem value="recommended">{t("marketplace.sort.recommended")}</SelectItem>
+                    <SelectItem value="flash_deals">{t("home.flashDeals")}</SelectItem>
                     <SelectItem value="random">{t("marketplace.sort.discover")}</SelectItem>
                     <SelectItem value="price_low">{t("marketplace.sort.priceLow")}</SelectItem>
                     <SelectItem value="price_high">{t("marketplace.sort.priceHigh")}</SelectItem>

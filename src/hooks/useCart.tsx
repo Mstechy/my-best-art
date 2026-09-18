@@ -17,11 +17,13 @@ export interface CartItem {
   stock_quantity: number;
 }
 
+type CartItemInput = Omit<CartItem, "quantity"> & { quantity?: number };
+
 interface CartContextType {
   items: CartItem[];
   loading: boolean;
-  addItem: (item: Omit<CartItem, "quantity">) => void;
-  replaceItems: (items: Omit<CartItem, "quantity">[]) => void;
+  addItem: (item: CartItemInput) => void;
+  replaceItems: (items: CartItemInput[]) => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -103,7 +105,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
           .eq("cart_id", cart.id) as { data: { product_id: string; product_variant_id: string | null; quantity: number; seller_name: string | null }[] | null };
 
         const dbItems = rawDbItems ?? [];
-        if (dbItems.length > 0 && mountedRef.current) {
+        if (mountedRef.current) {
+          if (dbItems.length === 0) {
+            setItems([]);
+            return;
+          }
           const productIds = [...new Set(dbItems.map(r => r.product_id))];
           interface ProductRow {
             id: string;
@@ -203,18 +209,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ── Public API ────────────────────────────────────────────────────────
-  const addItem = useCallback((item: Omit<CartItem, "quantity">) => {
+  const addItem = useCallback((item: CartItemInput) => {
+    const requestedQuantity = Math.max(1, item.quantity ?? 1);
     setItems(prev => {
       const existing = prev.find(i => i.id === item.id);
       let next: CartItem[];
       if (existing) {
         next = prev.map(i =>
           i.id === item.id
-            ? { ...i, quantity: Math.min(i.quantity + 1, i.stock_quantity) }
+            ? { ...i, quantity: Math.min(i.quantity + requestedQuantity, i.stock_quantity) }
             : i
         );
       } else {
-        next = [...prev, { ...item, quantity: 1 }];
+        next = [...prev, { ...item, quantity: Math.min(requestedQuantity, item.stock_quantity) }];
       }
       schedulePersist(next);
       return next;
@@ -222,11 +229,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setIsOpen(true);
   }, [schedulePersist]);
 
-  const replaceItems = useCallback((newItems: Omit<CartItem, "quantity">[]) => {
+  const replaceItems = useCallback((newItems: CartItemInput[]) => {
     setItems(prev => {
       const next: CartItem[] = newItems.map(item => {
-        const existing = prev.find(i => i.id === item.id);
-        return { ...item, quantity: existing ? existing.quantity : 1 };
+        const requestedQuantity = Math.max(1, item.quantity ?? 1);
+        return {
+          ...item,
+          quantity: Math.min(requestedQuantity, item.stock_quantity),
+        };
       });
       schedulePersist(next);
       return next;
