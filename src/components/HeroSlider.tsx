@@ -9,16 +9,11 @@ interface HeroSliderProps {
   defaultDuration?: number;
 }
 
-// Generate responsive image URLs using Supabase transformations
-// Never upscale beyond original dimensions
-function getHeroImageUrl(src: string | null, width: number): string {
-  if (!src) return "";
-  // Only apply transformation if it's a Supabase storage URL
-  if (!src.includes(".supabase.co/storage/")) return src;
-  // Use render endpoint for optimized images (matches preload format)
-  const renderSrc = src.replace("/storage/v1/object/public/", "/storage/v1/render/image/public/");
-  const separator = renderSrc.includes("?") ? "&" : "?";
-  return `${renderSrc}${separator}width=${width}&quality=85`;
+// Supabase image transformations (/render/image/…) are NOT enabled on this
+// project — the endpoint returns 403 for these assets. Always serve the
+// original public storage URL; the browser caches it after the first request.
+function getHeroImageUrl(src: string | null): string {
+  return src ?? "";
 }
 
 const HeroSlider = memo(function HeroSlider({
@@ -30,10 +25,6 @@ const HeroSlider = memo(function HeroSlider({
   const [isPaused, setIsPaused] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
-  // Slides whose transformed (render endpoint) URL failed to load — usually a
-  // 403 when Supabase image transformations aren't enabled for the bucket.
-  // Fall back to the original public storage URL for those slides.
-  const [failedTransforms, setFailedTransforms] = useState<Set<number>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -73,9 +64,7 @@ const HeroSlider = memo(function HeroSlider({
       const link = document.createElement("link");
       link.rel = "preload";
       link.as = "image";
-      link.href = getHeroImageUrl(slide.image_url, 1920);
-      link.imageSrcset = `${getHeroImageUrl(slide.image_url, 768)} 768w, ${getHeroImageUrl(slide.image_url, 1280)} 1280w, ${getHeroImageUrl(slide.image_url, 1920)} 1920w`;
-      link.imageSizes = "100vw";
+      link.href = getHeroImageUrl(slide.image_url);
       document.head.appendChild(link);
       links.push(link);
     }
@@ -140,11 +129,6 @@ const HeroSlider = memo(function HeroSlider({
       >
         {slides.map((s, index) => {
           const isActive = index === current;
-          const useFallback = failedTransforms.has(index);
-          const imageSrc = useFallback ? s.image_url! : getHeroImageUrl(s.image_url, 1920);
-          const srcSet = useFallback
-            ? undefined
-            : `${getHeroImageUrl(s.image_url, 768)} 768w, ${getHeroImageUrl(s.image_url, 1280)} 1280w, ${getHeroImageUrl(s.image_url, 1920)} 1920w`;
           const imageAlt = s.title || "Hero banner";
           return (
             <div
@@ -160,9 +144,7 @@ const HeroSlider = memo(function HeroSlider({
               {/* Background image */}
               {s.image_url ? (
                 <img
-                  src={imageSrc}
-                  srcSet={srcSet}
-                  sizes={useFallback ? undefined : "100vw"}
+                  src={getHeroImageUrl(s.image_url)}
                   alt={imageAlt}
                   className={`h-full w-full object-cover ${
                     index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
@@ -170,20 +152,7 @@ const HeroSlider = memo(function HeroSlider({
                   loading={index === 0 ? "eager" : "lazy"}
                   {...({ fetchpriority: index === 0 ? "high" : "auto" } as React.HTMLAttributes<HTMLImageElement>)}
                   decoding="async"
-                  width={1920}
-                  height={852}
                   onLoad={() => handleImageLoad(index)}
-                  onError={() => {
-                    // Transform endpoint rejected the asset (e.g. 403) — retry
-                    // with the untransformed public storage URL.
-                    if (!useFallback) {
-                      setFailedTransforms((prev) => {
-                        const nextSet = new Set(prev);
-                        nextSet.add(index);
-                        return nextSet;
-                      });
-                    }
-                  }}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1C1C1E] to-[#333333]">
