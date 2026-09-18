@@ -46,7 +46,7 @@ export default function VariantSelector({ variants, selectedVariantId, onSelect 
   const handleSelect = (key: string, value: string) => {
     // Prefer the closest compatible active variant, but allow changing one
     // dimension when the previous combination no longer exists.
-    const candidates = variants.filter(v => v.is_active && v.option_values[key] === value);
+    const candidates = variants.filter(v => v.is_active && v.stock_quantity > 0 && v.option_values[key] === value);
     const candidate = candidates.sort((a, b) => {
       const score = (variant: ProductVariant) => attributeKeys.reduce((total, k) =>
         total + (k !== key && selectedValues[k] && variant.option_values[k] === selectedValues[k] ? 1 : 0), 0);
@@ -68,12 +68,20 @@ export default function VariantSelector({ variants, selectedVariantId, onSelect 
             <div className="flex flex-wrap gap-2">
               {values.map(value => {
                 const isSelected = selectedValue === value;
+                const isAvailable = variants.some(variant =>
+                  variant.is_active &&
+                  variant.stock_quantity > 0 &&
+                  variant.option_values[key] === value &&
+                  attributeKeys.every(otherKey => otherKey === key || !selectedValues[otherKey] || variant.option_values[otherKey] === selectedValues[otherKey])
+                );
                 return (
                   <button
                     key={value}
                     type="button"
                     onClick={() => handleSelect(key, value)}
-                    className={`relative px-4 py-2 rounded-lg text-xs font-semibold border transition-all ${isSelected ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
+                    disabled={!isAvailable}
+                    aria-label={`${key}: ${value}${isAvailable ? "" : ", unavailable"}`}
+                    className={`relative px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${isSelected ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
                   >
                     {key.toLowerCase() === "color" && <span className="mr-1.5 inline-block h-3 w-3 rounded-full border border-black/15" style={{ backgroundColor: value.toLowerCase() }} aria-hidden="true" />}
                     {value}

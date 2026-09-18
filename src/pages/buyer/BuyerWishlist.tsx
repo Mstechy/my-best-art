@@ -72,7 +72,7 @@ export default function BuyerWishlist() {
 
   const handleAddToCart = (item: WishlistItem) => {
     const img = item.product.product_images?.find(i => i.is_primary) || item.product.product_images?.[0];
-    addItem({ id: item.product.id, title: item.product.title, price: item.product.price, image_url: img?.image_url || null, seller_id: item.product.seller_id, seller_name: "Seller", stock_quantity: item.product.stock_quantity });
+    addItem({ id: item.product.id, product_id: item.product.id, title: item.product.title, price: item.product.price, image_url: img?.image_url || null, seller_id: item.product.seller_id, seller_name: "Seller", stock_quantity: item.product.stock_quantity });
     toast({ title: "Added to cart" });
   };
 

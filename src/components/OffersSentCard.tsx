@@ -12,7 +12,7 @@ interface Offer {
   product_image?: string;
   seller_id: string;
   seller_name?: string;
-  amount: string;
+  amount: number;
   currency: string;
   note: string;
   attachment_url: string | null;
@@ -201,7 +201,7 @@ export default function OffersSentCard() {
                 <div className="mt-2 flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1 text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">
                     <DollarSign className="h-3 w-3 text-[#888880]" />
-                    {parseFloat(offer.amount).toFixed(2)} {offer.currency}
+                    {offer.amount.toFixed(2)} {offer.currency}
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
                     <Clock className="h-3 w-3" />

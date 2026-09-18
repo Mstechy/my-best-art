@@ -195,6 +195,8 @@ export default function SellerProducts() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+  const [bulkSaving, setBulkSaving] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formTab, setFormTab] = useState("basic");
@@ -965,6 +967,20 @@ export default function SellerProducts() {
     fetchProducts();
   };
 
+  const updateSelectedProductStatus = async (status: "draft" | "archived") => {
+    if (selectedProductIds.length === 0) return;
+    setBulkSaving(true);
+    const { error } = await supabase.from("products").update({ status }).in("id", selectedProductIds);
+    setBulkSaving(false);
+    if (error) {
+      toast({ title: "Could not update selected products", description: error.message, variant: "destructive" });
+      return;
+    }
+    toast({ title: `${selectedProductIds.length} product${selectedProductIds.length === 1 ? "" : "s"} ${status === "archived" ? "archived" : "moved to drafts"}` });
+    setSelectedProductIds([]);
+    fetchProducts();
+  };
+
   const deleteProduct = async (id: string) => {
     await supabase.from("products").delete().eq("id", id);
     toast({ title: "Product deleted" });
@@ -1626,9 +1642,19 @@ export default function SellerProducts() {
       </AnimatedSection>
 
       <AnimatedSection variant="fade-up" delay={50}>
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-10 h-11" />
+        <div className="space-y-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-10 h-11" />
+          </div>
+          {selectedProductIds.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
+              <span className="mr-1 text-sm font-medium text-foreground">{selectedProductIds.length} selected</span>
+              <Button type="button" size="sm" variant="outline" disabled={bulkSaving} onClick={() => updateSelectedProductStatus("draft")}>Move to drafts</Button>
+              <Button type="button" size="sm" variant="outline" className="text-destructive" disabled={bulkSaving} onClick={() => updateSelectedProductStatus("archived")}>Archive selected</Button>
+              <Button type="button" size="sm" variant="ghost" disabled={bulkSaving} onClick={() => setSelectedProductIds([])}>Clear</Button>
+            </div>
+          )}
         </div>
       </AnimatedSection>
 
@@ -1679,6 +1705,13 @@ export default function SellerProducts() {
                       <Badge className={statusColors[product.status]}>
                         {product.status}
                       </Badge>
+                    </div>
+                    <div className="absolute left-3 top-3 rounded-md bg-background/90 p-1 shadow-sm">
+                      <Checkbox
+                        checked={selectedProductIds.includes(product.id)}
+                        onCheckedChange={(checked) => setSelectedProductIds((ids) => checked ? [...new Set([...ids, product.id])] : ids.filter((id) => id !== product.id))}
+                        aria-label={`Select ${product.title}`}
+                      />
                     </div>
                   </div>
                   <CardContent className="p-4">

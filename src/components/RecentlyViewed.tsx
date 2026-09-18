@@ -78,6 +78,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                       e.stopPropagation();
                       addItem({
                         id: p.id,
+                        product_id: p.id,
                         price: p.price,
                         title: p.title,
                         image_url: img?.image_url,

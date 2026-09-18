@@ -26,7 +26,7 @@ interface Offer {
   product_image?: string;
   buyer_id: string;
   buyer_name?: string;
-  amount: string;
+  amount: number;
   currency: string;
   note: string;
   attachment_url: string | null;
@@ -216,7 +216,7 @@ export default function OffersReceivedCard() {
                   <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1 font-semibold text-foreground">
                       <DollarSign className="h-4 w-4" />
-                      {parseFloat(offer.amount).toFixed(2)} {offer.currency}
+                      {offer.amount.toFixed(2)} {offer.currency}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
@@ -261,7 +261,7 @@ export default function OffersReceivedCard() {
                       variant="outline"
                       onClick={() => {
                         setSelectedOffer(offer);
-                        setCounterAmount(offer.amount);
+                        setCounterAmount(String(offer.amount));
                         setShowCounterDialog(true);
                       }}
                       disabled={responding === offer.id}
@@ -295,7 +295,7 @@ export default function OffersReceivedCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Make a Counter Offer</AlertDialogTitle>
             <AlertDialogDescription>
-              Current offer: ${parseFloat(selectedOffer?.amount || "0").toFixed(2)}
+              Current offer: ${(selectedOffer?.amount ?? 0).toFixed(2)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">
