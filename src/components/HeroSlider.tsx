@@ -201,26 +201,45 @@ const HeroSlider = memo(function HeroSlider({
                 }}
               />
 
-              {/* Content overlay */}
-              <div className="absolute inset-0 flex items-center">
-                <div className="mx-auto w-full max-w-7xl px-4 md:px-8 lg:px-12">
+              {/* Content overlay — clamped so text and CTA always fit inside
+                  the fixed hero height without growing it */}
+              <div className="absolute inset-0 flex items-center overflow-hidden">
+                <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-8 md:px-12">
                   <div className="max-w-xl">
                     {s.hero_badge && (
-                      <span className="mb-4 inline-block rounded-full bg-[#F6C75D] px-3 py-1 text-xs font-bold text-[#5C3A00]">
+                      <span className="mb-2 inline-block rounded-full bg-[#F6C75D] px-2.5 py-0.5 text-[10px] font-bold text-[#5C3A00] sm:mb-3 sm:px-3 sm:py-1 sm:text-xs">
                         {s.hero_badge}
                       </span>
                     )}
-                    <h2 className="text-3xl font-black uppercase leading-none tracking-tight text-white md:text-5xl lg:text-6xl">
+                    <h2
+                      className="break-words font-black uppercase tracking-tight text-white"
+                      style={{
+                        fontSize: "clamp(1.375rem, 2.5vw + 1rem, 3.75rem)",
+                        lineHeight: 1.08,
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
                       {s.title}
                     </h2>
                     {s.description && (
-                      <p className="mt-4 max-w-lg text-sm leading-relaxed text-white/80 md:text-base">
+                      <p
+                        className="mt-2 max-w-md text-xs leading-relaxed text-white/80 sm:mt-3 sm:max-w-lg sm:text-sm md:text-base"
+                        style={{
+                          display: "-webkit-box",
+                          WebkitLineClamp: 3,
+                          WebkitBoxOrient: "vertical",
+                          overflow: "hidden",
+                        }}
+                      >
                         {s.description}
                       </p>
                     )}
                     {(() => {
                       const destination = s.hero_cta_link || `/collections/${s.slug}`;
-                      const className = "mt-6 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#111111] transition-all hover:bg-[#F6C75D] hover:shadow-lg";
+                      const className = "mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#111111] transition-all hover:bg-[#F6C75D] hover:shadow-lg sm:mt-5 sm:px-6 sm:py-3 sm:text-sm";
                       return /^https?:\/\//i.test(destination) ? (
                         <a href={destination} target="_blank" rel="noreferrer" className={className}>{s.cta_label || "Shop now"}</a>
                       ) : (
