@@ -30,6 +30,10 @@ const HeroSlider = memo(function HeroSlider({
   const [isPaused, setIsPaused] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  // Slides whose transformed (render endpoint) URL failed to load — usually a
+  // 403 when Supabase image transformations aren't enabled for the bucket.
+  // Fall back to the original public storage URL for those slides.
+  const [failedTransforms, setFailedTransforms] = useState<Set<number>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -136,6 +140,11 @@ const HeroSlider = memo(function HeroSlider({
       >
         {slides.map((s, index) => {
           const isActive = index === current;
+          const useFallback = failedTransforms.has(index);
+          const imageSrc = useFallback ? s.image_url! : getHeroImageUrl(s.image_url, 1920);
+          const srcSet = useFallback
+            ? undefined
+            : `${getHeroImageUrl(s.image_url, 768)} 768w, ${getHeroImageUrl(s.image_url, 1280)} 1280w, ${getHeroImageUrl(s.image_url, 1920)} 1920w`;
           const imageAlt = s.title || "Hero banner";
           return (
             <div
@@ -151,9 +160,9 @@ const HeroSlider = memo(function HeroSlider({
               {/* Background image */}
               {s.image_url ? (
                 <img
-                  src={getHeroImageUrl(s.image_url, 1920)}
-                  srcSet={`${getHeroImageUrl(s.image_url, 768)} 768w, ${getHeroImageUrl(s.image_url, 1280)} 1280w, ${getHeroImageUrl(s.image_url, 1920)} 1920w`}
-                  sizes="100vw"
+                  src={imageSrc}
+                  srcSet={srcSet}
+                  sizes={useFallback ? undefined : "100vw"}
                   alt={imageAlt}
                   className={`h-full w-full object-cover ${
                     index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
@@ -164,6 +173,17 @@ const HeroSlider = memo(function HeroSlider({
                   width={1920}
                   height={852}
                   onLoad={() => handleImageLoad(index)}
+                  onError={() => {
+                    // Transform endpoint rejected the asset (e.g. 403) — retry
+                    // with the untransformed public storage URL.
+                    if (!useFallback) {
+                      setFailedTransforms((prev) => {
+                        const nextSet = new Set(prev);
+                        nextSet.add(index);
+                        return nextSet;
+                      });
+                    }
+                  }}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1C1C1E] to-[#333333]">

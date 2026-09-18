@@ -151,15 +151,19 @@ export function useHomepageData() {
     const productMap = new Map((products.data ?? []).map(p => [p.id, p]));
     const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending", "recommended"];
 
-    const usedProductIds = new Set<string>();
     return Object.fromEntries(
       feedNames.map((name, index) => {
         const rawData = feedResults[index].data ?? [];
+        // A product may legitimately appear in several rails (e.g. a new
+        // arrival that is also on sale). Only dedupe within the same rail so
+        // an earlier feed (flash_deals) can't swallow every product and leave
+        // the later rails empty.
+        const seenInRail = new Set<string>();
         const items: FeedItem[] = rawData
           .flatMap((row: any) => {
             const p = productMap.get(row.product_id);
-            if (!p || usedProductIds.has(p.id)) return [];
-            usedProductIds.add(p.id);
+            if (!p || seenInRail.has(p.id)) return [];
+            seenInRail.add(p.id);
             const flashDealEndAt = row.flash_deal_end_at || p.flash_deal_end_at || null;
             return [{
               ...p,
