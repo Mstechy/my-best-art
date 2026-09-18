@@ -121,7 +121,7 @@ interface ProductRow {
 }
 
 type UploadState = "local" | "uploading" | "uploaded" | "error";
-const MAX_PRODUCT_IMAGES = 8;
+const MAX_PRODUCT_IMAGES = 12;
 const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
 const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
 const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
@@ -1360,7 +1360,7 @@ export default function SellerProducts() {
                   <div>
                     <div className="flex items-center justify-between gap-3">
                       <label className="text-sm font-medium text-foreground">Product Images</label>
-                      <span className="text-xs text-muted-foreground">{imageItems.length} image{imageItems.length === 1 ? "" : "s"}</span>
+                      <span className="text-xs text-muted-foreground">{imageItems.length}/{MAX_PRODUCT_IMAGES} images</span>
                     </div>
                     <div className="mt-2">
                       <label
@@ -1374,7 +1374,7 @@ export default function SellerProducts() {
                         <ImagePlus className="h-8 w-8 text-muted-foreground" />
                         <div className="text-center">
                           <span className="text-sm font-medium text-foreground">Drop images here or browse files</span>
-                          <p className="text-xs text-muted-foreground mt-1">Upload any product photo. Cards are optimized automatically and originals stay available on the detail page.</p>
+                          <p className="text-xs text-muted-foreground mt-1">Add up to {MAX_PRODUCT_IMAGES} JPG, PNG, or WebP photos. The main photo appears on product cards, cart, and checkout.</p>
                         </div>
                         <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addImageFiles(Array.from(e.target.files || []))} />
                       </label>
@@ -1452,6 +1452,10 @@ export default function SellerProducts() {
                         ))}
                       </div>
                     )}
+                    <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground">Photo quality checklist</p>
+                      <p className="mt-1">Use a clean, well-lit main image that shows the full product. Add close-ups, back/side views, packaging, dimensions, and any flaws. Keep the same framing for colour options and use descriptive alt text, such as “Navy backpack, front view”.</p>
+                    </div>
                   </div>
                   <div>
                     <div className="flex items-center justify-between gap-3">
@@ -1469,7 +1473,7 @@ export default function SellerProducts() {
                       <ImagePlus className="h-7 w-7 text-muted-foreground" />
                       <div className="text-center">
                         <span className="text-sm font-medium text-foreground">Drop description photos here or browse files</span>
-                        <p className="text-xs text-muted-foreground mt-1">These show as a scrolling photo story below your description — great for extra angles, packaging, or proof shots.</p>
+                        <p className="text-xs text-muted-foreground mt-1">These build a visual story below the written description—use them for size charts, installation steps, packaging, comparison details, or proof of condition. They are optional and do not replace main gallery photos.</p>
                       </div>
                       <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addDescriptionImageFiles(Array.from(e.target.files || []))} />
                     </label>

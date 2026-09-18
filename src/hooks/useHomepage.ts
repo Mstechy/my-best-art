@@ -5,7 +5,7 @@ import { fetchHeroCollections } from "@/lib/collectionResolver";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
 
 // ── Types ────────────────────────────────────────────────────────────────
-export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; product_images: { image_url: string; is_primary: boolean }[] };
+export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; product_images: { image_url: string; is_primary: boolean }[] };
 export type Category = { id: string; name: string; slug: string };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
@@ -15,7 +15,7 @@ export const FEEDS: { key: FeedName; title: string; subtitle: string; href: stri
   { key: "best_sellers", title: "Best Sellers", subtitle: "Most popular this week", href: "/marketplace?sort=best_sellers", empty: "Sales will appear here once orders are delivered." },
   { key: "new_arrivals", title: "New Arrivals", subtitle: "Fresh from sellers", href: "/marketplace?sort=newest", empty: "New approved listings will appear here." },
   { key: "trending", title: "Trending", subtitle: "What shoppers love", href: "/marketplace?sort=trending", empty: "Trending products will appear as shoppers engage with them." },
-  { key: "recommended", title: "Recommended", subtitle: "Just for you", href: "/marketplace?sort=recommended", empty: "Recommendations will appear as the catalogue grows." },
+  { key: "recommended", title: "Discover More", subtitle: "More worth exploring", href: "/marketplace?sort=random", empty: "More products will appear as the catalogue grows." },
 ];
 
 // ── Individual hooks (each is independently cached by React Query) ───────
@@ -58,7 +58,9 @@ export function useHomepageFeed(feedName: FeedName, discoverySeed: string) {
     async () => {
       const { data } = await (supabase as any).rpc("homepage_product_feed", {
         p_section: feedName,
-        p_limit: 10,
+        // Fetch a small reserve. Products that appeared in an earlier rail are
+        // removed below, so later rails still have enough unique cards.
+        p_limit: 18,
         p_seed: discoverySeed,
       });
       return (data ?? []) as any[];
@@ -75,7 +77,7 @@ export function useProductsByIds(ids: string[]) {
       if (ids.length === 0) return [] as Product[];
       const { data } = await supabase
         .from("products")
-        .select("id,title,price,compare_at_price,currency,seller_id,average_rating,review_count,ships_to,flash_deal_end_at,product_images(image_url,is_primary)")
+        .select("id,title,price,compare_at_price,currency,seller_id,stock_quantity,average_rating,review_count,ships_to,flash_deal_end_at,product_images(image_url,is_primary)")
         .in("id", ids);
       return (data ?? []) as unknown as Product[];
     },
@@ -151,19 +153,22 @@ export function useHomepageData() {
     const productMap = new Map((products.data ?? []).map(p => [p.id, p]));
     const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending", "recommended"];
 
-    return Object.fromEntries(
-      feedNames.map((name, index) => {
+    // A homepage is a set of distinct merchandising stories, not five copies
+    // of the same catalogue. Priority is deliberate: time-bound deals, fresh
+    // stock, proven sellers, active trends, then broad discovery.
+    const feedPriority: FeedName[] = ["flash_deals", "new_arrivals", "best_sellers", "trending", "recommended"];
+    const seenAcrossHomepage = new Set<string>();
+    const distinctFeeds = new Map<FeedName, FeedItem[]>();
+    feedPriority.forEach((name) => {
+      const index = feedNames.indexOf(name);
         const rawData = feedResults[index].data ?? [];
-        // A product may legitimately appear in several rails (e.g. a new
-        // arrival that is also on sale). Only dedupe within the same rail so
-        // an earlier feed (flash_deals) can't swallow every product and leave
-        // the later rails empty.
         const seenInRail = new Set<string>();
         const items: FeedItem[] = rawData
           .flatMap((row: any) => {
             const p = productMap.get(row.product_id);
-            if (!p || seenInRail.has(p.id)) return [];
+            if (!p || seenInRail.has(p.id) || seenAcrossHomepage.has(p.id)) return [];
             seenInRail.add(p.id);
+            seenAcrossHomepage.add(p.id);
             const flashDealEndAt = row.flash_deal_end_at || p.flash_deal_end_at || null;
             return [{
               ...p,
@@ -172,9 +177,9 @@ export function useHomepageData() {
               flash_deal_end_at: flashDealEndAt,
             }];
           });
-        return [name, items];
-      })
-    ) as Record<FeedName, FeedItem[]>;
+        distinctFeeds.set(name, items);
+    });
+    return Object.fromEntries(feedNames.map((name) => [name, distinctFeeds.get(name) ?? []])) as Record<FeedName, FeedItem[]>;
   }, [products.data, feedResults]);
 
   const loading = categories.isLoading || feedLoading || products.isLoading || profiles.isLoading;

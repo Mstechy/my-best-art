@@ -195,7 +195,7 @@ export default function LandingPage() {
 
       {/* Product Feeds - Horizontal Scroll */}
       <div className="order-4">
-        {FEEDS.map(feed => (
+        {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
           <HorizontalScrollSection
             key={feed.key}
             title={feed.title}
@@ -248,7 +248,7 @@ const HorizontalProductCard = memo(function HorizontalProductCard({
   return (
     <div className="shrink-0" style={{ width: 220 }} role="listitem">
       <ProductCard
-        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: product.compare_at_price, stockQuantity: 1, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: image, badge: discount ? { label: `-${discount}%`, tone: "destructive" } : null }}
+        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: product.compare_at_price, stockQuantity: product.stock_quantity, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: image, badge: discount ? { label: `-${discount}%`, tone: "destructive" } : null }}
         formatPrice={(amount) => formatPrice(amount, product.currency)}
         sellerName={seller?.full_name || undefined}
         sellerVerified={seller?.is_verified}
