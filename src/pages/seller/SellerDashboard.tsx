@@ -1,15 +1,16 @@
-import { useState, useEffect, useMemo } from "react";
+import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store } from "lucide-react";
+import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store, AlertTriangle } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OffersReceivedCard from "@/components/OffersReceivedCard";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
-import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { useSellerDashboard } from "@/hooks/useSellerDashboard";
+
+const SellerRevenueChart = lazy(() => import("@/components/seller/SellerRevenueChart"));
 
 export default function SellerDashboard() {
   const { user, profile, refetchProfile } = useAuth();
@@ -159,6 +160,23 @@ export default function SellerDashboard() {
         </AnimatedSection>
       )}
 
+      {(stats.lowStock > 0 || stats.outOfStock > 0) && (
+        <AnimatedSection variant="fade-up" delay={45}>
+          <div className="flex flex-col gap-3 rounded-xl border border-orange-500/30 bg-orange-500/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-orange-600" />
+              <div>
+                <p className="font-medium text-foreground text-sm">Inventory needs attention</p>
+                <p className="text-xs text-muted-foreground">
+                  {stats.outOfStock > 0 ? `${stats.outOfStock} out of stock` : ""}{stats.outOfStock > 0 && stats.lowStock > 0 ? " · " : ""}{stats.lowStock > 0 ? `${stats.lowStock} low in stock` : ""}.
+                </p>
+              </div>
+            </div>
+            <Link to="/seller/products"><Button size="sm" variant="outline">Review inventory <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button></Link>
+          </div>
+        </AnimatedSection>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat, i) => (
           <AnimatedSection key={stat.label} variant="fade-up" delay={i * 80}>
@@ -186,18 +204,9 @@ export default function SellerDashboard() {
           </CardHeader>
           <CardContent>
             <div className="h-56">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={weekly}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip
-                    contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
-                    formatter={(v: number) => [`$${v.toFixed(2)}`, "Revenue"]}
-                  />
-                  <Bar dataKey="revenue" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              <Suspense fallback={<div className="h-full animate-pulse rounded-lg bg-muted/40" />}>
+                <SellerRevenueChart weekly={weekly} />
+              </Suspense>
             </div>
           </CardContent>
         </Card>

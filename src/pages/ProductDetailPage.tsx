@@ -149,6 +149,13 @@ export default function ProductDetailPage() {
     return list;
   }, [product, selectedVariant]);
 
+  // A colour/SKU image is deliberately placed first in the gallery. Reset the
+  // carousel whenever the shopper changes a selection so the visible product
+  // matches the option they just chose.
+  useEffect(() => {
+    setSelectedImage(0);
+  }, [selectedVariantId]);
+
   const carouselLockRef = useRef(false);
   const lastRequestedIndexRef = useRef<number | null>(null);
 
@@ -268,6 +275,7 @@ export default function ProductDetailPage() {
     if (productVariants.length > 0 && (!selectedVariant || !selectedVariant.is_active)) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+    const cartImage = selectedVariant?.image_url || primaryImage?.image_url || null;
     const variantSuffix = selectedVariant
       ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(", ")
       : [selectedSize, selectedColor].filter(Boolean).join("/");
@@ -279,7 +287,7 @@ export default function ProductDetailPage() {
       product_variant_id: selectedVariant?.id,
       title: product.title + titleSuffix,
       price: purchasablePrice,
-      image_url: primaryImage?.image_url || null,
+      image_url: cartImage,
       seller_id: product.seller_id,
       seller_name: seller.full_name || "Seller",
       stock_quantity: purchasableStock,
@@ -300,6 +308,7 @@ export default function ProductDetailPage() {
     if (productVariants.length > 0 && (!selectedVariant || !selectedVariant.is_active)) { toast.error("That option combination is unavailable."); return; }
     if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
+    const cartImage = selectedVariant?.image_url || primaryImage?.image_url || null;
     const variantSuffix = selectedVariant
       ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(", ")
       : [selectedSize, selectedColor].filter(Boolean).join("/");
@@ -311,7 +320,7 @@ export default function ProductDetailPage() {
       product_variant_id: selectedVariant?.id,
       title: product.title + titleSuffix,
       price: purchasablePrice,
-      image_url: primaryImage?.image_url || null,
+      image_url: cartImage,
       seller_id: product.seller_id,
       seller_name: seller.full_name || "Seller",
       stock_quantity: purchasableStock,

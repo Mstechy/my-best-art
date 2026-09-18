@@ -161,7 +161,7 @@ interface VideoMediaItem {
   error?: string;
 }
 
-interface VariantDraft { key: string; size: string; color: string; sku: string; price: string; stock: string; imageUrl: string; imageFile?: File; }
+interface VariantDraft { key: string; size: string; color: string; optionName: string; optionValue: string; sku: string; price: string; stock: string; imageUrl: string; imageSourceId?: string; imageFile?: File; }
 type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
 
 function normalizeProductRow(row: ProductRow): Product {
@@ -565,7 +565,12 @@ export default function SellerProducts() {
     });
     setDocFile(null);
     const { data: variants } = await supabase.from("product_variants").select("id, option_values, sku, price, stock_quantity, image_url").eq("product_id", product.id).order("sort_order");
-    setVariantRows((variants ?? []).map((variant: ProductVariant) => ({ key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity), imageUrl: variant.image_url || "" })));
+    setVariantRows((variants ?? []).map((variant: ProductVariant) => {
+      const imageUrl = variant.image_url || "";
+      const sourceImage = (product.product_images || []).find((image) => image.image_url === imageUrl);
+      const extraOption = Object.entries(variant.option_values || {}).find(([key, value]) => key !== "size" && key !== "color" && Boolean(value));
+      return { key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", optionName: extraOption?.[0] || "", optionValue: extraOption?.[1] || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity), imageUrl, imageSourceId: sourceImage ? `existing-image-${sourceImage.id}` : undefined };
+    }));
     setFormTab("basic");
     setDialogOpen(true);
   };
@@ -613,10 +618,10 @@ export default function SellerProducts() {
     // Alt-text warning (non-blocking, per PRD)
     const missingAlt = [...imageItems, ...descriptionImageItems].some(item => !item.alt.trim());
     setAltWarning(missingAlt);
-    const invalidVariant = variantRows.some(row => (!row.size.trim() && !row.color.trim()) || !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0 || (row.price && Number(row.price) <= 0));
-    const variantKeys = variantRows.map(row => `${row.size.trim().toLowerCase()}|${row.color.trim().toLowerCase()}`);
+    const invalidVariant = variantRows.some(row => (!row.size.trim() && !row.color.trim() && !(row.optionValue || "").trim()) || Boolean((row.optionName || "").trim()) !== Boolean((row.optionValue || "").trim()) || !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0 || (row.price && Number(row.price) <= 0));
+    const variantKeys = variantRows.map(row => `${row.size.trim().toLowerCase()}|${row.color.trim().toLowerCase()}|${(row.optionName || "").trim().toLowerCase()}|${(row.optionValue || "").trim().toLowerCase()}`);
     if (invalidVariant || new Set(variantKeys).size !== variantKeys.length) {
-      toast({ title: "Check variant rows", description: "Each variant needs a size or colour, whole stock, valid optional price, and a unique option combination.", variant: "destructive" }); setFormTab("variants"); return;
+      toast({ title: "Check variant rows", description: "Each variant needs at least one option, paired custom option name/value, whole stock, valid optional price, and a unique combination.", variant: "destructive" }); setFormTab("variants"); return;
     }
 
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
@@ -708,34 +713,10 @@ export default function SellerProducts() {
       setSavedProductId((data as { id: string }).id);
     }
 
-    if (productId) {
-      const { error: removeVariantsError } = await supabase.from("product_variants").delete().eq("product_id", productId);
-      // Upload any variant image files first, then persist rows with final URLs
-      const variantRowsWithImages = [] as VariantDraft[];
-      for (const row of variantRows) {
-        let imageUrl = row.imageUrl.trim();
-        if (row.imageFile) {
-          try {
-            const ext = row.imageFile.name.split(".").pop();
-            const filePath = `${user.id}/${productId}/variant_${row.key}_${Date.now()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, row.imageFile, { contentType: row.imageFile.type || "image/jpeg", cacheControl: "3600" });
-            if (uploadError) throw uploadError;
-            const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
-            imageUrl = urlData.publicUrl;
-          } catch (error) {
-            const message = error instanceof Error ? error.message : "Variant image upload failed";
-            toast({ title: "Variant image upload failed", description: message, variant: "destructive" });
-            setSaving(false);
-            return;
-          }
-        }
-        variantRowsWithImages.push({ ...row, imageUrl });
-      }
-      const { error: addVariantsError } = variantRows.length ? await supabase.from("product_variants").insert(variantRowsWithImages.map((row, sort_order) => ({ product_id: productId, option_values: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}) }, sku: row.sku.trim() || null, price: row.price ? Number(row.price) : null, stock_quantity: Number(row.stock), image_url: row.imageUrl || null, sort_order }))) : { error: null };
-      if (removeVariantsError || addVariantsError) { toast({ title: "Could not save variants", description: removeVariantsError?.message || addVariantsError?.message, variant: "destructive" }); setSaving(false); return; }
-    }
-
     let mediaHadError = false;
+    // Gallery images are uploaded first. This lets a colour/SKU reuse a gallery
+    // photo without making the seller upload the same file twice.
+    const galleryImageUrls = new Map(imageItems.filter((item) => !item.file).map((item) => [item.id, item.url]));
 
     if (removedImageIds.length > 0) {
       const { error } = await supabase.from("product_images").delete().in("id", removedImageIds);
@@ -773,6 +754,7 @@ export default function SellerProducts() {
             visual_hash_buckets: visualHash.buckets,
           } as never).select("id").single();
           if (insertError) throw insertError;
+          galleryImageUrls.set(item.id, originalUrl);
           updateImageUploadState(item.id, { dbId: (inserted as { id: string }).id, file: undefined, url: originalUrl, status: "uploaded", progress: 100 });
         } catch (error) {
           mediaHadError = true;
@@ -790,6 +772,38 @@ export default function SellerProducts() {
           });
         }
       }
+    }
+
+    if (productId) {
+      const unavailableSource = variantRows.find((row) => row.imageSourceId && !galleryImageUrls.get(row.imageSourceId));
+      if (unavailableSource) {
+        toast({ title: "Variant image unavailable", description: "The selected gallery image could not be uploaded. Please try again.", variant: "destructive" });
+        setSaving(false);
+        return;
+      }
+      const variantRowsWithImages: VariantDraft[] = [];
+      for (const row of variantRows) {
+        let imageUrl = row.imageSourceId ? (galleryImageUrls.get(row.imageSourceId) || "") : row.imageUrl.trim();
+        if (row.imageFile) {
+          try {
+            const ext = row.imageFile.name.split(".").pop();
+            const filePath = `${user.id}/${productId}/variant_${row.key}_${Date.now()}.${ext}`;
+            const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, row.imageFile, { contentType: row.imageFile.type || "image/jpeg", cacheControl: "3600" });
+            if (uploadError) throw uploadError;
+            const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
+            imageUrl = urlData.publicUrl;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : "Variant image upload failed";
+            toast({ title: "Variant image upload failed", description: message, variant: "destructive" });
+            setSaving(false);
+            return;
+          }
+        }
+        variantRowsWithImages.push({ ...row, imageUrl });
+      }
+      const { error: removeVariantsError } = await supabase.from("product_variants").delete().eq("product_id", productId);
+      const { error: addVariantsError } = variantRows.length ? await supabase.from("product_variants").insert(variantRowsWithImages.map((row, sort_order) => ({ product_id: productId, option_values: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}), ...((row.optionName || "").trim() && (row.optionValue || "").trim() ? { [(row.optionName || "").trim().toLowerCase().replace(/\s+/g, "_")]: (row.optionValue || "").trim() } : {}) }, sku: row.sku.trim() || null, price: row.price ? Number(row.price) : null, stock_quantity: Number(row.stock), image_url: row.imageUrl || null, sort_order }))) : { error: null };
+      if (removeVariantsError || addVariantsError) { toast({ title: "Could not save variants", description: removeVariantsError?.message || addVariantsError?.message, variant: "destructive" }); setSaving(false); return; }
     }
 
     // Upload description photos and save as JSONB in products.description_images
@@ -1119,43 +1133,53 @@ export default function SellerProducts() {
 
                 <TabsContent value="variants" className="space-y-4 mt-4">
                   <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
-                    Optional. Use SKU rows when sizes or colours have different stock or prices. Products without rows keep the main stock and price above.
+                    Optional. Use up to three option dimensions per SKU — for example Size, Colour, and Storage or Material. Upload product photos once in Images & Tags, then assign the right gallery photo to each colour below. A separate photo is only needed when it is not already in the gallery.
                   </div>
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
-                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-7">
+                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-8">
                         <Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="Size" />
                         <Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="Colour" />
+                        <Input value={row.optionName || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionName: e.target.value } : item))} placeholder="3rd option name" />
+                        <Input value={row.optionValue || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionValue: e.target.value } : item))} placeholder="3rd option value" />
                         <Input value={row.sku} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, sku: e.target.value } : item))} placeholder="SKU" />
                         <Input type="number" min="0.01" step="0.01" value={row.price} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} placeholder="Price (optional)" />
                         <Input type="number" min="0" step="1" value={row.stock} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, stock: e.target.value } : item))} placeholder="Stock" />
-                        <label className="col-span-2 sm:col-span-1 flex items-center gap-2 rounded-md border border-border px-2 py-1 cursor-pointer hover:bg-muted/50 transition-colors">
-                          {row.imageFile || row.imageUrl ? (
-                            row.imageFile ? (
-                              <img src={URL.createObjectURL(row.imageFile)} alt="variant" className="h-7 w-7 rounded object-cover" />
-                            ) : (
-                              <img src={row.imageUrl} alt="variant" className="h-7 w-7 rounded object-cover" />
-                            )
-                          ) : (
-                            <ImagePlus className="h-4 w-4 shrink-0 text-muted-foreground" />
-                          )}
-                          <span className="truncate text-xs text-muted-foreground">{row.imageFile ? row.imageFile.name : row.imageUrl ? "Change image" : "Image"}</span>
-                          <input
-                            type="file"
-                            accept="image/jpeg,image/png,image/webp"
-                            className="hidden"
-                            onChange={e => {
-                              const file = e.target.files?.[0];
-                              if (file) setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, imageFile: file, imageUrl: "" } : item));
-                              e.target.value = "";
+                        <div className="col-span-2 space-y-1.5 sm:col-span-1">
+                          <Select
+                            value={row.imageSourceId || "__none"}
+                            onValueChange={(value) => {
+                              const source = imageItems.find((item) => item.id === value);
+                              setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, imageSourceId: value === "__none" ? undefined : value, imageFile: undefined, imageUrl: source?.url || "" } : item));
                             }}
-                          />
-                        </label>
+                          >
+                            <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Gallery image" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none">No gallery image</SelectItem>
+                              {imageItems.map((image, imageIndex) => <SelectItem key={image.id} value={image.id}>Gallery image {imageIndex + 1}{image.isPrimary ? " (main)" : ""}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                          <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-2 py-1.5 text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                            <ImagePlus className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{row.imageFile ? row.imageFile.name : row.imageUrl && !row.imageSourceId ? "Change separate image" : "Upload separate image"}</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/webp"
+                              className="hidden"
+                              onChange={e => {
+                                const file = e.target.files?.[0];
+                                if (file) setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, imageFile: file, imageSourceId: undefined, imageUrl: "" } : item));
+                                e.target.value = "";
+                              }}
+                            />
+                          </label>
+                          {(row.imageSourceId || row.imageFile || row.imageUrl) && <button type="button" className="text-xs text-muted-foreground underline hover:text-destructive" onClick={() => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, imageSourceId: undefined, imageFile: undefined, imageUrl: "" } : item))}>Remove image</button>}
+                        </div>
                         <Button type="button" variant="outline" className="text-destructive" onClick={() => setVariantRows(rows => rows.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add size / colour SKU</Button>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", optionName: "", optionValue: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add variant SKU</Button>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">

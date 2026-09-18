@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
@@ -12,6 +11,8 @@ export interface SellerProduct {
   average_rating: number;
   review_count: number;
   created_at: string;
+  stock_quantity: number;
+  low_stock_threshold: number | null;
 }
 
 export interface RecentOrder {
@@ -28,6 +29,8 @@ export interface DashboardStats {
   pendingApproval: number;
   pendingOrders: number;
   totalRevenue: number;
+  lowStock: number;
+  outOfStock: number;
 }
 
 export function useSellerProducts(sellerId: string | undefined) {
@@ -37,7 +40,7 @@ export function useSellerProducts(sellerId: string | undefined) {
       if (!sellerId) return [];
       const { data } = await supabase
         .from("products")
-        .select("id,title,price,status,is_approved,average_rating,review_count,created_at")
+        .select("id,title,price,status,is_approved,average_rating,review_count,created_at,stock_quantity,low_stock_threshold")
         .eq("seller_id", sellerId)
         .order("created_at", { ascending: false });
       return (data ?? []) as unknown as SellerProduct[];
@@ -74,7 +77,8 @@ export function useSellerRecentOrders(userId: string | undefined) {
         .order("created_at", { ascending: false })
         .limit(20);
       if (!data) return [];
-      return data.map((row: any) => ({
+      const rows = data as unknown as Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string; profiles: { full_name: string | null } | null }>;
+      return rows.map((row) => ({
         id: row.id,
         status: row.status,
         total_amount: row.total_amount,
@@ -178,11 +182,16 @@ export function useSellerDashboard(userId: string | undefined) {
     const all = products.data ?? [];
     const pending = pendingApproval.data ?? 0;
     const pendingOrders = (recentOrders.data ?? []).filter((o: RecentOrder) => o.status === "pending").length;
+    const activeProducts = all.filter((product: SellerProduct) => product.status === "active");
+    const outOfStock = activeProducts.filter((product: SellerProduct) => product.stock_quantity <= 0).length;
+    const lowStock = activeProducts.filter((product: SellerProduct) => product.stock_quantity > 0 && product.stock_quantity <= (product.low_stock_threshold ?? 5)).length;
     return {
       products: all.length,
       pendingApproval: pending,
       pendingOrders,
       totalRevenue: revenue.data ?? 0,
+      lowStock,
+      outOfStock,
     } as DashboardStats;
   }, [products.data, pendingApproval.data, recentOrders.data, revenue.data]);
 
