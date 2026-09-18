@@ -41,3 +41,8 @@ tsc_errors.txt
 tsc_output.txt
 tsccheck.txt
 vite.config.ts.timestamp-*.mjs
+# Stray command output logs
+*_out.txt
+npm_*.txt
+build_output.txt
+dev_start.txt
