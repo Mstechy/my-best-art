@@ -115,6 +115,24 @@ export default function ProductDetailPage() {
     });
     return keys;
   }, [productVariants]);
+  const productDetailSpecs = useMemo(() => {
+    if (!product) return null;
+    const systemKeys = new Set(["categoryGroup", "productTypeKey"]);
+    const details = Object.fromEntries(
+      Object.entries(getCategoryAttributes(product.variants)).filter(([key]) => !variantAttributeKeys.has(key) && !systemKeys.has(key))
+    ) as Record<string, string>;
+    const addDetail = (label: string, value: string | null | undefined) => {
+      if (value?.trim()) details[label] = value.trim();
+    };
+    addDetail("Brand", product.brand);
+    addDetail("Material", product.material);
+    addDetail("Colour", product.color);
+    addDetail("Dimensions", product.dimensions);
+    addDetail("Weight", product.weight);
+    addDetail("Condition", product.condition);
+    addDetail("Warranty", product.warranty || product.warranty_period);
+    return Object.keys(details).length > 0 ? details : null;
+  }, [product, variantAttributeKeys]);
   const selectedVariant = hasProductVariants
     ? (productVariants.find(variant => variant.id === selectedVariantId) ?? null)
     : (productVariants.find(variant =>
@@ -500,7 +518,6 @@ export default function ProductDetailPage() {
                   </div>
                 )}
               </div>
-            </div>
 
             {hasProductVariants ? (
               <VariantSelector variants={productVariants} selectedVariantId={selectedVariantId} onSelect={setSelectedVariantId} />
@@ -559,6 +576,13 @@ export default function ProductDetailPage() {
               >
                 {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
               </button>
+              <button
+                onClick={handleBuyNow}
+                disabled={purchasableStock === 0}
+                className="hidden flex-1 rounded-full border border-[#111111] py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:block"
+              >
+                Buy Now
+              </button>
             </div>
 
             {user && user.id !== product.seller_id && purchasableStock > 0 && (
@@ -586,9 +610,11 @@ export default function ProductDetailPage() {
               <div className="flex items-center gap-2 text-xs text-[#888880]">
                 <Truck className="h-4 w-4" />
                 <span>{product.shipping_info || "Shipping calculated at checkout"}</span>
+                <Link to="/shipping" className="font-semibold underline hover:text-[#111111] dark:hover:text-[#FAF5F2]">Shipping details</Link>
               </div>
               <div className="flex items-center gap-2 text-xs text-[#888880]">
                 <Shield className="h-4 w-4" />
+                <Link to="/refund-policy" className="font-semibold underline hover:text-[#111111] dark:hover:text-[#FAF5F2]">Returns & refunds</Link>
                 <span>Buyer protection — full refund if not as described</span>
               </div>
               {product.warranty && (
@@ -612,6 +638,7 @@ export default function ProductDetailPage() {
             )}
 
             {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
+            </div>
           </div>
         )}
 
@@ -633,6 +660,26 @@ export default function ProductDetailPage() {
                   </ul>
                 </CollapsibleContent>
               </Collapsible>
+            )}
+
+            <ProductRichDescription
+              images={product.description_images}
+              description={product.description}
+              specs={productDetailSpecs}
+            />
+
+            {productDocs.length > 0 && (
+              <section className="rounded-xl border border-[#E8E8E8] bg-white p-4 dark:border-[#222222] dark:bg-[#1A1A1A]" aria-labelledby="product-documents">
+                <h2 id="product-documents" className="text-sm font-bold">Documents</h2>
+                <div className="mt-3 space-y-2">
+                  {productDocs.map((document: ProductDoc) => (
+                    <a key={document.id} href={document.url} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-lg border border-[#E8E8E8] px-3 py-2 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#333333] dark:hover:bg-[#222222]">
+                      <span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-[#888880]" /><span className="truncate">{document.label || "Product document"}</span></span>
+                      <span className="text-xs text-[#888880]">Open</span>
+                    </a>
+                  ))}
+                </div>
+              </section>
             )}
 
             <div ref={reviewsRef}>
@@ -729,17 +776,6 @@ export default function ProductDetailPage() {
             </div>
 
             <QAndASection productId={product.id} />
-
-            <ProductRichDescription
-              images={product.description_images}
-              description={product.description}
-              specs={(() => {
-                const s = getCategoryAttributes(product.variants);
-                const SYSTEM_KEYS = new Set(["categoryGroup", "productTypeKey"]);
-                const filtered = Object.fromEntries(Object.entries(s).filter(([k]) => !variantAttributeKeys.has(k) && !SYSTEM_KEYS.has(k)));
-                return Object.keys(filtered).length ? filtered : null;
-              })()}
-            />
 
             <div ref={recommendedRef}>
               <RecommendedProducts productId={product.id} categoryId={product.category_id} />

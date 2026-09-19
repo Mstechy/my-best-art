@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Truck, Search, MapPin, ArrowRight, Copy, Loader2, Package, Hash, CalendarCheck2, ExternalLink } from "lucide-react";
+import { Truck, Search, MapPin, ArrowRight, Copy, Loader2, Package, Hash, CalendarCheck2 } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OrderTimeline from "@/components/OrderTimeline";
 import { PackageTrackerCard } from "@/components/ui/tracker-card";
@@ -134,7 +134,7 @@ export default function BuyerTracking() {
       <AnimatedSection variant="fade-up">
         <div>
           <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Delivery Tracking</h1>
-          <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">Track your deliveries in real-time</p>
+          <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">See seller and carrier delivery updates for your purchases</p>
         </div>
       </AnimatedSection>
 
@@ -282,15 +282,9 @@ export default function BuyerTracking() {
 
             {/* Footer CTA */}
             <div className="pt-1 border-t border-[#F0F0F0] dark:border-[#222222]">
-              <Link
-                to="/buyer/tracking"
-                onClick={() => setModalOrder(null)}
-                className="flex items-center justify-center gap-1.5 w-full rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[11px] font-bold py-2.5 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors"
-              >
-                <MapPin className="h-3.5 w-3.5" />
-                Open Live Map View
-                <ExternalLink className="h-3 w-3 ml-0.5 opacity-70" />
-              </Link>
+              <p className="text-center text-[11px] text-[#888880] dark:text-[#A0A0A0]">
+                Carrier scan updates will appear here as they are received.
+              </p>
             </div>
           </DialogContent>
         )}

@@ -68,11 +68,15 @@ export default function VariantSelector({ variants, selectedVariantId, onSelect 
             <div className="flex flex-wrap gap-2">
               {values.map(value => {
                 const isSelected = selectedValue === value;
+                // An option remains selectable whenever there is an in-stock SKU
+                // for it. Selecting a new colour (or size/storage) can require a
+                // different compatible value in another dimension; handleSelect
+                // deliberately finds that closest SKU. Locking this button to the
+                // old combination traps shoppers on their first selection.
                 const isAvailable = variants.some(variant =>
                   variant.is_active &&
                   variant.stock_quantity > 0 &&
-                  variant.option_values[key] === value &&
-                  attributeKeys.every(otherKey => otherKey === key || !selectedValues[otherKey] || variant.option_values[otherKey] === selectedValues[otherKey])
+                  variant.option_values[key] === value
                 );
                 return (
                   <button

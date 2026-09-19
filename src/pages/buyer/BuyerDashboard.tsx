@@ -233,7 +233,7 @@ export default function BuyerDashboard() {
                     <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">Order #{activeTrackingOrder.id.slice(0, 8).toUpperCase()}</p>
                   </div>
                   <Link to="/buyer/tracking" className="text-[10px] font-bold text-[#3B82F6] hover:underline flex items-center gap-0.5">
-                    View Maps <ChevronRight className="h-3 w-3" />
+                    View tracking <ChevronRight className="h-3 w-3" />
                   </Link>
                 </div>
 

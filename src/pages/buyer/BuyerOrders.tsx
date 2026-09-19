@@ -132,9 +132,12 @@ export default function BuyerOrders() {
     if (!cancelOrder || !user) return;
     if (cancelReason.trim().length < 3) { toast.error("Please choose or describe a reason"); return; }
     setCancelLoading(true);
-    const { error: cancelErr } = await supabase.from("orders").update({ status: "cancelled" }).eq("id", cancelOrder.id).eq("buyer_id", user.id);
+    const { error: cancelErr } = await (supabase as any).rpc("request_buyer_order_cancellation", {
+      p_order_id: cancelOrder.id,
+      p_reason: cancelReason.trim(),
+      p_note: cancelNote.trim() || null,
+    });
     if (cancelErr) { toast.error(cancelErr.message); setCancelLoading(false); return; }
-    await supabase.from("order_cancellations").insert({ order_id: cancelOrder.id, buyer_id: user.id, reason: cancelReason.trim(), note: cancelNote.trim() || null });
     toast.success("Order cancelled");
     setCancelOrder(null); setCancelReason(""); setCancelNote(""); setCancelLoading(false);
     fetchOrders();
