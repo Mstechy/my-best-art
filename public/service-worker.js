@@ -203,9 +203,8 @@ async function imageCacheStrategy(request) {
     }
     return response;
   } catch (error) {
-    return new Response('', { 
-      status: 200,
-      headers: { 'Content-Type': 'image/svg+xml' }
-    });
+    // Do not disguise a network failure as a successful empty image. Returning
+    // an error lets the UI's image fallback render an honest placeholder.
+    return new Response('Image unavailable', { status: 503, statusText: 'Image unavailable' });
   }
 }

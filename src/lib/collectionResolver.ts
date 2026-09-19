@@ -111,6 +111,7 @@ export interface EnhancedCollection {
  * Uses `as any` cast because supabase types don't reflect new columns yet.
  */
 export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
+  const now = new Date().toISOString();
   const { data } = await (supabase
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
@@ -118,6 +119,8 @@ export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
     .is("seller_id", null)
     .eq("status", "active")
     .eq("hero_enabled", true)
+    .or(`starts_at.is.null,starts_at.lte.${now}`)
+    .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order("hero_order")
     .order("sort_order");
 
@@ -131,12 +134,15 @@ export async function fetchCollectionsByPlacement(
   placement: string,
   limit = 20
 ): Promise<EnhancedCollection[]> {
+  const now = new Date().toISOString();
   const { data } = await (supabase
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("*")
     .is("seller_id", null)
     .eq("status", "active")
+    .or(`starts_at.is.null,starts_at.lte.${now}`)
+    .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order("sort_order")
     .limit(limit);
 
@@ -152,6 +158,7 @@ export async function fetchCollectionsByPlacement(
  * Fetch navigation collections (shown in navbar).
  */
 export async function fetchNavigationCollections() {
+  const now = new Date().toISOString();
   const { data } = await (supabase
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
@@ -159,6 +166,8 @@ export async function fetchNavigationCollections() {
     .is("seller_id", null)
     .eq("status", "active")
     .eq("show_in_navigation", true)
+    .or(`starts_at.is.null,starts_at.lte.${now}`)
+    .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order("display_order")
     .order("sort_order");
 

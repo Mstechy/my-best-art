@@ -25,6 +25,7 @@ const HeroSlider = memo(function HeroSlider({
   const [isPaused, setIsPaused] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const touchStartX = useRef(0);
   const touchEndX = useRef(0);
@@ -51,6 +52,10 @@ const HeroSlider = memo(function HeroSlider({
       next.add(index);
       return next;
     });
+  };
+
+  const handleImageError = (index: number) => {
+    setFailedImages((previous) => new Set(previous).add(index));
   };
 
   // Preload next 2 slides for instant rotation and better LCP
@@ -142,7 +147,7 @@ const HeroSlider = memo(function HeroSlider({
               aria-hidden={!isActive}
             >
               {/* Background image */}
-              {s.image_url ? (
+              {s.image_url && !failedImages.has(index) ? (
                 <img
                   src={getHeroImageUrl(s.image_url)}
                   alt={imageAlt}
@@ -153,12 +158,14 @@ const HeroSlider = memo(function HeroSlider({
                   {...({ fetchpriority: index === 0 ? "high" : "auto" } as React.HTMLAttributes<HTMLImageElement>)}
                   decoding="async"
                   onLoad={() => handleImageLoad(index)}
+                  onError={() => handleImageError(index)}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1C1C1E] to-[#333333]">
-                  <p className="text-4xl font-black text-white/20 uppercase tracking-tight">
-                    {s.title}
-                  </p>
+                  <div className="px-6 text-center">
+                    <p className="text-4xl font-black text-white/20 uppercase tracking-tight">{s.title}</p>
+                    {failedImages.has(index) && <p className="mt-3 text-xs font-medium text-white/60">Banner image unavailable</p>}
+                  </div>
                 </div>
               )}
 

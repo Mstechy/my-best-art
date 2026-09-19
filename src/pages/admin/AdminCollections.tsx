@@ -228,6 +228,18 @@ export default function AdminCollections() {
       toast({ title: "Check the campaign dates", description: "The end date must be after the start date.", variant: "destructive" });
       return;
     }
+    if (form.hero_enabled && !form.image_url) {
+      toast({ title: "A hero banner is required", description: "Upload a banner image before showing this collection in the hero slider.", variant: "destructive" });
+      return;
+    }
+    if (!form.is_automatic && form.status === "active" && selectedProducts.length === 0) {
+      toast({ title: "Add a product before publishing", description: "An active manual collection must contain at least one approved product.", variant: "destructive" });
+      return;
+    }
+    if (new Set(form.rules.map(rule => rule.field)).size !== form.rules.length) {
+      toast({ title: "Each rule can be used once", description: "Duplicate rules would overwrite one another when the collection is saved.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
 
     // Build rules JSON from rules array
@@ -251,8 +263,8 @@ export default function AdminCollections() {
       rules: Object.keys(rulesJson).length > 0 ? rulesJson : null,
       hero_enabled: form.hero_enabled,
       hero_order: Number(form.hero_order) || 0,
-      hero_overlay_opacity: Number(form.hero_overlay_opacity) || 0.45,
-      hero_auto_rotate_duration: Number(form.hero_auto_rotate_duration) || 5000,
+      hero_overlay_opacity: form.hero_overlay_opacity === "" ? 0.45 : Number(form.hero_overlay_opacity),
+      hero_auto_rotate_duration: form.hero_auto_rotate_duration === "" ? 5000 : Number(form.hero_auto_rotate_duration),
       hero_badge: form.hero_badge.trim() || null,
       hero_cta_link: form.hero_cta_link.trim() || null,
       meta_title: form.meta_title.trim() || null,
@@ -535,6 +547,7 @@ export default function AdminCollections() {
 
               {form.hero_enabled && (
                 <div className="grid gap-4 sm:grid-cols-3 pl-7">
+                  <p className="sm:col-span-3 text-xs text-muted-foreground">Hero slides require an uploaded banner and an Active status. “Hero slider” placement is not required.</p>
                   <label className="grid gap-1.5 text-sm font-medium">
                     Hero Order
                     <Input type="number" value={form.hero_order}
