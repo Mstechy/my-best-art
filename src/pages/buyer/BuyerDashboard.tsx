@@ -167,7 +167,7 @@ export default function BuyerDashboard() {
 
   const quickActions = [
     { label: "Browse Products", desc: "Shop unique listings", icon: Search, href: "/marketplace" },
-    { label: "Track Package", desc: "Real-time updates", icon: Truck, href: "/buyer/tracking" },
+    { label: "Track Package", desc: "Delivery updates", icon: Truck, href: "/buyer/tracking" },
     { label: "My Orders", desc: "View order logs", icon: Package, href: "/buyer/orders" },
     { label: "Wishlist", desc: "View saved items", icon: Heart, href: "/buyer/wishlist" },
     { label: "Conversations", desc: "Chat with sellers", icon: MessageSquare, href: "/buyer/chat" },

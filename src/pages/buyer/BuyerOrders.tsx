@@ -64,6 +64,7 @@ export default function BuyerOrders() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelNote, setCancelNote] = useState("");
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [confirmingDeliveryId, setConfirmingDeliveryId] = useState<string | null>(null);
 
   const [reviewItem, setReviewItem] = useState<{ order: Order; item: OrderItem } | null>(null);
   const [rating, setRating] = useState(5);
@@ -140,6 +141,15 @@ export default function BuyerOrders() {
     if (cancelErr) { toast.error(cancelErr.message); setCancelLoading(false); return; }
     toast.success("Order cancelled");
     setCancelOrder(null); setCancelReason(""); setCancelNote(""); setCancelLoading(false);
+    fetchOrders();
+  };
+
+  const confirmDelivery = async (orderId: string) => {
+    setConfirmingDeliveryId(orderId);
+    const { error } = await supabase.rpc("confirm_buyer_order_delivery" as never, { p_order_id: orderId } as never);
+    setConfirmingDeliveryId(null);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Delivery confirmed. You can now review your items.");
     fetchOrders();
   };
 
@@ -325,6 +335,12 @@ export default function BuyerOrders() {
                           <Truck className="h-2.5 w-2.5" /> Track
                         </button>
                       </Link>
+                    )}
+                    {order.status === "shipped" && (
+                      <button onClick={() => confirmDelivery(order.id)} disabled={confirmingDeliveryId === order.id}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-600 text-[9px] font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50">
+                        <CheckCircle2 className="h-2.5 w-2.5" /> {confirmingDeliveryId === order.id ? "Confirming…" : "Received"}
+                      </button>
                     )}
                     {order.status === "delivered" && order.items.some(it => it.product_id && !reviewedProducts.has(it.product_id)) && (
                       <button onClick={() => { const it = order.items.find(it => it.product_id && !reviewedProducts.has(it.product_id!))!; setReviewItem({ order, item: it }); }}

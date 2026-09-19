@@ -144,14 +144,13 @@ export default function SellerOrders() {
                           <Truck className="h-3.5 w-3.5" /> Ship
                         </Button>
                       )}
-                      {(order.status === "pending" || order.status === "processing" || order.status === "shipped") && (
+                      {(order.status === "pending" || order.status === "processing") && (
                         <Select onValueChange={(val) => updateStatus(order.id, val as Enums<"order_status">)}>
                           <SelectTrigger className="w-[140px] h-8 text-xs">
                             <SelectValue placeholder="Update status" />
                           </SelectTrigger>
                           <SelectContent>
                             {order.status === "pending" && <SelectItem value="processing">Processing</SelectItem>}
-                            {order.status === "shipped" && <SelectItem value="delivered">Delivered</SelectItem>}
                             <SelectItem value="cancelled">Cancel</SelectItem>
                           </SelectContent>
                         </Select>

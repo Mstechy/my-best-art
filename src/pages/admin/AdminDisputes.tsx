@@ -84,15 +84,12 @@ export default function AdminDisputes() {
 
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({});
 
-  const updateStatus = async (id: string, status: string, sellerId?: string) => {
+  const updateStatus = async (id: string, status: string) => {
     const update: any = { status };
     if (notesDraft[id] !== undefined) update.admin_notes = notesDraft[id];
     if (status === "resolved" || status === "dismissed") update.resolved_at = new Date().toISOString();
     const { error } = await supabase.from("disputes").update(update).eq("id", id);
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    if (status === "resolved" && sellerId) {
-      await supabase.rpc("admin_set_account_status", { _user_id: sellerId, _is_frozen: true });
-    }
     toast({ title: `Dispute marked as ${status}` });
     fetchDisputes();
   };
@@ -237,11 +234,11 @@ export default function AdminDisputes() {
 
                   {(dispute.status === "open" || dispute.status === "investigating") && (
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Select onValueChange={(val) => updateStatus(dispute.id, val, dispute.seller_id)}>
+                      <Select onValueChange={(val) => updateStatus(dispute.id, val)}>
                         <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="Update status" /></SelectTrigger>
                         <SelectContent>
                           {dispute.status === "open" && <SelectItem value="investigating">Investigate</SelectItem>}
-                          <SelectItem value="resolved">Resolve & freeze seller</SelectItem>
+                          <SelectItem value="resolved">Resolve dispute</SelectItem>
                           <SelectItem value="dismissed">Dismiss</SelectItem>
                         </SelectContent>
                       </Select>
@@ -262,7 +259,7 @@ export default function AdminDisputes() {
           <AlertTriangle className="h-5 w-5 text-seller mt-0.5 shrink-0" />
           <div>
             <p className="text-sm font-medium text-foreground">Dispute Resolution Policy</p>
-            <p className="text-xs text-muted-foreground mt-1">Seller accounts are automatically frozen when a buyer submits verified payment proof.</p>
+            <p className="text-xs text-muted-foreground mt-1">Resolve the case based on the evidence. Freeze a seller separately when there is a clear trust, fraud, or safety risk.</p>
           </div>
         </div>
       </AnimatedSection>
