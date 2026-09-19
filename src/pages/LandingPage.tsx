@@ -26,6 +26,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
+  const hasNonFlashFeedProducts = useMemo(() => FEEDS.some((feed) => feeds[feed.key].length > 0), [feeds]);
 
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
     <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
@@ -136,6 +137,11 @@ export default function LandingPage() {
               );
             })}
           </div>
+          {!loading && !hasNonFlashFeedProducts && (
+            <div className="mt-4 rounded-xl border border-[#F6C75D]/40 bg-[#F6C75D]/10 px-4 py-3 text-sm text-[#5C3A00] dark:text-[#F6C75D]">
+              These are the current unique approved products. New Arrivals and Discover More will appear automatically when there is additional inventory beyond these deals.
+            </div>
+          )}
         </Container>
       )}
 

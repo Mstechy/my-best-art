@@ -19,6 +19,9 @@ Last updated: 2026-09-19
 - Added reviewed bulk base price/stock edits and a listing-health filter. Variant SKU price and stock are deliberately excluded from bulk base updates.
 - Hid empty homepage merchandising rails; a rail appears only after it has real, de-duplicated products.
 - Added editorial collection cards and live product counts to the category entry page.
+- Strengthened phone listings with structured buyer-decision fields (storage, colour, battery health, SIM, carrier, activation-lock, cosmetic condition, and in-box contents) while keeping IMEI and serial numbers out of public listing data.
+- Corrected manual collection edits so removing every selected product actually clears the collection; automatic collections now require a rule and can be scheduled.
+- Added `20260918060000_collection_resolver_integrity.sql`, which makes Best Seller and Trending collection rules use maintained metrics rather than unsupported product columns.
 - Replaced the seller revenue chart dependency with a lightweight native SVG chart.
 
 ## P0 — must verify in a deployed environment

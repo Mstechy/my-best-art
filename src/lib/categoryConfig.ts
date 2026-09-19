@@ -81,6 +81,30 @@ const simpleType = (
   requiredFields,
 });
 
+// Phones are high-consideration products. These attributes make a 256GB iPhone
+// listing comparable and trustworthy without collecting sensitive serial/IMEI
+// values that should never be displayed publicly.
+const phoneFields = (): CategoryAttribute[] => [
+  { key: "brand", label: "Brand", placeholder: "Apple, Samsung, Xiaomi", required: true },
+  { key: "model", label: "Model", placeholder: "iPhone 15 Pro, Galaxy S24", required: true },
+  { key: "storage", label: "Storage", placeholder: "256GB, or Varies by variant", required: true },
+  { key: "color", label: "Colour", placeholder: "Natural Titanium, or Varies by variant", required: true },
+  { key: "ram", label: "RAM", placeholder: "8GB" },
+  { key: "processor", label: "Processor", placeholder: "A17 Pro, Snapdragon 8 Gen 3" },
+  { key: "screenSize", label: "Screen size", placeholder: "6.1 inches" },
+  { key: "battery", label: "Battery capacity", placeholder: "3274mAh" },
+  { key: "batteryHealth", label: "Battery health", type: "select", options: ["New / not applicable", "100%", "90–99%", "80–89%", "Below 80%"], required: true },
+  { key: "operatingSystem", label: "Operating system", placeholder: "iOS 18, Android 15", required: true },
+  { key: "network", label: "Network", placeholder: "5G, 4G LTE", required: true },
+  { key: "simType", label: "SIM configuration", type: "select", options: ["Single SIM", "Dual SIM", "eSIM", "Dual SIM + eSIM"], required: true },
+  { key: "carrierStatus", label: "Carrier status", type: "select", options: ["Factory unlocked", "Network locked", "Unknown"], required: true },
+  { key: "activationLockStatus", label: "Activation-lock status", type: "select", options: ["Removed / ready for new owner", "Not applicable (new sealed device)"], required: true },
+  { key: "cosmeticCondition", label: "Cosmetic condition", type: "select", options: ["New / sealed", "Excellent", "Good", "Fair"], required: true },
+  conditionField,
+  { key: "accessoriesIncluded", label: "Included in the box", placeholder: "Phone, USB-C cable, original box" },
+  { key: "warranty", label: "Warranty", placeholder: "Manufacturer or seller warranty" },
+];
+
 export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
   electronics: {
     title: "Electronics Specifications",
@@ -102,20 +126,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         key: "mobile-phones",
         label: "Mobile Phones",
         filters: ["brand", "storage", "ram", "operatingSystem", "condition"],
-        fields: [
-          { key: "brand", label: "Brand", placeholder: "Apple, Samsung, Xiaomi" },
-          { key: "model", label: "Model", placeholder: "iPhone 15 Pro, Galaxy S24" },
-          { key: "storage", label: "Storage", placeholder: "128GB, 256GB" },
-          { key: "ram", label: "RAM", placeholder: "8GB, 12GB" },
-          { key: "processor", label: "Processor", placeholder: "A17 Pro, Snapdragon 8 Gen 3" },
-          { key: "screenSize", label: "Screen Size", placeholder: "6.1 inches" },
-          { key: "battery", label: "Battery", placeholder: "4500mAh" },
-          { key: "operatingSystem", label: "Operating System", placeholder: "iOS, Android" },
-          { key: "network", label: "Network", placeholder: "4G, 5G, Dual SIM" },
-          { key: "condition", label: "Condition", type: "select", options: ["New", "Used", "Refurbished"] },
-          { key: "warranty", label: "Warranty", placeholder: "1 Year, Seller warranty" },
-          { key: "accessoriesIncluded", label: "Included Accessories", placeholder: "Charger, cable, case" },
-        ],
+        fields: phoneFields(),
+        requiredFields: ["brand", "model", "storage", "color", "batteryHealth", "operatingSystem", "network", "simType", "carrierStatus", "activationLockStatus", "cosmeticCondition", "condition"],
       },
       {
         key: "laptops",
@@ -504,16 +516,8 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
 
 CATEGORY_CONFIGS.electronics.productTypes.push(
   simpleType("phones", "Phones", "Phones & Accessories", [
-    brandField,
-    { key: "model", label: "Model", placeholder: "Galaxy S24, iPhone 15", required: true },
-    { key: "storage", label: "Storage", placeholder: "128GB, 256GB", required: true },
-    { key: "ram", label: "RAM", placeholder: "6GB, 8GB" },
-    { key: "battery", label: "Battery", placeholder: "4500mAh" },
-    { key: "network", label: "Network", placeholder: "4G, 5G, Dual SIM", required: true },
-    { key: "operatingSystem", label: "Operating System", placeholder: "iOS, Android" },
-    conditionField,
-    { key: "warranty", label: "Warranty", placeholder: "Manufacturer or seller warranty" },
-  ], ["brand", "storage", "network", "condition"], ["brand", "model", "storage", "network", "condition"]),
+    ...phoneFields(),
+  ], ["brand", "storage", "network", "condition"], ["brand", "model", "storage", "color", "batteryHealth", "operatingSystem", "network", "simType", "carrierStatus", "activationLockStatus", "cosmeticCondition", "condition"]),
   simpleType("tablets", "Tablets", "Phones & Accessories", [
     brandField,
     { key: "model", label: "Model", placeholder: "iPad Air, Galaxy Tab", required: true },
@@ -590,7 +594,17 @@ CATEGORY_CONFIGS.electronics.productTypes.push(
     { key: "compatibility", label: "Compatibility", placeholder: "USB-C, iPhone, Android" },
     colorField,
     conditionField,
-  ], ["brand", "accessoryType", "condition"], ["accessoryType", "condition"])
+  ], ["brand", "accessoryType", "condition"], ["accessoryType", "condition"]),
+  simpleType("home-appliances", "Home Appliances", "Home Appliances", [
+    brandField,
+    { key: "applianceType", label: "Appliance type", placeholder: "Refrigerator, microwave, washing machine", required: true },
+    { key: "model", label: "Model", placeholder: "Model name or number", required: true },
+    { key: "capacity", label: "Capacity", placeholder: "300L, 8kg, 25L" },
+    { key: "powerSource", label: "Power source", placeholder: "220V electric, gas, battery" },
+    { key: "energyRating", label: "Energy rating", placeholder: "A++, Energy Star, if applicable" },
+    conditionField,
+    { key: "warranty", label: "Warranty", placeholder: "Manufacturer or seller warranty" },
+  ], ["brand", "applianceType", "condition"], ["applianceType", "model", "condition"])
 );
 
 CATEGORY_CONFIGS.fashion.productTypes.push(
@@ -713,6 +727,26 @@ CATEGORY_CONFIGS.general.productTypes.push(
     { key: "partNumber", label: "Part Number", placeholder: "OEM or aftermarket part number" },
     conditionField,
   ], ["brand", "partType", "condition"], ["partType", "compatibility", "condition"]),
+  simpleType("vehicles", "Vehicles", "Vehicles", [
+    { key: "make", label: "Make", placeholder: "Toyota, Honda, Ford", required: true },
+    { key: "model", label: "Model", placeholder: "Corolla, Civic, Ranger", required: true },
+    { key: "year", label: "Year", placeholder: "2020", required: true },
+    { key: "mileage", label: "Mileage", placeholder: "45,000 km", required: true },
+    { key: "fuelType", label: "Fuel type", type: "select", options: ["Petrol", "Diesel", "Hybrid", "Electric", "Gas", "Other"], required: true },
+    { key: "transmission", label: "Transmission", type: "select", options: ["Automatic", "Manual", "Other"], required: true },
+    { key: "driveSide", label: "Drive side", type: "select", options: ["Left-hand drive", "Right-hand drive"], required: true },
+    { key: "vehicleCondition", label: "Vehicle condition", type: "select", options: ["New", "Used", "Salvage / repair needed"], required: true },
+    { key: "vinStatus", label: "VIN availability", type: "select", options: ["Available privately on request", "Not available"], required: true },
+  ], ["make", "model", "year", "fuelType"], ["make", "model", "year", "mileage", "fuelType", "transmission", "driveSide", "vehicleCondition", "vinStatus"]),
+  simpleType("food-drink", "Food & Drink", "Food & Drink", [
+    brandField,
+    { key: "productForm", label: "Product form", placeholder: "Snack, drink, canned, dried", required: true },
+    { key: "netQuantity", label: "Net quantity", placeholder: "500g, 330ml, 12-pack", required: true },
+    { key: "ingredients", label: "Ingredients", type: "textarea", placeholder: "Full ingredient list", required: true },
+    { key: "allergens", label: "Allergen information", placeholder: "Contains nuts, dairy; or None declared", required: true },
+    { key: "expiryDate", label: "Best-before / expiry date", type: "date", required: true },
+    { key: "countryOfOrigin", label: "Country of origin", placeholder: "Nigeria, Italy, Ghana", required: true },
+  ], ["brand", "productForm"], ["productForm", "netQuantity", "ingredients", "allergens", "expiryDate", "countryOfOrigin"]),
   simpleType("books", "Books", "Books", [
     { key: "author", label: "Author", placeholder: "Author name", required: true },
     { key: "publisher", label: "Publisher", placeholder: "Publisher" },
@@ -734,6 +768,39 @@ export const findCategoryConfig = (category?: { name?: string | null; slug?: str
   return Object.values(CATEGORY_CONFIGS).find(config => config.aliases.includes(normalized)) ?? CATEGORY_CONFIGS.general;
 };
 
+const PRODUCT_TYPES_BY_CATEGORY: Record<string, string[]> = {
+  electronics: ["mobile-phones", "laptops", "audio", "tablets", "tvs", "cameras", "gaming-consoles", "smart-watches", "speakers", "networking", "computer-parts", "electronics-accessories"],
+  computers: ["laptops", "networking", "computer-parts"],
+  gaming: ["gaming-consoles"],
+  "home-appliances": ["home-appliances"],
+  "phones-accessories": ["mobile-phones", "phones", "tablets", "smart-watches", "audio", "electronics-accessories"],
+  clothing: ["t-shirts", "mens-clothing", "womens-clothing", "kids-clothing", "underwear", "sportswear", "traditional-wear"],
+  bags: ["bags", "wallets"],
+  glasses: ["glasses", "sunglasses"],
+  shoes: ["shoes", "sneakers", "boots", "sandals"],
+  "home-decor": ["rugs", "curtains", "lamps", "wall-art", "decorative-items", "storage"],
+  furniture: ["furniture"],
+  kitchen: ["kitchen"],
+  "pet-supplies": ["pet-supplies"],
+  "baby-products": ["baby-products"],
+  watches: ["watches"],
+  jewelry: ["rings", "necklaces", "bracelets-earrings"],
+  beauty: ["perfume", "body-scrub", "nail-products", "makeup", "skincare", "hair-care", "mens-grooming", "beauty-tools"],
+  "health-beauty": ["perfume", "body-scrub", "nail-products", "makeup", "skincare", "hair-care", "mens-grooming", "beauty-tools"],
+  books: ["books"], toys: ["toys"], sports: ["sports"], "auto-parts": ["automotive"], vehicles: ["vehicles"], "food-drink": ["food-drink"],
+};
+
+const normalizeCategoryKey = (category?: { name?: string | null; slug?: string | null } | null) =>
+  (category?.slug || category?.name || "").toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+/** Restrict a category to its valid product types so unrelated form fields can
+ * never be selected (for example, phone specifications for clothing). */
+export const getProductTypesForCategory = (category?: { name?: string | null; slug?: string | null } | null) => {
+  const categoryConfig = findCategoryConfig(category);
+  const allowedKeys = PRODUCT_TYPES_BY_CATEGORY[normalizeCategoryKey(category)];
+  return allowedKeys ? categoryConfig.productTypes.filter(type => allowedKeys.includes(type.key)) : categoryConfig.productTypes;
+};
+
 export const getProductType = (variants: unknown): { key: string; label: string; subcategory?: string } | null => {
   if (!variants || typeof variants !== "object") return null;
   const productType = (variants as { productType?: unknown }).productType;
@@ -750,7 +817,8 @@ export const findProductTypeConfig = (
   productTypeKey?: string | null
 ) => {
   const categoryConfig = findCategoryConfig(category);
-  return categoryConfig.productTypes.find(type => type.key === productTypeKey) ?? categoryConfig.productTypes[0] ?? {
+  const productTypes = getProductTypesForCategory(category);
+  return productTypes.find(type => type.key === productTypeKey) ?? productTypes[0] ?? {
     key: "general",
     label: "General Product",
     fields: categoryConfig.fields,

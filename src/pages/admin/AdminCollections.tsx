@@ -22,8 +22,10 @@ type Collection = {
   meta_title: string | null; meta_description: string | null; meta_keywords: string | null;
   show_in_navigation: boolean; show_on_homepage: boolean; display_order: number;
   product_count: number; placements: string[];
+  starts_at: string | null; ends_at: string | null;
 };
 type ProductOption = { id: string; title: string; status: string; is_approved: boolean };
+type CategoryOption = { id: string; name: string };
 
 const PLACEMENT_OPTIONS = [
   "homepage", "navigation", "seasonal", "featured", "new_arrivals",
@@ -37,7 +39,6 @@ const RULE_FIELD_OPTIONS = [
   { value: "max_price", label: "Max Price" },
   { value: "min_discount", label: "Min Discount %" },
   { value: "min_rating", label: "Min Rating" },
-  { value: "is_featured", label: "Featured" },
   { value: "is_best_seller", label: "Best Seller" },
   { value: "is_trending", label: "Trending" },
   { value: "is_new_arrival", label: "New Arrival" },
@@ -53,6 +54,7 @@ interface FormData {
   hero_auto_rotate_duration: string; hero_badge: string; hero_cta_link: string;
   meta_title: string; meta_description: string; meta_keywords: string;
   show_in_navigation: boolean; show_on_homepage: boolean; display_order: string;
+  starts_at: string; ends_at: string;
   selectedPlacements: string[];
   rules: { field: string; value: string }[];
 }
@@ -65,6 +67,7 @@ const emptyForm: FormData = {
   hero_auto_rotate_duration: "5000", hero_badge: "", hero_cta_link: "",
   meta_title: "", meta_description: "", meta_keywords: "",
   show_in_navigation: false, show_on_homepage: false, display_order: "0",
+  starts_at: "", ends_at: "",
   selectedPlacements: ["homepage"],
   rules: [],
 };
@@ -79,6 +82,7 @@ export default function AdminCollections() {
   const [productSearch, setProductSearch] = useState("");
   const [results, setResults] = useState<ProductOption[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<ProductOption[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
 
@@ -96,12 +100,20 @@ export default function AdminCollections() {
   useEffect(() => { fetchCollections(); }, [fetchCollections]);
 
   useEffect(() => {
+    void supabase.from("categories").select("id,name").order("sort_order").then(({ data }) => {
+      setCategories((data || []) as CategoryOption[]);
+    });
+  }, []);
+
+  useEffect(() => {
     const query = productSearch.trim();
     if (query.length < 2) { setResults([]); return; }
     const timer = window.setTimeout(async () => {
       const { data } = await supabase
         .from("products")
         .select("id, title, status, is_approved")
+        .eq("status", "active")
+        .eq("is_approved", true)
         .ilike("title", `%${query}%`)
         .limit(10);
       setResults((data ?? []) as unknown as ProductOption[]);
@@ -167,6 +179,8 @@ export default function AdminCollections() {
       show_in_navigation: collection.show_in_navigation ?? false,
       show_on_homepage: collection.show_on_homepage ?? false,
       display_order: String(collection.display_order ?? 0),
+      starts_at: collection.starts_at ? collection.starts_at.slice(0, 16) : "",
+      ends_at: collection.ends_at ? collection.ends_at.slice(0, 16) : "",
       selectedPlacements: collection.placements?.length
         ? collection.placements
         : [collection.placement],
@@ -206,6 +220,14 @@ export default function AdminCollections() {
       toast({ title: "Title and a valid slug are required", variant: "destructive" });
       return;
     }
+    if (form.is_automatic && form.rules.every((rule) => !rule.value.trim())) {
+      toast({ title: "Add a collection rule", description: "An automatic collection needs at least one rule, so it does not accidentally show the entire catalogue.", variant: "destructive" });
+      return;
+    }
+    if (form.starts_at && form.ends_at && new Date(form.ends_at) <= new Date(form.starts_at)) {
+      toast({ title: "Check the campaign dates", description: "The end date must be after the start date.", variant: "destructive" });
+      return;
+    }
     setSaving(true);
 
     // Build rules JSON from rules array
@@ -239,6 +261,8 @@ export default function AdminCollections() {
       show_in_navigation: form.show_in_navigation,
       show_on_homepage: form.show_on_homepage,
       display_order: Number(form.display_order) || 0,
+      starts_at: form.starts_at ? new Date(form.starts_at).toISOString() : null,
+      ends_at: form.ends_at ? new Date(form.ends_at).toISOString() : null,
       created_by: user?.id, seller_id: null,
     };
 
@@ -254,13 +278,23 @@ export default function AdminCollections() {
     const collectionId = response.data.id;
 
     // For manual collections, save product links
-    if (!form.is_automatic && selectedProducts.length > 0) {
-      await supabase.from("marketplace_collection_products").delete().eq("collection_id", collectionId);
-      await supabase.from("marketplace_collection_products").insert(
+    if (!form.is_automatic) {
+      const { error: removeProductsError } = await supabase.from("marketplace_collection_products").delete().eq("collection_id", collectionId);
+      if (removeProductsError) {
+        toast({ title: "Could not update collection products", description: removeProductsError.message, variant: "destructive" });
+        setSaving(false); return;
+      }
+      if (selectedProducts.length > 0) {
+        const { error: addProductsError } = await supabase.from("marketplace_collection_products").insert(
         selectedProducts.map((product, sort_order) => ({
           collection_id: collectionId, product_id: product.id, sort_order,
         }))
-      );
+        );
+        if (addProductsError) {
+          toast({ title: "Could not update collection products", description: addProductsError.message, variant: "destructive" });
+          setSaving(false); return;
+        }
+      }
     }
 
     setSaving(false);
@@ -374,6 +408,15 @@ export default function AdminCollections() {
               </label>
             </div>
 
+            <div className="border-t pt-4">
+              <p className="mb-3 text-sm font-medium">Campaign timing <span className="font-normal text-muted-foreground">(optional)</span></p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="grid gap-1.5 text-sm font-medium">Start date and time<Input type="datetime-local" value={form.starts_at} onChange={e => updateForm("starts_at", e.target.value)} /></label>
+                <label className="grid gap-1.5 text-sm font-medium">End date and time<Input type="datetime-local" value={form.ends_at} onChange={e => updateForm("ends_at", e.target.value)} /></label>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">Active collections are visible only inside this window. Leave both blank for an always-on collection.</p>
+            </div>
+
             {/* Placements (multi-select) */}
             <div className="border-t pt-4">
               <p className="mb-2 text-sm font-medium">Placements</p>
@@ -414,7 +457,7 @@ export default function AdminCollections() {
                   </Button>
                 </div>
                 {form.rules.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No rules yet. Add rules to automatically match products.</p>
+                  <p className="text-xs text-muted-foreground">Add at least one rule. Automatic collections without rules are blocked so they cannot accidentally show every product.</p>
                 )}
                 <div className="space-y-2">
                   {form.rules.map((rule, index) => (
@@ -425,8 +468,15 @@ export default function AdminCollections() {
                           <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
-                      <Input value={rule.value} onChange={e => updateRule(index, "value", e.target.value)}
-                        placeholder="Value" className="flex-1 h-9 text-sm" />
+                      {rule.field === "category_id" ? (
+                        <select value={rule.value} onChange={e => updateRule(index, "value", e.target.value)} className="h-9 rounded-md border border-input bg-background px-2 text-sm flex-1">
+                          <option value="">Select category</option>
+                          {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
+                        </select>
+                      ) : (
+                        <Input value={rule.value} onChange={e => updateRule(index, "value", e.target.value)}
+                          placeholder={rule.field === "is_best_seller" || rule.field === "is_trending" || rule.field === "is_new_arrival" ? "Use yes to enable ranking" : "Value"} className="flex-1 h-9 text-sm" />
+                      )}
                       <Button type="button" size="icon" variant="ghost" className="text-destructive h-9 w-9"
                         onClick={() => removeRule(index)}>
                         <X className="h-4 w-4" />

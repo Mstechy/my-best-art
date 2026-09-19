@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { COUNTRIES, countryName } from "@/lib/countries";
-import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, getRequiredFields, mergeCategoryAttributes } from "@/lib/categoryConfig";
+import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, getProductTypesForCategory, getRequiredFields, mergeCategoryAttributes } from "@/lib/categoryConfig";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { uploadProductImagePair } from "@/lib/productImages";
@@ -122,14 +122,27 @@ interface ProductRow {
 
 type ListingHealthIssue = { message: string; tone: "warning" | "critical" };
 
-function getListingHealth(product: Product): ListingHealthIssue[] {
+function getListingHealth(product: Product, category?: Category): ListingHealthIssue[] {
   const issues: ListingHealthIssue[] = [];
   if (product.product_images.length === 0) issues.push({ message: "Add a main product image", tone: "critical" });
-  if (!product.description || product.description.trim().length < 30) issues.push({ message: "Add a fuller description", tone: "warning" });
+  else if (product.product_images.length < 3) issues.push({ message: "Add more product views", tone: "warning" });
+  if (!product.description || product.description.trim().length < 80) issues.push({ message: "Add a fuller description (80+ characters)", tone: "warning" });
   if (!product.key_features?.some((feature) => feature.trim())) issues.push({ message: "Add key features", tone: "warning" });
+  else if (product.key_features.filter((feature) => feature.trim()).length < 3) issues.push({ message: "Add three key features", tone: "warning" });
   if (product.stock_quantity <= 0) issues.push({ message: "Restock this listing", tone: "critical" });
   else if (product.stock_quantity <= (product.low_stock_threshold ?? 5)) issues.push({ message: "Low stock", tone: "warning" });
   if (product.status === "active" && !product.is_approved) issues.push({ message: "Waiting for approval", tone: "warning" });
+  const savedProductType = getProductType(product.variants);
+  const productType = findProductTypeConfig(category, savedProductType?.key);
+  const attributes = getCategoryAttributes(product.variants);
+  if (Object.keys(attributes).length < 3) issues.push({ message: "Add relevant specifications", tone: "warning" });
+  const missingSpecifications = getRequiredFields(productType)
+    .filter((key) => !attributes[key]?.trim())
+    .map((key) => productType.fields.find((field) => field.key === key)?.label || key);
+  if (missingSpecifications.length > 0) {
+    issues.push({ message: `Missing required details: ${missingSpecifications.slice(0, 2).join(", ")}${missingSpecifications.length > 2 ? ` +${missingSpecifications.length - 2}` : ""}`, tone: "warning" });
+  }
+  if (["clothes", "shirt", "iphone", "apron", "nuckles"].includes(product.title.trim().toLowerCase())) issues.push({ message: "Use a specific searchable title", tone: "warning" });
   return issues;
 }
 
@@ -628,9 +641,9 @@ export default function SellerProducts() {
       setFormTab("basic");
       return;
     }
-    if (description.trim().length < 30) {
-      setDescriptionError("Description must be at least 30 characters.");
-      toast({ title: "Add a product description", description: "Write at least 30 characters so buyers know exactly what they are getting.", variant: "destructive" });
+    if (description.trim().length < 80) {
+      setDescriptionError("Description must be at least 80 characters.");
+      toast({ title: "Add a product description", description: "Write at least 80 characters so buyers know exactly what they are getting.", variant: "destructive" });
       setFormTab("basic");
       return;
     }
@@ -661,6 +674,12 @@ export default function SellerProducts() {
     const selectedCategory = categories.find(c => c.id === categoryId);
     const selectedConfig = findCategoryConfig(selectedCategory);
     const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
+    const minimumSpecificationCount = 3;
+    if (Object.keys(cleanCategoryAttributes).length < minimumSpecificationCount) {
+      toast({ title: "Add product specifications", description: `Add at least ${minimumSpecificationCount} relevant specifications so buyers can compare this listing.`, variant: "destructive" });
+      setFormTab("specs");
+      return;
+    }
     const missingRequiredFields = getRequiredFields(selectedProductType)
       .filter(key => !cleanCategoryAttributes[key]?.trim())
       .map(key => selectedProductType.fields.find(field => field.key === key)?.label || key);
@@ -1056,14 +1075,28 @@ export default function SellerProducts() {
     setKeyFeatures(updated);
   };
 
-  const filtered = products.filter((product) =>
-    product.title.toLowerCase().includes(search.toLowerCase()) &&
-    (!needsAttentionOnly || getListingHealth(product).length > 0)
-  );
+  const filtered = products.filter((product) => {
+    const category = categories.find((item) => item.id === product.category_id);
+    return product.title.toLowerCase().includes(search.toLowerCase()) &&
+      (!needsAttentionOnly || getListingHealth(product, category).length > 0);
+  });
 
   const selectedCategory = categories.find(c => c.id === categoryId) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategory);
+  const selectableProductTypes = getProductTypesForCategory(selectedCategory);
   const selectedProductTypeConfig = findProductTypeConfig(selectedCategory, productTypeKey);
+  const requiredSpecificationKeys = useMemo(
+    () => new Set(getRequiredFields(selectedProductTypeConfig)),
+    [selectedProductTypeConfig],
+  );
+  const isPhoneListing = selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones";
+  const listingReadiness = [
+    { label: "Product identity", detail: "Category, type, and a clear title", complete: Boolean(categoryId && productTypeKey && title.trim()) },
+    { label: "Buyer-facing content", detail: "80+ character description and at least 3 key features", complete: description.trim().length >= 80 && keyFeatures.filter((feature) => feature.trim()).length >= 3 },
+    { label: "Offer", detail: "Price and available stock", complete: Number(price) > 0 && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 },
+    { label: "Required specifications", detail: `${requiredSpecificationKeys.size} fields for this product type`, complete: [...requiredSpecificationKeys].every((key) => Boolean(categoryAttributes[key]?.trim())) },
+    { label: "Main product photo", detail: "One is required; 3 or more views are recommended", complete: imageItems.length > 0 },
+  ];
   const updateCategoryAttribute = (key: string, value: string) => {
     setCategoryAttributes(prev => ({ ...prev, [key]: value }));
   };
@@ -1127,22 +1160,23 @@ export default function SellerProducts() {
                     <Select value={productTypeKey} onValueChange={(value) => { setProductTypeKey(value); setCategoryAttributes({}); }} disabled={!categoryId}>
                       <SelectTrigger className="mt-1"><SelectValue placeholder={categoryId ? "Select product type" : "Choose category first"} /></SelectTrigger>
                       <SelectContent>
-                        {selectedCategoryConfig.productTypes.map(type => <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>)}
+                        {selectableProductTypes.map(type => <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>)}
                       </SelectContent>
                     </Select>
-                    <p className="mt-1 text-xs text-muted-foreground">Product type controls the exact fields buyers and admins will see.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Only product types that belong to this category are shown. Product type controls the exact fields buyers and admins will see.</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Title *</label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Wireless Bluetooth Headphones" className="mt-1" />
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
+                    <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Use brand, model, key configuration, and carrier status. Do not put price, delivery claims, or promotional words in the title." : "Use brand, product type, and the main differentiator. Keep price and promotions out of the title."}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Description <span className="text-xs text-muted-foreground font-normal">(min 30 characters)</span></label>
+                    <label className="text-sm font-medium text-foreground">Description <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
                     <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
-                      {description.length > 0 && description.length < 30 && (
-                        <span className="text-xs text-destructive">Must be at least 30 characters</span>
+                      {description.length > 0 && description.length < 80 && (
+                        <span className="text-xs text-destructive">Must be at least 80 characters</span>
                       )}
                     </div>
                   </div>
@@ -1271,12 +1305,13 @@ export default function SellerProducts() {
                     <>
                       <div className="rounded-lg border border-border bg-muted/30 p-3">
                         <p className="text-sm font-medium text-foreground">{selectedProductTypeConfig.label} Details</p>
-                        <p className="mt-1 text-xs text-muted-foreground">These fields help buyers compare products in {selectedCategory?.name || "this category"}.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Fields marked * are required before submission. These details help buyers compare products in {selectedCategory?.name || "this category"}.</p>
+                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {selectedProductTypeConfig.fields.map((field) => (
                           <div key={field.key}>
-                            <label className="text-sm font-medium text-foreground">{field.label}</label>
+                            <label className="text-sm font-medium text-foreground">{field.label}{requiredSpecificationKeys.has(field.key) ? " *" : ""}</label>
                             {field.type === "select" ? (
                               <Select value={categoryAttributes[field.key] || ""} onValueChange={(value) => updateCategoryAttribute(field.key, value)}>
                                 <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${field.label.toLowerCase()}`} /></SelectTrigger>
@@ -1658,6 +1693,18 @@ export default function SellerProducts() {
                 </TabsContent>
 
                 <TabsContent value="preview" className="space-y-4 mt-4">
+                  <div className="rounded-lg border border-border bg-card p-4">
+                    <p className="text-sm font-semibold text-foreground">Listing readiness</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Review this before submitting. Required items are enforced; additional photos improve buyer confidence.</p>
+                    <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                      {listingReadiness.map((item) => (
+                        <div key={item.label} className={`rounded-md border px-3 py-2 text-xs ${item.complete ? "border-emerald-200 bg-emerald-50 text-emerald-950 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-100" : "border-amber-200 bg-amber-50 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"}`}>
+                          <p className="font-semibold">{item.complete ? "Ready" : "Needs attention"}: {item.label}</p>
+                          <p className="mt-0.5 opacity-80">{item.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                   <div className="rounded-lg border border-border bg-muted/30 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
@@ -1788,7 +1835,7 @@ export default function SellerProducts() {
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((product) => {
               const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-              const healthIssues = getListingHealth(product);
+              const healthIssues = getListingHealth(product, categories.find((category) => category.id === product.category_id));
               return (
                 <Card key={product.id} className="border-border/60 overflow-hidden group">
                   <div className="aspect-video bg-muted relative">
