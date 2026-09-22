@@ -41,9 +41,9 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
         {/* Top row: logo + location + icons */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <Link to="/" className="flex items-baseline select-none">
-              <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">market</span>
-              <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D] lowercase">hub</span>
+            <Link to="/" aria-label="Tradibu home" className="flex items-baseline select-none">
+              <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">tradi</span>
+              <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D]">bu</span>
             </Link>
             <span className="hidden items-center gap-1 text-[11px] font-medium text-[#888880] sm:flex dark:text-[#A0A0A0]">
               <MapPin className="h-3 w-3" /> Ship to: All

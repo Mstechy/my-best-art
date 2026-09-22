@@ -58,28 +58,6 @@ const HeroSlider = memo(function HeroSlider({
     setFailedImages((previous) => new Set(previous).add(index));
   };
 
-  // Preload next 2 slides for instant rotation and better LCP
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const links: HTMLLinkElement[] = [];
-    for (let offset = 1; offset <= 2; offset++) {
-      const index = (current + offset) % len;
-      const slide = slides[index];
-      if (!slide?.image_url) continue;
-      const link = document.createElement("link");
-      link.rel = "preload";
-      link.as = "image";
-      link.href = getHeroImageUrl(slide.image_url);
-      document.head.appendChild(link);
-      links.push(link);
-    }
-    return () => {
-      links.forEach(l => {
-        try { document.head.removeChild(l); } catch { /* ignore cleanup error */ }
-      });
-    };
-  }, [current, len, slides]);
-
   // Auto-rotate
   useEffect(() => {
     if (!autoRotate || !hasMultiple || isPaused) {

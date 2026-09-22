@@ -47,9 +47,9 @@ export function PageHeader({ categories = [], secondaryItems = [], settingsItems
           >
             <Menu className="h-5 w-5" />
           </button>
-          <Link to="/" className="ml-1 flex items-baseline select-none">
-            <span className="font-sans text-lg font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">market</span>
-            <span className="font-sans text-lg font-black tracking-tighter text-[#F6C75D] lowercase">hub</span>
+          <Link to="/" aria-label="Tradibu home" className="ml-1 flex items-baseline select-none">
+            <span className="font-sans text-lg font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">tradi</span>
+            <span className="font-sans text-lg font-black tracking-tighter text-[#F6C75D]">bu</span>
           </Link>
         </div>
 

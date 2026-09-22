@@ -18,12 +18,19 @@ import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useHomepageData, FEEDS, type FeedItem, type Seller } from "@/hooks/useHomepage";
+import { useSEO } from "@/hooks/useSEO";
 
 export default function LandingPage() {
   const { categories, counts, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
+
+  useSEO({
+    title: "Online Marketplace for Trusted Shopping",
+    description: "Shop on Tradibu, the online marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection.",
+    url: "/",
+  });
 
   const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
   const hasNonFlashFeedProducts = useMemo(() => FEEDS.some((feed) => feeds[feed.key].length > 0), [feeds]);

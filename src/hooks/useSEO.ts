@@ -69,7 +69,7 @@ export function useSEO({
     setMeta("description", description);
     setMeta("keywords", "marketplace, ecommerce, buy online, independent merchants, escrow payments, buyer protection");
     setMeta("author", SITE_NAME);
-    setMeta("robots", "index, follow");
+    setMeta("robots", "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1");
 
     // Open Graph
     setProperty("og:title", fullTitle);

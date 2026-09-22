@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="google-site-verification" content="89XTJNqWIy_z32sTfKF8xTzfMffRswBFJPceIi4NVFM" />
-    <title>Tradibu - Multi-Vendor Marketplace</title>
+    <title>Tradibu | Online Marketplace for Trusted Shopping</title>
     
 <!-- Preconnect to Supabase for early hero image discovery -->
     <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin />
@@ -40,7 +40,6 @@
       content="Buy and sell with confidence on Tradibu, a multi-vendor marketplace with verified sellers, secure payments, and buyer protection."
     />
     <meta name="author" content="Tradibu" />
-    <meta name="google-site-verification" content="TdcsVhd1pfgKWaQR5wG1ZjJUfSyjyAeVSb3Y_V0vJoU" />
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Tradibu - Multi-Vendor Marketplace" />
     <meta
@@ -86,15 +85,26 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Tradibu",
-      "url": "https://www.tradibu.com/",
-      "description": "Multi-vendor marketplace with verified sellers, secure payments, and buyer protection",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://www.tradibu.com/marketplace?search={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://www.tradibu.com/#website",
+          "name": "Tradibu",
+          "url": "https://www.tradibu.com/",
+          "description": "Multi-vendor marketplace with verified sellers, secure payments, and buyer protection",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://www.tradibu.com/marketplace?search={search_term_string}",
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://www.tradibu.com/#organization",
+          "name": "Tradibu",
+          "url": "https://www.tradibu.com/"
+        }
+      ]
     }
     </script>
   </head>

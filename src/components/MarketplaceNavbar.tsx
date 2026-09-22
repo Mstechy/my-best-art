@@ -234,11 +234,11 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
       <div className="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">
         <div className="flex items-center gap-3">
           {/* Logo block */}
-          <Link to="/" className="flex items-baseline shrink-0 select-none">
-            <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">
-              market
+          <Link to="/" aria-label="Tradibu home" className="flex items-baseline shrink-0 select-none">
+            <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">
+              tradi
             </span>
-            <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D] lowercase">hub</span>
+            <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D]">bu</span>
           </Link>
 
           {/* Horizontal nav links */}
