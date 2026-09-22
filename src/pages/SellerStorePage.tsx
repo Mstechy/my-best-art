@@ -120,7 +120,7 @@ export default function SellerStorePage() {
         {/* Banner — uploaded image OR purple gradient fallback */}
         <div className="rounded-2xl overflow-hidden h-40 sm:h-56 relative">
           {store?.banner_url ? (
-            <img src={store.banner_url} alt="Store banner" className="w-full h-full object-cover" />
+            <img src={store.banner_url} alt="Store banner" loading="lazy" decoding="async" className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-primary via-primary/80 to-indigo-600 flex items-center justify-center">
               <Store className="h-16 w-16 text-white/25" />
@@ -134,7 +134,7 @@ export default function SellerStorePage() {
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5">
             <div className="flex h-24 w-24 items-center justify-center rounded-2xl bg-muted overflow-hidden shrink-0 ring-4 ring-background -mt-16">
               {displayLogo ? (
-                <img src={displayLogo} alt="" className="w-full h-full object-cover" />
+                <img src={displayLogo} alt="" loading="lazy" decoding="async" className="w-full h-full object-cover" />
               ) : (
                 <Store className="h-10 w-10 text-muted-foreground" />
               )}
@@ -186,7 +186,7 @@ export default function SellerStorePage() {
         )}
 
         {/* Seller collections */}
-        {collections.length > 0 && <section className="mb-8"><h2 className="font-display text-xl font-bold text-foreground mb-4">Store Collections</h2><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{collections.map(collection => <Link key={collection.id} to={`/collections/${collection.slug}`} className="overflow-hidden rounded-2xl border border-border/60 bg-card"><div className="aspect-[16/6] bg-muted">{collection.image_url && <img src={collection.image_url} alt="" className="h-full w-full object-cover" />}</div><div className="p-4"><p className="font-semibold">{collection.title}</p>{collection.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{collection.description}</p>}</div></Link>)}</div></section>}
+        {collections.length > 0 && <section className="mb-8"><h2 className="font-display text-xl font-bold text-foreground mb-4">Store Collections</h2><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{collections.map(collection => <Link key={collection.id} to={`/collections/${collection.slug}`} className="overflow-hidden rounded-2xl border border-border/60 bg-card"><div className="aspect-[16/6] bg-muted">{collection.image_url && <img src={collection.image_url} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />}</div><div className="p-4"><p className="font-semibold">{collection.title}</p>{collection.description && <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{collection.description}</p>}</div></Link>)}</div></section>}
         {/* Products */}
         <h2 className="font-display text-xl font-bold text-foreground mb-4">All Products</h2>
         {products.length === 0 ? (

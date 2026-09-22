@@ -90,12 +90,12 @@ export default function SellerStore() {
         <CardContent className="space-y-4">
           <div>
             <Label>Store Banner</Label>
-            {bannerUrl && <img src={bannerUrl} alt="Banner" className="mt-2 h-32 w-full rounded-lg object-cover" />}
+            {bannerUrl && <img src={bannerUrl} alt="Banner" loading="lazy" decoding="async" className="mt-2 h-32 w-full rounded-lg object-cover" />}
             <Input type="file" accept="image/*" className="mt-2" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], setBannerUrl)} />
           </div>
           <div>
             <Label>Store Logo</Label>
-            {logoUrl && <img src={logoUrl} alt="Logo" className="mt-2 h-16 w-16 rounded-full object-cover" />}
+            {logoUrl && <img src={logoUrl} alt="Logo" loading="lazy" decoding="async" className="mt-2 h-16 w-16 rounded-full object-cover" />}
             <Input type="file" accept="image/*" className="mt-2" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0], setLogoUrl)} />
           </div>
           <div>

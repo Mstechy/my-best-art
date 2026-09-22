@@ -413,7 +413,7 @@ export default function ProductDetailPage() {
                             </div>
                           ) : (
                             <>
-                              <ProductImage src={item.url} alt={product.title} className="group-hover:scale-105" />
+                              <ProductImage src={item.url} alt={product.title} className="group-hover:scale-105" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "auto"} />
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ZoomIn className="h-6 w-6 text-white drop-shadow-lg" />
                               </div>
