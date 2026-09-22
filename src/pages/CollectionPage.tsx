@@ -177,8 +177,8 @@ export default function CollectionPage() {
   // SEO meta tags
   useEffect(() => {
     if (!collection) return;
-    const title = collection.meta_title || `${collection.title} — MarketHub`;
-    const description = collection.meta_description || collection.description || `Browse ${collection.title} collection on MarketHub`;
+    const title = collection.meta_title || `${collection.title} — Tradibu`;
+    const description = collection.meta_description || collection.description || `Browse ${collection.title} collection on Tradibu`;
     document.title = title;
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) metaDesc.setAttribute("content", description);

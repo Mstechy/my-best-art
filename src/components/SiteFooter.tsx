@@ -44,9 +44,9 @@ export default function SiteFooter() {
           </div>
         </div>
         <div className="border-t border-[#E8E8E8] dark:border-[#222222] mt-8 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#888880] dark:text-[#A0A0A0]">
-          <p>&copy; {year} MarketHub. {t("footer.rights")}</p>
+          <p>&copy; {year} Tradibu. {t("footer.rights")}</p>
           <div className="flex items-center gap-1">
-            <Mail className="h-3.5 w-3.5" /> support@markethub.com
+            <Mail className="h-3.5 w-3.5" /> support@tradibu.com
           </div>
         </div>
       </Container>

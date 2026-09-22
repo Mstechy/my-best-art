@@ -10,7 +10,7 @@ export default function DashboardFooter() {
           <Link to="/refund-policy" className="hover:text-foreground transition-colors">Refund Policy</Link>
           <Link to="/contact" className="hover:text-foreground transition-colors">Help</Link>
         </div>
-        <span>© 2026 MarketHub</span>
+        <span>© 2026 Tradibu</span>
       </div>
     </footer>
   );

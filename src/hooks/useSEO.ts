@@ -8,9 +8,11 @@ interface SEOProps {
   type?: "website" | "product" | "organization";
   publishedTime?: string;
   modifiedTime?: string;
+  structuredData?: Record<string, unknown>;
 }
 
-const SITE_NAME = "MarketHub";
+const SITE_NAME = "Tradibu";
+const SITE_URL = "https://www.tradibu.com";
 const DEFAULT_DESCRIPTION = "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using secure escrow payments, buyer protection guarantees, and fast global delivery.";
 const DEFAULT_IMAGE = "/placeholder.svg";
 
@@ -22,10 +24,12 @@ export function useSEO({
   type = "website",
   publishedTime,
   modifiedTime,
+  structuredData,
 }: SEOProps = {}) {
   useEffect(() => {
     const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
-    const absoluteUrl = url ? `https://markethub.com${url}` : "https://markethub.com";
+    const absoluteUrl = url ? new URL(url, SITE_URL).toString() : SITE_URL;
+    const absoluteImage = image.startsWith("http") ? image : new URL(image, SITE_URL).toString();
 
     // Update document title
     document.title = fullTitle;
@@ -70,7 +74,7 @@ export function useSEO({
     // Open Graph
     setProperty("og:title", fullTitle);
     setProperty("og:description", description);
-    setProperty("og:image", image);
+    setProperty("og:image", absoluteImage);
     setProperty("og:url", absoluteUrl);
     setProperty("og:type", type);
     setProperty("og:site_name", SITE_NAME);
@@ -79,23 +83,23 @@ export function useSEO({
     setMeta("twitter:card", "summary_large_image");
     setMeta("twitter:title", fullTitle);
     setMeta("twitter:description", description);
-    setMeta("twitter:image", image);
+    setMeta("twitter:image", absoluteImage);
 
     // Canonical URL
     setLink("canonical", absoluteUrl);
 
     // Structured data
-    const existingScript = document.querySelector('script[type="application/ld+json"]');
+    const existingScript = document.querySelector('#page-structured-data');
     if (existingScript) {
       existingScript.remove();
     }
 
     const structuredData: Record<string, unknown> = {
       "@context": "https://schema.org",
-      "@type": type === "product" ? "Product" : "WebSite",
+      "@type": type === "organization" ? "Organization" : "WebSite",
       name: title || SITE_NAME,
       description,
-      ...(type === "product" && image ? { image } : {}),
+      ...(type === "product" && image ? { image: absoluteImage } : {}),
       ...(type === "organization" ? {
         url: absoluteUrl,
         logo: image,
@@ -106,9 +110,11 @@ export function useSEO({
       } : {}),
       ...(publishedTime ? { datePublished: publishedTime } : {}),
       ...(modifiedTime ? { dateModified: modifiedTime } : {}),
+      ...structuredData,
     };
 
     const script = document.createElement("script");
+    script.id = "page-structured-data";
     script.type = "application/ld+json";
     script.text = JSON.stringify(structuredData);
     document.head.appendChild(script);
@@ -117,7 +123,7 @@ export function useSEO({
     return () => {
       document.title = SITE_NAME;
     };
-  }, [title, description, image, url, type, publishedTime, modifiedTime]);
+  }, [title, description, image, url, type, publishedTime, modifiedTime, structuredData]);
 }
 
 /**
@@ -129,20 +135,50 @@ export function useProductSEO({
   currency = "USD",
   image,
   description,
-  slug,
+  id,
+  availability,
+  rating,
+  reviewCount,
+  brand,
 }: {
   productName: string;
   price: number;
   currency?: string;
   image?: string;
   description?: string;
-  slug: string;
+  id: string;
+  availability?: "InStock" | "OutOfStock";
+  rating?: number;
+  reviewCount?: number;
+  brand?: string | null;
 }) {
   return useSEO({
     title: productName,
-    description: description || `Buy ${productName} for $${price.toFixed(2)} on MarketHub. Secure escrow payments, buyer protection, fast delivery worldwide.`,
+    description: description || `Buy ${productName} for $${price.toFixed(2)} on Tradibu. Secure escrow payments, buyer protection, fast delivery worldwide.`,
     image: image || DEFAULT_IMAGE,
-    url: `/products/${slug}`,
+    url: `/product/${id}`,
     type: "product",
+    structuredData: {
+      "@type": "Product",
+      name: productName,
+      image: image ? [image.startsWith("http") ? image : new URL(image, SITE_URL).toString()] : undefined,
+      description: description || `Buy ${productName} on Tradibu.`,
+      ...(brand ? { brand: { "@type": "Brand", name: brand } } : {}),
+      offers: {
+        "@type": "Offer",
+        url: new URL(`/product/${id}`, SITE_URL).toString(),
+        priceCurrency: currency,
+        price: price.toFixed(2),
+        availability: `https://schema.org/${availability || "InStock"}`,
+        itemCondition: "https://schema.org/NewCondition",
+      },
+      ...(rating && reviewCount ? {
+        aggregateRating: {
+          "@type": "AggregateRating",
+          ratingValue: rating.toFixed(1),
+          reviewCount,
+        },
+      } : {}),
+    },
   });
 }

@@ -383,7 +383,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               <div>
                 <SheetHeader className="mb-4">
                   <SheetTitle className="font-sans text-xl font-bold tracking-tight text-[#111111] dark:text-[#FAF5F2] flex items-center gap-2">
-                    MarketHub
+                    Tradibu
                   </SheetTitle>
                 </SheetHeader>
                 <nav className="space-y-1">

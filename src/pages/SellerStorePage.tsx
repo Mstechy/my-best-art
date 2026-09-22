@@ -103,7 +103,7 @@ export default function SellerStorePage() {
             <div className="flex h-8 w-8 items-center justify-center rounded-lg gradient-primary transition-transform group-hover:scale-110">
               <ShoppingBag className="h-4 w-4 text-primary-foreground" />
             </div>
-            <span className="font-display text-lg font-bold text-foreground">MarketHub</span>
+            <span className="font-display text-lg font-bold text-foreground">Tradibu</span>
           </Link>
           <div className="flex items-center gap-3">
             <ThemeToggle />

@@ -33,6 +33,7 @@ import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import ProductRichDescription from "@/components/product/ProductRichDescription";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackView } from "@/hooks/useBatchedViewTracking";
+import { useProductSEO } from "@/hooks/useSEO";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -143,6 +144,19 @@ export default function ProductDetailPage() {
       ) ?? null);
   const purchasableStock = selectedVariant ? selectedVariant.stock_quantity : (product?.stock_quantity ?? 0);
   const purchasablePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const seoImage = product?.product_images?.find((image) => image.is_primary)?.image_url || product?.product_images?.[0]?.image_url;
+  useProductSEO({
+    productName: product?.title || "Product",
+    price: purchasablePrice,
+    currency: product?.currency || "USD",
+    image: seoImage,
+    description: product?.meta_description || product?.description || undefined,
+    id: product?.id || id || "",
+    availability: purchasableStock > 0 ? "InStock" : "OutOfStock",
+    rating: product?.average_rating,
+    reviewCount: product?.review_count,
+    brand: product?.brand,
+  });
   const hasAvailableVariant = (size?: string, color?: string) => productVariants.some(variant =>
     variant.is_active &&
     variant.stock_quantity > 0 &&

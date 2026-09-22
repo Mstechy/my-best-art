@@ -12,3 +12,14 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Private and transactional pages should not compete with public shopping pages.
+Disallow: /admin/
+Disallow: /buyer/
+Disallow: /seller/
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /order-success/
+Disallow: /auth/
+
+Sitemap: https://www.tradibu.com/sitemap.xml

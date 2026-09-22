@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#111111] dark:bg-[#FAF5F2]">
             <ShoppingBag className="h-4.5 w-4.5 text-white dark:text-[#111111]" />
           </div>
-          <span className="font-bold text-xl text-[#111111] dark:text-[#FAF5F2] tracking-tight">MarketHub</span>
+          <span className="font-bold text-xl text-[#111111] dark:text-[#FAF5F2] tracking-tight">Tradibu</span>
         </Link>
 
         {/* Card */}
@@ -130,7 +130,7 @@ export default function ForgotPasswordPage() {
 
               <div className="bg-[#FAFAFA] dark:bg-[#111111] rounded-2xl p-4 text-left space-y-2.5 border border-[#E8E8E8] dark:border-[#222222]">
                 {[
-                  "Open the email from MarketHub",
+                  "Open the email from Tradibu",
                   "Click the secure reset link",
                   "Choose a new password",
                 ].map((step, i) => (
@@ -179,7 +179,7 @@ export default function ForgotPasswordPage() {
 
         <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
           Need help?{" "}
-          <a href="mailto:support@markethub.com" className="underline hover:text-[#888880]">
+          <a href="mailto:support@tradibu.com" className="underline hover:text-[#888880]">
             Contact support
           </a>
         </p>

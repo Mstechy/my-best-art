@@ -106,7 +106,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#111111] dark:bg-[#FAF5F2] transition-transform group-hover:scale-105">
               <ShoppingBag className="h-3.5 w-3.5 text-white dark:text-[#111111]" />
             </div>
-            <span className="font-bold text-sm text-[#111111] dark:text-[#FAF5F2] tracking-tight">MarketHub</span>
+            <span className="font-bold text-sm text-[#111111] dark:text-[#FAF5F2] tracking-tight">Tradibu</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}

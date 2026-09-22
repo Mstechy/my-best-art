@@ -86,7 +86,7 @@ export default function RegisterPage() {
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#111111] dark:bg-[#FAF5F2]">
             <ShoppingBag className="h-4.5 w-4.5 text-white dark:text-[#111111]" />
           </div>
-          <span className="font-bold text-xl text-[#111111] dark:text-[#FAF5F2] tracking-tight">MarketHub</span>
+          <span className="font-bold text-xl text-[#111111] dark:text-[#FAF5F2] tracking-tight">Tradibu</span>
         </Link>
 
         {/* Card */}
@@ -96,7 +96,7 @@ export default function RegisterPage() {
             Create your account.
           </h1>
           <p className="mt-1.5 text-xs text-[#888880] dark:text-[#A0A0A0]">
-            Choose how you'd like to use MarketHub
+            Choose how you'd like to use Tradibu
           </p>
 
           {/* Role Selector */}

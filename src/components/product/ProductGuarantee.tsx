@@ -24,7 +24,7 @@ export default function ProductGuarantee() {
       title: "Return & Refund Policy",
       hint: "7-day returns",
       detail:
-        "If the item isn't as described, request a return within 7 days of delivery for a full refund via MarketHub Buyer Protection.",
+        "If the item isn't as described, request a return within 7 days of delivery for a full refund via Tradibu Buyer Protection.",
     },
     {
       icon: Shield,
@@ -45,7 +45,7 @@ export default function ProductGuarantee() {
                 <Shield className="h-5 w-5 text-[#888880]" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">MarketHub Guarantee</div>
+                <div className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">Tradibu Guarantee</div>
                 <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#888880] flex-wrap">
                   <span className="flex items-center gap-1">
                     <Truck className="h-3 w-3" /> Free Shipping
@@ -65,7 +65,7 @@ export default function ProductGuarantee() {
       <DialogContent className="max-w-md bg-white dark:bg-[#111111] border-[#E8E8E8] dark:border-[#222222] rounded-2xl sm:rounded-2xl gap-0 p-0 overflow-hidden">
         <DialogHeader className="p-5 border-b border-[#E8E8E8] dark:border-[#222222]">
           <DialogTitle className="flex items-center gap-2 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">
-            <Shield className="h-4 w-4 text-[#F6C75D]" /> MarketHub Guarantee
+            <Shield className="h-4 w-4 text-[#F6C75D]" /> Tradibu Guarantee
           </DialogTitle>
         </DialogHeader>
         <div className="p-5">
