@@ -72,7 +72,9 @@ export function useHomepageFeed(feedName: FeedName, discoverySeed: string) {
 /** Fetch product details by IDs */
 export function useProductsByIds(ids: string[]) {
   return useSupabaseQuery(
-    [...supabaseKeys.table("products"), ...ids.sort()],
+    // "byIds" segment prevents collision with per-product row keys
+    // (supabaseKeys.row) when the id list happens to contain exactly one id.
+    [...supabaseKeys.table("products"), "byIds", ...ids.sort()],
     async () => {
       if (ids.length === 0) return [] as Product[];
       const { data } = await supabase
@@ -88,7 +90,8 @@ export function useProductsByIds(ids: string[]) {
 /** Fetch seller profiles by user IDs */
 export function useSellerProfiles(userIds: string[]) {
   return useSupabaseQuery(
-    [...supabaseKeys.table("seller_profiles_public"), ...userIds.sort()],
+    // "byIds" segment prevents collision with per-seller row keys
+    [...supabaseKeys.table("seller_profiles_public"), "byIds", ...userIds.sort()],
     async () => {
       if (userIds.length === 0) return new Map<string, Seller>();
       const { data } = await supabase
@@ -132,7 +135,7 @@ export function useHomepageData() {
     () => [flashDeals, bestSellers, newArrivals, trending, recommended] as const,
     [flashDeals, bestSellers, newArrivals, trending, recommended],
   );
-  const allFeedData = useMemo(() => feedResults.flatMap(r => r.data ?? []), [feedResults]);
+  const allFeedData = useMemo(() => feedResults.flatMap(r => (Array.isArray(r.data) ? r.data : []) as any[]), [feedResults]);
   const feedLoading = feedResults.some(r => r.isLoading);
 
   // Extract unique product IDs and seller IDs from all feeds
@@ -150,7 +153,7 @@ export function useHomepageData() {
 
   // Merge feed data with product details and seller profiles
   const feeds = useMemo(() => {
-    const productMap = new Map((products.data ?? []).map(p => [p.id, p]));
+    const productMap = new Map((Array.isArray(products.data) ? products.data : []).map(p => [p.id, p]));
     const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending", "recommended"];
 
     // A homepage is a set of distinct merchandising stories, not five copies
@@ -161,7 +164,7 @@ export function useHomepageData() {
     const distinctFeeds = new Map<FeedName, FeedItem[]>();
     feedPriority.forEach((name) => {
       const index = feedNames.indexOf(name);
-        const rawData = feedResults[index].data ?? [];
+        const rawData = Array.isArray(feedResults[index].data) ? feedResults[index].data as any[] : [];
         const seenInRail = new Set<string>();
         const items: FeedItem[] = rawData
           .flatMap((row: any) => {
@@ -190,7 +193,7 @@ export function useHomepageData() {
     categories: categories.data?.categories ?? [],
     counts: categories.data?.counts ?? {},
     feeds,
-    sellers: profiles.data ?? new Map(),
+    sellers: profiles.data instanceof Map ? profiles.data : new Map<string, Seller>(),
     loading,
   };
 }

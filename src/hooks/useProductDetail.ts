@@ -55,6 +55,40 @@ export interface ReviewData {
 }
 export interface KeywordItem { keyword: string; count: number; }
 
+/**
+ * Coerce a raw Supabase products row into the Product shape.
+ * DB rows can be missing/NULL for fields the generated types claim are
+ * required (e.g. drafts or imported test data). Normalizing here keeps
+ * every consumer of useProductDetailData safe from runtime crashes like
+ * `undefined.toFixed()` / `undefined.length`.
+ */
+export function normalizeProduct(row: Record<string, unknown>): Product {
+  const asArray = <T,>(value: unknown): T[] => (Array.isArray(value) ? (value as T[]) : []);
+  const asNumber = (value: unknown, fallback = 0): number =>
+    typeof value === "number" && Number.isFinite(value) ? value : fallback;
+  const asString = (value: unknown, fallback = ""): string =>
+    typeof value === "string" ? value : fallback;
+
+  const images = asArray<{ id: string; image_url: string; is_primary: boolean; alt?: string | null }>(row.product_images)
+    .filter(img => img && typeof img.image_url === "string");
+
+  return {
+    ...(row as unknown as Product),
+    title: asString(row.title, "Untitled product"),
+    description: (row.description as string | null) ?? null,
+    price: asNumber(row.price),
+    currency: asString(row.currency, "USD"),
+    stock_quantity: asNumber(row.stock_quantity),
+    average_rating: asNumber(row.average_rating),
+    review_count: asNumber(row.review_count),
+    key_features: row.key_features == null ? null : asArray<string>(row.key_features),
+    tags: row.tags == null ? null : asArray<string>(row.tags),
+    description_images: row.description_images == null ? null : asArray<Product["description_images"][number]>(row.description_images),
+    variants: (row.variants as Product["variants"]) ?? null,
+    product_images: images,
+  };
+}
+
 // ── Individual hooks ─────────────────────────────────────────────────────
 
 /** Fetch the main product by ID */
@@ -69,7 +103,7 @@ export function useProduct(id: string | undefined) {
         .eq("id", id)
         .single();
       if (error) throw error;
-      return data as unknown as Product;
+      return normalizeProduct(data as unknown as Record<string, unknown>);
     },
     { enabled: !!id, staleTime: 5 * 60 * 1000 },
   );
@@ -78,7 +112,7 @@ export function useProduct(id: string | undefined) {
 /** Fetch seller profile */
 export function useProductSeller(sellerId: string | undefined) {
   return useSupabaseQuery(
-    [...supabaseKeys.table("seller_profiles_public"), sellerId ?? ""],
+    supabaseKeys.row("seller_profiles_public", sellerId ?? ""),
     async () => {
       if (!sellerId) throw new Error("No seller ID");
       const { data } = await supabase
@@ -95,7 +129,7 @@ export function useProductSeller(sellerId: string | undefined) {
 /** Fetch category for a product */
 export function useProductCategory(categoryId: string | undefined | null) {
   return useSupabaseQuery(
-    [...supabaseKeys.table("categories"), categoryId ?? ""],
+    supabaseKeys.row("categories", categoryId ?? ""),
     async () => {
       if (!categoryId) return null;
       const { data } = await supabase

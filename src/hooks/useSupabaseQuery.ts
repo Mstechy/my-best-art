@@ -12,7 +12,11 @@ export const supabaseKeys = {
   all: ["supabase"] as const,
   tables: () => [...supabaseKeys.all, "tables"] as const,
   table: (table: string) => [...supabaseKeys.tables(), table] as const,
-  row: (table: string, id: string) => [...supabaseKeys.table(table), id] as const,
+  // "row" segment guarantees a row key can never collide with a list/rpc key
+  // for the same table (e.g. a products-by-ids list query with exactly one id
+  // previously produced the identical key as a single-product row query and
+  // served an object where an array was expected).
+  row: (table: string, id: string) => [...supabaseKeys.table(table), "row", id] as const,
   rpc: (name: string) => [...supabaseKeys.all, "rpc", name] as const,
   rpcWithArgs: (name: string, args: Record<string, unknown>) =>
     [...supabaseKeys.rpc(name), ...Object.values(args).filter(Boolean).map(String)] as const,

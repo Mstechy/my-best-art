@@ -14,8 +14,10 @@ interface Props {
   allVerified: boolean;
 }
 
-export default function ReviewSummary({ average, total, positive, neutral, negative, keywords, activeFilter, onFilterChange, photoCount, starCounts, allVerified }: Props) {
-  const pct = (n: number) => (total > 0 ? Math.round((n / total) * 100) : 0);
+export default function ReviewSummary({ average = 0, total = 0, positive = 0, neutral = 0, negative = 0, keywords, activeFilter, onFilterChange, photoCount = 0, starCounts = {}, allVerified }: Props) {
+  const avg = Number.isFinite(Number(average)) ? Number(average) : 0;
+  const safeTotal = Number.isFinite(Number(total)) ? Number(total) : 0;
+  const pct = (n: number) => (safeTotal > 0 ? Math.round((n / safeTotal) * 100) : 0);
   const positivePct = pct(positive);
   const neutralPct = pct(neutral);
   const negativePct = pct(negative);
@@ -32,7 +34,7 @@ export default function ReviewSummary({ average, total, positive, neutral, negat
   );
 
   const filters = [
-    { key: "all", label: `All (${total})`, count: total },
+    { key: "all", label: `All (${safeTotal})`, count: safeTotal },
     { key: "photos", label: `With Photos (${photoCount})`, count: photoCount },
     { key: "5", label: `5★ (${starCounts[5] ?? 0})`, count: starCounts[5] ?? 0 },
     { key: "4", label: `4★ (${starCounts[4] ?? 0})`, count: starCounts[4] ?? 0 },
@@ -46,13 +48,13 @@ export default function ReviewSummary({ average, total, positive, neutral, negat
       <div className="grid gap-6 md:grid-cols-[220px_1fr]">
         <div className="flex md:flex-col items-center md:items-start gap-4 md:gap-2">
           <div className="text-center md:text-left">
-            <div className="font-display text-5xl font-bold text-foreground leading-none">{average.toFixed(1)}</div>
+            <div className="font-display text-5xl font-bold text-foreground leading-none">{avg.toFixed(1)}</div>
             <div className="mt-2 flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map(s => (
-                <Star key={s} className={`h-4 w-4 ${s <= Math.round(average) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`} />
+                <Star key={s} className={`h-4 w-4 ${s <= Math.round(avg) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`} />
               ))}
             </div>
-            <div className="mt-1 text-xs text-muted-foreground">{total} rating{total !== 1 ? "s" : ""}</div>
+            <div className="mt-1 text-xs text-muted-foreground">{safeTotal} review{safeTotal === 1 ? "" : "s"}</div>
           </div>
           {allVerified && total > 0 && (
             <span className="inline-flex items-center gap-1 rounded-full bg-success/10 text-success px-2 py-1 text-[10px] font-semibold border border-success/20">

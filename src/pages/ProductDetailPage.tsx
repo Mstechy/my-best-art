@@ -479,8 +479,8 @@ export default function ProductDetailPage() {
                     {product.condition}
                   </span>
                 )}
-                <h1 className={`text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title}</h1>
-                {product.title.length > 90 && (
+                <h1 className={`text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title || "Untitled product"}</h1>
+                {(product.title ?? "").length > 90 && (
                   <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] underline">
                     {titleExpanded ? "Less" : "More"}
                   </button>
@@ -491,7 +491,7 @@ export default function ProductDetailPage() {
                   {product.review_count > 0 && (
                     <div className="flex items-center gap-1">
                       <Star className="h-3.5 w-3.5 fill-[#F6C75D] text-[#F6C75D]" />
-                      <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{product.average_rating.toFixed(1)}</span>
+                      <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{(product.average_rating ?? 0).toFixed(1)}</span>
                       <span>({product.review_count})</span>
                     </div>
                   )}
