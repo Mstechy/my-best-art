@@ -335,6 +335,25 @@ export default function SellerProducts() {
     localStorage.setItem(draftKey, JSON.stringify(draft));
   }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
+  // When a seller returns from another tab or route, reopen the unfinished
+  // listing automatically. They should never need to press Add Product again
+  // just to recover work already entered.
+  useEffect(() => {
+    if (!draftKey || dialogOpen || editingProduct) return;
+    const saved = localStorage.getItem(draftKey);
+    if (!saved) return;
+    try {
+      const draft = JSON.parse(saved) as ProductFormDraft;
+      const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
+      if (!hasContent) return;
+      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+      setDialogOpen(true);
+      toast({ title: "Unfinished listing reopened", description: "Continue exactly where you left off. Re-select files only if the browser was reloaded." });
+    } catch {
+      localStorage.removeItem(draftKey);
+    }
+  }, [draftKey]);
+
   const revokeLocalMediaUrls = () => {
     imageItems.forEach((item) => {
       if (item.file) URL.revokeObjectURL(item.url);
