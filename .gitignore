@@ -46,3 +46,5 @@ vite.config.ts.timestamp-*.mjs
 npm_*.txt
 build_output.txt
 dev_start.txt
+
+dump_log.txt

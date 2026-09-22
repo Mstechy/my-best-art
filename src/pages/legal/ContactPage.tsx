@@ -9,9 +9,9 @@ import SiteFooter from "@/components/SiteFooter";
 import AnimatedSection from "@/components/AnimatedSection";
 
 const contacts = [
-  { icon: MessageSquare, label: "Support", email: "support@markethub.com", desc: "Order help and general questions" },
-  { icon: Shield, label: "Privacy", email: "privacy@markethub.com", desc: "Data and privacy requests" },
-  { icon: ScaleIcon, label: "Legal", email: "legal@markethub.com", desc: "Policy and legal matters" },
+  { icon: MessageSquare, label: "Support", email: "support@tradibu.com", desc: "Order help and general questions" },
+  { icon: Shield, label: "Privacy", email: "privacy@tradibu.com", desc: "Data and privacy requests" },
+  { icon: ScaleIcon, label: "Legal", email: "legal@tradibu.com", desc: "Policy and legal matters" },
 ];
 
 export default function ContactPage() {
@@ -27,9 +27,9 @@ export default function ContactPage() {
       return;
     }
     setSubmitting(true);
-    const subject = encodeURIComponent(`MarketHub contact from ${name.trim()}`);
+    const subject = encodeURIComponent(`Tradibu contact from ${name.trim()}`);
     const body = encodeURIComponent(`${message.trim()}\n\n— ${name.trim()} <${email.trim()}>`);
-    window.location.href = `mailto:support@markethub.com?subject=${subject}&body=${body}`;
+    window.location.href = `mailto:support@tradibu.com?subject=${subject}&body=${body}`;
     setTimeout(() => {
       setSubmitting(false);
       toast.success("Opening your email client…");
@@ -41,7 +41,7 @@ export default function ContactPage() {
       <MarketplaceNavbar />
       <main className="flex-1 mx-auto max-w-5xl w-full px-4 lg:px-8 py-12">
         <AnimatedSection variant="fade-up">
-          <h1 className="font-display text-4xl font-bold text-foreground">Contact MarketHub</h1>
+          <h1 className="font-display text-4xl font-bold text-foreground">Contact Tradibu</h1>
           <p className="mt-2 text-muted-foreground max-w-2xl">
             We're here to help with orders, disputes, or any questions about using the platform.
           </p>
