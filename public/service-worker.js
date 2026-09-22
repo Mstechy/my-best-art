@@ -1,7 +1,7 @@
 // MarketHub Service Worker v2
 // Advanced caching: Stale-While-Revalidate for API, Cache-First for assets
 
-const CACHE_VERSION = 'v4';
+const CACHE_VERSION = 'v5';
 const STATIC_CACHE = `markethub-static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `markethub-images-${CACHE_VERSION}`;
 const API_CACHE = `markethub-api-${CACHE_VERSION}`;
