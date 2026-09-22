@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -228,6 +228,7 @@ export default function SellerProducts() {
   const [bulkStock, setBulkStock] = useState("");
   const [needsAttentionOnly, setNeedsAttentionOnly] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [listingMinimized, setListingMinimized] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formTab, setFormTab] = useState("basic");
 
@@ -501,6 +502,13 @@ export default function SellerProducts() {
   };
 
   const openNewProduct = () => {
+    // A minimized form stays fully mounted in this page state, including files.
+    // Reopening it must not rebuild the form from localStorage.
+    if (listingMinimized) {
+      setListingMinimized(false);
+      setDialogOpen(true);
+      return;
+    }
     resetForm();
     const saved = draftKey ? localStorage.getItem(draftKey) : null;
     if (saved) {
@@ -513,9 +521,36 @@ export default function SellerProducts() {
     setDialogOpen(true);
   };
 
-  const discardNewDraft = () => { if (draftKey) localStorage.removeItem(draftKey); resetForm(); toast({ title: "Unfinished listing discarded" }); };
+  const minimizeNewListing = () => {
+    setDialogOpen(false);
+    setListingMinimized(true);
+    toast({ title: "Listing minimized", description: "Your form and selected files are ready to continue on this page." });
+  };
+
+  const handleListingDialogChange = (open: boolean) => {
+    if (open) {
+      setDialogOpen(true);
+      return;
+    }
+    if (editingProduct) {
+      setDialogOpen(false);
+      setListingMinimized(false);
+      resetForm();
+      return;
+    }
+    minimizeNewListing();
+  };
+
+  const discardNewDraft = () => {
+    if (draftKey) localStorage.removeItem(draftKey);
+    resetForm();
+    setDialogOpen(false);
+    setListingMinimized(false);
+    toast({ title: "Unfinished listing discarded" });
+  };
 
   const openEdit = async (product: Product) => {
+    setListingMinimized(false);
     setEditingProduct(product);
     setTitle(product.title);
     setDescription(product.description || "");
@@ -993,6 +1028,7 @@ export default function SellerProducts() {
     if (draftKey) localStorage.removeItem(draftKey);
     resetForm();
     setDialogOpen(false);
+    setListingMinimized(false);
     setSaving(false);
     fetchProducts();
   };
@@ -1124,14 +1160,17 @@ export default function SellerProducts() {
             <p className="mt-1 text-muted-foreground">Manage your product listings ({products.length} total)</p>
           </div>
           <Button onClick={openNewProduct} className="gap-2 gradient-seller text-primary-foreground shadow-glow-seller">
-            <Plus className="h-4 w-4" /> Add Product
+            {listingMinimized ? <><Play className="h-4 w-4" /> Continue listing</> : <><Plus className="h-4 w-4" /> Add Product</>}
           </Button>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+          <Dialog open={dialogOpen} onOpenChange={handleListingDialogChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle className="font-display">{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+                <div className="flex items-center justify-between gap-3 pr-7">
+                  <DialogTitle className="font-display">{editingProduct ? "Edit Product" : "Add New Product"}</DialogTitle>
+                  {!editingProduct && <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={minimizeNewListing}><Minus className="h-3.5 w-3.5" /> Minimize</Button>}
+                </div>
                 {!editingProduct && (
-                  <div className="mt-1 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Your text and selections are saved automatically on this device. Re-select files if you leave before submitting.</p><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
+                  <div className="mt-1 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Your progress is saved automatically. Minimize to continue later without losing this form; after a browser reload, re-select any files before submitting.</p><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
                 )}
               </DialogHeader>
 

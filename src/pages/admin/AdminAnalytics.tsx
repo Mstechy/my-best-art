@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Users, TrendingUp, Package, ShoppingCart,
+  Users, TrendingUp, Package, ShoppingCart, MousePointerClick, Eye,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid,
@@ -12,6 +12,8 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface Bucket { week: string; value: number }
 interface TopProduct { title: string; total: number }
+interface TrafficDay { date: string; visitors: number; pageViews: number }
+interface ClickedProduct { id: string; title: string; clicks: number }
 
 function startOfWeek(d: Date): Date {
   const day = d.getDay(); // 0 = Sun
@@ -55,6 +57,9 @@ export default function AdminAnalytics() {
   const [usersSeries, setUsersSeries] = useState<Bucket[]>([]);
   const [revenueSeries, setRevenueSeries] = useState<Bucket[]>([]);
   const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [traffic, setTraffic] = useState({ visitorsToday: 0, visitorsPeriod: 0, pageViewsPeriod: 0 });
+  const [dailyTraffic, setDailyTraffic] = useState<TrafficDay[]>([]);
+  const [topClickedProducts, setTopClickedProducts] = useState<ClickedProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -62,7 +67,7 @@ export default function AdminAnalytics() {
       const weeks = weeksBack(12);
       const since = weeks[0].toISOString();
 
-      const [usersRes, productsRes, ordersRes, sellersRes, ordersListRes, profilesListRes, itemsRes] = await Promise.all([
+      const [usersRes, productsRes, ordersRes, sellersRes, ordersListRes, profilesListRes, itemsRes, trafficRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id", { count: "exact", head: true }),
@@ -70,6 +75,7 @@ export default function AdminAnalytics() {
         supabase.from("orders").select("created_at, total_amount, status").gte("created_at", since),
         supabase.from("profiles").select("created_at").gte("created_at", since),
         supabase.from("order_items").select("quantity, products(title)").limit(500),
+        (supabase.rpc as any)("get_platform_traffic_analytics", { p_days: 30 }),
       ]);
 
       setStats({
@@ -102,6 +108,18 @@ export default function AdminAnalytics() {
         .map(([title, total]) => ({ title: title.length > 22 ? title.slice(0, 20) + "…" : title, total }));
       setTopProducts(top);
 
+      const trafficData = (trafficRes.data || {}) as {
+        visitors_today?: number; visitors_period?: number; page_views_period?: number;
+        daily_visitors?: TrafficDay[]; top_clicked_products?: ClickedProduct[];
+      };
+      setTraffic({
+        visitorsToday: Number(trafficData.visitors_today) || 0,
+        visitorsPeriod: Number(trafficData.visitors_period) || 0,
+        pageViewsPeriod: Number(trafficData.page_views_period) || 0,
+      });
+      setDailyTraffic(trafficData.daily_visitors || []);
+      setTopClickedProducts(trafficData.top_clicked_products || []);
+
       setLoading(false);
     };
     load();
@@ -112,6 +130,12 @@ export default function AdminAnalytics() {
     { label: "Active Sellers", value: String(stats.sellers), icon: TrendingUp, gradient: "gradient-seller" },
     { label: "Products Listed", value: String(stats.products), icon: Package, gradient: "gradient-buyer" },
     { label: "Total Orders", value: String(stats.orders), icon: ShoppingCart, gradient: "gradient-admin" },
+  ];
+
+  const trafficStats = [
+    { label: "Visitors today", value: String(traffic.visitorsToday), icon: Users },
+    { label: "Unique visitors (30d)", value: String(traffic.visitorsPeriod), icon: TrendingUp },
+    { label: "Page views (30d)", value: String(traffic.pageViewsPeriod), icon: Eye },
   ];
 
   const chartTheme = {
@@ -153,7 +177,68 @@ export default function AdminAnalytics() {
         ))}
       </div>
 
+      <AnimatedSection variant="fade-up" delay={100}>
+        <div>
+          <h2 className="font-display text-xl font-bold text-foreground">Traffic & product interest</h2>
+          <p className="mt-1 text-sm text-muted-foreground">Anonymous visitor totals and product clicks from the last 30 days.</p>
+        </div>
+      </AnimatedSection>
+      <div className="grid gap-4 sm:grid-cols-3">
+        {trafficStats.map((stat, i) => (
+          <AnimatedSection key={stat.label} variant="fade-up" delay={120 + i * 60}>
+            <div className="stat-card">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm font-medium text-muted-foreground">{stat.label}</span>
+                <stat.icon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <p className="font-display text-2xl font-bold text-foreground">{stat.value}</p>
+            </div>
+          </AnimatedSection>
+        ))}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
+        <AnimatedSection variant="fade-up" delay={110}>
+          <Card className="border-border/60">
+            <CardHeader><CardTitle className="font-display text-base">Daily visitors (30 days)</CardTitle></CardHeader>
+            <CardContent>
+              {loading ? <div className="h-64 animate-pulse bg-muted/40 rounded-lg" /> : (
+                <ResponsiveContainer width="100%" height={260}>
+                  <LineChart data={dailyTraffic}>
+                    <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
+                    <XAxis dataKey="date" stroke={chartTheme.text} fontSize={11} minTickGap={24} />
+                    <YAxis stroke={chartTheme.text} fontSize={11} allowDecimals={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Line type="monotone" dataKey="visitors" name="Visitors" stroke={chartTheme.success} strokeWidth={2.5} dot={false} />
+                    <Line type="monotone" dataKey="pageViews" name="Page views" stroke={chartTheme.primary} strokeWidth={2} dot={false} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </CardContent>
+          </Card>
+        </AnimatedSection>
+
+        <AnimatedSection variant="fade-up" delay={130}>
+          <Card className="border-border/60">
+            <CardHeader><CardTitle className="font-display flex items-center gap-2 text-base"><MousePointerClick className="h-4 w-4" /> Most-clicked products (30 days)</CardTitle></CardHeader>
+            <CardContent>
+              {loading ? <div className="h-64 animate-pulse bg-muted/40 rounded-lg" /> : topClickedProducts.length === 0 ? (
+                <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No product clicks recorded yet.</div>
+              ) : (
+                <ol className="space-y-3">
+                  {topClickedProducts.map((product, index) => (
+                    <li key={product.id} className="flex items-center gap-3 text-sm">
+                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-bold">{index + 1}</span>
+                      <span className="min-w-0 flex-1 truncate font-medium">{product.title}</span>
+                      <span className="text-muted-foreground">{product.clicks} clicks</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </CardContent>
+          </Card>
+        </AnimatedSection>
+
         <AnimatedSection variant="fade-up" delay={120}>
           <Card className="border-border/60">
             <CardHeader><CardTitle className="font-display text-base">Orders per week</CardTitle></CardHeader>

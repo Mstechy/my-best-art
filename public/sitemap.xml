@@ -1,13 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://www.tradibu.com/</loc></url>
-  <url><loc>https://www.tradibu.com/marketplace</loc></url>
-  <url><loc>https://www.tradibu.com/categories</loc></url>
-  <url><loc>https://www.tradibu.com/about</loc></url>
-  <url><loc>https://www.tradibu.com/contact</loc></url>
-  <url><loc>https://www.tradibu.com/terms</loc></url>
-  <url><loc>https://www.tradibu.com/privacy</loc></url>
-  <url><loc>https://www.tradibu.com/shipping</loc></url>
-  <url><loc>https://www.tradibu.com/payment</loc></url>
-  <url><loc>https://www.tradibu.com/refund-policy</loc></url>
-</urlset>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap><loc>https://www.tradibu.com/sitemap-pages.xml</loc></sitemap>
+  <sitemap><loc>https://www.tradibu.com/sitemap-products.xml</loc></sitemap>
+</sitemapindex>

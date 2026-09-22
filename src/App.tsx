@@ -14,6 +14,7 @@ import PageTransition from "@/components/PageTransition";
 import NotificationsHub from "@/components/NotificationsHub";
 import CookieConsent from "@/components/CookieConsent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import SiteAnalyticsTracker from "@/components/SiteAnalyticsTracker";
 
 // Public pages - lazy load all for billion-scale bundle splitting
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
@@ -193,6 +194,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <SiteAnalyticsTracker />
         <AuthProvider>
           <CurrencyProvider>
             <CartProvider>

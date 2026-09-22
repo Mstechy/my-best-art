@@ -5,6 +5,10 @@
   "devCommand": "npm run dev",
   "rewrites": [
     {
+      "source": "/sitemap-products.xml",
+      "destination": "/api/sitemap"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

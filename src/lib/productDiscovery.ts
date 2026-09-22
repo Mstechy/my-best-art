@@ -35,11 +35,26 @@ async function flushEvents() {
   if (batch.length === 0) return;
 
   try {
-    await supabase.rpc("track_product_discovery_event", {
-      p_product_ids: batch.map(e => e.product_id),
-      p_event_type: batch[0].event_type,
-      p_visitor_id: batch[0].visitor_id,
+    // Events can be queued from the same page at once (for example an
+    // impression followed by a click). Keep their event types separate so a
+    // click is never incorrectly recorded as an impression.
+    const groups = new Map<string, QueuedEvent[]>();
+    batch.forEach((event) => {
+      const key = `${event.event_type}:${event.visitor_id}`;
+      groups.set(key, [...(groups.get(key) || []), event]);
     });
+    await Promise.all([...groups.values()].flatMap((events) => {
+      const requests = [];
+      for (let index = 0; index < events.length; index += 48) {
+        const chunk = events.slice(index, index + 48);
+        requests.push(supabase.rpc("track_product_discovery_event", {
+          p_product_ids: chunk.map(event => event.product_id),
+          p_event_type: chunk[0].event_type,
+          p_visitor_id: chunk[0].visitor_id,
+        }));
+      }
+      return requests;
+    }));
   } catch (err) {
     // Silently drop — failed analytics shouldn't break the user experience
     if (import.meta.env.DEV) {
