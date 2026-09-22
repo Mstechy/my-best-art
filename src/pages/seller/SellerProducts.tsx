@@ -188,7 +188,8 @@ interface VideoMediaItem {
 }
 
 interface VariantDraft { key: string; size: string; color: string; optionName: string; optionValue: string; sku: string; price: string; stock: string; imageUrl: string; imageSourceId?: string; imageFile?: File; }
-type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
+type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; currency: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
+const LISTING_CURRENCIES = ["NGN", "USD", "GBP", "EUR", "CAD", "AUD", "ZAR", "KES", "GHS", "INR", "JPY", "BRL", "MXN"];
 
 function normalizeProductRow(row: ProductRow): Product {
   const images = (row.product_images || []).sort(
@@ -237,6 +238,7 @@ export default function SellerProducts() {
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [compareAtPrice, setCompareAtPrice] = useState("");
+  const [currency, setCurrency] = useState("NGN");
   const [categoryId, setCategoryId] = useState("");
   const [stockQuantity, setStockQuantity] = useState("");
   const [sku, setSku] = useState(() => generateSku());
@@ -331,9 +333,9 @@ export default function SellerProducts() {
 
   useEffect(() => {
     if (!dialogOpen || editingProduct || !draftKey) return;
-    const draft: ProductFormDraft = { title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
+    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
+  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
@@ -346,7 +348,7 @@ export default function SellerProducts() {
       const draft = JSON.parse(saved) as ProductFormDraft;
       const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
       if (!hasContent) return;
-      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
       setDialogOpen(true);
       toast({ title: "Unfinished listing reopened", description: "Continue exactly where you left off. Re-select files only if the browser was reloaded." });
     } catch {
@@ -506,7 +508,7 @@ export default function SellerProducts() {
 
   const resetForm = () => {
     revokeLocalMediaUrls();
-    setTitle(""); setDescription(""); setPrice(""); setCompareAtPrice("");
+    setTitle(""); setDescription(""); setPrice(""); setCompareAtPrice(""); setCurrency("NGN");
     setCategoryId(""); setStockQuantity(""); setSku(generateSku()); setImageItems([]); setVideoItems([]);
     setRemovedImageIds([]); setRemovedVideoUrls([]); setDraggedImageId(null); setSavedProductId(null);
     setDocFile(null); setShowSoldCount(true);
@@ -533,7 +535,7 @@ export default function SellerProducts() {
     if (saved) {
       try {
         const draft = JSON.parse(saved) as ProductFormDraft;
-        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
         toast({ title: "Unfinished listing restored", description: "Your text and settings were recovered. Please reselect any files before submitting." });
       } catch { localStorage.removeItem(draftKey); }
     }
@@ -571,6 +573,7 @@ export default function SellerProducts() {
   const openEdit = async (product: Product) => {
     setListingMinimized(false);
     setEditingProduct(product);
+    setCurrency(product.currency || "NGN");
     setTitle(product.title);
     setDescription(product.description || "");
     setPrice(String(product.price));
@@ -769,6 +772,7 @@ export default function SellerProducts() {
       description: description.trim() || null,
       price: parseFloat(price),
       compare_at_price: compareAtPrice ? parseFloat(compareAtPrice) : null,
+      currency,
       category_id: categoryId || null,
       stock_quantity: parseInt(stockQuantity) || 0,
       seo_slug: seoSlug.trim() || null,
@@ -1240,7 +1244,7 @@ export default function SellerProducts() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-foreground">Price (USD) *</label>
+                      <label className="text-sm font-medium text-foreground">Price *</label>
                       <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="mt-1" />
                     </div>
                     <div>
@@ -1248,6 +1252,14 @@ export default function SellerProducts() {
                       <Input type="number" step="0.01" value={compareAtPrice} onChange={(e) => { setCompareAtPrice(e.target.value); setCompareAtError(""); }} placeholder="Original price" className="mt-1" />
                       {compareAtError && <p className="mt-1 text-xs text-destructive">{compareAtError}</p>}
                     </div>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground">Listing currency *</label>
+                    <Select value={currency} onValueChange={setCurrency}>
+                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectContent>{LISTING_CURRENCIES.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
+                    </Select>
+                    <p className="mt-1 text-xs text-muted-foreground">Enter the real amount you charge in this currency. Buyers see an estimated conversion in their selected currency.</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">URL Slug</label>
