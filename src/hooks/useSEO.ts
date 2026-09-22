@@ -94,7 +94,7 @@ export function useSEO({
       existingScript.remove();
     }
 
-    const structuredData: Record<string, unknown> = {
+    const schemaData: Record<string, unknown> = {
       "@context": "https://schema.org",
       "@type": type === "organization" ? "Organization" : "WebSite",
       name: title || SITE_NAME,
@@ -102,10 +102,10 @@ export function useSEO({
       ...(type === "product" && image ? { image: absoluteImage } : {}),
       ...(type === "organization" ? {
         url: absoluteUrl,
-        logo: image,
+        logo: absoluteImage,
         sameAs: [
-          "https://twitter.com/markethub",
-          "https://linkedin.com/company/markethub",
+          "https://twitter.com/tradibu",
+          "https://linkedin.com/company/tradibu",
         ],
       } : {}),
       ...(publishedTime ? { datePublished: publishedTime } : {}),
@@ -116,7 +116,7 @@ export function useSEO({
     const script = document.createElement("script");
     script.id = "page-structured-data";
     script.type = "application/ld+json";
-    script.text = JSON.stringify(structuredData);
+    script.text = JSON.stringify(schemaData);
     document.head.appendChild(script);
 
     // Cleanup function
