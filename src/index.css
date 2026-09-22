@@ -228,8 +228,26 @@
     @apply border-border;
   }
 
+  /* Reserve the scrollbar gutter at all times so pages never jump sideways
+     when content grows taller than the viewport (e.g. right after login,
+     or when async data loads in). */
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  /* Kill transient horizontal overflows from animations/carousels/marquees.
+     "clip" (unlike "hidden") does not create a scroll container, so
+     position: sticky keeps working. */
   body {
     @apply bg-background text-foreground font-body antialiased;
+    overflow-x: clip;
+  }
+
+  /* Dialogs scroll internally; never let wheel/touch chaining escape into the
+     (deliberately scroll-locked) page behind them. */
+  [role="dialog"],
+  [data-radix-dialog-content] {
+    overscroll-behavior: contain;
   }
 
   h1, h2, h3, h4, h5, h6 {

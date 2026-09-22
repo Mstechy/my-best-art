@@ -11,6 +11,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import DashboardLayout from "@/components/DashboardLayout";
 import RoleRedirect from "@/components/RoleRedirect";
 import PageTransition from "@/components/PageTransition";
+import { useOverlayLockWatchdog } from "@/hooks/useOverlayLockWatchdog";
 import NotificationsHub from "@/components/NotificationsHub";
 import CookieConsent from "@/components/CookieConsent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -126,6 +127,7 @@ function RouteSuspense({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
+  useOverlayLockWatchdog();
   return (
     <ErrorBoundary>
       <PageTransition>

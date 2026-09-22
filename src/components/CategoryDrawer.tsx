@@ -115,6 +115,7 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
         ref={panelRef}
         role="dialog"
         aria-modal="true"
+        data-state={open ? "open" : "closed"}
         aria-label={t("nav.categories", "Categories")}
         className={`fixed inset-y-0 left-0 z-50 flex w-full max-w-xs flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out dark:bg-[#1E1E1E] sm:max-w-sm ${open ? "translate-x-0" : "-translate-x-full"}`}
       >

@@ -72,7 +72,7 @@ export function NavDrawer({
   }, [open, onClose]);
 
   return (
-    <div className={cn("fixed inset-0 z-[70]", !open && "pointer-events-none", className)} aria-hidden={!open}>
+    <div data-state={open ? "open" : "closed"} className={cn("fixed inset-0 z-[70]", !open && "pointer-events-none", className)} aria-hidden={!open}>
       {/* Dimmed overlay */}
       <div
         className={cn("absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300", open ? "opacity-100" : "opacity-0")}

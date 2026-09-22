@@ -33,6 +33,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
 
   return (
     <div
+      data-state={open ? "open" : "closed"}
       className={cn(
         "fixed inset-0 z-[70] flex items-end justify-center transition-opacity duration-300",
         open ? "opacity-100" : "pointer-events-none opacity-0"
