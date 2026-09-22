@@ -323,6 +323,12 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  /* Page-level fade used by PageTransition. CSS-only (no JS measurement,
+     no inline styles) so it can never affect layout or fixed positioning. */
+  .animate-page-fade {
+    animation: pageFade 0.25s ease-out;
+  }
 }
 
 @keyframes slideUp {
@@ -331,6 +337,11 @@
 }
 
 @keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes pageFade {
   from { opacity: 0; }
   to { opacity: 1; }
 }
