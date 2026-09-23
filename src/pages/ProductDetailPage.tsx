@@ -550,6 +550,26 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
+            {hasProductVariants && (
+              <section className="rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#222222] dark:bg-[#181818]" aria-label="Product options">
+                <div className="mb-4">
+                  <h2 className="text-sm font-bold">Choose your options</h2>
+                  <p className="mt-1 text-xs text-[#888880]">Select storage, colour, or another option to see its exact price and availability.</p>
+                </div>
+                <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
+                <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#F2F3F5] px-3 py-2.5 text-xs dark:bg-[#222222]" aria-live="polite">
+                  {selectedVariant ? (
+                    <>
+                      <span className="font-bold">{formatPrice(purchasablePrice)}</span>
+                      <span className="font-semibold text-[#666666] dark:text-[#A0A0A0]">{purchasableStock} available</span>
+                    </>
+                  ) : (
+                    <span className="font-medium text-[#666666] dark:text-[#A0A0A0]">Choose every option to see the exact SKU price.</span>
+                  )}
+                </div>
+              </section>
+            )}
+
             {!hasProductVariants && (
               <>
                 {variantSizes.length > 0 && (
