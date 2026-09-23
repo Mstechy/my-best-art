@@ -72,19 +72,24 @@ export function useSellerRecentOrders(userId: string | undefined) {
       if (!userId) return [];
       const { data } = await supabase
         .from("orders")
-        .select("id,status,total_amount,created_at,buyer_id,profiles:buyer_id(full_name)")
+        .select("id,status,total_amount,created_at,buyer_id")
         .eq("seller_id", userId)
         .order("created_at", { ascending: false })
         .limit(20);
       if (!data) return [];
-      const rows = data as unknown as Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string; profiles: { full_name: string | null } | null }>;
+      const rows = data as unknown as Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string }>;
+      const buyerIds = [...new Set(rows.map((row) => row.buyer_id).filter(Boolean))];
+      const { data: buyers } = buyerIds.length
+        ? await supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds)
+        : { data: [] as Array<{ user_id: string; full_name: string | null }> };
+      const buyerNames = new Map((buyers ?? []).map((buyer) => [buyer.user_id, buyer.full_name]));
       return rows.map((row) => ({
         id: row.id,
         status: row.status,
         total_amount: row.total_amount,
         created_at: row.created_at,
         buyer_id: row.buyer_id,
-        buyer_name: row.profiles?.full_name || undefined,
+        buyer_name: buyerNames.get(row.buyer_id) || undefined,
       })) as RecentOrder[];
     },
     { enabled: !!userId, staleTime: 1 * 60 * 1000 },

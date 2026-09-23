@@ -471,7 +471,9 @@ export default function MarketplacePage() {
       navigate(`/product/${product.id}`);
       return;
     }
-    trackProductDiscovery(product.id, "buy_now");
+    // The discovery-event schema records purchase intent as a click. Its
+    // allowed event types deliberately exclude a separate buy_now value.
+    trackProductDiscovery(product.id, "click");
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
     beginDirectCheckout({
