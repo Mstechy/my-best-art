@@ -17,7 +17,7 @@ export default function ProductRichDescription({
     ? Object.entries(specs)
     : null;
 
-  const [specsOpen, setSpecsOpen] = useState(false);
+  const [specsOpen, setSpecsOpen] = useState(true);
 
   return (
     <section className="w-full max-w-4xl mx-auto">

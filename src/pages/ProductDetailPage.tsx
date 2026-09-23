@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, Flame, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, ChevronRight, Flame, Store, ShoppingCart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -38,10 +38,10 @@ import { useProductSEO } from "@/hooks/useSEO";
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addItem, beginDirectCheckout } = useCart();
+  const { addItem, beginDirectCheckout, totalItems, setIsOpen: setCartOpen } = useCart();
   const { user, role } = useAuth();
   const { formatPrice } = useCurrency();
-  const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
+  const chatPath = role === "seller" || role === "admin" ? "/seller/chat" : "/buyer/chat";
 
   const { isWishlisted, toggleWishlist } = useWishlist();
   const [selectedImage, setSelectedImage] = useState(0);
@@ -60,6 +60,8 @@ export default function ProductDetailPage() {
 
   const [specsOpen, setSpecsOpen] = useState(false);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
+  const [verifiedSellerOpen, setVerifiedSellerOpen] = useState(false);
+  const [serviceSheet, setServiceSheet] = useState<"shipping" | "returns" | "protection" | null>(null);
 
   const {
     product: productQuery,
@@ -273,6 +275,21 @@ export default function ProductDetailPage() {
     setPurchaseAction(null);
   }, [product?.id]);
 
+  useEffect(() => {
+    if (!hasProductVariants || variantAttributeKeys.size === 0) return;
+    const defaultVariant = productVariants.find((variant) => variant.is_active && variant.stock_quantity > 0)
+      ?? productVariants.find((variant) => variant.is_active);
+    if (!defaultVariant) return;
+
+    setSelectedVariantOptions(
+      Object.fromEntries(
+        [...variantAttributeKeys]
+          .filter((key) => defaultVariant.option_values[key])
+          .map((key) => [key, defaultVariant.option_values[key]]),
+      ),
+    );
+  }, [hasProductVariants, product?.id, productVariants, variantAttributeKeys]);
+
   const submitReview = useCallback(async () => {
     if (!user || !id || !product) return;
     if (reviewComment.trim().length < 20) {
@@ -380,7 +397,7 @@ export default function ProductDetailPage() {
   }, [product, user, hasProductVariants, selectedVariant, completePurchase]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
+    <div className="min-h-screen bg-[#FAFAFA] pb-[156px] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
       <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
       <BottomTabBar />
@@ -488,8 +505,20 @@ export default function ProductDetailPage() {
                   </button>
                 )}
 
+                {selectedVariant && (
+                  <p className="mt-2 text-xs font-medium text-[#666666] dark:text-[#A0A0A0]" aria-live="polite">
+                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" · ")}
+                  </p>
+                )}
+
                 {/* Social proof directly under title (AliExpress parity) */}
-                <div className="flex items-center gap-4 text-xs text-[#888880] mt-2">
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#888880]">
+                  {seller?.is_verified && (
+                    <span className="flex items-center gap-1 font-semibold text-[#16803C] dark:text-[#5EE38B]">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      Verified seller
+                    </span>
+                  )}
                   {product.review_count > 0 && (
                     <div className="flex items-center gap-1">
                       <Star className="h-3.5 w-3.5 fill-[#F6C75D] text-[#F6C75D]" />
@@ -498,6 +527,7 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   {soldCount > 0 && <span>{soldCount} sold</span>}
+                  {product.shipping_info && <span className="truncate">Delivery: {product.shipping_info}</span>}
                   {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
                 </div>
 
@@ -521,9 +551,6 @@ export default function ProductDetailPage() {
                         -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
                       </span>
                     </div>
-                    {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
-                      <p className="mt-2 text-[10px] font-bold text-[#F6C75D]">Only {purchasableStock} left in stock</p>
-                    )}
                   </div>
                 ) : (
                   <div className="mt-3 flex items-baseline gap-3">
@@ -648,16 +675,22 @@ export default function ProductDetailPage() {
             )}
 
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-xs text-[#888880]">
-                <Truck className="h-4 w-4" />
-                <span>{product.shipping_info || "Shipping calculated at checkout"}</span>
-                <Link to="/shipping" className="font-semibold underline hover:text-[#111111] dark:hover:text-[#FAF5F2]">Shipping details</Link>
-              </div>
-              <div className="flex items-center gap-2 text-xs text-[#888880]">
-                <Shield className="h-4 w-4" />
-                <Link to="/refund-policy" className="font-semibold underline hover:text-[#111111] dark:hover:text-[#FAF5F2]">Returns & refunds</Link>
+              <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+                <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
+                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#888880]">{product.shipping_info || "Shipping calculated at checkout"}</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-[#888880]" />
+              </button>
+              <button type="button" onClick={() => setServiceSheet("returns")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+                <Shield className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Returns & refunds</span><span className="block truncate">See the return policy before ordering</span></span>{/*
                 <span>Buyer protection — full refund if not as described</span>
-              </div>
+                */}<ChevronRight className="h-4 w-4 shrink-0" />
+              </button>
+              <button type="button" onClick={() => setServiceSheet("protection")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+                <Shield className="h-4 w-4 shrink-0" />
+                <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Buyer protection</span><span className="block truncate">Full refund if not as described</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0" />
+              </button>
               {product.warranty && (
                 <div className="flex items-center gap-2 text-xs text-[#888880]">
                   <Info className="h-4 w-4" />
@@ -675,6 +708,8 @@ export default function ProductDetailPage() {
                 followers={sellerFollowers}
                 rating={sellerAvgRating}
                 soldCount={sellerTotalSold}
+                chatHref={`${chatPath}?seller=${seller.user_id}&product=${product.id}`}
+                onVerifiedClick={() => setVerifiedSellerOpen(true)}
               />
             )}
 
@@ -682,6 +717,26 @@ export default function ProductDetailPage() {
             </div>
           </div>
         )}
+
+        <Sheet open={verifiedSellerOpen} onOpenChange={setVerifiedSellerOpen}>
+          <SheetContent side="bottom" className="rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-[#22C55E]" /> Verified seller</SheetTitle>
+              <SheetDescription>This badge is shown only for seller profiles marked as verified by Marketplace. It does not replace the product details, shipping terms, or buyer protection shown for this listing.</SheetDescription>
+            </SheetHeader>
+          </SheetContent>
+        </Sheet>
+
+        <Sheet open={serviceSheet !== null} onOpenChange={(open) => !open && setServiceSheet(null)}>
+          <SheetContent side="bottom" className="rounded-t-2xl">
+            <SheetHeader>
+              <SheetTitle>{serviceSheet === "shipping" ? "Shipping" : serviceSheet === "returns" ? "Returns & refunds" : "Buyer protection"}</SheetTitle>
+              <SheetDescription>{serviceSheet === "shipping" ? (product?.shipping_info || "Shipping cost and delivery timing are confirmed at checkout.") : serviceSheet === "returns" ? "Review the return and refund terms before placing your order." : "Full refund support is available when an item is not as described."}</SheetDescription>
+            </SheetHeader>
+            {serviceSheet === "shipping" && <Link to="/shipping" className="mt-5 flex h-11 items-center justify-center rounded-full bg-[#111111] text-sm font-bold text-white dark:bg-[#FAF5F2] dark:text-[#111111]">Read shipping details</Link>}
+            {serviceSheet === "returns" && <Link to="/refund-policy" className="mt-5 flex h-11 items-center justify-center rounded-full bg-[#111111] text-sm font-bold text-white dark:bg-[#FAF5F2] dark:text-[#111111]">Read return policy</Link>}
+          </SheetContent>
+        </Sheet>
 
         {product && (
           <div className="mt-12 space-y-6">
@@ -828,7 +883,7 @@ export default function ProductDetailPage() {
       </Container>
 
       {/* Sticky mobile CTA bar - store icon (→ seller page) + price left + full-width Add to Cart + Buy Now */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-[#E8E8E8] dark:border-[#222222] bg-white/95 dark:bg-[#121212]/95 backdrop-blur md:hidden" style={{ paddingBottom: "max(10px, env(safe-area-inset-bottom))" }}>
+      <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-[60] border-t border-[#E8E8E8] bg-white/95 backdrop-blur dark:border-[#222222] dark:bg-[#121212]/95 md:hidden">
         <Container className="flex items-center gap-2 py-2">
           <button
             onClick={() => product && navigate(`/seller/${product.seller_id}`)}
@@ -836,6 +891,23 @@ export default function ProductDetailPage() {
             aria-label="Visit store"
           >
             <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => product && navigate(`${chatPath}?seller=${product.seller_id}&product=${product.id}`)}
+            className="shrink-0 rounded-full bg-[#111111]/80 p-2 text-white transition-colors hover:bg-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#1E1E1E]/80 dark:text-[#FAF5F2] dark:hover:bg-[#FAF5F2]/90"
+            aria-label="Chat with seller"
+          >
+            <MessageSquare className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            className="relative shrink-0 rounded-full bg-[#111111]/80 p-2 text-white transition-colors hover:bg-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#1E1E1E]/80 dark:text-[#FAF5F2] dark:hover:bg-[#FAF5F2]/90"
+            aria-label={`Open cart${totalItems > 0 ? `, ${totalItems} items` : ""}`}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E53935] px-1 text-[9px] font-bold text-white">{totalItems > 99 ? "99+" : totalItems}</span>}
           </button>
           <span className="shrink-0 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
           <button
