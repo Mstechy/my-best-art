@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, ChevronRight, Play, ChevronDown, Flame, Store } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, Flame, Store } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -14,7 +14,6 @@ import CartDrawer from "@/components/CartDrawer";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/Container";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
-import { Breadcrumb, type BreadcrumbItem } from "@/components/ui/breadcrumb";
 import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
@@ -65,7 +64,6 @@ export default function ProductDetailPage() {
   const {
     product: productQuery,
     seller: sellerQuery,
-    category: categoryQuery,
     soldCount: soldCountQuery,
     docs: docsQuery,
     variants: variantsQuery,
@@ -79,7 +77,6 @@ export default function ProductDetailPage() {
 
   const product = productQuery.data ?? null;
   const seller = sellerQuery.data ?? null;
-  const category = categoryQuery.data ?? null;
   const soldCount = soldCountQuery.data ?? 0;
   const productDocs = docsQuery.data ?? [];
   const productVariants = useMemo(() => variantsQuery.data ?? [], [variantsQuery.data]);
@@ -477,21 +474,6 @@ export default function ProductDetailPage() {
             </div>
 
             <div className="space-y-5">
-              {/* Breadcrumb container (Home > Marketplace > Category) */}
-              <div className="flex items-center gap-1.5 text-xs text-[#666666] dark:text-[#A0A0A0]">
-                <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Home</Link>
-                <ChevronRight className="h-3 w-3 opacity-60" />
-                <Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">Marketplace</Link>
-                {category && (
-                  <>
-                    <ChevronRight className="h-3 w-3 opacity-60" />
-                    <Link to={`/categories/${category.slug || category.name}`} className="hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors truncate max-w-[160px]">
-                      {category.name}
-                    </Link>
-                  </>
-                )}
-              </div>
-
               <div>
                 {/* Condition pill + title (2-line clamp with expand) */}
                 {product.condition && (

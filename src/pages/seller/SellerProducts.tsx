@@ -1332,11 +1332,12 @@ export default function SellerProducts() {
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Title *</label>
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
-                    <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Use brand, model, key configuration, and carrier status. Do not put price, delivery claims, or promotional words in the title." : "Use brand, product type, and the main differentiator. Keep price and promotions out of the title."}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Description <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
+                    <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
                     <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
+                    <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: “Original iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version.”</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
                       {description.length > 0 && description.length < 80 && (

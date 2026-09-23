@@ -56,10 +56,10 @@ export default function ProductRichDescription({
         </div>
       )}
 
-      {/* Description text */}
+      {/* Product details text */}
       {description && (
         <div className="mb-8">
-          <h3 className="text-base font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Description</h3>
+          <h3 className="text-base font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Product Details</h3>
           <div className="text-sm text-[#666666] dark:text-[#A0A0A0] leading-relaxed whitespace-pre-line">
             {description}
           </div>
