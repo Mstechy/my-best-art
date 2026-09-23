@@ -188,8 +188,20 @@ interface VideoMediaItem {
 }
 
 interface VariantDraft { key: string; size: string; color: string; optionName: string; optionValue: string; sku: string; price: string; stock: string; imageUrl: string; imageSourceId?: string; imageFile?: File; }
-type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; currency: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
+type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; currency: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; variantColorValues: string; variantStorageValues: string; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
 const LISTING_CURRENCIES = ["NGN", "USD", "GBP", "EUR", "CAD", "AUD", "ZAR", "KES", "GHS", "INR", "JPY", "BRL", "MXN"];
+
+function splitVariantValues(values: string): string[] {
+  return [...new Set(values.split(/[\n,]/).map((value) => value.trim()).filter(Boolean))];
+}
+
+function variantValueKey(value: string): string {
+  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+function storageColorVariantKey(color: string, storage: string): string {
+  return `${color.trim().toLowerCase()}|storage|${storage.trim().toLowerCase()}`;
+}
 
 function normalizeProductRow(row: ProductRow): Product {
   const images = (row.product_images || []).sort(
@@ -280,6 +292,8 @@ export default function SellerProducts() {
   const [productTypeKey, setProductTypeKey] = useState("");
   const [existingProductVideos, setExistingProductVideos] = useState<string[]>([]);
   const [variantRows, setVariantRows] = useState<VariantDraft[]>([]);
+  const [variantColorValues, setVariantColorValues] = useState("");
+  const [variantStorageValues, setVariantStorageValues] = useState("");
 
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
@@ -333,9 +347,9 @@ export default function SellerProducts() {
 
   useEffect(() => {
     if (!dialogOpen || editingProduct || !draftKey) return;
-    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
+    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
+  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
@@ -348,7 +362,7 @@ export default function SellerProducts() {
       const draft = JSON.parse(saved) as ProductFormDraft;
       const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
       if (!hasContent) return;
-      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
       setDialogOpen(true);
       toast({ title: "Unfinished listing reopened", description: "Continue exactly where you left off. Re-select files only if the browser was reloaded." });
     } catch {
@@ -515,7 +529,7 @@ export default function SellerProducts() {
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
-    setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]);
+    setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]); setVariantColorValues(""); setVariantStorageValues("");
     setSlugTouched(false); setSeoSlug(""); setMetaDescription(""); setLowStockThreshold("5");
     setDescriptionImageItems([]); setRemovedDescriptionImageUrls([]); setDraggedDescriptionImageId(null);
     setFlashDealEnabled(false); setFlashDealDiscount(""); setFlashDealStart(""); setFlashDealEnd("");
@@ -535,7 +549,7 @@ export default function SellerProducts() {
     if (saved) {
       try {
         const draft = JSON.parse(saved) as ProductFormDraft;
-        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
         toast({ title: "Unfinished listing restored", description: "Your text and settings were recovered. Please reselect any files before submitting." });
       } catch { localStorage.removeItem(draftKey); }
     }
@@ -654,18 +668,63 @@ export default function SellerProducts() {
     });
     setDocFile(null);
     const { data: variants } = await supabase.from("product_variants").select("id, option_values, sku, price, stock_quantity, image_url").eq("product_id", product.id).order("sort_order");
-    setVariantRows((variants ?? []).map((variant: ProductVariant) => {
+    const loadedVariantRows = (variants ?? []).map((variant: ProductVariant) => {
       const imageUrl = variant.image_url || "";
       const sourceImage = (product.product_images || []).find((image) => image.image_url === imageUrl);
       const extraOption = Object.entries(variant.option_values || {}).find(([key, value]) => key !== "size" && key !== "color" && Boolean(value));
       return { key: variant.id, size: variant.option_values?.size || "", color: variant.option_values?.color || "", optionName: extraOption?.[0] || "", optionValue: extraOption?.[1] || "", sku: variant.sku || "", price: variant.price == null ? "" : String(variant.price), stock: String(variant.stock_quantity), imageUrl, imageSourceId: sourceImage ? `existing-image-${sourceImage.id}` : undefined };
-    }));
+    });
+    setVariantRows(loadedVariantRows);
+    setVariantColorValues([...new Set(loadedVariantRows.map((row) => row.color).filter(Boolean))].join(", "));
+    setVariantStorageValues([...new Set(loadedVariantRows.filter((row) => row.optionName.toLowerCase() === "storage").map((row) => row.optionValue).filter(Boolean))].join(", "));
     setFormTab("basic");
     setDialogOpen(true);
   };
 
+  const generateStorageColorMatrix = () => {
+    const colors = splitVariantValues(variantColorValues);
+    const storages = splitVariantValues(variantStorageValues);
+    if (colors.length === 0 && storages.length === 0) {
+      toast({ title: "Add option values", description: "Enter at least one storage size or colour before generating SKU rows.", variant: "destructive" });
+      return;
+    }
+
+    const colorValues = colors.length > 0 ? colors : [""];
+    const storageValues = storages.length > 0 ? storages : [""];
+    const combinationCount = colorValues.length * storageValues.length;
+    if (combinationCount > 100) {
+      toast({ title: "Too many SKU combinations", description: "Use up to 100 colour and storage combinations in one listing.", variant: "destructive" });
+      return;
+    }
+
+    const existingRows = new Map(variantRows.map((row) => [storageColorVariantKey(row.color, row.optionName.toLowerCase() === "storage" ? row.optionValue : ""), row]));
+    const baseSku = sku.trim() || generateSku();
+    const generatedAt = Date.now();
+    const nextRows = colorValues.flatMap((variantColor) => storageValues.map((variantStorage, index) => {
+      const existing = existingRows.get(storageColorVariantKey(variantColor, variantStorage));
+      const suffix = [variantValueKey(variantColor), variantValueKey(variantStorage)].filter(Boolean).join("-").toUpperCase();
+      return existing ?? {
+        key: `matrix-${generatedAt}-${index}-${variantValueKey(variantColor)}-${variantValueKey(variantStorage)}`,
+        size: "",
+        color: variantColor,
+        optionName: variantStorage ? "storage" : "",
+        optionValue: variantStorage,
+        sku: suffix ? `${baseSku}-${suffix}` : `${baseSku}-${index + 1}`,
+        // A variant must carry its own price. Leaving this blank makes the
+        // seller deliberately price the exact Storage/Colour SKU below,
+        // instead of accidentally selling every size at the base price.
+        price: "",
+        stock: "0",
+        imageUrl: "",
+      };
+    }));
+
+    setVariantRows(nextRows);
+    toast({ title: "SKU matrix ready", description: `${nextRows.length} SKU row${nextRows.length === 1 ? "" : "s"} generated. Enter the price and stock for each exact option before publishing.` });
+  };
+
   const handleSave = async () => {
-    if (!user || !title.trim() || !price) return;
+    if (!user || !title.trim()) return;
     if (!categoryId) {
       toast({ title: "Choose a category", description: "Select a category before submitting this product.", variant: "destructive" });
       return;
@@ -679,11 +738,29 @@ export default function SellerProducts() {
       setFormTab("media");
       return;
     }
-    const numericPrice = Number(price);
+    const hasVariantRows = variantRows.length > 0;
+    const invalidVariant = variantRows.some(row => (
+      (!row.size.trim() && !row.color.trim() && !(row.optionValue || "").trim()) ||
+      Boolean((row.optionName || "").trim()) !== Boolean((row.optionValue || "").trim()) ||
+      !Number.isFinite(Number(row.price)) || Number(row.price) <= 0 ||
+      !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0
+    ));
+    const variantKeys = variantRows.map(row => `${row.size.trim().toLowerCase()}|${row.color.trim().toLowerCase()}|${(row.optionName || "").trim().toLowerCase()}|${(row.optionValue || "").trim().toLowerCase()}`);
+    if (invalidVariant || new Set(variantKeys).size !== variantKeys.length) {
+      toast({ title: "Complete SKU prices and stock", description: "Every SKU needs an option, its own price above zero, a whole stock quantity, and a unique combination.", variant: "destructive" }); setFormTab("variants"); return;
+    }
+
+    // The parent listing uses the lowest purchasable SKU price and total SKU
+    // stock. Buyers still pay and reserve stock from their selected SKU.
+    const numericPrice = hasVariantRows
+      ? Math.min(...variantRows.map((row) => Number(row.price)))
+      : Number(price);
     const numericCompareAtPrice = compareAtPrice ? Number(compareAtPrice) : null;
-    const numericStock = Number(stockQuantity || 0);
+    const numericStock = hasVariantRows
+      ? variantRows.reduce((total, row) => total + Number(row.stock), 0)
+      : Number(stockQuantity || 0);
     if (!Number.isFinite(numericPrice) || numericPrice <= 0) {
-      toast({ title: "Enter a valid price", description: "Price must be greater than zero.", variant: "destructive" });
+      toast({ title: "Enter a valid price", description: "For a single-price product, enter the price in Basic info. For options, enter a price on every SKU row.", variant: "destructive" });
       setFormTab("basic");
       return;
     }
@@ -707,12 +784,6 @@ export default function SellerProducts() {
     // Alt-text warning (non-blocking, per PRD)
     const missingAlt = [...imageItems, ...descriptionImageItems].some(item => !item.alt.trim());
     setAltWarning(missingAlt);
-    const invalidVariant = variantRows.some(row => (!row.size.trim() && !row.color.trim() && !(row.optionValue || "").trim()) || Boolean((row.optionName || "").trim()) !== Boolean((row.optionValue || "").trim()) || !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0 || (row.price && Number(row.price) <= 0));
-    const variantKeys = variantRows.map(row => `${row.size.trim().toLowerCase()}|${row.color.trim().toLowerCase()}|${(row.optionName || "").trim().toLowerCase()}|${(row.optionValue || "").trim().toLowerCase()}`);
-    if (invalidVariant || new Set(variantKeys).size !== variantKeys.length) {
-      toast({ title: "Check variant rows", description: "Each variant needs at least one option, paired custom option name/value, whole stock, valid optional price, and a unique combination.", variant: "destructive" }); setFormTab("variants"); return;
-    }
-
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
     if (cleanFeatures.length < 3) {
       toast({ title: "Add key features", description: "Add at least three buyer-facing highlights, such as condition, compatibility, or what is included.", variant: "destructive" });
@@ -770,11 +841,11 @@ export default function SellerProducts() {
       seller_id: user.id,
       title: title.trim(),
       description: description.trim() || null,
-      price: parseFloat(price),
+      price: numericPrice,
       compare_at_price: compareAtPrice ? parseFloat(compareAtPrice) : null,
       currency,
       category_id: categoryId || null,
-      stock_quantity: parseInt(stockQuantity) || 0,
+      stock_quantity: numericStock,
       seo_slug: seoSlug.trim() || null,
       meta_description: metaDescription.trim() || null,
       low_stock_threshold: parseInt(lowStockThreshold) || 5,
@@ -1149,10 +1220,15 @@ export default function SellerProducts() {
     [selectedProductTypeConfig],
   );
   const isPhoneListing = selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones";
+  const hasVariantRows = variantRows.length > 0;
+  const variantRowsWithPrices = variantRows.filter((row) => Number.isFinite(Number(row.price)) && Number(row.price) > 0);
+  const lowestVariantPrice = variantRowsWithPrices.length > 0 ? Math.min(...variantRowsWithPrices.map((row) => Number(row.price))) : null;
+  const totalVariantStock = variantRows.reduce((total, row) => total + (Number.isInteger(Number(row.stock)) && Number(row.stock) > 0 ? Number(row.stock) : 0), 0);
+  const allVariantRowsPriced = hasVariantRows && variantRowsWithPrices.length === variantRows.length;
   const listingReadiness = [
     { label: "Product identity", detail: "Category, type, and a clear title", complete: Boolean(categoryId && productTypeKey && title.trim()) },
     { label: "Buyer-facing content", detail: "80+ character description and at least 3 key features", complete: description.trim().length >= 80 && keyFeatures.filter((feature) => feature.trim()).length >= 3 },
-    { label: "Offer", detail: "Price and available stock", complete: Number(price) > 0 && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 },
+    { label: "Offer", detail: hasVariantRows ? "A price and stock for every SKU" : "Price and available stock", complete: hasVariantRows ? allVariantRowsPriced && variantRows.every((row) => Number.isInteger(Number(row.stock)) && Number(row.stock) >= 0) : Number(price) > 0 && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 },
     { label: "Required specifications", detail: `${requiredSpecificationKeys.size} fields for this product type`, complete: [...requiredSpecificationKeys].every((key) => Boolean(categoryAttributes[key]?.trim())) },
     { label: "Main product photo", detail: "One is required; 3 or more views are recommended", complete: imageItems.length > 0 },
   ];
@@ -1198,15 +1274,21 @@ export default function SellerProducts() {
               </DialogHeader>
 
               <Tabs value={formTab} onValueChange={setFormTab} className="mt-4">
+                <div className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                  <span className="font-semibold text-foreground">Simple listing path:</span> 1. Describe the product &rarr; 2. Add options and exact SKU prices &rarr; 3. Fill the requested details &rarr; 4. Add photos &rarr; 5. Review and publish. Fields marked <span className="font-semibold text-foreground">*</span> are required.
+                </div>
                 <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="basic">Basic Info</TabsTrigger>
-                  <TabsTrigger value="variants">Variants</TabsTrigger>
-                  <TabsTrigger value="specs">Specifications</TabsTrigger>
-                  <TabsTrigger value="media">Images & Tags</TabsTrigger>
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
+                  <TabsTrigger value="basic">1. Basics</TabsTrigger>
+                  <TabsTrigger value="variants">2. Options</TabsTrigger>
+                  <TabsTrigger value="specs">3. Details</TabsTrigger>
+                  <TabsTrigger value="media">4. Photos</TabsTrigger>
+                  <TabsTrigger value="preview">5. Review</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="basic" className="space-y-4 mt-4">
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                    Start with what every buyer needs to recognise this product. If storage, colour, or another option changes the price, set those exact prices in <span className="font-semibold">2. Options</span> - do not create separate product listings.
+                  </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Category *</label>
                     <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setProductTypeKey(""); setCategoryAttributes({}); }}>
@@ -1244,8 +1326,13 @@ export default function SellerProducts() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-foreground">Price *</label>
-                      <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0.00" className="mt-1" />
+                      <label className="text-sm font-medium text-foreground">{hasVariantRows ? "Starting price (from SKU prices)" : "Price for a single-price product *"}</label>
+                      {hasVariantRows ? (
+                        <Input value={lowestVariantPrice === null ? "Add a price for each SKU in Options" : `${currency} ${lowestVariantPrice.toFixed(2)}`} readOnly className="mt-1 bg-muted" aria-label="Starting price calculated from SKU prices" />
+                      ) : (
+                        <Input type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 250000" className="mt-1" />
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">{hasVariantRows ? "Calculated from the lowest exact SKU price. Buyers pay the price for the storage and colour they choose." : "Use this only when every unit has the same price. Options with different prices are set in the next tab."}</p>
                     </div>
                     <div>
                       <label className="text-sm font-medium text-foreground">Compare at price</label>
@@ -1278,8 +1365,13 @@ export default function SellerProducts() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-foreground">Stock Quantity</label>
-                      <Input type="number" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="0" className="mt-1" />
+                      <label className="text-sm font-medium text-foreground">{hasVariantRows ? "Total SKU stock" : "Stock quantity"}</label>
+                      {hasVariantRows ? (
+                        <Input value={String(totalVariantStock)} readOnly className="mt-1 bg-muted" aria-label="Total stock calculated from SKU rows" />
+                      ) : (
+                        <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="e.g. 12" className="mt-1" />
+                      )}
+                      <p className="mt-1 text-xs text-muted-foreground">{hasVariantRows ? "Calculated from the stock entered for each SKU in Options." : "How many units are ready to sell now."}</p>
                     </div>
                     <div>
                       <div className="flex items-center justify-between gap-2"><label className="text-sm font-medium text-foreground">SKU</label><Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSku(generateSku())}>Generate new</Button></div>
@@ -1314,19 +1406,42 @@ export default function SellerProducts() {
                 </TabsContent>
 
                 <TabsContent value="variants" className="space-y-4 mt-4">
-                  <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm text-muted-foreground">
-                    Optional. Use up to three option dimensions per SKU — for example Size, Colour, and Storage or Material. Upload product photos once in Images & Tags, then assign the right gallery photo to each colour below. A separate photo is only needed when it is not already in the gallery.
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                    <p className="font-semibold">Use options when a buyer can choose a different version of the same product.</p>
+                    <p className="mt-1 text-xs leading-relaxed">For example, create one iPhone listing and add 128GB, 256GB, and 512GB here. Each row below is a real SKU: give it its own price and stock. The buyer pays the price for the storage and colour selected.</p>
                   </div>
+                  <div className="rounded-xl border border-border p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Step 1: Add the options you sell</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Separate values with commas or new lines. For a phone, use storage such as 128GB and 256GB; add colours only when they are actually available.</p>
+                      </div>
+                      <Button type="button" variant="secondary" className="gap-2" onClick={generateStorageColorMatrix}>
+                        <Plus className="h-4 w-4" /> Create price & stock rows
+                      </Button>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-xs font-semibold text-foreground">Storage values (optional)</label>
+                        <Input value={variantStorageValues} onChange={(event) => setVariantStorageValues(event.target.value)} placeholder="128GB, 256GB, 512GB" className="mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground">Colour values (optional)</label>
+                        <Input value={variantColorValues} onChange={(event) => setVariantColorValues(event.target.value)} placeholder="Black, Blue, Silver" className="mt-1" />
+                      </div>
+                    </div>
+                  </div>
+                  {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's “From” price.</p></div>}
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
                       <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-8">
-                        <Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="Size" />
-                        <Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="Colour" />
-                        <Input value={row.optionName || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionName: e.target.value } : item))} placeholder="3rd option name" />
-                        <Input value={row.optionValue || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionValue: e.target.value } : item))} placeholder="3rd option value" />
-                        <Input value={row.sku} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, sku: e.target.value } : item))} placeholder="SKU" />
-                        <Input type="number" min="0.01" step="0.01" value={row.price} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} placeholder="Price (optional)" />
-                        <Input type="number" min="0" step="1" value={row.stock} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, stock: e.target.value } : item))} placeholder="Stock" />
+                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Size</span><Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="e.g. Large" /></label>
+                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Colour</span><Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="e.g. Black" /></label>
+                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Option name</span><Input value={row.optionName || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionName: e.target.value } : item))} placeholder="e.g. Storage" /></label>
+                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Option value</span><Input value={row.optionValue || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionValue: e.target.value } : item))} placeholder="e.g. 256GB" /></label>
+                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Your SKU / code</span><Input value={row.sku} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, sku: e.target.value } : item))} placeholder="Optional" /></label>
+                        <label className="space-y-1"><span className="text-xs font-bold text-primary">Price for this exact SKU *</span><Input type="number" min="0.01" step="0.01" value={row.price} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} placeholder={`e.g. ${currency === "NGN" ? "250000" : "250"}`} className="border-primary/50" aria-label={`Price for variant ${index + 1}`} /></label>
+                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Stock for this SKU *</span><Input type="number" min="0" step="1" value={row.stock} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, stock: e.target.value } : item))} placeholder="0" aria-label={`Stock for variant ${index + 1}`} /></label>
                         <div className="col-span-2 space-y-1.5 sm:col-span-1">
                           <Select
                             value={row.imageSourceId || "__none"}
@@ -1361,7 +1476,7 @@ export default function SellerProducts() {
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", optionName: "", optionValue: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add variant SKU</Button>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", optionName: "", optionValue: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add one custom SKU</Button>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">
@@ -1376,7 +1491,7 @@ export default function SellerProducts() {
                       <div className="rounded-lg border border-border bg-muted/30 p-3">
                         <p className="text-sm font-medium text-foreground">{selectedProductTypeConfig.label} Details</p>
                         <p className="mt-1 text-xs text-muted-foreground">Fields marked * are required before submission. These details help buyers compare products in {selectedCategory?.name || "this category"}.</p>
-                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
+                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For Wi-Fi-only devices, choose “Wi-Fi only” and “No SIM or eSIM support”; carrier and account-lock fields are optional. For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {selectedProductTypeConfig.fields.map((field) => (
@@ -1406,6 +1521,7 @@ export default function SellerProducts() {
                                 className="mt-1"
                               />
                             )}
+                            {field.helpText && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{field.helpText}</p>}
                           </div>
                         ))}
                       </div>

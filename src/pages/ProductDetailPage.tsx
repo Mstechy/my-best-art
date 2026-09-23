@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import MakeOfferDialog from "@/components/MakeOfferDialog";
 import RecentlyViewed from "@/components/RecentlyViewed";
 import VariantSelector from "@/components/product/VariantSelector";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useRecentlyViewed } from "@/hooks/useRecentlyViewed";
 import SellerMiniCard from "@/components/product/SellerMiniCard";
 import ReviewSummary from "@/components/product/ReviewSummary";
@@ -38,7 +39,7 @@ import { useProductSEO } from "@/hooks/useSEO";
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addItem, replaceItems } = useCart();
+  const { addItem, beginDirectCheckout } = useCart();
   const { user, role } = useAuth();
   const { formatPrice } = useCurrency();
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
@@ -48,7 +49,8 @@ export default function ProductDetailPage() {
   const [carouselApi, setCarouselApi] = useState<CarouselApi | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [offerOpen, setOfferOpen] = useState(false);
-  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [selectedVariantOptions, setSelectedVariantOptions] = useState<Record<string, string>>({});
+  const [purchaseAction, setPurchaseAction] = useState<"cart" | "buy" | null>(null);
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [titleExpanded, setTitleExpanded] = useState(false);
@@ -135,20 +137,39 @@ export default function ProductDetailPage() {
     return Object.keys(details).length > 0 ? details : null;
   }, [product, variantAttributeKeys]);
   const selectedVariant = hasProductVariants
-    ? (productVariants.find(variant => variant.id === selectedVariantId) ?? null)
+    ? (variantAttributeKeys.size > 0 && [...variantAttributeKeys].every((key) => selectedVariantOptions[key])
+      ? productVariants.find((variant) =>
+          variant.is_active &&
+          [...variantAttributeKeys].every((key) => variant.option_values[key] === selectedVariantOptions[key]),
+        ) ?? null
+      : null)
     : (productVariants.find(variant =>
         variant.is_active &&
         (!selectedSize || variant.option_values.size === selectedSize) &&
         (!selectedColor || variant.option_values.color === selectedColor) &&
         (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
       ) ?? null);
-  const purchasableStock = selectedVariant ? selectedVariant.stock_quantity : (product?.stock_quantity ?? 0);
+  const inStockVariants = useMemo(
+    () => productVariants.filter((variant) => variant.is_active && variant.stock_quantity > 0),
+    [productVariants],
+  );
+  const hasInStockVariant = inStockVariants.length > 0;
+  const purchasableStock = selectedVariant
+    ? selectedVariant.stock_quantity
+    : hasProductVariants
+      ? Number(hasInStockVariant)
+      : (product?.stock_quantity ?? 0);
   const purchasablePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const startingVariantPrice = useMemo(() => {
+    if (!hasProductVariants || !product) return null;
+    const priceSource = inStockVariants.length > 0 ? inStockVariants : productVariants;
+    return Math.min(...priceSource.map((variant) => variant.price ?? product.price));
+  }, [hasProductVariants, product, productVariants, inStockVariants]);
   const seoImage = product?.product_images?.find((image) => image.is_primary)?.image_url || product?.product_images?.[0]?.image_url;
   useProductSEO({
     productName: product?.title || "Product",
     price: purchasablePrice,
-    currency: product?.currency || "USD",
+    currency: product?.currency || "NGN",
     image: seoImage,
     description: product?.meta_description || product?.description || undefined,
     id: product?.id || id || "",
@@ -186,7 +207,11 @@ export default function ProductDetailPage() {
   // matches the option they just chose.
   useEffect(() => {
     setSelectedImage(0);
-  }, [selectedVariantId]);
+  }, [selectedVariantOptions]);
+
+  useEffect(() => {
+    if (selectedVariant) setQuantity((current) => Math.max(1, Math.min(current, selectedVariant.stock_quantity)));
+  }, [selectedVariant]);
 
   const carouselLockRef = useRef(false);
   const lastRequestedIndexRef = useRef<number | null>(null);
@@ -245,6 +270,12 @@ export default function ProductDetailPage() {
     setActiveTab("overview");
   }, [id, product?.id]);
 
+  useEffect(() => {
+    setSelectedVariantOptions({});
+    setQuantity(1);
+    setPurchaseAction(null);
+  }, [product?.id]);
+
   const submitReview = useCallback(async () => {
     if (!user || !id || !product) return;
     if (reviewComment.trim().length < 20) {
@@ -295,13 +326,13 @@ export default function ProductDetailPage() {
     canReviewData.refetch();
   }, [user, id, product, reviewRating, reviewTitle, reviewComment, reviewPhotoFiles, reviewsQuery, keywordsQuery, canReviewData]);
 
-  const handleAddToCart = useCallback(() => {
+  const completePurchase = useCallback((action: "cart" | "buy") => {
     if (!product || !seller) return;
     if (user?.id === product.seller_id) {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
+    if (hasProductVariants && !selectedVariant) { toast.error("Please select every option first."); return; }
     if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
     if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
     if (productVariants.length > 0 && (!selectedVariant || !selectedVariant.is_active)) { toast.error("That option combination is unavailable."); return; }
@@ -312,45 +343,12 @@ export default function ProductDetailPage() {
       ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(", ")
       : [selectedSize, selectedColor].filter(Boolean).join("/");
     const cartId = selectedVariant ? `${product.id}::variant:${selectedVariant.id}` : variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
-    const titleSuffix = variantSuffix ? ` (${variantSuffix})` : "";
-    addItem({
-      id: cartId,
-      product_id: product.id,
-      product_variant_id: selectedVariant?.id,
-      title: product.title + titleSuffix,
-      price: purchasablePrice,
-      image_url: cartImage,
-      seller_id: product.seller_id,
-      seller_name: seller.full_name || "Seller",
-      stock_quantity: purchasableStock,
-      quantity,
-    });
-    toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
-  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem]);
-
-  const handleBuyNow = useCallback(() => {
-    if (!product || !seller) return;
-    if (user?.id === product.seller_id) {
-      toast.error("Sellers cannot purchase their own products.");
-      return;
-    }
-    if (hasProductVariants && !selectedVariantId) { toast.error("Please select a variant first."); return; }
-    if (!hasProductVariants && variantSizes.length > 0 && !selectedSize) { toast.error("Please select a size first."); return; }
-    if (!hasProductVariants && variantColors.length > 0 && !selectedColor) { toast.error("Please select a color first."); return; }
-    if (productVariants.length > 0 && (!selectedVariant || !selectedVariant.is_active)) { toast.error("That option combination is unavailable."); return; }
-    if (purchasableStock < quantity) { toast.error("That quantity is no longer available."); return; }
-    const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-    const cartImage = selectedVariant?.image_url || primaryImage?.image_url || null;
-    const variantSuffix = selectedVariant
-      ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(", ")
-      : [selectedSize, selectedColor].filter(Boolean).join("/");
-    const cartId = selectedVariant ? `${product.id}::variant:${selectedVariant.id}` : variantSuffix ? `${product.id}::${variantSuffix}` : product.id;
-    const titleSuffix = variantSuffix ? ` (${variantSuffix})` : "";
     const item = {
       id: cartId,
       product_id: product.id,
       product_variant_id: selectedVariant?.id,
-      title: product.title + titleSuffix,
+      variant_attributes: selectedVariant?.option_values,
+      title: product.title,
       price: purchasablePrice,
       image_url: cartImage,
       seller_id: product.seller_id,
@@ -358,9 +356,28 @@ export default function ProductDetailPage() {
       stock_quantity: purchasableStock,
       quantity,
     };
-    replaceItems([item]);
+    if (action === "cart") {
+      addItem(item);
+      toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
+      setPurchaseAction(null);
+      return;
+    }
+    beginDirectCheckout(item);
+    setPurchaseAction(null);
     navigate("/checkout");
-  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariantId, selectedVariant, purchasableStock, quantity, purchasablePrice, replaceItems, navigate]);
+  }, [product, seller, user, hasProductVariants, variantSizes, selectedSize, variantColors, selectedColor, productVariants, selectedVariant, purchasableStock, quantity, purchasablePrice, addItem, beginDirectCheckout, navigate]);
+
+  const startPurchase = useCallback((action: "cart" | "buy") => {
+    if (product && user?.id === product.seller_id) {
+      toast.error("Sellers cannot purchase their own products.");
+      return;
+    }
+    if (hasProductVariants) {
+      setPurchaseAction(action);
+      return;
+    }
+    completePurchase(action);
+  }, [product, user, hasProductVariants, completePurchase]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
@@ -513,7 +530,7 @@ export default function ProductDetailPage() {
                       </span>
                     </div>
                     <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                      <span className="text-3xl font-black text-white">{formatPrice(purchasablePrice)}</span>
+                      <span className="text-3xl font-black text-white">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
                       <span className="text-base text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
                       <span className="text-xs font-bold text-[#E53935] bg-[#E53935]/20 px-2 py-0.5 rounded-full">
                         -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
@@ -525,7 +542,7 @@ export default function ProductDetailPage() {
                   </div>
                 ) : (
                   <div className="mt-3 flex items-baseline gap-3">
-                    <span className="text-3xl font-black">{formatPrice(purchasablePrice)}</span>
+                    <span className="text-3xl font-black">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
                     {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
                       <span className="text-xs font-semibold text-[#E53935]">Only {purchasableStock} left</span>
                     )}
@@ -533,9 +550,7 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-            {hasProductVariants ? (
-              <VariantSelector variants={productVariants} selectedVariantId={selectedVariantId} onSelect={setSelectedVariantId} />
-            ) : (
+            {!hasProductVariants && (
               <>
                 {variantSizes.length > 0 && (
                   <div>
@@ -578,21 +593,21 @@ export default function ProductDetailPage() {
             )}
 
             <div className="flex items-center gap-4">
-              <div className="flex items-center border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">−</button>
-                <span className="h-10 w-12 flex items-center justify-center text-sm font-semibold border-x border-[#E8E8E8] dark:border-[#222222]">{quantity}</span>
-                <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="min-h-[44px] min-w-[44px] flex items-center justify-center text-sm font-bold hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors">+</button>
-              </div>
+              {!hasProductVariants && <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">−</button>
+                <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
+                <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">+</button>
+              </div>}
               <button
-                onClick={handleAddToCart}
-                disabled={purchasableStock === 0}
+                onClick={() => startPurchase("cart")}
+                disabled={!hasProductVariants && purchasableStock === 0}
                 className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
               >
-                {purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
+                {!hasProductVariants && purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
               </button>
               <button
-                onClick={handleBuyNow}
-                disabled={purchasableStock === 0}
+                onClick={() => startPurchase("buy")}
+                disabled={!hasProductVariants && purchasableStock === 0}
                 className="hidden flex-1 rounded-full border border-[#111111] py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:block"
               >
                 Buy Now
@@ -810,23 +825,59 @@ export default function ProductDetailPage() {
           >
             <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
           </button>
-          <span className="shrink-0 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(purchasablePrice)}</span>
+          <span className="shrink-0 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
           <button
-            onClick={handleAddToCart}
-            disabled={purchasableStock === 0}
+            onClick={() => startPurchase("cart")}
+            disabled={!hasProductVariants && purchasableStock === 0}
             className="flex-1 h-[44px] rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] text-sm font-semibold disabled:opacity-50"
           >
             Add to Cart
           </button>
           <button
-            onClick={handleBuyNow}
-            disabled={purchasableStock === 0}
+            onClick={() => startPurchase("buy")}
+            disabled={!hasProductVariants && purchasableStock === 0}
             className="flex-1 h-[44px] rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold disabled:opacity-50"
           >
             Buy Now
           </button>
         </Container>
       </div>
+      <Sheet open={purchaseAction !== null} onOpenChange={(open) => { if (!open) setPurchaseAction(null); }}>
+        <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl border-[#E8E8E8] bg-white px-5 pb-6 pt-5 dark:border-[#222222] dark:bg-[#111111] sm:mx-auto sm:max-w-xl">
+          <SheetHeader className="pr-8 text-left">
+            <SheetTitle>Select options</SheetTitle>
+            <SheetDescription>Choose a complete in-stock combination to see its exact price.</SheetDescription>
+          </SheetHeader>
+          <div className="mt-5 space-y-5">
+            <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
+            <div className="flex items-center justify-between rounded-2xl bg-[#F2F3F5] px-4 py-3 dark:bg-[#1E1E1E]">
+              <div>
+                <p className="text-xs text-[#888880]">{selectedVariant ? "Selected SKU" : "Select every option"}</p>
+                <p className="mt-1 text-lg font-black">{selectedVariant ? formatPrice(purchasablePrice) : `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}`}</p>
+              </div>
+              <div className="text-right text-xs font-semibold text-[#888880]">
+                {selectedVariant ? `${purchasableStock} available` : ""}
+              </div>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm font-semibold">Quantity</span>
+              <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
+                <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant}>−</button>
+                <span className="flex h-10 w-10 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
+                <button type="button" onClick={() => setQuantity((current) => Math.min(purchasableStock, current + 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant || quantity >= purchasableStock}>+</button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => purchaseAction && completePurchase(purchaseAction)}
+              disabled={!selectedVariant || purchasableStock === 0}
+              className="w-full rounded-full bg-[#111111] py-3 text-sm font-bold text-white transition-colors hover:bg-[#2A2A2A] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#FAF5F2] dark:text-[#111111]"
+            >
+              {purchaseAction === "buy" ? "Buy Now" : "Add to Cart"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>

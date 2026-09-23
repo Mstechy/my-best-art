@@ -8,6 +8,7 @@ export interface CartItem {
   id: string;
   product_id: string;
   product_variant_id?: string;
+  variant_attributes?: Record<string, string>;
   title: string;
   price: number;
   image_url: string | null;
@@ -24,6 +25,11 @@ interface CartContextType {
   loading: boolean;
   addItem: (item: CartItemInput) => void;
   replaceItems: (items: CartItemInput[]) => void;
+  syncItems: (items: CartItem[]) => void;
+  directCheckoutItem: CartItem | null;
+  beginDirectCheckout: (item: CartItemInput) => void;
+  updateDirectCheckoutItem: (item: CartItem) => void;
+  clearDirectCheckout: () => void;
   removeItem: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
@@ -37,6 +43,7 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const ANON_CART_KEY = "anon_cart";
+const DIRECT_CHECKOUT_KEY = "direct_checkout_item";
 const VISITOR_KEY = "markethub_visitor_id";
 
 function getVisitorId(): string {
@@ -50,6 +57,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [directCheckoutItem, setDirectCheckoutItem] = useState<CartItem | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(DIRECT_CHECKOUT_KEY);
+      return saved ? JSON.parse(saved) as CartItem : null;
+    } catch {
+      return null;
+    }
+  });
   const dbCartIdRef = useRef<string | null>(null);
   const mountedRef = useRef(true);
 
@@ -84,6 +99,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
             cart_id: cart.id,
             product_id: item.product_id || item.id.split("::")[0],
             product_variant_id: item.product_variant_id || null,
+            unit_price: item.price,
+            variant_attributes: item.variant_attributes || {},
             quantity: item.quantity,
             seller_name: item.seller_name,
           }));
@@ -101,8 +118,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         }
 
         const { data: rawDbItems } = await itemsQuery
-          .select("product_id, product_variant_id, quantity, seller_name")
-          .eq("cart_id", cart.id) as { data: { product_id: string; product_variant_id: string | null; quantity: number; seller_name: string | null }[] | null };
+          .select("product_id, product_variant_id, unit_price, variant_attributes, quantity, seller_name")
+          .eq("cart_id", cart.id) as { data: { product_id: string; product_variant_id: string | null; unit_price: number | null; variant_attributes: Record<string, string> | null; quantity: number; seller_name: string | null }[] | null };
 
         const dbItems = rawDbItems ?? [];
         if (mountedRef.current) {
@@ -126,22 +143,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
             : { data: [] }) as { data: ProductRow[] };
 
           const productMap = new Map(products.map((p: ProductRow) => [p.id, p]));
+          const variantIds = dbItems.flatMap((item) => item.product_variant_id ? [item.product_variant_id] : []);
+          const { data: variants } = (variantIds.length
+            ? await supabase.from("product_variants").select("id, stock_quantity, image_url").in("id", variantIds)
+            : { data: [] }) as { data: { id: string; stock_quantity: number; image_url: string | null }[] };
+          const variantMap = new Map(variants.map((variant) => [variant.id, variant]));
 
           const mapped: CartItem[] = dbItems.map(r => {
             const p = productMap.get(r.product_id);
+            const variant = r.product_variant_id ? variantMap.get(r.product_variant_id) : undefined;
             const img = p?.product_images?.find((i: { is_primary: boolean }) => i.is_primary) || p?.product_images?.[0];
             const suffix = r.product_variant_id ? `::${r.product_variant_id}` : "";
             return {
               id: `${r.product_id}${suffix}`,
               product_id: r.product_id,
               product_variant_id: r.product_variant_id || undefined,
+              variant_attributes: r.variant_attributes || {},
               title: p?.title || "Product",
-              price: Number(p?.price || 0),
-              image_url: img?.image_url || null,
+              price: Number(r.unit_price ?? p?.price ?? 0),
+              image_url: variant?.image_url || img?.image_url || null,
               seller_id: p?.seller_id || "",
               seller_name: r.seller_name || "Seller",
               quantity: r.quantity,
-              stock_quantity: p?.stock_quantity || 0,
+              stock_quantity: variant?.stock_quantity ?? p?.stock_quantity ?? 0,
             };
           });
           setItems(mapped);
@@ -182,6 +206,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
         cart_id: cartId,
         product_id: item.product_id || item.id.split("::")[0],
         product_variant_id: item.product_variant_id || null,
+        unit_price: item.price,
+        variant_attributes: item.variant_attributes || {},
         quantity: item.quantity,
         seller_name: item.seller_name,
       }));
@@ -243,6 +269,28 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   }, [schedulePersist]);
 
+  const syncItems = useCallback((nextItems: CartItem[]) => {
+    setItems(nextItems);
+    schedulePersist(nextItems);
+  }, [schedulePersist]);
+
+  const beginDirectCheckout = useCallback((item: CartItemInput) => {
+    const requestedQuantity = Math.max(1, item.quantity ?? 1);
+    const nextItem: CartItem = { ...item, quantity: Math.min(requestedQuantity, item.stock_quantity) };
+    setDirectCheckoutItem(nextItem);
+    try { sessionStorage.setItem(DIRECT_CHECKOUT_KEY, JSON.stringify(nextItem)); } catch { /* session-only checkout is still available */ }
+  }, []);
+
+  const updateDirectCheckoutItem = useCallback((item: CartItem) => {
+    setDirectCheckoutItem(item);
+    try { sessionStorage.setItem(DIRECT_CHECKOUT_KEY, JSON.stringify(item)); } catch { /* session-only checkout is still available */ }
+  }, []);
+
+  const clearDirectCheckout = useCallback(() => {
+    setDirectCheckoutItem(null);
+    try { sessionStorage.removeItem(DIRECT_CHECKOUT_KEY); } catch { /* nothing else to clear */ }
+  }, []);
+
   const removeItem = useCallback((id: string) => {
     setItems(prev => {
       const next = prev.filter(i => i.id !== id);
@@ -289,9 +337,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items]);
 
   const value = useMemo(() => ({
-    items, loading, addItem, replaceItems, removeItem, updateQuantity, clearCart,
+    items, loading, addItem, replaceItems, syncItems, directCheckoutItem, beginDirectCheckout, updateDirectCheckoutItem, clearDirectCheckout, removeItem, updateQuantity, clearCart,
     totalItems, totalPrice, isOpen, setIsOpen, groupedBySeller,
-  }), [items, loading, addItem, replaceItems, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, groupedBySeller]);
+  }), [items, loading, addItem, replaceItems, syncItems, directCheckoutItem, beginDirectCheckout, updateDirectCheckoutItem, clearDirectCheckout, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, groupedBySeller]);
 
   return (
     <CartContext.Provider value={value}>

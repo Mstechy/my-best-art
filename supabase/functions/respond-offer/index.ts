@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
       buyer_id: offer.buyer_id,
       seller_id: offer.seller_id,
       amount: counterAmount,
-      currency: product.currency || "USD",
+      currency: product.currency || "NGN",
       note: `Counter offer: $${counterAmount.toFixed(2)}`,
       parent_offer_id: offer.id,
       expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),

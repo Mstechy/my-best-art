@@ -1594,6 +1594,7 @@ export type Database = {
         Args: { p_event_type: string; p_product_ids: string[]; p_visitor_id?: string | null }
         Returns: undefined
       }
+      track_site_visit: { Args: { p_visitor_id: string }; Returns: undefined }
       track_ad_click: { Args: { _ad_id: string }; Returns: undefined }
       track_ad_impression: { Args: { _ad_id: string }; Returns: undefined }
     }

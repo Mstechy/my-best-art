@@ -12,14 +12,28 @@ const FALLBACK: Record<string, CurrencyInfo> = {
 interface CurrencyContextType { currency: CurrencyInfo; currencies: Record<string, CurrencyInfo>; country: string | null; detectedCountry: string | null; setCurrencyCode: (code: string) => void; setCountry: (country: string | null) => void; convertPrice: (amount: number, sourceCurrency?: string) => number; formatPrice: (amount: number, sourceCurrency?: string) => string; }
 const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined);
 const NO_DECIMAL = new Set(["NGN", "KES", "JPY"]);
+const CURRENCY_MANUAL_KEY = "preferred_currency_manual";
+const COUNTRY_MANUAL_KEY = "preferred_country_manual";
 const getStored = (key: string) => typeof window === "undefined" ? null : localStorage.getItem(key);
 const saveStored = (key: string, value: string | null) => { if (typeof window === "undefined") return; if (value) localStorage.setItem(key, value); else localStorage.removeItem(key); };
+
+function getInitialCountry(): string {
+  const saved = getStored("preferred_country")?.toUpperCase();
+  // A previous generic preference must not make a Nigerian visitor see USD.
+  // A deliberately chosen delivery country still wins over auto-detection.
+  if (getStored(COUNTRY_MANUAL_KEY) === "true" && saved) return saved;
+  return detectCountryFromEnvironment() || saved || "NG";
+}
 
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const detectedCountry = useMemo(() => detectCountryFromEnvironment(), []);
   const [currencies, setCurrencies] = useState<Record<string, CurrencyInfo>>(FALLBACK);
-  const [country, setCountryState] = useState<string | null>(() => getStored("preferred_country") || detectCountryFromEnvironment());
-  const [code, setCode] = useState<string>(() => { const saved = getStored("preferred_currency"); return saved && FALLBACK[saved] ? saved : countryToCurrency(getStored("preferred_country") || detectCountryFromEnvironment()) || "USD"; });
+  const [country, setCountryState] = useState<string | null>(getInitialCountry);
+  const [code, setCode] = useState<string>(() => {
+    const saved = getStored("preferred_currency")?.toUpperCase();
+    if (getStored(CURRENCY_MANUAL_KEY) === "true" && saved && FALLBACK[saved]) return saved;
+    return countryToCurrency(getInitialCountry()) || "NGN";
+  });
 
   useEffect(() => { (async () => {
     const { data } = await supabase.from("currency_rates").select("code, symbol, rate_to_usd");
@@ -27,21 +41,29 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     setCurrencies((current) => { const updated = { ...current }; (data as CurrencyRateRow[]).forEach((rate) => { if (rate.code && Number(rate.rate_to_usd) > 0) updated[rate.code] = { code: rate.code, symbol: rate.symbol || rate.code, rate: Number(rate.rate_to_usd) }; }); return updated; });
   })(); }, []);
 
-  const setCurrencyCode = useCallback((nextCode: string) => { const normalized = nextCode.toUpperCase(); setCode(normalized); saveStored("preferred_currency", normalized); }, []);
-  const setCountry = useCallback((nextCountry: string | null) => { const normalized = nextCountry?.toUpperCase() || null; setCountryState(normalized); saveStored("preferred_country", normalized); const mapped = countryToCurrency(normalized); if (mapped) { setCode(mapped); saveStored("preferred_currency", mapped); } }, []);
-  const current = currencies[code] || currencies.USD;
-  const convertPrice = useCallback((amount: number, sourceCurrency = "USD") => {
-    const source = currencies[sourceCurrency.toUpperCase()] || currencies.USD;
+  const setCurrencyCode = useCallback((nextCode: string) => { const normalized = nextCode.toUpperCase(); if (!FALLBACK[normalized]) return; setCode(normalized); saveStored("preferred_currency", normalized); saveStored(CURRENCY_MANUAL_KEY, "true"); }, []);
+  const setCountry = useCallback((nextCountry: string | null) => {
+    const normalized = nextCountry?.toUpperCase() || null;
+    const resolvedCountry = normalized || detectCountryFromEnvironment() || "NG";
+    setCountryState(resolvedCountry);
+    saveStored("preferred_country", normalized);
+    saveStored(COUNTRY_MANUAL_KEY, normalized ? "true" : null);
+    const mapped = countryToCurrency(resolvedCountry) || "NGN";
+    setCode(mapped);
+    saveStored("preferred_currency", mapped);
+    saveStored(CURRENCY_MANUAL_KEY, null);
+  }, []);
+  const current = currencies[code] || currencies.NGN;
+  const convertPrice = useCallback((amount: number, sourceCurrency = "NGN") => {
+    const source = currencies[sourceCurrency.toUpperCase()] || currencies.NGN;
     const converted = (Number(amount) / source.rate) * current.rate;
     return Number.isFinite(converted) ? converted : NaN;
   }, [currencies, current]);
-  const sourceAwareFormatPrice = useCallback((amount: number, sourceCurrency = "USD") => {
+  const sourceAwareFormatPrice = useCallback((amount: number, sourceCurrency = "NGN") => {
     const converted = convertPrice(amount, sourceCurrency);
     if (!Number.isFinite(converted)) return "—";
     return new Intl.NumberFormat(undefined, { style: "currency", currency: current.code, minimumFractionDigits: NO_DECIMAL.has(current.code) ? 0 : 2, maximumFractionDigits: NO_DECIMAL.has(current.code) ? 0 : 2 }).format(converted);
   }, [convertPrice, current]);
-  const formatPrice = useCallback((usdPrice: number) => { const amount = Number(usdPrice) * current.rate; if (!Number.isFinite(amount)) return "—"; return new Intl.NumberFormat(undefined, { style: "currency", currency: current.code, minimumFractionDigits: NO_DECIMAL.has(current.code) ? 0 : 2, maximumFractionDigits: NO_DECIMAL.has(current.code) ? 0 : 2 }).format(amount); }, [current]);
-
   return <CurrencyContext.Provider value={{ currency: current, currencies, country, detectedCountry, setCurrencyCode, setCountry, convertPrice, formatPrice: sourceAwareFormatPrice }}>{children}</CurrencyContext.Provider>;
 }
 

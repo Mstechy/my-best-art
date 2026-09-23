@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/hooks/useCart";
@@ -10,7 +10,7 @@ import { logError } from "@/lib/errorHandler";
 import { toast } from "sonner";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
-import { Package, ArrowLeft, ShoppingBag, CheckCircle2, Lock, ShieldCheck, CreditCard, BookmarkPlus, Loader2 } from "lucide-react";
+import { Package, ArrowLeft, ShoppingBag, CheckCircle2, Lock, ShieldCheck, BookmarkPlus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { COUNTRIES } from "@/lib/countries";
 
@@ -38,7 +38,7 @@ const inputCls = "w-full h-10 px-3 rounded-xl border border-[#E8E8E8] dark:borde
 const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0] mb-1";
 
 export default function CheckoutPage() {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, clearCart, syncItems, directCheckoutItem, updateDirectCheckoutItem, clearDirectCheckout } = useCart();
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -47,6 +47,51 @@ export default function CheckoutPage() {
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [saveAfter, setSaveAfter] = useState(false);
   const [addressLabel, setAddressLabel] = useState("");
+  const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
+  const checkoutItems = useMemo(() => directCheckoutItem ? [directCheckoutItem] : items, [directCheckoutItem, items]);
+  const checkoutTotal = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [checkoutItems]);
+
+  const reconcileCheckoutItems = useCallback(async (): Promise<string | null> => {
+    const productIds = [...new Set(checkoutItems.map((item) => item.product_id))];
+    const variantIds = checkoutItems.flatMap((item) => item.product_variant_id ? [item.product_variant_id] : []);
+    const { data: products, error: productError } = productIds.length
+      ? await supabase.from("products").select("id, price, stock_quantity, status, is_approved").in("id", productIds)
+      : { data: [], error: null };
+    if (productError) throw productError;
+    const { data: variants, error: variantError } = variantIds.length
+      ? await supabase.from("product_variants").select("id, product_id, price, stock_quantity, is_active").in("id", variantIds)
+      : { data: [], error: null };
+    if (variantError) throw variantError;
+
+    const productMap = new Map((products ?? []).map((product) => [product.id, product]));
+    const variantMap = new Map((variants ?? []).map((variant) => [variant.id, variant]));
+    let priceChanged = false;
+    let availabilityChanged = false;
+    const nextItems = checkoutItems.map((item) => {
+      const product = productMap.get(item.product_id);
+      const variant = item.product_variant_id ? variantMap.get(item.product_variant_id) : null;
+      const available = Boolean(
+        product && product.status === "active" && product.is_approved &&
+        (!item.product_variant_id || (variant && variant.product_id === product.id && variant.is_active)),
+      );
+      const livePrice = available ? Number(variant?.price ?? product.price) : item.price;
+      const liveStock = available ? Number(variant?.stock_quantity ?? product.stock_quantity) : 0;
+      if (livePrice !== item.price) priceChanged = true;
+      if (!available || liveStock < item.quantity) availabilityChanged = true;
+      return { ...item, price: livePrice, stock_quantity: liveStock };
+    });
+
+    const changed = nextItems.some((item, index) => item.price !== checkoutItems[index].price || item.stock_quantity !== checkoutItems[index].stock_quantity);
+    if (changed) {
+      if (directCheckoutItem) updateDirectCheckoutItem(nextItems[0]);
+      else syncItems(nextItems);
+    }
+    if (availabilityChanged) return directCheckoutItem
+      ? "This Buy Now item is no longer available in the requested quantity. Return to the product to choose an available option."
+      : "One or more items are no longer available in the requested quantity. We updated the cart; review it before placing your order.";
+    if (priceChanged) return "A price changed. We updated the order summary; please review the new total before placing your order.";
+    return null;
+  }, [checkoutItems, directCheckoutItem, syncItems, updateDirectCheckoutItem]);
 
   useEffect(() => {
     if (!user) return;
@@ -80,6 +125,13 @@ export default function CheckoutPage() {
         return;
       }
 
+      const reconciliationMessage = await reconcileCheckoutItems();
+      if (reconciliationMessage) {
+        setCheckoutNotice(reconciliationMessage);
+        toast.error(reconciliationMessage);
+        return;
+      }
+
       if (saveAfter) {
         await supabase.from("addresses" as any).insert({
           user_id: user.id, label: addressLabel || null, recipient: address.name,
@@ -88,8 +140,8 @@ export default function CheckoutPage() {
         } as any);
       }
 
-      const sellerGroups: Record<string, typeof items> = {};
-      items.forEach(item => {
+      const sellerGroups: Record<string, typeof checkoutItems> = {};
+      checkoutItems.forEach(item => {
         if (!sellerGroups[item.seller_id]) sellerGroups[item.seller_id] = [];
         sellerGroups[item.seller_id].push(item);
       });
@@ -109,11 +161,12 @@ export default function CheckoutPage() {
         if (error) throw error;
         if (orderId) orderIds.push(orderId);
       }
-      clearCart();
+      if (directCheckoutItem) clearDirectCheckout();
+      else clearCart();
       toast.success("Order placed successfully!");
       if (orderIds.length === 1) navigate(`/order-success/${orderIds[0]}`);
       else navigate("/buyer/orders");
-    }, [user, address, saveAfter, addressLabel, saved.length, items, clearCart, navigate]),
+    }, [user, address, saveAfter, addressLabel, saved.length, checkoutItems, directCheckoutItem, reconcileCheckoutItems, clearCart, clearDirectCheckout, navigate]),
     useCallback(() => "place-order", []),
   );
 
@@ -127,6 +180,7 @@ export default function CheckoutPage() {
       toast.error("Please fill in all required address fields.");
       return;
     }
+    setCheckoutNotice(null);
     setLoading(true);
     try {
       const idempotencyKey = generateIdempotencyKey();
@@ -141,7 +195,7 @@ export default function CheckoutPage() {
   };
 
   // Empty cart state
-  if (items.length === 0) {
+  if (checkoutItems.length === 0) {
     return (
       <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
         <MarketplaceNavbar showSearch={false} />
@@ -253,10 +307,19 @@ export default function CheckoutPage() {
           {/* Right: order summary */}
           <div className="lg:col-span-2">
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 sticky top-20">
-              <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Order Summary</p>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Order Summary</p>
+                {directCheckoutItem && <span className="rounded-full bg-[#F2F3F5] px-2 py-1 text-[9px] font-bold text-[#888880] dark:bg-[#111111]">Buy now</span>}
+              </div>
+
+              {checkoutNotice && (
+                <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-[11px] leading-relaxed text-amber-900 dark:border-amber-700/60 dark:bg-amber-950/30 dark:text-amber-100">
+                  {checkoutNotice}
+                </p>
+              )}
 
               <div className="space-y-3 mb-4">
-                {items.map(item => (
+                {checkoutItems.map(item => (
                   <div key={item.id} className="flex items-center gap-3">
                     <div className="h-11 w-11 rounded-xl bg-[#F2F3F5] dark:bg-[#111111] overflow-hidden shrink-0">
                       {item.image_url ? (
@@ -267,6 +330,9 @@ export default function CheckoutPage() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.title}</p>
+                      {Object.values(item.variant_attributes ?? {}).length > 0 && (
+                        <p className="text-[10px] text-[#888880] truncate">{Object.values(item.variant_attributes ?? {}).join(" · ")}</p>
+                      )}
                       <p className="text-[10px] text-[#888880]">Qty: {item.quantity}</p>
                     </div>
                     <span className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] shrink-0">{formatPrice(item.price * item.quantity)}</span>
@@ -276,14 +342,14 @@ export default function CheckoutPage() {
 
               <div className="border-t border-[#F2F3F5] dark:border-[#1E1E1E] pt-3 space-y-2">
                 <div className="flex justify-between text-xs text-[#888880]">
-                  <span>Subtotal</span><span>{formatPrice(totalPrice)}</span>
+                  <span>Subtotal</span><span>{formatPrice(checkoutTotal)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-[#888880]">Shipping</span>
                   <span className="text-[#888880] dark:text-[#A0A0A0] font-semibold">Calculated at checkout</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2] pt-2 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
-                  <span>Total</span><span>{formatPrice(totalPrice)}</span>
+                  <span>Total</span><span>{formatPrice(checkoutTotal)}</span>
                 </div>
               </div>
 
@@ -301,9 +367,9 @@ export default function CheckoutPage() {
 
               <div className="mt-4 grid grid-cols-3 gap-2">
                 {[
-                  { icon: Lock, label: "SSL Encrypted" },
+                  { icon: Lock, label: "Secure order" },
                   { icon: ShieldCheck, label: "Buyer Protection" },
-                  { icon: CreditCard, label: "Payment secured" },
+                  { icon: Package, label: "Seller fulfillment" },
                 ].map(({ icon: Icon, label }) => (
                   <div key={label} className="flex flex-col items-center gap-1 rounded-xl border border-[#F2F3F5] dark:border-[#1E1E1E] py-2 text-[9px] text-[#888880] dark:text-[#A0A0A0]">
                     <Icon className="h-3.5 w-3.5 text-[#111111] dark:text-[#FAF5F2]" />{label}

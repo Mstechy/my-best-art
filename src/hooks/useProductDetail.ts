@@ -77,7 +77,7 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     title: asString(row.title, "Untitled product"),
     description: (row.description as string | null) ?? null,
     price: asNumber(row.price),
-    currency: asString(row.currency, "USD"),
+    currency: asString(row.currency, "NGN"),
     stock_quantity: asNumber(row.stock_quantity),
     average_rating: asNumber(row.average_rating),
     review_count: asNumber(row.review_count),

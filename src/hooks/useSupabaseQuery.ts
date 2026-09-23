@@ -2,8 +2,6 @@ import { useQuery, useMutation, useQueryClient, type UseQueryOptions, type UseMu
 import { supabase } from "@/integrations/supabase/client";
 import type { PostgrestError } from "@supabase/supabase-js";
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
 /**
  * React Query key factory for Supabase resources.
  * Provides consistent, structured cache keys for invalidation.

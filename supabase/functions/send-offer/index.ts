@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
       buyer_id: userId,
       seller_id: product.seller_id,
       amount: offerPrice,
-      currency: product.currency || "USD",
+      currency: product.currency || "NGN",
       note: cleanNote,
       attachment_url: attachmentUrl,
       expires_at: expiresAt,

@@ -2,6 +2,7 @@ export type CategoryAttribute = {
   key: string;
   label: string;
   placeholder?: string;
+  helpText?: string;
   type?: "text" | "select" | "textarea" | "date";
   options?: string[];
   required?: boolean;
@@ -95,10 +96,11 @@ const phoneFields = (): CategoryAttribute[] => [
   { key: "battery", label: "Battery capacity", placeholder: "3274mAh" },
   { key: "batteryHealth", label: "Battery health", type: "select", options: ["New / not applicable", "100%", "90–99%", "80–89%", "Below 80%"], required: true },
   { key: "operatingSystem", label: "Operating system", placeholder: "iOS 18, Android 15", required: true },
-  { key: "network", label: "Network", placeholder: "5G, 4G LTE", required: true },
-  { key: "simType", label: "SIM configuration", type: "select", options: ["Single SIM", "Dual SIM", "eSIM", "Dual SIM + eSIM"], required: true },
-  { key: "carrierStatus", label: "Carrier status", type: "select", options: ["Factory unlocked", "Network locked", "Unknown"], required: true },
-  { key: "activationLockStatus", label: "Activation-lock status", type: "select", options: ["Removed / ready for new owner", "Not applicable (new sealed device)"], required: true },
+  { key: "connectivity", label: "Connectivity", type: "select", options: ["Wi-Fi only (no mobile network)", "Wi-Fi + cellular mobile data", "Cellular mobile data + Wi-Fi", "Unknown"], required: true, helpText: "Choose Wi-Fi only for devices that cannot use a SIM or eSIM." },
+  { key: "network", label: "Mobile network support", type: "select", options: ["No mobile network (Wi-Fi-only)", "2G / 3G", "4G LTE", "5G", "4G LTE + 5G", "Unknown"], required: true, helpText: "For Wi-Fi-only devices, choose No mobile network." },
+  { key: "simType", label: "SIM / cellular support", type: "select", options: ["No SIM or eSIM support (Wi-Fi-only)", "Single physical SIM", "Dual physical SIM", "eSIM only", "Physical SIM + eSIM", "Dual physical SIM + eSIM", "Unknown"], required: true, helpText: "This tells buyers whether they can insert a SIM or activate an eSIM." },
+  { key: "carrierStatus", label: "Carrier / network lock (optional)", type: "select", options: ["Factory unlocked", "Locked to a carrier", "Unknown - not tested", "Not applicable - Wi-Fi-only"], helpText: "Only complete this when the device has cellular capability. Do not guess." },
+  { key: "activationLockStatus", label: "Account / activation lock (optional)", type: "select", options: ["No account lock - ready for new owner", "Account lock enabled", "Unknown - not checked", "Not applicable - device has no account lock feature", "Not applicable - new sealed device"], helpText: "Use this for iCloud, Google/FRP, or similar account locks when applicable. Never publish an IMEI or serial number." },
   { key: "cosmeticCondition", label: "Cosmetic condition", type: "select", options: ["New / sealed", "Excellent", "Good", "Fair"], required: true },
   conditionField,
   { key: "accessoriesIncluded", label: "Included in the box", placeholder: "Phone, USB-C cable, original box" },
@@ -127,7 +129,7 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
         label: "Mobile Phones",
         filters: ["brand", "storage", "ram", "operatingSystem", "condition"],
         fields: phoneFields(),
-        requiredFields: ["brand", "model", "storage", "color", "batteryHealth", "operatingSystem", "network", "simType", "carrierStatus", "activationLockStatus", "cosmeticCondition", "condition"],
+        requiredFields: ["brand", "model", "storage", "color", "batteryHealth", "operatingSystem", "connectivity", "network", "simType", "cosmeticCondition", "condition"],
       },
       {
         key: "laptops",
@@ -517,16 +519,19 @@ export const CATEGORY_CONFIGS: Record<string, CategoryConfig> = {
 CATEGORY_CONFIGS.electronics.productTypes.push(
   simpleType("phones", "Phones", "Phones & Accessories", [
     ...phoneFields(),
-  ], ["brand", "storage", "network", "condition"], ["brand", "model", "storage", "color", "batteryHealth", "operatingSystem", "network", "simType", "carrierStatus", "activationLockStatus", "cosmeticCondition", "condition"]),
+  ], ["brand", "storage", "network", "condition"], ["brand", "model", "storage", "color", "batteryHealth", "operatingSystem", "connectivity", "network", "simType", "cosmeticCondition", "condition"]),
   simpleType("tablets", "Tablets", "Phones & Accessories", [
     brandField,
     { key: "model", label: "Model", placeholder: "iPad Air, Galaxy Tab", required: true },
     { key: "storage", label: "Storage", placeholder: "64GB, 256GB", required: true },
     { key: "screenSize", label: "Screen Size", placeholder: "10.9 inches" },
-    { key: "connectivity", label: "Connectivity", placeholder: "Wi-Fi, Cellular" },
+    { key: "connectivity", label: "Connectivity", type: "select", options: ["Wi-Fi only (no SIM)", "Wi-Fi + cellular", "Cellular + Wi-Fi", "Unknown"], required: true, helpText: "Select Wi-Fi only for a tablet without a SIM or eSIM." },
+    { key: "simType", label: "SIM / cellular support (optional)", type: "select", options: ["No SIM or eSIM support (Wi-Fi-only)", "Single physical SIM", "eSIM only", "Physical SIM + eSIM", "Unknown"], helpText: "Only needed to clarify a cellular-capable tablet." },
+    { key: "carrierStatus", label: "Carrier / network lock (optional)", type: "select", options: ["Factory unlocked", "Locked to a carrier", "Unknown - not tested", "Not applicable - Wi-Fi-only"] },
+    { key: "activationLockStatus", label: "Account / activation lock (optional)", type: "select", options: ["No account lock - ready for new owner", "Account lock enabled", "Unknown - not checked", "Not applicable - device has no account lock feature", "Not applicable - new sealed device"] },
     conditionField,
     { key: "warranty", label: "Warranty", placeholder: "Manufacturer or seller warranty" },
-  ], ["brand", "storage", "connectivity", "condition"], ["brand", "model", "storage", "condition"]),
+  ], ["brand", "storage", "connectivity", "condition"], ["brand", "model", "storage", "connectivity", "condition"]),
   simpleType("tvs", "TVs", "Home Electronics", [
     brandField,
     { key: "screenSize", label: "Screen Size", placeholder: "55 inches", required: true },
@@ -559,11 +564,13 @@ CATEGORY_CONFIGS.electronics.productTypes.push(
     brandField,
     { key: "model", label: "Model", placeholder: "Apple Watch Series 9", required: true },
     { key: "caseSize", label: "Case Size", placeholder: "41mm, 45mm" },
-    { key: "connectivity", label: "Connectivity", placeholder: "GPS, LTE" },
+    { key: "connectivity", label: "Connectivity", type: "select", options: ["GPS / Bluetooth / Wi-Fi", "GPS + cellular", "Wi-Fi only", "Bluetooth only", "Unknown"], required: true, helpText: "Cellular watches can use a plan; GPS or Wi-Fi watches cannot use a standalone SIM plan." },
+    { key: "carrierStatus", label: "Carrier / network lock (optional)", type: "select", options: ["Factory unlocked", "Locked to a carrier", "Unknown - not tested", "Not applicable - not cellular"] },
+    { key: "activationLockStatus", label: "Account / activation lock (optional)", type: "select", options: ["No account lock - ready for new owner", "Account lock enabled", "Unknown - not checked", "Not applicable - device has no account lock feature", "Not applicable - new sealed device"] },
     { key: "battery", label: "Battery Life", placeholder: "18 hours" },
     conditionField,
     { key: "warranty", label: "Warranty", placeholder: "Manufacturer or seller warranty" },
-  ], ["brand", "connectivity", "condition"], ["brand", "model", "condition"]),
+  ], ["brand", "connectivity", "condition"], ["brand", "model", "connectivity", "condition"]),
   simpleType("speakers", "Speakers", "Audio", [
     brandField,
     { key: "speakerType", label: "Speaker Type", placeholder: "Bluetooth, soundbar, bookshelf" },

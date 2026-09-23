@@ -132,7 +132,7 @@ export function useSEO({
 export function useProductSEO({
   productName,
   price,
-  currency = "USD",
+  currency = "NGN",
   image,
   description,
   id,

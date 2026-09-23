@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { useLocation } from "react-router-dom";
 
 /**
  * Page transition — deliberately NOT framer-motion.
@@ -13,17 +12,12 @@ import { useLocation } from "react-router-dom";
  * position:fixed children like the bottom tab bar) trapped in a narrow
  * measured column with dead space on the right.
  *
- * A keyed plain <div> with a CSS-only fade-in achieves the same polish with
- * zero measurement, zero inline styles, and zero exit-phase bookkeeping:
- * the old page unmounts immediately, the new one mounts full-width.
+ * Do not add another layout wrapper here. Public pages such as Home already
+ * own their full-width surface; an outer wrapper is the only shared element
+ * that can briefly inherit a stale measured width during dashboard-to-home
+ * navigation. Routes now mount directly at viewport width.
  */
 export default function PageTransition({ children }: { children: ReactNode }) {
-  const location = useLocation();
-
-  return (
-    <div key={location.pathname} className="w-full animate-page-fade">
-      {children}
-    </div>
-  );
+  return <>{children}</>;
 }
 

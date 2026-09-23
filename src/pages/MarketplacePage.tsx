@@ -199,7 +199,7 @@ export default function MarketplacePage() {
   const [sellerProfiles, setSellerProfiles] = useState<Record<string, { full_name: string | null; is_verified: boolean }>>({});
   const [pageSeed] = useState(() => crypto.randomUUID());
   const { t } = useTranslation();
-  const { addItem, replaceItems } = useCart();
+  const { addItem, beginDirectCheckout } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
@@ -474,11 +474,11 @@ export default function MarketplacePage() {
     trackProductDiscovery(product.id, "buy_now");
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
-    replaceItems([{
+    beginDirectCheckout({
       id: product.id, product_id: product.id, title: product.title, price: product.price,
       image_url: primaryImage?.image_url || null, seller_id: product.seller_id,
       seller_name: seller?.full_name || "Seller", stock_quantity: product.stock_quantity,
-    }]);
+    });
     navigate("/checkout");
   };
 

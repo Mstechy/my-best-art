@@ -74,7 +74,9 @@ export function detectCountryFromEnvironment(): string | null {
 }
 
 export function detectRegionDefaults() {
-  const country = detectCountryFromEnvironment() || "US";
-  const currency = countryToCurrency(country) || "USD";
+  // Tradibu's default marketplace currency is Nigerian naira. A detected or
+  // explicitly selected country can still choose its matching currency.
+  const country = detectCountryFromEnvironment() || "NG";
+  const currency = countryToCurrency(country) || "NGN";
   return { country, currency };
 }

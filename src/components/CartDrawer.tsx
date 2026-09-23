@@ -117,6 +117,9 @@ export default function CartDrawer() {
                 </div>
                 <div className="flex-1 min-w-0 flex flex-col">
                   <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 leading-snug">{item.title}</p>
+                  {Object.values(item.variant_attributes ?? {}).length > 0 && (
+                    <p className="mt-0.5 text-[10px] text-[#888880] dark:text-[#A0A0A0]">{Object.values(item.variant_attributes ?? {}).join(" · ")}</p>
+                  )}
                   <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">{item.seller_name}</p>
                   <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mt-1">{formatPrice(item.price * item.quantity)}</p>
                   <div className="flex items-center gap-2 mt-auto pt-2">
@@ -130,6 +133,7 @@ export default function CartDrawer() {
                     <span className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] w-5 text-center">{item.quantity}</span>
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      disabled={item.quantity >= item.stock_quantity}
                       className="h-6 w-6 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
                       aria-label={`Increase quantity of ${item.title}`}
                     >
