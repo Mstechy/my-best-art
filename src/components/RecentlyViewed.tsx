@@ -88,7 +88,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                       });
                       toast.success("Added to cart");
                     }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full border border-[#111111] dark:border-[#FAF5F2] flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                    className="absolute right-0 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-[#111111] text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
                   >
                     <ShoppingCart className="h-3 w-3" />
                   </button>

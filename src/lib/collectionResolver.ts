@@ -113,7 +113,6 @@ export interface EnhancedCollection {
 export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
   const now = new Date().toISOString();
   const { data } = await (supabase
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("*")
     .is("seller_id", null)
@@ -136,7 +135,6 @@ export async function fetchCollectionsByPlacement(
 ): Promise<EnhancedCollection[]> {
   const now = new Date().toISOString();
   const { data } = await (supabase
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("*")
     .is("seller_id", null)
@@ -160,7 +158,6 @@ export async function fetchCollectionsByPlacement(
 export async function fetchNavigationCollections() {
   const now = new Date().toISOString();
   const { data } = await (supabase
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     .from("marketplace_collections") as any)
     .select("title, slug")
     .is("seller_id", null)
@@ -183,7 +180,6 @@ export async function resolveCollectionProducts(
   collectionId: string,
   limit = 100
 ): Promise<string[]> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.rpc as any)(
     "resolve_automatic_collection_products",
     {
@@ -198,7 +194,6 @@ export async function resolveCollectionProducts(
   }
 
   const ids = (data || []).map((row: { product_id: string }) => row.product_id);
-  console.log("[collectionResolver] Resolved products for", collectionId, ":", ids.length, "products");
   return ids;
 }
 
@@ -257,7 +252,6 @@ export function parseRulesFromJson(
  * Track a collection view (increments view_count).
  */
 export async function trackCollectionView(collectionId: string) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data } = await (supabase.from("marketplace_collections") as any)
     .select("view_count")
     .eq("id", collectionId)
@@ -265,7 +259,6 @@ export async function trackCollectionView(collectionId: string) {
 
   const currentCount = (data?.view_count ?? 0) + 1;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from("marketplace_collections") as any)
     .update({ view_count: currentCount })
     .eq("id", collectionId);

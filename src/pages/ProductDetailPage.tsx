@@ -25,7 +25,7 @@ import ReviewSummary from "@/components/product/ReviewSummary";
 import ReviewCard, { type ReviewData as ReviewCardData } from "@/components/product/ReviewCard";
 import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
-import { formatWarranty, isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
+import { isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
@@ -34,6 +34,7 @@ import ProductRichDescription from "@/components/product/ProductRichDescription"
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackView } from "@/hooks/useBatchedViewTracking";
 import { useProductSEO } from "@/hooks/useSEO";
+import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -61,7 +62,7 @@ export default function ProductDetailPage() {
   const [specsOpen, setSpecsOpen] = useState(false);
   const [reviewFormOpen, setReviewFormOpen] = useState(false);
   const [verifiedSellerOpen, setVerifiedSellerOpen] = useState(false);
-  const [serviceSheet, setServiceSheet] = useState<"shipping" | "returns" | "protection" | null>(null);
+  const [serviceSheet, setServiceSheet] = useState<"shipping" | "returns" | "protection" | "warranty" | null>(null);
 
   const {
     product: productQuery,
@@ -86,6 +87,13 @@ export default function ProductDetailPage() {
   const keywords = keywordsQuery.data ?? [];
   const sellerFollowers = sellerFollowerQuery.data ?? 0;
   const sellerTotalSold = sellerTotalSoldQuery.data ?? 0;
+  const reviewStarCounts = useMemo(() => reviews.reduce<Record<number, number>>((counts, review) => {
+    counts[review.rating] = (counts[review.rating] ?? 0) + 1;
+    return counts;
+  }, { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }), [reviews]);
+  const reviewPhotoCount = useMemo(() => reviews.reduce((total, review) => total + review.photos.length, 0), [reviews]);
+  const allReviewsVerified = reviews.length > 0 && reviews.every((review) => review.is_verified_purchase);
+  const { policies, isLoading: policiesLoading, isError: policiesError, sourceLabel } = useResolvedPolicies(product?.seller_id, product);
 
   const canReviewData = useCanReview(id, user?.id);
   const canReview = canReviewData.data?.canReview ?? false;
@@ -258,6 +266,7 @@ export default function ProductDetailPage() {
   const [submittingReview, setSubmittingReview] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
   const [reviewFilter, setReviewFilter] = useState("all");
+  const [showAllReviews, setShowAllReviews] = useState(false);
 
   const overviewRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
@@ -527,7 +536,7 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   {soldCount > 0 && <span>{soldCount} sold</span>}
-                  {product.shipping_info && <span className="truncate">Delivery: {product.shipping_info}</span>}
+                  {policies.shipping && <span className="truncate">Delivery: {policies.shipping.summary}</span>}
                   {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
                 </div>
 
@@ -675,27 +684,30 @@ export default function ProductDetailPage() {
             )}
 
             <div className="space-y-2">
-              <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+              {policiesLoading && <p className="px-1 text-xs text-[#888880]">Loading policy information…</p>}
+              {policiesError && <p className="px-1 text-xs text-[#888880]">Policy information is unavailable.</p>}
+              <button type="button" onClick={() => setServiceSheet("shipping")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.shipping ? "hidden" : ""}`}>
                 <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
-                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#888880]">{product.shipping_info || "Shipping calculated at checkout"}</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#888880]">{policies.shipping?.summary}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-[#888880]" />
               </button>
-              <button type="button" onClick={() => setServiceSheet("returns")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+              <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
                 <Shield className="h-4 w-4 shrink-0" />
-                <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Returns & refunds</span><span className="block truncate">See the return policy before ordering</span></span>{/*
+                <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Returns & refunds</span><span className="block truncate">{policies.returns?.summary}</span></span>{/*
                 <span>Buyer protection — full refund if not as described</span>
                 */}<ChevronRight className="h-4 w-4 shrink-0" />
               </button>
-              <button type="button" onClick={() => setServiceSheet("protection")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+              <button type="button" onClick={() => setServiceSheet("protection")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.protection ? "hidden" : ""}`}>
                 <Shield className="h-4 w-4 shrink-0" />
-                <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Buyer protection</span><span className="block truncate">Full refund if not as described</span></span>
+                <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Buyer protection</span><span className="block truncate">{policies.protection?.summary}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0" />
               </button>
-              {product.warranty && (
-                <div className="flex items-center gap-2 text-xs text-[#888880]">
-                  <Info className="h-4 w-4" />
-                  <span>{formatWarranty(product.warranty)}</span>
-                </div>
+              {policies.warranty && (
+                <button type="button" onClick={() => setServiceSheet("warranty")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+                  <Info className="h-4 w-4 shrink-0" />
+                  <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Warranty</span><span className="block truncate">{policies.warranty.summary}</span></span>
+                  <ChevronRight className="h-4 w-4 shrink-0" />
+                </button>
               )}
             </div>
 
@@ -730,11 +742,10 @@ export default function ProductDetailPage() {
         <Sheet open={serviceSheet !== null} onOpenChange={(open) => !open && setServiceSheet(null)}>
           <SheetContent side="bottom" className="rounded-t-2xl">
             <SheetHeader>
-              <SheetTitle>{serviceSheet === "shipping" ? "Shipping" : serviceSheet === "returns" ? "Returns & refunds" : "Buyer protection"}</SheetTitle>
-              <SheetDescription>{serviceSheet === "shipping" ? (product?.shipping_info || "Shipping cost and delivery timing are confirmed at checkout.") : serviceSheet === "returns" ? "Review the return and refund terms before placing your order." : "Full refund support is available when an item is not as described."}</SheetDescription>
+              <SheetTitle>{serviceSheet ? policies[serviceSheet]?.title : ""}</SheetTitle>
+              <SheetDescription>{serviceSheet ? policies[serviceSheet]?.detail : ""}</SheetDescription>
             </SheetHeader>
-            {serviceSheet === "shipping" && <Link to="/shipping" className="mt-5 flex h-11 items-center justify-center rounded-full bg-[#111111] text-sm font-bold text-white dark:bg-[#FAF5F2] dark:text-[#111111]">Read shipping details</Link>}
-            {serviceSheet === "returns" && <Link to="/refund-policy" className="mt-5 flex h-11 items-center justify-center rounded-full bg-[#111111] text-sm font-bold text-white dark:bg-[#FAF5F2] dark:text-[#111111]">Read return policy</Link>}
+            {serviceSheet && policies[serviceSheet] && <p className="mt-4 text-xs font-semibold text-[#888880]">{sourceLabel(policies[serviceSheet].source)} · Last updated {policies[serviceSheet].updatedAt ? new Date(policies[serviceSheet].updatedAt).toLocaleDateString() : "not available"}</p>}
           </SheetContent>
         </Sheet>
 
@@ -779,19 +790,22 @@ export default function ProductDetailPage() {
             )}
 
             <div ref={reviewsRef}>
-              <ReviewSummary
+              {reviewsQuery.isLoading && <div className="space-y-3 animate-pulse"><div className="h-5 w-24 rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="h-20 rounded-xl bg-[#F2F3F5] dark:bg-[#202020]" /></div>}
+              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><h2 className="text-base font-bold">Reviews</h2><p className="text-xs text-[#888880]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
+              {reviews.length > 0 && <ReviewSummary
                 average={product.average_rating}
                 total={product.review_count}
-                keywords={keywords}
+                keywords={[]}
                 activeFilter={reviewFilter}
                 onFilterChange={setReviewFilter}
                 positive={reviews.filter(r => r.rating >= 4).length}
                 neutral={reviews.filter(r => r.rating === 3).length}
                 negative={reviews.filter(r => r.rating <= 2).length}
-                photoCount={reviews.reduce((s, r) => s + r.photos.length, 0)}
-                starCounts={{ 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }}
-                allVerified={false}
-              />
+                photoCount={reviewPhotoCount}
+                starCounts={reviewStarCounts}
+                allVerified={allReviewsVerified}
+                showDistribution={reviews.length >= 5}
+              />}
               {/* Review photo gallery (AliExpress-style horizontal scroll) */}
               {(() => {
                 const allPhotos = reviews.flatMap(r => r.photos.map(p => ({ url: p.url, reviewId: r.id })));
@@ -815,16 +829,23 @@ export default function ProductDetailPage() {
                 );
               })()}
               <div className="mt-4 space-y-4">
-                {reviews
+                {reviews.length > 0 && reviews
                   .filter(r => reviewFilter === "all" || r.rating === Number(reviewFilter))
+                  .slice(0, showAllReviews ? undefined : 3)
                   .map(review => (
                     <ReviewCard key={review.id} review={review as unknown as ReviewCardData} />
                   ))}
-                {reviews.length === 0 && (
-                  <p className="text-sm text-[#888880] text-center py-8">No reviews yet.</p>
-                )}
               </div>
-              {user && canReview && !alreadyReviewed && (
+              {reviews.filter(r => reviewFilter === "all" || r.rating === Number(reviewFilter)).length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAllReviews(current => !current)}
+                  className="mt-4 min-h-11 w-full rounded-full border border-[#111111] px-4 text-xs font-bold transition-colors hover:bg-[#FAFAFA] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111] focus-visible:ring-offset-2 dark:border-[#FAF5F2] dark:hover:bg-[#1A1A1A] dark:focus-visible:ring-[#FAF5F2]"
+                >
+                  {showAllReviews ? "Show fewer reviews" : "See all reviews"}
+                </button>
+              )}
+              {user && canReview && !alreadyReviewed && (reviews.length > 0 || reviewFormOpen) && (
                 <div className="mt-6 border-t border-[#E8E8E8] dark:border-[#222222] pt-6">
                   <p className="text-sm font-bold mb-4">Write a Review</p>
                   <div className="space-y-3">
@@ -877,7 +898,7 @@ export default function ProductDetailPage() {
               <RecommendedProducts productId={product.id} categoryId={product.category_id} />
             </div>
 
-            <RecentlyViewed />
+            <RecentlyViewed excludeId={product.id} />
           </div>
         )}
       </Container>

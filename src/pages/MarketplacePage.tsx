@@ -36,10 +36,7 @@ type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]
 const PROMOS: Record<string, { label: string; filter: (p: Product) => boolean }> = {
   summer20: { label: "20% Off Summer Sale", filter: (p) => !!p.compare_at_price && p.compare_at_price > p.price },
   hot50: { label: "Hot Deals - Up to 50% Off", filter: (p) => !!p.compare_at_price && (1 - p.price / p.compare_at_price) >= 0.2 },
-  freeship: { label: "Free Shipping on $50+", filter: (p) => Number(p.price) >= 50 },
-  new: { label: "New Arrivals", filter: () => true },
-  bundle15: { label: "Bundle & Save 15%", filter: () => true },
-  gifts: { label: "Gift Cards", filter: () => true },
+  new: { label: "New Arrivals", filter: (p) => Date.now() - new Date(p.created_at).getTime() < 1000 * 60 * 60 * 24 * 14 },
 };
 
 interface Product {

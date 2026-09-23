@@ -35,7 +35,7 @@ export default function StoreCredibilityCard({ sellerId, onDetails }: { sellerId
     })();
   }, [sellerId]);
 
-  if (!data) return null;
+  if (!data || data.total <= 0) return null;
   const pct = (n: number) => (data.total > 0 ? Math.round((n / data.total) * 100) : 0);
   const positivePct = pct(data.positive);
   const neutralPct = pct(data.neutral);

@@ -8,6 +8,7 @@ import { Container } from "@/components/ui/Container";
 import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
 import { resolveCollectionProducts, trackCollectionView } from "@/lib/collectionResolver";
+import StarRating from "@/components/ui/StarRating";
 
 type CollectionData = {
   id: string;
@@ -47,7 +48,7 @@ const SORT_OPTIONS: { value: SortOption; label: string }[] = [
   { value: "price_low", label: "Price: Low to High" },
   { value: "price_high", label: "Price: High to Low" },
   { value: "rating", label: "Highest Rated" },
-  { value: "best_selling", label: "Best Selling" },
+  { value: "best_selling", label: "Most Reviewed" },
   { value: "popularity", label: "Most Popular" },
 ];
 
@@ -68,11 +69,11 @@ export default function CollectionPage() {
     setLoading(true);
 
     // Load collection metadata
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: c } = await (supabase as any)
       .from("marketplace_collections")
       .select("id,title,description,image_url,badge,cta_label,slug,meta_title,meta_description,product_count,is_automatic,rules,hero_enabled,hero_overlay_opacity")
       .eq("slug", slug)
+      .eq("status", "active")
       .maybeSingle();
 
     if (!c) {
@@ -89,36 +90,9 @@ export default function CollectionPage() {
     }
 
     // Resolve products (works for both automatic and manual collections)
-    let productIds = await resolveCollectionProducts(c.id, 100);
-
-    console.log("[CollectionPage] Collection:", c.title, "is_automatic:", c.is_automatic, "rules:", c.rules, "resolved:", productIds.length);
-
-    // Fallback for automatic collections: if resolver returns 0 but rules exist,
-    // try loading products directly by category/brand so the page isn't empty.
-    if (productIds.length === 0 && c.is_automatic && c.rules) {
-      const rules = c.rules as Record<string, string>;
-      const categoryId = rules.category_id;
-      const brand = rules.brand;
-
-      const fallbackQuery = supabase
-        .from("products")
-        .select("id")
-        .eq("status", "active")
-        .eq("is_approved", true);
-
-      if (categoryId) {
-        fallbackQuery.eq("category_id", categoryId);
-      } else if (brand) {
-        fallbackQuery.ilike("brand", brand);
-      }
-
-      const { data: fallbackData } = await fallbackQuery.limit(100);
-      productIds = (fallbackData || []).map((row: { id: string }) => row.id);
-      console.log("[CollectionPage] Fallback resolved:", productIds.length, "products");
-    }
+    const productIds = await resolveCollectionProducts(c.id, 100);
 
     if (productIds.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: productsData } = await (supabase as any)
         .from("products")
         .select("id,title,price,compare_at_price,currency,created_at,average_rating,review_count,brand,stock_quantity,product_images(image_url,is_primary)")
@@ -292,11 +266,6 @@ export default function CollectionPage() {
               <h2 className="text-lg font-semibold">
                 {products.length} {products.length === 1 ? "product" : "products"}
               </h2>
-              {collection.is_automatic && (
-                <span className="rounded-full bg-[#F6C75D]/20 px-2.5 py-0.5 text-[10px] font-semibold text-[#5C3A00]">
-                  AUTO
-                </span>
-              )}
             </div>
 
             <div className="flex items-center gap-3">

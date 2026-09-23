@@ -12,9 +12,10 @@ interface Props {
   photoCount: number;
   starCounts: Record<number, number>;
   allVerified: boolean;
+  showDistribution?: boolean;
 }
 
-export default function ReviewSummary({ average = 0, total = 0, positive = 0, neutral = 0, negative = 0, keywords, activeFilter, onFilterChange, photoCount = 0, starCounts = {}, allVerified }: Props) {
+export default function ReviewSummary({ average = 0, total = 0, positive = 0, neutral = 0, negative = 0, keywords, activeFilter, onFilterChange, photoCount = 0, starCounts = {}, allVerified, showDistribution = false }: Props) {
   const avg = Number.isFinite(Number(average)) ? Number(average) : 0;
   const safeTotal = Number.isFinite(Number(total)) ? Number(total) : 0;
   const pct = (n: number) => (safeTotal > 0 ? Math.round((n / safeTotal) * 100) : 0);
@@ -41,14 +42,14 @@ export default function ReviewSummary({ average = 0, total = 0, positive = 0, ne
     { key: "3", label: `3★ (${starCounts[3] ?? 0})`, count: starCounts[3] ?? 0 },
     { key: "2", label: `2★ (${starCounts[2] ?? 0})`, count: starCounts[2] ?? 0 },
     { key: "1", label: `1★ (${starCounts[1] ?? 0})`, count: starCounts[1] ?? 0 },
-  ].filter(f => f.count > 0 || f.key === "all" || f.key === "photos");
+  ].filter(f => f.count > 0);
 
   return (
-    <div className="rounded-xl border border-border/60 p-5 bg-card">
-      <div className="grid gap-6 md:grid-cols-[220px_1fr]">
+    <div className="border-y border-border/60 py-4">
+      <div className={`grid gap-4 ${showDistribution ? "md:grid-cols-[220px_1fr]" : ""}`}>
         <div className="flex md:flex-col items-center md:items-start gap-4 md:gap-2">
           <div className="text-center md:text-left">
-            <div className="font-display text-5xl font-bold text-foreground leading-none">{avg.toFixed(1)}</div>
+            <div className="font-display text-3xl font-bold tabular-nums text-foreground leading-none">{avg.toFixed(1)}</div>
             <div className="mt-2 flex items-center gap-0.5">
               {[1, 2, 3, 4, 5].map(s => (
                 <Star key={s} className={`h-4 w-4 ${s <= Math.round(avg) ? "text-yellow-500 fill-yellow-500" : "text-muted-foreground/30"}`} />
@@ -63,11 +64,7 @@ export default function ReviewSummary({ average = 0, total = 0, positive = 0, ne
           )}
         </div>
 
-        <div className="space-y-2">
-          <Bar label="Positive" value={positive} percent={positivePct} color="bg-success" />
-          <Bar label="Neutral" value={neutral} percent={neutralPct} color="bg-yellow-500" />
-          <Bar label="Negative" value={negative} percent={negativePct} color="bg-destructive" />
-        </div>
+        {showDistribution && <div className="space-y-2"><Bar label="Positive" value={positive} percent={positivePct} color="bg-success" /><Bar label="Neutral" value={neutral} percent={neutralPct} color="bg-yellow-500" /><Bar label="Negative" value={negative} percent={negativePct} color="bg-destructive" /></div>}
       </div>
 
       {keywords.length > 0 && (

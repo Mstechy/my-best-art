@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,8 +27,12 @@ export default function AdminPages() {
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [protectionSteps, setProtectionSteps] = useState("");
+  const [platformShipping, setPlatformShipping] = useState("");
+  const [platformReturns, setPlatformReturns] = useState("");
+  const [policySaving, setPolicySaving] = useState(false);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("site_pages" as any).select("*").order("slug");
     const list = (data as any as Page[]) || [];
@@ -39,9 +43,26 @@ export default function AdminPages() {
       setBody(list[0].body_markdown);
     }
     setLoading(false);
-  };
+  }, [activeSlug]);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("platform_policies" as any).select("shipping_terms, return_conditions, buyer_protection_claim_steps").eq("id", true).maybeSingle();
+      const policy = data as { shipping_terms?: string | null; return_conditions?: string | null; buyer_protection_claim_steps?: string | null } | null;
+      setPlatformShipping(policy?.shipping_terms || "");
+      setPlatformReturns(policy?.return_conditions || "");
+      setProtectionSteps(policy?.buyer_protection_claim_steps || "");
+    })();
+  }, []);
+
+  const savePolicies = async () => {
+    setPolicySaving(true);
+    const { error } = await supabase.from("platform_policies" as any).upsert({ id: true, shipping_terms: platformShipping.trim() || null, return_conditions: platformReturns.trim() || null, buyer_protection_claim_steps: protectionSteps.trim() || null, updated_by: user?.id ?? null });
+    setPolicySaving(false);
+    if (error) toast.error(error.message); else toast.success("Platform policies saved");
+  };
 
   const selectPage = (slug: string) => {
     const p = pages.find(x => x.slug === slug);
@@ -140,6 +161,15 @@ export default function AdminPages() {
           </Card>
         </AnimatedSection>
       </div>
+      <Card>
+        <CardContent className="space-y-4 p-6">
+          <div><h2 className="font-display text-lg font-bold">Platform product policies</h2><p className="mt-1 text-sm text-muted-foreground">These plain-text defaults are used only when a seller has not supplied their own policy. Buyer protection is platform-only.</p></div>
+          <div><label className="text-sm font-medium">Shipping default</label><Textarea maxLength={2000} rows={3} value={platformShipping} onChange={(event) => setPlatformShipping(event.target.value)} /></div>
+          <div><label className="text-sm font-medium">Returns default</label><Textarea maxLength={2000} rows={3} value={platformReturns} onChange={(event) => setPlatformReturns(event.target.value)} /></div>
+          <div><label className="text-sm font-medium">Buyer-protection claim steps</label><Textarea maxLength={2000} rows={3} value={protectionSteps} onChange={(event) => setProtectionSteps(event.target.value)} /></div>
+          <Button onClick={savePolicies} disabled={policySaving} className="gap-2 gradient-admin text-primary-foreground"><Save className="h-4 w-4" /> {policySaving ? "Saving…" : "Save platform policies"}</Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

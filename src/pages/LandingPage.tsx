@@ -1,7 +1,7 @@
 import { useMemo, memo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { CheckCircle2, Package, Sparkles, Star, Zap, Clock, UserPlus, Flame, Shield, Truck, RefreshCw, Headphones } from "lucide-react";
+import { Package, Zap, Clock, UserPlus, Flame } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -33,7 +33,7 @@ export default function LandingPage() {
   });
 
   const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
-  const hasNonFlashFeedProducts = useMemo(() => FEEDS.some((feed) => feeds[feed.key].length > 0), [feeds]);
+  const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
 
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
     <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
@@ -59,15 +59,13 @@ export default function LandingPage() {
                 <div className="aspect-[21/9] min-h-[320px] animate-pulse rounded-2xl bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]" />
               ) : heroSlides.length > 0 ? (
                 <HeroSlider slides={heroSlides} />
-              ) : (
-                <div className="flex aspect-[21/9] min-h-[320px] items-center justify-center rounded-2xl bg-white dark:bg-[#1E1E1E] md:min-h-[420px]">
-                  <div className="text-center">
-                    <Sparkles className="mx-auto mb-3 h-9 w-9 text-[#F6C75D]" />
-                    <p className="font-semibold text-lg">{t("home.campaignsAppearHere")}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">Featured collections will appear here soon.</p>
-                  </div>
-                </div>
-              )}
+              ) : heroFallback ? (
+                <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[21/9] min-h-[320px] overflow-hidden rounded-2xl bg-[#111111] md:min-h-[420px]">
+                  {heroFallback.product_images[0]?.image_url && <ProductImage src={heroFallback.product_images[0].image_url} alt={heroFallback.title} className="h-full w-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105" loading="eager" />}
+                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
+                  <div className="relative z-10 flex max-w-md flex-col justify-end p-6 text-white md:p-10"><p className="line-clamp-2 text-2xl font-bold md:text-4xl">{heroFallback.title}</p><p className="mt-3 text-sm text-white/80">{formatPrice(heroFallback.price, heroFallback.currency)}</p></div>
+                </Link>
+              ) : null}
             </div>
 
             {/* Right: promo tiles (hidden on mobile) */}
@@ -144,37 +142,8 @@ export default function LandingPage() {
               );
             })}
           </div>
-          {!loading && !hasNonFlashFeedProducts && (
-            <div className="mt-4 rounded-xl border border-[#F6C75D]/40 bg-[#F6C75D]/10 px-4 py-3 text-sm text-[#5C3A00] dark:text-[#F6C75D]">
-              These are the current unique approved products. New Arrivals and Discover More will appear automatically when there is additional inventory beyond these deals.
-            </div>
-          )}
         </Container>
       )}
-
-      {/* Trust / value props */}
-      <section className="order-3 border-y border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
-        <Container className="py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { icon: Shield, title: t("home.verifiedSellers"), desc: t("home.verifiedSellersDesc") },
-              { icon: Truck, title: t("home.fastDelivery"), desc: t("home.fastDeliveryDesc") },
-              { icon: RefreshCw, title: t("home.easyReturns"), desc: t("home.easyReturnsDesc") },
-              { icon: Headphones, title: t("home.support247"), desc: t("home.support247Desc") },
-            ].map(item => (
-              <div key={item.title} className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-xl bg-[#F6C75D]/10 p-2 text-[#F6C75D]">
-                  <item.icon className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold">{item.title}</p>
-                  <p className="text-xs text-[#888880]">{item.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Container>
-      </section>
 
       {/* Shop by Category - Grid */}
       <Container className="order-1 py-10">
