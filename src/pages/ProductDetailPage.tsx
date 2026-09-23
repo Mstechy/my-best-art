@@ -555,9 +555,16 @@ export default function ProductDetailPage() {
 
             {hasProductVariants && (
               <section className="rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#222222] dark:bg-[#181818]" aria-label="Product options">
-                <div className="mb-4">
-                  <h2 className="text-sm font-bold">Choose your options</h2>
-                  <p className="mt-1 text-xs text-[#888880]">Select storage, colour, or another option to see its exact price and availability.</p>
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-sm font-bold">Choose your options</h2>
+                    <p className="mt-1 text-xs text-[#888880]">Select storage, colour, or another option to see its exact price and availability.</p>
+                  </div>
+                  {Object.keys(selectedVariantOptions).length > 0 && (
+                    <button type="button" onClick={() => setSelectedVariantOptions({})} className="shrink-0 text-xs font-semibold underline text-[#666666] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]">
+                      Clear selection
+                    </button>
+                  )}
                 </div>
                 <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#F2F3F5] px-3 py-2.5 text-xs dark:bg-[#222222]" aria-live="polite">

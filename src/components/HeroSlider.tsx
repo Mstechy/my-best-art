@@ -23,7 +23,6 @@ const HeroSlider = memo(function HeroSlider({
 }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -33,18 +32,22 @@ const HeroSlider = memo(function HeroSlider({
   const len = slides.length;
   const hasMultiple = len > 1;
 
-  const goTo = useCallback(
-    (index: number) => {
-      if (isTransitioning) return;
-      setIsTransitioning(true);
-      setCurrent(((index % len) + len) % len);
-      setTimeout(() => setIsTransitioning(false), 500);
-    },
-    [len, isTransitioning]
-  );
+  // Navigation must remain responsive even when a CSS fade is in progress.
+  // The former timeout-based transition lock could leave the controls ignored
+  // after the Home data changed or a timer was throttled in the background.
+  const goTo = useCallback((index: number) => {
+    if (len === 0) return;
+    setCurrent(((index % len) + len) % len);
+  }, [len]);
 
-  const next = useCallback(() => goTo(current + 1), [current, goTo]);
-  const prev = useCallback(() => goTo(current - 1), [current, goTo]);
+  const next = useCallback(() => {
+    if (len === 0) return;
+    setCurrent((index) => (index + 1) % len);
+  }, [len]);
+  const prev = useCallback(() => {
+    if (len === 0) return;
+    setCurrent((index) => (index - 1 + len) % len);
+  }, [len]);
 
   const handleImageLoad = (index: number) => {
     setLoadedImages((prev) => {
@@ -73,6 +76,12 @@ const HeroSlider = memo(function HeroSlider({
     };
   }, [autoRotate, hasMultiple, isPaused, current, slides, defaultDuration, next]);
 
+  // A collection can be edited while the Home page is open. Keep the active
+  // index valid so the hero never renders an undefined slide.
+  useEffect(() => {
+    if (len > 0 && current >= len) setCurrent(0);
+  }, [current, len]);
+
   // Touch handlers for mobile swipe
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -90,7 +99,8 @@ const HeroSlider = memo(function HeroSlider({
 
   if (!slides.length) return null;
 
-  const slide = slides[current];
+  const activeIndex = current < len ? current : 0;
+  const slide = slides[activeIndex];
   const overlayOpacity = slide.hero_overlay_opacity ?? 0.45;
 
   return (
@@ -111,7 +121,7 @@ const HeroSlider = memo(function HeroSlider({
         style={{ backgroundColor: "#1C1C1E" }}
       >
         {slides.map((s, index) => {
-          const isActive = index === current;
+          const isActive = index === activeIndex;
           const imageAlt = s.title || "Hero banner";
           return (
             <div
@@ -235,9 +245,9 @@ const HeroSlider = memo(function HeroSlider({
             <button
               key={s.id}
               onClick={() => goTo(index)}
-              aria-current={index === current ? "true" : undefined}
+              aria-current={index === activeIndex ? "true" : undefined}
               className={`h-2 rounded-full transition-all ${
-                index === current ? "w-8 bg-white" : "w-2 bg-white/40 hover:bg-white/60"
+                index === activeIndex ? "w-8 bg-white" : "w-2 bg-white/40 hover:bg-white/60"
               }`}
               aria-label={`Go to slide ${index + 1}`}
             />
