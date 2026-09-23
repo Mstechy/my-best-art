@@ -188,8 +188,21 @@ interface VideoMediaItem {
 }
 
 interface VariantDraft { key: string; size: string; color: string; optionName: string; optionValue: string; sku: string; price: string; stock: string; imageUrl: string; imageSourceId?: string; imageFile?: File; }
-type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; currency: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; variantColorValues: string; variantStorageValues: string; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
+type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; currency: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; variantColorValues: string; variantStorageValues: string; variantPrimaryOption?: string; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
 const LISTING_CURRENCIES = ["NGN", "USD", "GBP", "EUR", "CAD", "AUD", "ZAR", "KES", "GHS", "INR", "JPY", "BRL", "MXN"];
+const VARIATION_TYPES = [
+  { value: "storage", label: "Storage capacity", placeholder: "128GB, 256GB, 512GB" },
+  { value: "size", label: "Size", placeholder: "Small, Medium, Large" },
+  { value: "model", label: "Model", placeholder: "Standard, Pro, Max" },
+  { value: "finish", label: "Finish", placeholder: "Matte, Glossy" },
+  { value: "material", label: "Material", placeholder: "Leather, Stainless steel" },
+  { value: "pack_size", label: "Pack size", placeholder: "Single, Pack of 2, Pack of 6" },
+];
+
+function variationTypeDetails(value: string) {
+  return VARIATION_TYPES.find((type) => type.value === value)
+    ?? { value, label: value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()), placeholder: "Enter values separated by commas" };
+}
 
 function splitVariantValues(values: string): string[] {
   return [...new Set(values.split(/[\n,]/).map((value) => value.trim()).filter(Boolean))];
@@ -199,8 +212,8 @@ function variantValueKey(value: string): string {
   return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
-function storageColorVariantKey(color: string, storage: string): string {
-  return `${color.trim().toLowerCase()}|storage|${storage.trim().toLowerCase()}`;
+function optionColorVariantKey(color: string, optionName: string, optionValue: string): string {
+  return `${color.trim().toLowerCase()}|${optionName.trim().toLowerCase()}|${optionValue.trim().toLowerCase()}`;
 }
 
 function normalizeProductRow(row: ProductRow): Product {
@@ -294,6 +307,7 @@ export default function SellerProducts() {
   const [variantRows, setVariantRows] = useState<VariantDraft[]>([]);
   const [variantColorValues, setVariantColorValues] = useState("");
   const [variantStorageValues, setVariantStorageValues] = useState("");
+  const [variantPrimaryOption, setVariantPrimaryOption] = useState("storage");
 
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
@@ -347,9 +361,9 @@ export default function SellerProducts() {
 
   useEffect(() => {
     if (!dialogOpen || editingProduct || !draftKey) return;
-    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
+    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
+  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
@@ -362,7 +376,7 @@ export default function SellerProducts() {
       const draft = JSON.parse(saved) as ProductFormDraft;
       const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
       if (!hasContent) return;
-      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
       setDialogOpen(true);
       toast({ title: "Unfinished listing reopened", description: "Continue exactly where you left off. Re-select files only if the browser was reloaded." });
     } catch {
@@ -529,7 +543,7 @@ export default function SellerProducts() {
     setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
-    setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]); setVariantColorValues(""); setVariantStorageValues("");
+    setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]); setVariantColorValues(""); setVariantStorageValues(""); setVariantPrimaryOption("storage");
     setSlugTouched(false); setSeoSlug(""); setMetaDescription(""); setLowStockThreshold("5");
     setDescriptionImageItems([]); setRemovedDescriptionImageUrls([]); setDraggedDescriptionImageId(null);
     setFlashDealEnabled(false); setFlashDealDiscount(""); setFlashDealStart(""); setFlashDealEnd("");
@@ -549,7 +563,7 @@ export default function SellerProducts() {
     if (saved) {
       try {
         const draft = JSON.parse(saved) as ProductFormDraft;
-        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
         toast({ title: "Unfinished listing restored", description: "Your text and settings were recovered. Please reselect any files before submitting." });
       } catch { localStorage.removeItem(draftKey); }
     }
@@ -676,39 +690,42 @@ export default function SellerProducts() {
     });
     setVariantRows(loadedVariantRows);
     setVariantColorValues([...new Set(loadedVariantRows.map((row) => row.color).filter(Boolean))].join(", "));
-    setVariantStorageValues([...new Set(loadedVariantRows.filter((row) => row.optionName.toLowerCase() === "storage").map((row) => row.optionValue).filter(Boolean))].join(", "));
+    const primaryOption = loadedVariantRows.find((row) => row.optionName.trim())?.optionName.toLowerCase() || "storage";
+    setVariantPrimaryOption(primaryOption);
+    setVariantStorageValues([...new Set(loadedVariantRows.filter((row) => row.optionName.toLowerCase() === primaryOption).map((row) => row.optionValue).filter(Boolean))].join(", "));
     setFormTab("basic");
     setDialogOpen(true);
   };
 
   const generateStorageColorMatrix = () => {
     const colors = splitVariantValues(variantColorValues);
-    const storages = splitVariantValues(variantStorageValues);
-    if (colors.length === 0 && storages.length === 0) {
-      toast({ title: "Add option values", description: "Enter at least one storage size or colour before generating SKU rows.", variant: "destructive" });
+    const primaryValues = splitVariantValues(variantStorageValues);
+    const primaryOptionDetails = variationTypeDetails(variantPrimaryOption);
+    if (colors.length === 0 && primaryValues.length === 0) {
+      toast({ title: "Add option values", description: `Enter at least one ${primaryOptionDetails.label.toLowerCase()} or colour before generating SKU rows.`, variant: "destructive" });
       return;
     }
 
     const colorValues = colors.length > 0 ? colors : [""];
-    const storageValues = storages.length > 0 ? storages : [""];
-    const combinationCount = colorValues.length * storageValues.length;
+    const optionValues = primaryValues.length > 0 ? primaryValues : [""];
+    const combinationCount = colorValues.length * optionValues.length;
     if (combinationCount > 100) {
-      toast({ title: "Too many SKU combinations", description: "Use up to 100 colour and storage combinations in one listing.", variant: "destructive" });
+      toast({ title: "Too many SKU combinations", description: "Use up to 100 colour and option combinations in one listing.", variant: "destructive" });
       return;
     }
 
-    const existingRows = new Map(variantRows.map((row) => [storageColorVariantKey(row.color, row.optionName.toLowerCase() === "storage" ? row.optionValue : ""), row]));
+    const existingRows = new Map(variantRows.map((row) => [optionColorVariantKey(row.color, row.optionName, row.optionValue), row]));
     const baseSku = sku.trim() || generateSku();
     const generatedAt = Date.now();
-    const nextRows = colorValues.flatMap((variantColor) => storageValues.map((variantStorage, index) => {
-      const existing = existingRows.get(storageColorVariantKey(variantColor, variantStorage));
-      const suffix = [variantValueKey(variantColor), variantValueKey(variantStorage)].filter(Boolean).join("-").toUpperCase();
+    const nextRows = colorValues.flatMap((variantColor) => optionValues.map((optionValue, index) => {
+      const existing = existingRows.get(optionColorVariantKey(variantColor, variantPrimaryOption, optionValue));
+      const suffix = [variantValueKey(variantColor), variantValueKey(optionValue)].filter(Boolean).join("-").toUpperCase();
       return existing ?? {
         key: `matrix-${generatedAt}-${index}-${variantValueKey(variantColor)}-${variantValueKey(variantStorage)}`,
         size: "",
         color: variantColor,
-        optionName: variantStorage ? "storage" : "",
-        optionValue: variantStorage,
+        optionName: optionValue ? variantPrimaryOption : "",
+        optionValue,
         sku: suffix ? `${baseSku}-${suffix}` : `${baseSku}-${index + 1}`,
         // A variant must carry its own price. Leaving this blank makes the
         // seller deliberately price the exact Storage/Colour SKU below,
@@ -1220,7 +1237,10 @@ export default function SellerProducts() {
     [selectedProductTypeConfig],
   );
   const isPhoneListing = selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones";
+  const primaryVariationDetails = variationTypeDetails(variantPrimaryOption);
   const hasVariantRows = variantRows.length > 0;
+  const showLegacySizeColumn = variantRows.some((row) => Boolean(row.size.trim()));
+  const showColourColumn = variantRows.some((row) => Boolean(row.color.trim())) || Boolean(variantColorValues.trim());
   const variantRowsWithPrices = variantRows.filter((row) => Number.isFinite(Number(row.price)) && Number(row.price) > 0);
   const lowestVariantPrice = variantRowsWithPrices.length > 0 ? Math.min(...variantRowsWithPrices.map((row) => Number(row.price))) : null;
   const totalVariantStock = variantRows.reduce((total, row) => total + (Number.isInteger(Number(row.stock)) && Number(row.stock) > 0 ? Number(row.stock) : 0), 0);
@@ -1414,16 +1434,26 @@ export default function SellerProducts() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-sm font-semibold text-foreground">Step 1: Add the options you sell</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Separate values with commas or new lines. For a phone, use storage such as 128GB and 256GB; add colours only when they are actually available.</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Choose the recognised variation type first, then enter its values separated by commas or new lines. For a phone, select Storage capacity and enter values such as 128GB and 256GB.</p>
                       </div>
                       <Button type="button" variant="secondary" className="gap-2" onClick={generateStorageColorMatrix}>
                         <Plus className="h-4 w-4" /> Create price & stock rows
                       </Button>
                     </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
                       <div>
-                        <label className="text-xs font-semibold text-foreground">Storage values (optional)</label>
-                        <Input value={variantStorageValues} onChange={(event) => setVariantStorageValues(event.target.value)} placeholder="128GB, 256GB, 512GB" className="mt-1" />
+                        <label className="text-xs font-semibold text-foreground">Variation type</label>
+                        <Select value={variantPrimaryOption} onValueChange={setVariantPrimaryOption}>
+                          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {!VARIATION_TYPES.some((type) => type.value === variantPrimaryOption) && <SelectItem value={variantPrimaryOption}>{primaryVariationDetails.label}</SelectItem>}
+                            {VARIATION_TYPES.map((type) => <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground">{primaryVariationDetails.label} values (optional)</label>
+                        <Input value={variantStorageValues} onChange={(event) => setVariantStorageValues(event.target.value)} placeholder={primaryVariationDetails.placeholder} className="mt-1" />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-foreground">Colour values (optional)</label>
@@ -1434,11 +1464,10 @@ export default function SellerProducts() {
                   {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's “From” price.</p></div>}
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
-                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-8">
-                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Size</span><Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="e.g. Large" /></label>
-                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Colour</span><Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="e.g. Black" /></label>
-                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Option name</span><Input value={row.optionName || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionName: e.target.value } : item))} placeholder="e.g. Storage" /></label>
-                        <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Option value</span><Input value={row.optionValue || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionValue: e.target.value } : item))} placeholder="e.g. 256GB" /></label>
+                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-4 xl:grid-cols-7">
+                        {showLegacySizeColumn && <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Size</span><Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="e.g. Large" /></label>}
+                        {showColourColumn && <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Colour</span><Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="e.g. Black" /></label>}
+                        {row.optionName && <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">{variationTypeDetails(row.optionName).label}</span><Input value={row.optionValue || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionValue: e.target.value } : item))} placeholder={variationTypeDetails(row.optionName).placeholder} /></label>}
                         <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Your SKU / code</span><Input value={row.sku} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, sku: e.target.value } : item))} placeholder="Optional" /></label>
                         <label className="space-y-1"><span className="text-xs font-bold text-primary">Price for this exact SKU *</span><Input type="number" min="0.01" step="0.01" value={row.price} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, price: e.target.value } : item))} placeholder={`e.g. ${currency === "NGN" ? "250000" : "250"}`} className="border-primary/50" aria-label={`Price for variant ${index + 1}`} /></label>
                         <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Stock for this SKU *</span><Input type="number" min="0" step="1" value={row.stock} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, stock: e.target.value } : item))} placeholder="0" aria-label={`Stock for variant ${index + 1}`} /></label>
@@ -1476,7 +1505,7 @@ export default function SellerProducts() {
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", optionName: "", optionValue: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add one custom SKU</Button>
+                  <Button type="button" variant="outline" className="gap-2" onClick={() => setVariantRows(rows => [...rows, { key: `variant-${Date.now()}`, size: "", color: "", optionName: variantPrimaryOption, optionValue: "", sku: `${sku || generateSku()}-${rows.length + 1}`, price: "", stock: "0", imageUrl: "" }])}><Plus className="h-4 w-4" /> Add another {primaryVariationDetails.label} SKU</Button>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-4 mt-4">

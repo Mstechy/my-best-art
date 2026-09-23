@@ -372,12 +372,15 @@ export default function ProductDetailPage() {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    if (hasProductVariants) {
+    // The page already exposes the complete selector on desktop. Once a
+    // purchasable SKU is selected, a second picker would be needless friction.
+    // Keep the sheet only as a guard when options are still incomplete.
+    if (hasProductVariants && !selectedVariant) {
       setPurchaseAction(action);
       return;
     }
     completePurchase(action);
-  }, [product, user, hasProductVariants, completePurchase]);
+  }, [product, user, hasProductVariants, selectedVariant, completePurchase]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-24">
