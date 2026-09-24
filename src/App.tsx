@@ -116,8 +116,19 @@ function RouteSuspense({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#111111]"></div>
+        <div
+          className="flex min-h-screen items-center justify-center bg-background"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading page"
+        >
+          <div className="flex flex-col items-center gap-3">
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-4 border-muted border-t-foreground motion-reduce:animate-none"
+              aria-hidden="true"
+            />
+            <span className="text-sm text-muted-foreground">Loading…</span>
+          </div>
         </div>
       }
     >
@@ -132,7 +143,7 @@ function AppRoutes() {
     <ErrorBoundary>
       <PageTransition>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<RouteSuspense><LandingPage /></RouteSuspense>} />
           <Route path="/marketplace" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
           <Route path="/categories" element={<RouteSuspense><CategoriesPage /></RouteSuspense>} />
           <Route path="/categories/:slug" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />

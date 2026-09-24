@@ -1,7 +1,7 @@
 // MarketHub Service Worker v2
 // Advanced caching: Stale-While-Revalidate for API, Cache-First for assets
 
-const CACHE_VERSION = 'v5';
+const CACHE_VERSION = 'v6';
 const STATIC_CACHE = `markethub-static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `markethub-images-${CACHE_VERSION}`;
 const API_CACHE = `markethub-api-${CACHE_VERSION}`;
@@ -24,13 +24,20 @@ const MAX_CACHE_ENTRIES = {
   [FONT_CACHE]: 30,
 };
 
-// Install: precache critical assets
+// Install: precache only files that are available. A missing optional asset
+// must not prevent the worker from controlling the site.
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(PRECACHE_URLS);
-    }).then(() => {
-      return self.skipWaiting();
+    caches.open(STATIC_CACHE).then(async (cache) => {
+      const results = await Promise.allSettled(
+        PRECACHE_URLS.map(async (url) => {
+          const response = await fetch(url, { cache: 'reload' });
+          if (response.ok) await cache.put(url, response);
+        })
+      );
+      const failed = results.filter((result) => result.status === 'rejected').length;
+      if (failed) console.warn(`Service worker: ${failed} optional precache request(s) failed.`);
+      await self.skipWaiting();
     })
   );
 });
@@ -86,6 +93,19 @@ function isFontUrl(url) {
   return /\.(woff2?|ttf|otf|eot)$/i.test(url) || url.includes('fonts.googleapis');
 }
 
+// Keep long-running installs bounded instead of allowing browser storage to
+// grow until the origin quota is exhausted.
+async function trimCache(cacheName) {
+  const maxEntries = MAX_CACHE_ENTRIES[cacheName];
+  if (!maxEntries) return;
+  const cache = await caches.open(cacheName);
+  const keys = await cache.keys();
+  const overflow = keys.length - maxEntries;
+  if (overflow > 0) {
+    await Promise.all(keys.slice(0, overflow).map((key) => cache.delete(key)));
+  }
+}
+
 // Fetch: intelligent caching strategies
 self.addEventListener('fetch', (event) => {
   const { request } = event;
@@ -130,17 +150,18 @@ self.addEventListener('fetch', (event) => {
 
 // Cache-First strategy
 async function cacheFirst(request, cacheName) {
-  const cached = await caches.match(request);
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request);
   if (cached) return cached;
 
   try {
     const response = await fetch(request);
     if (response.ok && response.type === 'basic') {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
+      await trimCache(cacheName);
     }
     return response;
-  } catch (error) {
+  } catch {
     return new Response('Offline', { status: 503 });
   }
 }
@@ -150,12 +171,13 @@ async function staleWhileRevalidate(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
 
-  const fetchPromise = fetch(request).then((response) => {
+  const fetchPromise = fetch(request).then(async (response) => {
     if (response.ok) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
+      await trimCache(cacheName);
     }
     return response;
-  }).catch(() => cached);
+  }).catch(() => cached || new Response('Offline', { status: 503 }));
 
   return cached || fetchPromise;
 }
@@ -166,7 +188,8 @@ async function networkFirst(request, cacheName) {
     const response = await fetch(request);
     if (response.ok && response.type === 'basic') {
       const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
+      await trimCache(cacheName);
     }
     return response;
   } catch (error) {
@@ -187,9 +210,10 @@ async function imageCacheStrategy(request) {
   // Return cached immediately if available
   if (cached) {
     // Background refresh for images that might have changed
-    fetch(request).then((response) => {
+    fetch(request).then(async (response) => {
       if (response.ok) {
-        cache.put(request, response.clone());
+        await cache.put(request, response.clone());
+        await trimCache(IMAGE_CACHE);
       }
     }).catch(() => {});
     return cached;
@@ -199,7 +223,8 @@ async function imageCacheStrategy(request) {
   try {
     const response = await fetch(request);
     if (response.ok) {
-      cache.put(request, response.clone());
+      await cache.put(request, response.clone());
+      await trimCache(IMAGE_CACHE);
     }
     return response;
   } catch (error) {
