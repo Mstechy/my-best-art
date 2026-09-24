@@ -3,6 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Critical shell styles prevent the browser's default body margin from
+         showing during the first paint before the Vite stylesheet is ready. -->
+    <style>
+      html, body, #root { width: 100%; min-height: 100%; }
+      body { margin: 0; }
+      *, *::before, *::after { box-sizing: border-box; }
+    </style>
     <meta name="google-site-verification" content="89XTJNqWIy_z32sTfKF8xTzfMffRswBFJPceIi4NVFM" />
     <title>Tradibu | Online Marketplace for Trusted Shopping</title>
     
