@@ -96,6 +96,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
       {/* Sidebar — always fixed, never scrolls with page */}
       <aside
+        id="dashboard-sidebar"
+        aria-label="Dashboard navigation"
         className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col border-r border-[#E8E8E8] dark:border-[#1A1A1A] bg-white dark:bg-[#111111] transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
@@ -110,6 +112,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
+            aria-label="Close dashboard navigation"
             className="lg:hidden text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
           >
             <X className="h-4 w-4" />
@@ -209,6 +212,9 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#E8E8E8] dark:border-[#1A1A1A] bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md px-4 lg:px-6">
           <button
             onClick={() => setSidebarOpen(true)}
+            aria-label="Open dashboard navigation"
+            aria-controls="dashboard-sidebar"
+            aria-expanded={sidebarOpen}
             className="lg:hidden text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
           >
             <Menu className="h-5 w-5" />

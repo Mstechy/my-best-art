@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -368,8 +368,18 @@ export default function SellerProducts() {
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
   // just to recover work already entered.
+  //
+  // This recovery must run only when the signed-in seller changes (draftKey),
+  // never when the dialog opens or closes: reacting to dialogOpen would undo
+  // "Minimize" and immediately reopen the form the seller just put away. The
+  // live dialog state is mirrored into a ref so the effect can read the latest
+  // values without listing them as dependencies.
+  const recoveryStateRef = useRef({ dialogOpen, editingProduct });
+  recoveryStateRef.current = { dialogOpen, editingProduct };
+
   useEffect(() => {
-    if (!draftKey || dialogOpen || editingProduct) return;
+    const { dialogOpen: isDialogOpen, editingProduct: productBeingEdited } = recoveryStateRef.current;
+    if (!draftKey || isDialogOpen || productBeingEdited) return;
     const saved = localStorage.getItem(draftKey);
     if (!saved) return;
     try {
@@ -382,7 +392,9 @@ export default function SellerProducts() {
     } catch {
       localStorage.removeItem(draftKey);
     }
-  }, [draftKey]);
+    // `toast` is the stable module-level function exported by use-toast.ts, so
+    // listing it here satisfies the lint rule without ever re-running this effect.
+  }, [draftKey, toast]);
 
   const revokeLocalMediaUrls = () => {
     imageItems.forEach((item) => {
