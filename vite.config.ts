@@ -19,34 +19,23 @@ export default defineConfig(({ mode }) => ({
     minify: "esbuild",
     rollupOptions: {
       output: {
+        // Keep only stable, shared runtime dependencies in the initial graph.
+        // Recharts, Sentry, and dashboard primitives are route-level code and
+        // must remain in their lazy import graph.
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@supabase")) return "supabase";
-          if (id.includes("@radix-ui")) return "radix-ui";
-          // Buyer and admin analytics still use Recharts. Keep it isolated so
-          // public shopping routes and the lightweight seller dashboard never
-          // download this analytics-only dependency.
-          if (id.includes("recharts")) return "charts";
-          if (id.includes("framer-motion")) return "motion";
-          if (id.includes("lucide-react")) return "icons";
           if (id.includes("@tanstack/react-query")) return "react-query";
-          if (id.includes("@tanstack/react-virtual")) return "react-virtual";
-          if (id.includes("react-hook-form") || id.includes("@hookform")) return "forms";
-          if (id.includes("zod")) return "validation";
           if (id.includes("react-router")) return "router";
-          if (id.includes("sonner")) return "toast";
-          if (id.includes("i18next")) return "i18n";
-          if (id.includes("embla-carousel")) return "carousel";
-          if (id.includes("date-fns")) return "dates";
-          if (id.includes("dexie") || id.includes("idb")) return "db";
-          if (id.includes("@sentry")) return "sentry";
-          if (id.includes("framer-motion")) return "motion";
+          if (id.includes("lucide-react")) return "icons";
           if (id.includes("node_modules\\react") || id.includes("node_modules/react")) return "react";
-          return "vendor";
         },
       },
     },
-    chunkSizeWarningLimit: 300,
+    // Route-level chart libraries can be larger than the main entry while still
+    // being outside the initial page graph. Keep the threshold useful without
+    // hiding unexpectedly large shared chunks.
+    chunkSizeWarningLimit: 400,
     sourcemap: false,
     reportCompressedSize: false,
   },
@@ -55,8 +44,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
     dedupe: ["react", "react-dom"],
-  },
-  esbuild: {
-    drop: mode === "production" ? ["console", "debugger"] : [],
   },
 }));

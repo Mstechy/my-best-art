@@ -8,7 +8,6 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import { CurrencyProvider } from "@/hooks/useCurrency";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import DashboardLayout from "@/components/DashboardLayout";
 import RoleRedirect from "@/components/RoleRedirect";
 import PageTransition from "@/components/PageTransition";
 import { useOverlayLockWatchdog } from "@/hooks/useOverlayLockWatchdog";
@@ -18,6 +17,10 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SiteAnalyticsTracker from "@/components/SiteAnalyticsTracker";
 
 // Public pages - lazy load all for billion-scale bundle splitting
+// Dashboard shell is route-only; loading it with the public app would pull
+// dashboard navigation primitives and analytics pages into the first paint.
+const DashboardLayout = lazy(() => import("@/components/DashboardLayout"));
+
 const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const ProductDetailPage = lazy(() => import("@/pages/ProductDetailPage"));
@@ -91,7 +94,7 @@ const queryClient = new QueryClient({
 function AdminRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={["admin"]}>
-      <DashboardLayout>{children}</DashboardLayout>
+      <RouteSuspense><DashboardLayout>{children}</DashboardLayout></RouteSuspense>
     </ProtectedRoute>
   );
 }
@@ -99,7 +102,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 function SellerRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={["seller", "admin"]}>
-      <DashboardLayout>{children}</DashboardLayout>
+      <RouteSuspense><DashboardLayout>{children}</DashboardLayout></RouteSuspense>
     </ProtectedRoute>
   );
 }
@@ -107,7 +110,7 @@ function SellerRoute({ children }: { children: React.ReactNode }) {
 function BuyerRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={["buyer"]}>
-      <DashboardLayout>{children}</DashboardLayout>
+      <RouteSuspense><DashboardLayout>{children}</DashboardLayout></RouteSuspense>
     </ProtectedRoute>
   );
 }
