@@ -41,7 +41,7 @@ function returns(row: PolicyRow, source: Source): ResolvedPolicy | null {
   const conditions = text(row.return_conditions) || text(row.return_policy);
   const window = number(row.return_window_days);
   const payer = text(row.return_shipping_payer);
-  const summary = [accepted === true ? "Returns accepted" : accepted === false ? "Returns not accepted" : "", window !== null ? `${window}-day window` : "", payer ? `Return shipping: ${payer.replaceAll("_", " ")}` : ""].filter(Boolean).join(" · ");
+  const summary = [accepted === true ? "Returns accepted" : accepted === false ? "Returns not accepted" : "", window !== null ? `${window}-day window` : "", payer ? `Return shipping: ${payer.replace(/_/g, " ")}` : ""].filter(Boolean).join(" · ");
   if (!conditions && !summary) return null;
   return { title: "Returns & refunds", summary: summary || conditions, detail: conditions || summary, source, updatedAt: text(row.updated_at) || null };
 }
@@ -68,7 +68,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
     async () => {
       const [storeResult, platformResult] = await Promise.all([
         sellerId ? supabase.from("seller_stores").select("shipping_policy, return_policy, updated_at, shipping_cost_amount, shipping_currency, free_shipping_threshold, ship_from_location, processing_days_min, processing_days_max, delivery_days_min, delivery_days_max, return_accepted, return_window_days, return_conditions, return_shipping_payer, warranty_duration, warranty_terms").eq("seller_id", sellerId).maybeSingle() : Promise.resolve({ data: null, error: null }),
-        supabase.from("platform_policies" as "products").select("*").eq("id", true).maybeSingle(),
+        (supabase as any).from("platform_policies").select("*").eq("id", true).maybeSingle(),
       ]);
       if (storeResult.error) throw storeResult.error;
       if (platformResult.error) throw platformResult.error;

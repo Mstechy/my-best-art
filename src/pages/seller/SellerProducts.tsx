@@ -721,7 +721,7 @@ export default function SellerProducts() {
       const existing = existingRows.get(optionColorVariantKey(variantColor, variantPrimaryOption, optionValue));
       const suffix = [variantValueKey(variantColor), variantValueKey(optionValue)].filter(Boolean).join("-").toUpperCase();
       return existing ?? {
-        key: `matrix-${generatedAt}-${index}-${variantValueKey(variantColor)}-${variantValueKey(variantStorage)}`,
+        key: `matrix-${generatedAt}-${index}-${variantValueKey(variantColor)}-${variantValueKey(optionValue)}`,
         size: "",
         color: variantColor,
         optionName: optionValue ? variantPrimaryOption : "",
