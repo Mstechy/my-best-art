@@ -82,7 +82,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
       { icon: ClipboardList, label: t("nav.myOrders"), href: role === "seller" ? "/seller/orders" : "/buyer/orders" },
       { icon: User, label: t("nav.dashboard"), href: dashboardPath },
     ] : [
-      { icon: LogIn, label: t("nav.loginRegister"), href: "/auth/login?redirect=/buyer/dashboard" },
+      { icon: LogIn, label: t("nav.loginRegister"), href: "/auth/login" },
     ]),
     { icon: HelpCircle, label: t("nav.help"), href: "/" },
   ];

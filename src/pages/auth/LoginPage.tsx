@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { getPostLoginDestination } from "@/lib/authRedirect";
 import { toast } from "sonner";
 import { Eye, EyeOff, ArrowRight, ShoppingBag, Loader2 } from "lucide-react";
 
@@ -17,16 +18,7 @@ export default function LoginPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user && role) {
-      if (redirectTo && redirectTo.startsWith("/")) {
-        navigate(redirectTo, { replace: true });
-        return;
-      }
-      const dashboardMap: Record<string, string> = {
-        admin: "/admin/dashboard",
-        seller: "/seller/dashboard",
-        buyer: "/buyer/dashboard",
-      };
-      navigate(dashboardMap[role] || "/marketplace", { replace: true });
+      navigate(getPostLoginDestination(role, redirectTo), { replace: true });
     }
   }, [user, role, navigate, redirectTo]);
 

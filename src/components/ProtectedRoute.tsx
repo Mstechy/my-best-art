@@ -1,7 +1,8 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Loader2, Clock, ShieldCheck, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getSafeRedirect } from "@/lib/authRedirect";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -10,6 +11,8 @@ interface ProtectedRouteProps {
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
   const { user, role, profile, loading, signOut } = useAuth();
+  const location = useLocation();
+  const requestedPath = getSafeRedirect(`${location.pathname}${location.search}${location.hash}`);
 
   if (loading) {
     return (
@@ -19,7 +22,9 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     );
   }
 
-  if (!user) return <Navigate to="/auth/login" replace />;
+  if (!user) {
+    return <Navigate to={`/auth/login?redirect=${encodeURIComponent(requestedPath ?? location.pathname)}`} replace />;
+  }
 
   if (allowedRoles && !role) {
     return (

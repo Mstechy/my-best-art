@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { getPostLoginDestination } from "@/lib/authRedirect";
 import {
   Eye, EyeOff, ArrowRight, ShoppingBag, Loader2,
   ShoppingCart, Store, Check,
@@ -12,6 +13,8 @@ type Role = "seller" | "buyer";
 export default function RegisterPage() {
   const { user, role, signUp } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get("redirect");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
@@ -23,14 +26,9 @@ export default function RegisterPage() {
   // Redirect if already logged in
   useEffect(() => {
     if (user && role) {
-      const dashboardMap: Record<string, string> = {
-        admin: "/admin/dashboard",
-        seller: "/seller/dashboard",
-        buyer: "/buyer/dashboard",
-      };
-      navigate(dashboardMap[role] || "/marketplace", { replace: true });
+      navigate(getPostLoginDestination(role, redirectTo), { replace: true });
     }
-  }, [user, role, navigate]);
+  }, [user, role, navigate, redirectTo]);
 
   const handleRoleSelect = (r: Role) => {
     setSelectedRole(r);
