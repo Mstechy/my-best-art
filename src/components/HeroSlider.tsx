@@ -9,11 +9,33 @@ interface HeroSliderProps {
   defaultDuration?: number;
 }
 
-// Supabase image transformations (/render/image/…) are NOT enabled on this
-// project — the endpoint returns 403 for these assets. Always serve the
-// original public storage URL; the browser caches it after the first request.
-function getHeroImageUrl(src: string | null): string {
-  return src ?? "";
+const LEGACY_ELECTRONICS_HERO_URL =
+  "https://bnkyddmmhaaefzfvzpqs.supabase.co/storage/v1/object/public/collection-banners/fbd21376-73f5-40f4-bea7-e2abf0bdb686/1789836120388-93ee0dad-7ae7-4b8f-bd88-aeb316960426.png";
+
+type HeroImageSources = {
+  src: string;
+  mobileSrc?: string;
+  width?: number;
+  height?: number;
+};
+
+/**
+ * The first production hero was stored as a 1.46 MB PNG. Keep its database
+ * record intact until an authenticated admin can replace it, but serve the
+ * equivalent responsive WebP assets bundled with the application. New or
+ * changed collection URLs automatically use their original source.
+ */
+function getHeroImageSources(src: string | null): HeroImageSources {
+  if (src === LEGACY_ELECTRONICS_HERO_URL) {
+    return {
+      src: "/images/electronics-products-1600x686.webp",
+      mobileSrc: "/images/electronics-products-960x540.webp",
+      width: 1600,
+      height: 686,
+    };
+  }
+
+  return { src: src ?? "" };
 }
 
 const HeroSlider = memo(function HeroSlider({
@@ -123,6 +145,7 @@ const HeroSlider = memo(function HeroSlider({
         {slides.map((s, index) => {
           const isActive = index === activeIndex;
           const imageAlt = s.title || "Hero banner";
+          const imageSource = getHeroImageSources(s.image_url);
           return (
             <div
               key={s.id}
@@ -135,19 +158,24 @@ const HeroSlider = memo(function HeroSlider({
               aria-hidden={!isActive}
             >
               {/* Background image */}
-              {s.image_url && !failedImages.has(index) ? (
-                <img
-                  src={getHeroImageUrl(s.image_url)}
-                  alt={imageAlt}
-                  className={`h-full w-full object-cover ${
-                    index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
-                  }`}
-                  loading={index === 0 ? "eager" : "lazy"}
-                  {...({ fetchpriority: index === 0 ? "high" : "auto" } as React.HTMLAttributes<HTMLImageElement>)}
-                  decoding="async"
-                  onLoad={() => handleImageLoad(index)}
-                  onError={() => handleImageError(index)}
-                />
+              {imageSource.src && !failedImages.has(index) ? (
+                <picture className="block h-full w-full">
+                  {imageSource.mobileSrc && <source media="(max-width: 640px)" srcSet={imageSource.mobileSrc} type="image/webp" />}
+                  <img
+                    src={imageSource.src}
+                    width={imageSource.width}
+                    height={imageSource.height}
+                    alt={imageAlt}
+                    className={`h-full w-full object-cover ${
+                      index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
+                    }`}
+                    loading={index === 0 ? "eager" : "lazy"}
+                    {...({ fetchpriority: index === 0 ? "high" : "auto" } as React.HTMLAttributes<HTMLImageElement>)}
+                    decoding="async"
+                    onLoad={() => handleImageLoad(index)}
+                    onError={() => handleImageError(index)}
+                  />
+                </picture>
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1C1C1E] to-[#333333]">
                   <div className="px-6 text-center">

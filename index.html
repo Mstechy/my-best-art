@@ -6,7 +6,23 @@
     <meta name="google-site-verification" content="89XTJNqWIy_z32sTfKF8xTzfMffRswBFJPceIi4NVFM" />
     <title>Tradibu | Online Marketplace for Trusted Shopping</title>
     
-<!-- Preconnect to Supabase for early hero image discovery -->
+<!-- Start the known home hero before React or Supabase. Other routes do not download it. -->
+    <script>
+      if (window.location.pathname === "/" || window.location.pathname === "") {
+        const heroPreload = document.createElement("link");
+        heroPreload.rel = "preload";
+        heroPreload.as = "image";
+        heroPreload.type = "image/webp";
+        heroPreload.href = "/images/electronics-products-1600x686.webp";
+        heroPreload.imageSrcset =
+          "/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w";
+        heroPreload.imagesizes = "100vw";
+        heroPreload.fetchPriority = "high";
+        document.head.appendChild(heroPreload);
+      }
+    </script>
+
+    <!-- Preconnect to Supabase for API data used by the marketplace -->
     <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin />
     
     <!-- Preconnect to Google Fonts for faster font loading -->
