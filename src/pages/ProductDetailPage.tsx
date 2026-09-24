@@ -29,7 +29,6 @@ import { isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
-import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import ProductRichDescription from "@/components/product/ProductRichDescription";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackView } from "@/hooks/useBatchedViewTracking";
@@ -406,10 +405,9 @@ export default function ProductDetailPage() {
   }, [product, user, hasProductVariants, selectedVariant, completePurchase]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] pb-[156px] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
+    <div className="min-h-screen bg-[#FAFAFA] pb-[calc(72px+env(safe-area-inset-bottom,0px))] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
       <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
-      <BottomTabBar />
       <Container className="py-6">
         {loading && !product ? (
           <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
@@ -903,49 +901,60 @@ export default function ProductDetailPage() {
         )}
       </Container>
 
-      {/* Sticky mobile CTA bar - store icon (→ seller page) + price left + full-width Add to Cart + Buy Now */}
-      <div className="fixed inset-x-0 bottom-[calc(64px+env(safe-area-inset-bottom))] z-[60] border-t border-[#E8E8E8] bg-white/95 backdrop-blur dark:border-[#222222] dark:bg-[#121212]/95 md:hidden">
-        <Container className="flex items-center gap-2 py-2">
+      {/* Sticky mobile CTA bar - the ONLY bottom bar on this route (tab bar not mounted here): Store/Chat/Cart outline icons with labels, Add to Cart outlined pill, Buy Now brand pill */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E8E8E8] bg-white pb-[env(safe-area-inset-bottom,0px)] dark:border-[#222222] dark:bg-[#111111] md:hidden">
+        <div className="mx-auto flex max-w-7xl items-center gap-1.5 px-4 py-1.5">
           <button
+            type="button"
             onClick={() => product && navigate(`/seller/${product.seller_id}`)}
-            className="shrink-0 rounded-full bg-[#111111]/80 dark:bg-[#1E1E1E]/80 p-2 transition-colors hover:bg-[#111111]/90 dark:hover:bg-[#FAF5F2]/90"
+            className="flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
             aria-label="Visit store"
           >
-            <Store className="h-5 w-5 text-white dark:text-[#FAF5F2]" />
+            <Store className="h-5 w-5" />
+            <span className="text-[9px] font-medium leading-none text-[#888880] dark:text-[#A0A0A0]">Store</span>
           </button>
           <button
             type="button"
             onClick={() => product && navigate(`${chatPath}?seller=${product.seller_id}&product=${product.id}`)}
-            className="shrink-0 rounded-full bg-[#111111]/80 p-2 text-white transition-colors hover:bg-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#1E1E1E]/80 dark:text-[#FAF5F2] dark:hover:bg-[#FAF5F2]/90"
+            className="flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
             aria-label="Chat with seller"
           >
             <MessageSquare className="h-5 w-5" />
+            <span className="text-[9px] font-medium leading-none text-[#888880] dark:text-[#A0A0A0]">Chat</span>
           </button>
           <button
             type="button"
             onClick={() => setCartOpen(true)}
-            className="relative shrink-0 rounded-full bg-[#111111]/80 p-2 text-white transition-colors hover:bg-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#1E1E1E]/80 dark:text-[#FAF5F2] dark:hover:bg-[#FAF5F2]/90"
+            className="flex h-11 w-11 shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
             aria-label={`Open cart${totalItems > 0 ? `, ${totalItems} items` : ""}`}
           >
-            <ShoppingCart className="h-5 w-5" />
-            {totalItems > 0 && <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E53935] px-1 text-[9px] font-bold text-white">{totalItems > 99 ? "99+" : totalItems}</span>}
+            <span className="relative">
+              <ShoppingCart className="h-5 w-5" />
+              {totalItems > 0 && (
+                <span className="absolute -right-1.5 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#E53935] px-1 text-[9px] font-bold text-white">
+                  {totalItems > 99 ? "99+" : totalItems}
+                </span>
+              )}
+            </span>
+            <span className="text-[9px] font-medium leading-none text-[#888880] dark:text-[#A0A0A0]">Cart</span>
           </button>
-          <span className="shrink-0 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
           <button
+            type="button"
             onClick={() => startPurchase("cart")}
             disabled={!hasProductVariants && purchasableStock === 0}
-            className="flex-1 h-[44px] rounded-full border border-[#111111] dark:border-[#FAF5F2] text-[#111111] dark:text-[#FAF5F2] text-sm font-semibold disabled:opacity-50"
+            className="h-11 min-w-0 flex-1 rounded-full border border-[#111111] bg-transparent px-1 text-[13px] font-bold leading-tight text-[#111111] transition-colors hover:bg-brand-tint hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
           >
-            Add to Cart
+            {!hasProductVariants && purchasableStock === 0 ? "Out of stock" : "Add to Cart"}
           </button>
           <button
+            type="button"
             onClick={() => startPurchase("buy")}
             disabled={!hasProductVariants && purchasableStock === 0}
-            className="flex-1 h-[44px] rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold disabled:opacity-50"
+            className="h-11 min-w-0 flex-1 rounded-full bg-brand px-1 text-[13px] font-bold leading-tight text-ink transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             Buy Now
           </button>
-        </Container>
+        </div>
       </div>
       <Sheet open={purchaseAction !== null} onOpenChange={(open) => { if (!open) setPurchaseAction(null); }}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl border-[#E8E8E8] bg-white px-5 pb-6 pt-5 dark:border-[#222222] dark:bg-[#111111] sm:mx-auto sm:max-w-xl">
