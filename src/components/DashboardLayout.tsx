@@ -229,7 +229,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </Link>
         </header>
 
-        <main className="flex-1 p-4 lg:p-6">{children}</main>
+        <main className="flex-1 w-full min-w-0 overflow-x-clip p-4 lg:p-6">{children}</main>
         <DashboardFooter />
       </div>
     </div>

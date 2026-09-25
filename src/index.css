@@ -2,6 +2,32 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shared responsive safety for phone, tablet, and desktop viewports. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overflow-x: clip;
+  }
+
+  body,
+  #root {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  /* iOS Safari zooms focused form controls when their computed font size is
+     below 16px. Keep mobile controls readable and zoom-free. */
+  @media (max-width: 767px) {
+    input:not([type="checkbox"]):not([type="radio"]),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
 @layer base {
   :root {
     /* ══════════════════════════════════════════════════════════════

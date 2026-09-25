@@ -137,7 +137,7 @@ export default function SellerOrders() {
                            <p className="text-xs text-muted-foreground">{order.shipping_city || "City unavailable"}{order.shipping_country ? `, ${order.shipping_country}` : ""}</p>
                           <p className="mt-1 text-xs text-muted-foreground">#{order.id.slice(0, 8)} · {new Date(order.created_at).toLocaleDateString()}</p>
                         </div>
-                        <div className="flex shrink-0 flex-col items-end gap-2"><span className="font-display font-bold text-foreground">{order.currency} {Number(order.total_amount).toLocaleString()}</span><Badge className={statusColors[order.status] || ""}>{order.status}</Badge></div>
+                         <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:flex-col sm:items-end"><span className="font-display font-bold text-foreground">{order.currency} {Number(order.total_amount).toLocaleString()}</span><Badge className={statusColors[order.status] || ""}>{order.status}</Badge></div>
                       </div>
                       {(order.carrier || order.tracking_number) && <p className="mt-3 text-xs text-muted-foreground">{order.carrier && `${order.carrier} · `}{order.tracking_number || "Tracking pending"}</p>}
                     </Link>

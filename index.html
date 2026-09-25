@@ -6,7 +6,8 @@
     <!-- Critical shell styles prevent the browser's default body margin from
          showing during the first paint before the Vite stylesheet is ready. -->
     <style>
-      html, body, #root { width: 100%; min-height: 100%; }
+      html, body, #root { width: 100%; min-height: 100%; min-width: 0; }
+      html, body { overflow-x: clip; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
       body { margin: 0; }
       *, *::before, *::after { box-sizing: border-box; }
     </style>
