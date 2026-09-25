@@ -230,7 +230,7 @@ export function useSellerOrderCounts(sellerId: string | undefined) {
       const statuses = ["all", "pending", "processing", "shipped", "delivered", "cancelled"];
       const counts = await Promise.all(statuses.map(async (status) => {
         let query = supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", sellerId);
-        if (status !== "all") query = query.eq("status", status);
+        if (status !== "all") query = query.eq("status", status as Exclude<TabStatus, "all">);
         const { count } = await query;
         return [status, count ?? 0] as const;
       }));
