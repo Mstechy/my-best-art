@@ -1,2 +1,2 @@
-import DynamicPage from "./DynamicPage";
-export default function RefundPolicyPage() { return <DynamicPage slug="refund" fallbackTitle="Refund & Return Policy" />; }
+import PlatformPolicyPage from "./PlatformPolicyPage";
+export default function RefundPolicyPage() { return <PlatformPolicyPage kind="returns" fallbackTitle="Refund & Return Policy" />; }
