@@ -104,7 +104,7 @@ BEGIN
     v_variant_id := NULLIF(v_item->>'product_variant_id','')::uuid;
     v_quantity := (v_item->>'quantity')::integer;
     IF v_quantity IS NULL OR v_quantity < 1 OR v_quantity > 100 THEN RAISE EXCEPTION 'Invalid item quantity'; END IF;
-    SELECT id, seller_id, price, currency, stock_quantity, ships_to INTO v_product
+    SELECT id, seller_id, title, price, currency, stock_quantity, ships_to INTO v_product
       FROM public.products WHERE id = v_product_id AND status = 'active' AND is_approved = true FOR UPDATE;
     IF NOT FOUND OR v_product.seller_id <> p_seller_id THEN
       RAISE EXCEPTION 'A product is unavailable or belongs to another seller';
