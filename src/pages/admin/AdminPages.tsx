@@ -39,7 +39,7 @@ export default function AdminPages() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("site_pages" as any).select("*").order("slug");
-      const list = ((data as any as Page[]) || []).filter((page) => !["shipping", "refund", "payment"].includes(page.slug));
+      const list = (data as any as Page[]) || [];
     setPages(list);
     if (list.length && !activeSlug) {
       setActiveSlug(list[0].slug);
