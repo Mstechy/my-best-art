@@ -14,6 +14,67 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_order_exports: {
+        Row: {
+          admin_id: string
+          created_at: string
+          format: string
+          from_date: string | null
+          order_ids: string[]
+          to_date: string | null
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          format: string
+          from_date?: string | null
+          order_ids: string[]
+          to_date?: string | null
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          format?: string
+          from_date?: string | null
+          order_ids?: string[]
+          to_date?: string | null
+        }
+        Relationships: []
+      }
+      message_safety_flags: {
+        Row: {
+          created_at: string
+          id: string
+          matched_terms: string[]
+          message_id: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          matched_terms?: string[]
+          message_id: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          matched_terms?: string[]
+          message_id?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
+
       addresses: {
         Row: {
           city: string

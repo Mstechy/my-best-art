@@ -98,7 +98,7 @@ export default function AdminOrders() {
     const link = document.createElement("a");
     link.href = url; link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
     URL.revokeObjectURL(url);
-    const { error } = await (supabase.from("admin_order_exports") as any).insert({ admin_id: user.id, format: "csv", order_ids: filtered.map((order) => order.id) });
+    const { error } = await supabase.from("admin_order_exports").insert({ admin_id: user.id, format: "csv", order_ids: filtered.map((order) => order.id) });
     setExporting(false);
     if (error) window.alert("The export was downloaded, but its audit record could not be saved.");
   };
