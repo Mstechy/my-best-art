@@ -27,19 +27,11 @@ export default function AdminPages() {
   const [body, setBody] = useState("");
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [protectionSteps, setProtectionSteps] = useState("");
-  const [platformShipping, setPlatformShipping] = useState("");
-  const [platformReturns, setPlatformReturns] = useState("");
-  const [deliveryDaysMin, setDeliveryDaysMin] = useState("");
-  const [deliveryDaysMax, setDeliveryDaysMax] = useState("");
-  const [processingDaysMin, setProcessingDaysMin] = useState("");
-  const [processingDaysMax, setProcessingDaysMax] = useState("");
-  const [policySaving, setPolicySaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("site_pages" as any).select("*").order("slug");
-      const list = (data as any as Page[]) || [];
+    const list = (data as any as Page[]) || [];
     setPages(list);
     if (list.length && !activeSlug) {
       setActiveSlug(list[0].slug);
@@ -50,27 +42,6 @@ export default function AdminPages() {
   }, [activeSlug]);
 
   useEffect(() => { void load(); }, [load]);
-
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase.from("platform_policies" as any).select("shipping_terms, return_conditions, buyer_protection_claim_steps, delivery_days_min, delivery_days_max, processing_days_min, processing_days_max").eq("id", true).maybeSingle();
-      const policy = data as { shipping_terms?: string | null; return_conditions?: string | null; buyer_protection_claim_steps?: string | null; delivery_days_min?: number | null; delivery_days_max?: number | null; processing_days_min?: number | null; processing_days_max?: number | null } | null;
-      setPlatformShipping(policy?.shipping_terms || "");
-      setPlatformReturns(policy?.return_conditions || "");
-      setDeliveryDaysMin(policy?.delivery_days_min?.toString() || "");
-      setDeliveryDaysMax(policy?.delivery_days_max?.toString() || "");
-      setProcessingDaysMin(policy?.processing_days_min?.toString() || "");
-      setProcessingDaysMax(policy?.processing_days_max?.toString() || "");
-      setProtectionSteps(policy?.buyer_protection_claim_steps || "");
-    })();
-  }, []);
-
-  const savePolicies = async () => {
-    setPolicySaving(true);
-    const { error } = await supabase.from("platform_policies" as any).upsert({ id: true, shipping_terms: platformShipping.trim() || null, return_conditions: platformReturns.trim() || null, buyer_protection_claim_steps: protectionSteps.trim() || null, delivery_days_min: deliveryDaysMin ? Number(deliveryDaysMin) : null, delivery_days_max: deliveryDaysMax ? Number(deliveryDaysMax) : null, processing_days_min: processingDaysMin ? Number(processingDaysMin) : null, processing_days_max: processingDaysMax ? Number(processingDaysMax) : null, updated_by: user?.id ?? null });
-    setPolicySaving(false);
-    if (error) toast.error(error.message); else toast.success("Platform policies saved");
-  };
 
   const selectPage = (slug: string) => {
     const p = pages.find(x => x.slug === slug);
@@ -169,21 +140,6 @@ export default function AdminPages() {
           </Card>
         </AnimatedSection>
       </div>
-      <Card>
-        <CardContent className="space-y-4 p-6">
-           <div><h2 className="font-display text-lg font-bold">Platform product policies</h2><p className="mt-1 text-sm text-muted-foreground">These are the marketplace-wide defaults shown automatically on every product page. Sellers do not need to repeat them.</p></div>
-          <div><label className="text-sm font-medium">Shipping default</label><Textarea maxLength={2000} rows={3} value={platformShipping} onChange={(event) => setPlatformShipping(event.target.value)} /></div>
-           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-             <div><label className="text-sm font-medium">Processing min. days</label><Input type="number" min="0" value={processingDaysMin} onChange={(event) => setProcessingDaysMin(event.target.value)} /></div>
-             <div><label className="text-sm font-medium">Processing max. days</label><Input type="number" min="0" value={processingDaysMax} onChange={(event) => setProcessingDaysMax(event.target.value)} /></div>
-             <div><label className="text-sm font-medium">Delivery min. days</label><Input type="number" min="0" value={deliveryDaysMin} onChange={(event) => setDeliveryDaysMin(event.target.value)} /></div>
-             <div><label className="text-sm font-medium">Delivery max. days</label><Input type="number" min="0" value={deliveryDaysMax} onChange={(event) => setDeliveryDaysMax(event.target.value)} /></div>
-           </div>
-          <div><label className="text-sm font-medium">Returns default</label><Textarea maxLength={2000} rows={3} value={platformReturns} onChange={(event) => setPlatformReturns(event.target.value)} /></div>
-          <div><label className="text-sm font-medium">Buyer-protection claim steps</label><Textarea maxLength={2000} rows={3} value={protectionSteps} onChange={(event) => setProtectionSteps(event.target.value)} /></div>
-          <Button onClick={savePolicies} disabled={policySaving} className="gap-2 gradient-admin text-primary-foreground"><Save className="h-4 w-4" /> {policySaving ? "Saving…" : "Save platform policies"}</Button>
-        </CardContent>
-      </Card>
     </div>
   );
 }
