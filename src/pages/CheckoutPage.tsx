@@ -163,9 +163,15 @@ export default function CheckoutPage() {
       }
       const { data: authSession } = await supabase.auth.getSession();
       if (!authSession.session?.access_token) throw new Error("Your session expired. Please sign in again.");
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON;
+      if (!supabaseKey) throw new Error("Supabase client configuration is missing.");
       const { data: payment, error: paymentError } = await supabase.functions.invoke("paystack", {
         body: { action: "initialize", orderIds, email: user.email },
-        headers: { Authorization: `Bearer ${authSession.session.access_token}` },
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${authSession.session.access_token}`,
+          "Content-Type": "application/json",
+        },
       });
       if (paymentError || !payment?.authorization_url) throw paymentError || new Error("Could not start secure payment.");
       if (directCheckoutItem) clearDirectCheckout();
