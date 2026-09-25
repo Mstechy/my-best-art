@@ -82,9 +82,11 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
     const platform = query.data?.platform ?? null;
     const productRow: PolicyRow = { shipping_policy: product?.shipping_info, warranty: product?.warranty, warranty_period: product?.warranty_period };
     return {
-      shipping: first(shipping(productRow, "product"), store ? shipping(store, "seller") : null, platform ? shipping(platform, "platform") : null),
-      returns: first(store ? returns(store, "seller") : null, platform ? returns(platform, "platform") : null),
-      warranty: first(warranty(productRow, "product"), store ? warranty(store, "seller") : null, platform ? warranty(platform, "platform") : null),
+      // Platform policy is authoritative for marketplace-wide terms.
+      // Seller store values remain a compatibility fallback only.
+      shipping: first(shipping(productRow, "product"), platform ? shipping(platform, "platform") : null, store ? shipping(store, "seller") : null),
+      returns: first(platform ? returns(platform, "platform") : null, store ? returns(store, "seller") : null),
+      warranty: first(warranty(productRow, "product"), platform ? warranty(platform, "platform") : null, store ? warranty(store, "seller") : null),
       protection: platform ? protection(platform) : null,
     };
   }, [product?.shipping_info, product?.warranty, product?.warranty_period, query.data]);

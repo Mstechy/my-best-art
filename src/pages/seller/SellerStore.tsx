@@ -125,31 +125,10 @@ export default function SellerStore() {
       </Card>
 
       <Card>
-        <CardHeader><CardTitle className="font-display">Store policies</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <p className="text-sm text-muted-foreground">These plain-text details appear on your product pages. Leave a field empty to use the platform policy when one is available.</p>
-          <div>
-            <Label>Return Policy</Label>
-            <Textarea value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} rows={4} />
-          </div>
-          <div>
-            <Label>Shipping Policy</Label>
-            <Textarea maxLength={2000} value={shippingPolicy} onChange={(e) => setShippingPolicy(e.target.value)} rows={4} />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <div><Label>Ships from</Label><Input maxLength={120} value={shipFromLocation} onChange={(e) => setShipFromLocation(e.target.value)} /></div>
-            <div><Label>Delivery min. days</Label><Input type="number" min="0" value={deliveryDaysMin} onChange={(e) => setDeliveryDaysMin(e.target.value)} /></div>
-            <div><Label>Delivery max. days</Label><Input type="number" min="0" value={deliveryDaysMax} onChange={(e) => setDeliveryDaysMax(e.target.value)} /></div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div><Label>Returns accepted</Label><select value={returnAccepted} onChange={(e) => setReturnAccepted(e.target.value)} className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">Not specified</option><option value="yes">Yes</option><option value="no">No</option></select></div>
-            <div><Label>Return window (days)</Label><Input type="number" min="0" value={returnWindowDays} onChange={(e) => setReturnWindowDays(e.target.value)} /></div>
-          </div>
-          <div><Label>Warranty terms</Label><Textarea maxLength={2000} value={warrantyTerms} onChange={(e) => setWarrantyTerms(e.target.value)} rows={3} /></div>
-          <div>
-            <Label>Payment Policy</Label>
-            <Textarea value={paymentPolicy} onChange={(e) => setPaymentPolicy(e.target.value)} rows={4} placeholder="Accepted payment methods, escrow details, refund timing…" />
-          </div>
+        <CardHeader><CardTitle className="font-display">Marketplace policies</CardTitle></CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">Shipping, delivery estimates, returns, refunds, buyer protection, and payment terms are set by the Tradibu admin and appear automatically on your product pages.</p>
+          <p className="mt-2 text-xs text-muted-foreground">You only need to keep your product-specific information accurate, such as condition, warranty duration, stock, and shipping availability.</p>
         </CardContent>
       </Card>
 
