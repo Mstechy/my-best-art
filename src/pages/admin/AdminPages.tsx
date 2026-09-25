@@ -99,16 +99,10 @@ export default function AdminPages() {
       <AnimatedSection variant="fade-up">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Site Pages</h1>
-          <p className="mt-1 text-muted-foreground">Edit public legal and info pages. Supports markdown. Product policies live in the Platform policies tab.</p>
+          <p className="mt-1 text-muted-foreground">Edit public legal, policy, and info pages. Supports markdown.</p>
         </div>
       </AnimatedSection>
 
-      <Tabs defaultValue="pages" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="pages">Site pages</TabsTrigger>
-          <TabsTrigger value="policies">Platform policies</TabsTrigger>
-        </TabsList>
-        <TabsContent value="pages" className="mt-0">
       <div className="grid gap-6 lg:grid-cols-[240px_1fr]">
         <AnimatedSection variant="fade-up" delay={40}>
           <Card>
@@ -175,11 +169,9 @@ export default function AdminPages() {
           </Card>
         </AnimatedSection>
       </div>
-        </TabsContent>
-        <TabsContent value="policies" className="mt-0">
       <Card>
         <CardContent className="space-y-4 p-6">
-           <div><h2 className="font-display text-lg font-bold">Platform product policies</h2><p className="mt-1 text-sm text-muted-foreground">These are the marketplace-wide defaults shown automatically on every product page and on the public shipping and refund pages. Fill them once here.</p></div>
+           <div><h2 className="font-display text-lg font-bold">Platform product policies</h2><p className="mt-1 text-sm text-muted-foreground">These are the marketplace-wide defaults shown automatically on every product page. Sellers do not need to repeat them.</p></div>
           <div><label className="text-sm font-medium">Shipping default</label><Textarea maxLength={2000} rows={3} value={platformShipping} onChange={(event) => setPlatformShipping(event.target.value)} /></div>
            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
              <div><label className="text-sm font-medium">Processing min. days</label><Input type="number" min="0" value={processingDaysMin} onChange={(event) => setProcessingDaysMin(event.target.value)} /></div>
@@ -192,8 +184,6 @@ export default function AdminPages() {
           <Button onClick={savePolicies} disabled={policySaving} className="gap-2 gradient-admin text-primary-foreground"><Save className="h-4 w-4" /> {policySaving ? "Saving…" : "Save platform policies"}</Button>
         </CardContent>
       </Card>
-        </TabsContent>
-      </Tabs>
     </div>
   );
 }
