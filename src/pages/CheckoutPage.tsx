@@ -165,6 +165,7 @@ export default function CheckoutPage() {
       if (!authSession.session?.access_token) throw new Error("Your session expired. Please sign in again.");
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON;
       if (!supabaseKey) throw new Error("Supabase client configuration is missing.");
+      supabase.functions.setAuth(authSession.session.access_token);
       const { data: payment, error: paymentError } = await supabase.functions.invoke("paystack", {
         body: { action: "initialize", orderIds, email: user.email },
         headers: {
@@ -173,7 +174,17 @@ export default function CheckoutPage() {
           "Content-Type": "application/json",
         },
       });
-      if (paymentError || !payment?.authorization_url) throw paymentError || new Error("Could not start secure payment.");
+      if (paymentError || !payment?.authorization_url) {
+        let message = paymentError?.message || "Could not start secure payment.";
+        const context = (paymentError as { context?: Response } | null)?.context;
+        if (context?.json) {
+          try {
+            const payload = await context.json() as { error?: string };
+            if (payload.error) message = payload.error;
+          } catch { /* keep the original error */ }
+        }
+        throw new Error(message);
+      }
       if (directCheckoutItem) clearDirectCheckout();
       else clearCart();
       toast.success("Order created. Complete payment securely with Paystack.");
