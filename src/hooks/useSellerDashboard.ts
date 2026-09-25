@@ -281,6 +281,30 @@ export function useSellerOrdersPage(sellerId: string | undefined, page: number, 
   );
 }
 
+export function useSellerOrderDetail(sellerId: string | undefined, orderId: string | undefined) {
+  return useSupabaseQuery(
+    [...supabaseKeys.table("orders"), "seller-detail-row", sellerId ?? "", orderId ?? ""],
+    async () => {
+      if (!sellerId || !orderId) return null as SellerOrder | null;
+      const { data: row, error: orderError } = await supabase
+        .from("orders")
+        .select("id,buyer_id,status,total_amount,currency,tracking_number,carrier,estimated_delivery,created_at,shipping_recipient_name,shipping_phone,shipping_address_line,shipping_city,shipping_country,status_history")
+        .eq("id", orderId)
+        .eq("seller_id", sellerId)
+        .maybeSingle();
+      if (orderError) throw orderError;
+      if (!row) return null;
+      const [{ data: itemRows, error: itemError }, { data: profile }] = await Promise.all([
+        supabase.from("order_items").select("id,order_id,product_id,product_variant_id,title,image_url,variant,quantity,unit_price,total_price").eq("order_id", orderId),
+        supabase.from("profiles").select("full_name").eq("user_id", row.buyer_id).maybeSingle(),
+      ]);
+      if (itemError) throw itemError;
+      return { ...row, buyer_name: profile?.full_name ?? null, items: (itemRows ?? []) as SellerOrderItem[] } as SellerOrder;
+    },
+    { enabled: !!sellerId && !!orderId, staleTime: 30_000 },
+  );
+}
+
 export function useSellerDashboard(userId: string | undefined) {
   const products = useSellerProducts(userId);
   const pendingApproval = usePendingApprovalCount(userId);

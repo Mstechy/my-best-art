@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import ShipOrderDialog from "@/components/ShipOrderDialog";
 import { useAuth } from "@/hooks/useAuth";
-import { useSellerOrders } from "@/hooks/useSellerDashboard";
+import { useSellerOrderDetail } from "@/hooks/useSellerDashboard";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,9 +22,9 @@ export default function SellerOrderDetail() {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  const query = useSellerOrders(user?.id);
+  const query = useSellerOrderDetail(user?.id, id);
   const [shipping, setShipping] = useState(false);
-  const order = query.data?.find((item) => item.id === id);
+  const order = query.data;
 
   if (query.isLoading) return <div className="space-y-3">{[1, 2, 3].map((n) => <div key={n} className="h-32 animate-pulse rounded-2xl bg-muted" />)}</div>;
   if (query.isError) return <Card><CardContent className="py-12 text-center text-destructive">Could not load this order. Please refresh and try again.</CardContent></Card>;
