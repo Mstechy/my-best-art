@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Card, CardContent } from "@/components/ui/card";
@@ -39,9 +39,7 @@ export default function AdminPages() {
   const load = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase.from("site_pages" as any).select("*").order("slug");
-      // Shipping and returns are owned by the Platform product policies card below.
-      // Their site_pages entries are legacy seeds kept out of this editor to avoid duplicates.
-      const list = ((data as any as Page[]) || []).filter((page) => !["shipping", "refund"].includes(page.slug));
+      const list = (data as any as Page[]) || [];
     setPages(list);
     if (list.length && !activeSlug) {
       setActiveSlug(list[0].slug);
@@ -101,7 +99,7 @@ export default function AdminPages() {
       <AnimatedSection variant="fade-up">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Site Pages</h1>
-          <p className="mt-1 text-muted-foreground">Edit public legal and info pages. Supports markdown. Shipping and returns come from the platform policy card below.</p>
+          <p className="mt-1 text-muted-foreground">Edit public legal, policy, and info pages. Supports markdown.</p>
         </div>
       </AnimatedSection>
 
@@ -110,7 +108,7 @@ export default function AdminPages() {
           <Card>
             <CardContent className="p-3 space-y-1">
               {loading ? (
-                <p className="text-sm text-muted-foreground p-2">Loadingâ€¦</p>
+                <p className="text-sm text-muted-foreground p-2">Loading…</p>
               ) : pages.map(p => (
                 <button
                   key={p.slug}
@@ -150,7 +148,7 @@ export default function AdminPages() {
                         onChange={e => setBody(e.target.value)}
                         rows={22}
                         className="font-mono text-sm"
-                        placeholder="# Heading&#10;&#10;Write content using markdownâ€¦"
+                        placeholder="# Heading&#10;&#10;Write content using markdown…"
                       />
                       <p className="mt-2 text-xs text-muted-foreground">Markdown supported: **bold**, *italic*, # headings, - lists, [links](url), tables.</p>
                     </TabsContent>
@@ -162,7 +160,7 @@ export default function AdminPages() {
                   </Tabs>
                   <div className="flex justify-end">
                     <Button onClick={save} disabled={saving} className="gap-2 gradient-admin text-primary-foreground">
-                      <Save className="h-4 w-4" /> {saving ? "Savingâ€¦" : "Save Page"}
+                      <Save className="h-4 w-4" /> {saving ? "Saving…" : "Save Page"}
                     </Button>
                   </div>
                 </>
@@ -173,7 +171,7 @@ export default function AdminPages() {
       </div>
       <Card>
         <CardContent className="space-y-4 p-6">
-           <div><h2 className="font-display text-lg font-bold">Platform product policies</h2><p className="mt-1 text-sm text-muted-foreground">These are the marketplace-wide defaults shown automatically on every product page and on the public shipping and refund policy pages. Fill them once here — sellers do not repeat them.</p></div>
+           <div><h2 className="font-display text-lg font-bold">Platform product policies</h2><p className="mt-1 text-sm text-muted-foreground">These are the marketplace-wide defaults shown automatically on every product page. Sellers do not need to repeat them.</p></div>
           <div><label className="text-sm font-medium">Shipping default</label><Textarea maxLength={2000} rows={3} value={platformShipping} onChange={(event) => setPlatformShipping(event.target.value)} /></div>
            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
              <div><label className="text-sm font-medium">Processing min. days</label><Input type="number" min="0" value={processingDaysMin} onChange={(event) => setProcessingDaysMin(event.target.value)} /></div>
@@ -183,7 +181,7 @@ export default function AdminPages() {
            </div>
           <div><label className="text-sm font-medium">Returns default</label><Textarea maxLength={2000} rows={3} value={platformReturns} onChange={(event) => setPlatformReturns(event.target.value)} /></div>
           <div><label className="text-sm font-medium">Buyer-protection claim steps</label><Textarea maxLength={2000} rows={3} value={protectionSteps} onChange={(event) => setProtectionSteps(event.target.value)} /></div>
-          <Button onClick={savePolicies} disabled={policySaving} className="gap-2 gradient-admin text-primary-foreground"><Save className="h-4 w-4" /> {policySaving ? "Savingâ€¦" : "Save platform policies"}</Button>
+          <Button onClick={savePolicies} disabled={policySaving} className="gap-2 gradient-admin text-primary-foreground"><Save className="h-4 w-4" /> {policySaving ? "Saving…" : "Save platform policies"}</Button>
         </CardContent>
       </Card>
     </div>

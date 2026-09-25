@@ -1,2 +1,2 @@
-import PlatformPolicyPage from "./PlatformPolicyPage";
-export default function ShippingPage() { return <PlatformPolicyPage kind="shipping" fallbackTitle="Shipping Policy" />; }
+import DynamicPage from "../legal/DynamicPage";
+export default function ShippingPage() { return <DynamicPage slug="shipping" fallbackTitle="Shipping Policy" />; }
