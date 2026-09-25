@@ -3,12 +3,11 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, Search, Truck } from "lucide-react";
+import { ShoppingCart, Search, Truck, Package, MessageSquare } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import AnimatedSection from "@/components/AnimatedSection";
 import ShipOrderDialog from "@/components/ShipOrderDialog";
 import { supabase } from "@/integrations/supabase/client";
-import type { Enums } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { useSellerOrders } from "@/hooks/useSellerDashboard";
@@ -26,6 +25,7 @@ const statusColors: Record<string, string> = {
 
 export default function SellerOrders() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
@@ -34,21 +34,6 @@ export default function SellerOrders() {
   const ordersQuery = useSellerOrders(user?.id);
   const orders = ordersQuery.data ?? [];
   const loading = ordersQuery.isLoading;
-
-  const updateStatus = async (orderId: string, newStatus: Enums<"order_status">) => {
-    const order = orders.find(o => o.id === orderId);
-    if (newStatus === "shipped") {
-      if (order) setShipDialogOrder(order);
-      return;
-    }
-    const { error } = await supabase.rpc("update_seller_order_fulfillment" as never, {
-      p_order_id: orderId,
-      p_status: newStatus,
-    } as never);
-    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
-    toast({ title: `Order marked as ${newStatus}` });
-    ordersQuery.refetch();
-  };
 
   const confirmShip = async (data: { carrier: string; tracking_number: string; estimated_delivery: string | null }) => {
     if (!shipDialogOrder || !user) return;
@@ -78,7 +63,7 @@ export default function SellerOrders() {
     return matchesSearch && matchesTab;
   });
 
-  const tabs: Tab[] = ["all", "pending", "processing", "shipped", "delivered", "cancelled"];
+  const tabs: Tab[] = ["all", "pending", "processing", "shipped", "delivered"];
 
   return (
     <div className="space-y-6">
@@ -108,7 +93,9 @@ export default function SellerOrders() {
 
       <AnimatedSection variant="fade-up" delay={100}>
         {loading ? (
-          <div className="text-center py-12 text-muted-foreground">Loading orders...</div>
+          <div className="space-y-3" aria-label="Loading orders">{[1, 2, 3].map((n) => <div key={n} className="h-36 animate-pulse rounded-2xl bg-muted" />)}</div>
+        ) : ordersQuery.isError ? (
+          <Card><CardContent className="py-12 text-center text-destructive">Could not load orders. Please refresh and try again.</CardContent></Card>
         ) : filtered.length === 0 ? (
           <Card className="border-border/60">
             <CardContent className="py-16">
@@ -123,43 +110,32 @@ export default function SellerOrders() {
           </Card>
         ) : (
           <div className="space-y-3">
-            {filtered.map(order => (
-              <Card key={order.id} className="border-border/60">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                      <p className="font-display font-semibold text-foreground text-sm">Order #{order.id.slice(0, 8)}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{new Date(order.created_at).toLocaleDateString()}</p>
-                      {(order.tracking_number || order.carrier) && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {order.carrier && `${order.carrier} · `}{order.tracking_number || "tracking pending"}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-display font-bold text-foreground">${order.total_amount}</span>
-                      <Badge className={statusColors[order.status] || ""}>{order.status}</Badge>
-                      {(order.status === "pending" || order.status === "processing") && (
-                        <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setShipDialogOrder(order)}>
-                          <Truck className="h-3.5 w-3.5" /> Ship
-                        </Button>
-                      )}
-                      {(order.status === "pending" || order.status === "processing") && (
-                        <Select onValueChange={(val) => updateStatus(order.id, val as Enums<"order_status">)}>
-                          <SelectTrigger className="w-[140px] h-8 text-xs">
-                            <SelectValue placeholder="Update status" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {order.status === "pending" && <SelectItem value="processing">Processing</SelectItem>}
-                            <SelectItem value="cancelled">Cancel</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+            {filtered.map(order => {
+              const first = order.items[0];
+              return (
+                <Card key={order.id} className="border-border/60 transition-shadow hover:shadow-md">
+                  <CardContent className="p-4">
+                    <Link to={`/seller/orders/${order.id}`} className="block">
+                      <div className="flex gap-3">
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted">
+                          {first?.image_url ? <img src={first.image_url} alt={first.title || "Product"} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 font-semibold text-foreground">{first?.title || "Product details unavailable"}</p>
+                          {first?.variant && <p className="mt-1 text-xs text-muted-foreground">{first.variant}</p>}
+                          <p className="mt-1 text-xs text-muted-foreground">x{first?.quantity || 0}{order.items.length > 1 ? ` · +${order.items.length - 1} more` : ""}</p>
+                          <p className="mt-2 text-xs text-muted-foreground">{order.buyer_name || "Buyer"} · {order.shipping_city || "City unavailable"}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">#{order.id.slice(0, 8)} · {new Date(order.created_at).toLocaleDateString()}</p>
+                        </div>
+                        <div className="flex shrink-0 flex-col items-end gap-2"><span className="font-display font-bold text-foreground">{order.currency} {Number(order.total_amount).toLocaleString()}</span><Badge className={statusColors[order.status] || ""}>{order.status}</Badge></div>
+                      </div>
+                      {(order.carrier || order.tracking_number) && <p className="mt-3 text-xs text-muted-foreground">{order.carrier && `${order.carrier} · `}{order.tracking_number || "Tracking pending"}</p>}
+                    </Link>
+                    <div className="mt-3 flex justify-end gap-2"><Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => navigate(`/seller/chat?partner=${order.buyer_id}`)}><MessageSquare className="h-3.5 w-3.5" /> Message buyer</Button>{(order.status === "pending" || order.status === "processing") && <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setShipDialogOrder(order)}><Truck className="h-3.5 w-3.5" /> Ship</Button>}</div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </AnimatedSection>

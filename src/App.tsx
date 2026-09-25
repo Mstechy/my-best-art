@@ -54,6 +54,7 @@ const AdminCollections = lazy(() => import("@/pages/admin/AdminCollections"));
 const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
 const SellerProducts = lazy(() => import("@/pages/seller/SellerProducts"));
 const SellerOrders = lazy(() => import("@/pages/seller/SellerOrders"));
+const SellerOrderDetail = lazy(() => import("@/pages/seller/SellerOrderDetail"));
 const SellerAds = lazy(() => import("@/pages/seller/SellerAds"));
 const SellerWallet = lazy(() => import("@/pages/seller/SellerWallet"));
 const SellerChat = lazy(() => import("@/pages/seller/SellerChat"));
@@ -185,6 +186,7 @@ function AppRoutes() {
           <Route path="/seller/store" element={<SellerRoute><RouteSuspense><SellerStore /></RouteSuspense></SellerRoute>} />
           <Route path="/seller/collections" element={<SellerRoute><RouteSuspense><SellerCollections /></RouteSuspense></SellerRoute>} />
           <Route path="/seller/orders" element={<SellerRoute><RouteSuspense><SellerOrders /></RouteSuspense></SellerRoute>} />
+           <Route path="/seller/orders/:id" element={<SellerRoute><RouteSuspense><SellerOrderDetail /></RouteSuspense></SellerRoute>} />
           <Route path="/seller/reviews" element={<SellerRoute><RouteSuspense><SellerReviews /></RouteSuspense></SellerRoute>} />
           <Route path="/seller/analytics" element={<SellerRoute><RouteSuspense><SellerAnalytics /></RouteSuspense></SellerRoute>} />
           <Route path="/seller/ads" element={<SellerRoute><RouteSuspense><SellerAds /></RouteSuspense></SellerRoute>} />

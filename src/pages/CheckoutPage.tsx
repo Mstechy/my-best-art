@@ -43,7 +43,7 @@ export default function CheckoutPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [address, setAddress] = useState({ name: "", street: "", city: "", state: "", zip: "", country: "" });
+  const [address, setAddress] = useState({ name: "", phone: "", street: "", city: "", state: "", zip: "", country: "" });
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [saveAfter, setSaveAfter] = useState(false);
   const [addressLabel, setAddressLabel] = useState("");
@@ -108,7 +108,7 @@ export default function CheckoutPage() {
   const applySaved = (a: SavedAddress) => {
     const savedCountry = COUNTRIES.find(country => country.code === a.country || country.name.toLowerCase() === a.country.toLowerCase())?.code || "";
     setAddress({
-      name: a.recipient, street: [a.line1, a.line2].filter(Boolean).join(", "),
+      name: a.recipient, phone: a.phone || "", street: [a.line1, a.line2].filter(Boolean).join(", "),
       city: a.city, state: a.region || "", zip: a.postal_code || "", country: savedCountry,
     });
   };
@@ -134,7 +134,7 @@ export default function CheckoutPage() {
 
       if (saveAfter) {
         await supabase.from("addresses" as any).insert({
-          user_id: user.id, label: addressLabel || null, recipient: address.name,
+          user_id: user.id, label: addressLabel || null, recipient: address.name, phone: address.phone || null,
           line1: address.street, city: address.city, region: address.state || null,
           postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
         } as any);
@@ -258,6 +258,10 @@ export default function CheckoutPage() {
                   <label htmlFor="checkout-name" className={labelCls}>Full Name *</label>
                   <input id="checkout-name" className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" />
                 </div>
+                 <div>
+                   <label htmlFor="checkout-phone" className={labelCls}>Phone</label>
+                   <input id="checkout-phone" className={inputCls} value={address.phone} onChange={e => setAddress(p => ({ ...p, phone: e.target.value }))} placeholder="+234 800 000 0000" />
+                 </div>
                 <div>
                   <label htmlFor="checkout-street" className={labelCls}>Street Address *</label>
                   <input id="checkout-street" className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" />

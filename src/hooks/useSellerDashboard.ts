@@ -148,9 +148,23 @@ export function useSellerWeeklyRevenue(userId: string | undefined) {
   );
 }
 
+export interface SellerOrderItem {
+  id: string;
+  order_id: string;
+  product_id: string | null;
+  product_variant_id: string | null;
+  title: string | null;
+  image_url: string | null;
+  variant: string | null;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+}
+
 export interface SellerOrder {
   id: string;
   buyer_id: string;
+  buyer_name: string | null;
   status: string;
   total_amount: number;
   currency: string;
@@ -158,19 +172,44 @@ export interface SellerOrder {
   carrier: string | null;
   estimated_delivery: string | null;
   created_at: string;
+  shipping_recipient_name: string | null;
+  shipping_phone: string | null;
+  shipping_address_line: string | null;
+  shipping_city: string | null;
+  shipping_country: string | null;
+  status_history: unknown;
+  items: SellerOrderItem[];
 }
 
 export function useSellerOrders(sellerId: string | undefined) {
   return useSupabaseQuery(
-    [...supabaseKeys.table("orders"), sellerId ?? ""],
+    [...supabaseKeys.table("orders"), "seller-detail", sellerId ?? ""],
     async () => {
-      if (!sellerId) return [];
-      const { data } = await supabase
+      if (!sellerId) return [] as SellerOrder[];
+      const { data: orderRows, error: orderError } = await supabase
         .from("orders")
-        .select("*")
+        .select("id,buyer_id,status,total_amount,currency,tracking_number,carrier,estimated_delivery,created_at,shipping_recipient_name,shipping_phone,shipping_address_line,shipping_city,shipping_country,status_history")
         .eq("seller_id", sellerId)
         .order("created_at", { ascending: false });
-      return (data ?? []) as unknown as SellerOrder[];
+      if (orderError) throw orderError;
+      const orders = (orderRows ?? []) as Omit<SellerOrder, "items" | "buyer_name">[];
+      if (!orders.length) return [] as SellerOrder[];
+      const ids = orders.map((order) => order.id);
+      const buyerIds = [...new Set(orders.map((order) => order.buyer_id))];
+      const [{ data: itemRows, error: itemError }, { data: profiles, error: profileError }] = await Promise.all([
+        supabase.from("order_items").select("id,order_id,product_id,product_variant_id,title,image_url,variant,quantity,unit_price,total_price").in("order_id", ids),
+        supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds),
+      ]);
+      if (itemError) throw itemError;
+      if (profileError) throw profileError;
+      const names = new Map((profiles ?? []).map((profile) => [profile.user_id, profile.full_name]));
+      const items = new Map<string, SellerOrderItem[]>();
+      (itemRows ?? []).forEach((item) => {
+        const list = items.get(item.order_id) ?? [];
+        list.push(item as SellerOrderItem);
+        items.set(item.order_id, list);
+      });
+      return orders.map((order) => ({ ...order, buyer_name: names.get(order.buyer_id) ?? null, items: items.get(order.id) ?? [] }));
     },
     { enabled: !!sellerId, staleTime: 30_000 },
   );

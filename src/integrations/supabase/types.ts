@@ -497,6 +497,9 @@ export type Database = {
           product_id: string | null
           product_variant_id: string | null
           quantity: number
+          title: string | null
+          image_url: string | null
+          variant: string | null
           total_price: number
           unit_price: number
         }
@@ -506,6 +509,9 @@ export type Database = {
           product_id?: string | null
           product_variant_id?: string | null
           quantity?: number
+          title?: string | null
+          image_url?: string | null
+          variant?: string | null
           total_price: number
           unit_price: number
         }
@@ -515,6 +521,9 @@ export type Database = {
           product_id?: string | null
           product_variant_id?: string | null
           quantity?: number
+          title?: string | null
+          image_url?: string | null
+          variant?: string | null
           total_price?: number
           unit_price?: number
         }
@@ -547,6 +556,11 @@ export type Database = {
           seller_id: string
           shipped_at: string | null
           shipping_address: Json | null
+          shipping_recipient_name: string | null
+          shipping_phone: string | null
+          shipping_address_line: string | null
+          shipping_city: string | null
+          shipping_country: string | null
           status: Database["public"]["Enums"]["order_status"]
           status_history: Json
           total_amount: number
@@ -564,6 +578,11 @@ export type Database = {
           seller_id: string
           shipped_at?: string | null
           shipping_address?: Json | null
+          shipping_recipient_name?: string | null
+          shipping_phone?: string | null
+          shipping_address_line?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           status_history?: Json
           total_amount?: number
@@ -581,6 +600,11 @@ export type Database = {
           seller_id?: string
           shipped_at?: string | null
           shipping_address?: Json | null
+          shipping_recipient_name?: string | null
+          shipping_phone?: string | null
+          shipping_address_line?: string | null
+          shipping_city?: string | null
+          shipping_country?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           status_history?: Json
           total_amount?: number
