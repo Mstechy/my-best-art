@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
-import { Search, ShoppingCart, Package } from "lucide-react";
+import { Search, ShoppingCart, Package, Download } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface OrderWithDetails {
   id: string;
@@ -16,7 +17,6 @@ interface OrderWithDetails {
   created_at: string;
   tracking_number: string | null;
   buyer_name: string;
-  buyer_email: string;
   seller_name: string;
   item_count: number;
 }
@@ -37,6 +37,8 @@ export default function AdminOrders() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
+  const [exporting, setExporting] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchOrders = async () => {
@@ -49,9 +51,9 @@ export default function AdminOrders() {
 
       // Get all buyer + seller IDs
       const userIds = [...new Set([...ordersData.map(o => o.buyer_id), ...ordersData.map(o => o.seller_id)])];
-      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name, email").in("user_id", userIds);
-      const profileMap: Record<string, { name: string; email: string }> = {};
-      profiles?.forEach(p => { profileMap[p.user_id] = { name: p.full_name || "Unknown", email: p.email }; });
+      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+      const profileMap: Record<string, string> = {};
+      profiles?.forEach(p => { profileMap[p.user_id] = p.full_name || "Unknown"; });
 
       // Get order item counts
       const orderIds = ordersData.map(o => o.id);
@@ -66,9 +68,8 @@ export default function AdminOrders() {
         currency: o.currency,
         created_at: o.created_at,
         tracking_number: o.tracking_number,
-        buyer_name: profileMap[o.buyer_id]?.name || "Unknown",
-        buyer_email: profileMap[o.buyer_id]?.email || "",
-        seller_name: profileMap[o.seller_id]?.name || "Unknown",
+        buyer_name: profileMap[o.buyer_id] || "Unknown",
+        seller_name: profileMap[o.seller_id] || "Unknown",
         item_count: countMap[o.id] || 0,
       })));
       setLoading(false);
@@ -85,6 +86,22 @@ export default function AdminOrders() {
     return matchesSearch && matchesTab;
   });
 
+
+  const exportOrders = async () => {
+    if (!user || !filtered.length) return;
+    setExporting(true);
+    const escape = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const header = ["order_id", "created_at", "status", "buyer_name", "seller_name", "currency", "total_amount", "tracking_number"];
+    const rows = filtered.map((order) => [order.id, order.created_at, order.status, order.buyer_name, order.seller_name, order.currency, order.total_amount, order.tracking_number].map(escape).join(","));
+    const blob = new Blob([[header.join(","), ...rows].join("\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url; link.download = `orders-${new Date().toISOString().slice(0, 10)}.csv`; link.click();
+    URL.revokeObjectURL(url);
+    const { error } = await (supabase.from("admin_order_exports") as any).insert({ admin_id: user.id, format: "csv", order_ids: filtered.map((order) => order.id) });
+    setExporting(false);
+    if (error) window.alert("The export was downloaded, but its audit record could not be saved.");
+  };
   const tabs: Tab[] = ["all", "pending", "processing", "shipped", "delivered", "cancelled"];
 
   return (
@@ -93,6 +110,7 @@ export default function AdminOrders() {
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">All Orders</h1>
           <p className="mt-1 text-muted-foreground">Monitor all marketplace transactions ({orders.length} total)</p>
+          <Button onClick={exportOrders} disabled={exporting || !filtered.length} className="mt-3 gap-2"><Download className="h-4 w-4" />{exporting ? "Preparing export..." : "Export visible orders"}</Button>
         </div>
       </AnimatedSection>
 
@@ -147,7 +165,6 @@ export default function AdminOrders() {
                         <TableCell>
                           <div>
                             <span className="text-sm font-medium text-foreground">{order.buyer_name}</span>
-                            <p className="text-xs text-muted-foreground">{order.buyer_email}</p>
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-foreground">{order.seller_name}</TableCell>

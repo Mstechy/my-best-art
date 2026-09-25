@@ -29,6 +29,7 @@ export default function SellerOrders() {
   const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
+  const [showArchive, setShowArchive] = useState(false);
   const [shipDialogOrder, setShipDialogOrder] = useState<ReturnType<typeof useSellerOrders>["data"][number] | null>(null);
 
   const ordersQuery = useSellerOrders(user?.id);
@@ -57,8 +58,11 @@ export default function SellerOrders() {
     ordersQuery.refetch();
   };
 
-  const filtered = orders.filter(o => {
-    const matchesSearch = !search || o.id.includes(search);
+  const archiveCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const isArchived = (order: (typeof orders)[number]) => ["delivered", "cancelled", "disputed"].includes(order.status) && new Date(order.created_at).getTime() < archiveCutoff;
+  const visibleOrders = orders.filter((order) => showArchive ? isArchived(order) : !isArchived(order));
+  const filtered = visibleOrders.filter(o => {
+    const matchesSearch = !search || o.id.includes(search) || o.buyer_name?.toLowerCase().includes(search.toLowerCase()) || o.items.some((item) => item.title?.toLowerCase().includes(search.toLowerCase()));
     const matchesTab = tab === "all" || o.status === tab;
     return matchesSearch && matchesTab;
   });
@@ -70,7 +74,10 @@ export default function SellerOrders() {
       <AnimatedSection variant="fade-up">
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Orders</h1>
-          <p className="mt-1 text-muted-foreground">Track and manage incoming orders ({orders.length} total)</p>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-muted-foreground">{showArchive ? "Completed orders older than 30 days" : "Active order history"} ({visibleOrders.length})</p>
+            <Button size="sm" variant="outline" onClick={() => setShowArchive((value) => !value)}>{showArchive ? "Show active" : "View archive"}</Button>
+          </div>
         </div>
       </AnimatedSection>
 
@@ -86,7 +93,7 @@ export default function SellerOrders() {
           {tabs.map(t => (
             <button key={t} onClick={() => setTab(t)}
               className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all capitalize ${tab === t ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-            >{t === "all" ? "All" : t} <span className="ml-1 text-xs opacity-70">({t === "all" ? orders.length : orders.filter(o => o.status === t).length})</span></button>
+            >{t === "all" ? "All" : t} <span className="ml-1 text-xs opacity-70">({t === "all" ? visibleOrders.length : visibleOrders.filter(o => o.status === t).length})</span></button>
           ))}
         </div>
       </AnimatedSection>
