@@ -76,10 +76,10 @@ export default function SellerOrders() {
   const tabs: Tab[] = ["all", "pending", "processing", "shipped", "delivered"];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <AnimatedSection variant="fade-up">
         <div>
-          <h1 className="font-display text-3xl font-bold text-foreground">Orders</h1>
+          <h1 className="font-display text-2xl font-bold text-foreground">Orders</h1>
           <div className="flex items-center justify-between gap-3">
             <p className="text-muted-foreground">{showArchive ? "Completed orders older than 30 days" : "Active order history"} ({totalForTab} total)</p>
             <Button size="sm" variant="outline" onClick={selectArchive}>{showArchive ? "Show active" : "View archive"}</Button>
@@ -90,7 +90,7 @@ export default function SellerOrders() {
       <AnimatedSection variant="fade-up" delay={50}>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by order ID..." className="pl-10 h-11" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by order ID..." className="pl-10 h-10" />
         </div>
       </AnimatedSection>
 
@@ -98,7 +98,7 @@ export default function SellerOrders() {
         <div className="flex gap-1 overflow-x-auto pb-2">
           {tabs.map(t => (
             <button key={t} onClick={() => selectTab(t)}
-              className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all capitalize ${tab === t ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
+              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium transition-all capitalize ${tab === t ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >{t === "all" ? "All" : t} <span className="ml-1 text-xs opacity-70">({counts[t] ?? 0})</span></button>
           ))}
         </div>
@@ -128,10 +128,10 @@ export default function SellerOrders() {
               const first = order.items[0];
               return (
                 <Card key={order.id} className="border-border/60 transition-shadow hover:shadow-md">
-                  <CardContent className="p-4">
-                    <Link to={`/seller/orders/${order.id}`} className="block space-y-4">
+                  <CardContent className="p-3 sm:p-4">
+                    <Link to={`/seller/orders/${order.id}`} className="block space-y-3">
                       <div className="flex gap-3 sm:gap-4">
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-24">
+                        <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-20 sm:w-20">
                           {first?.image_url ? <img src={first.image_url} alt={first.title || "Product"} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -141,7 +141,7 @@ export default function SellerOrders() {
                         </div>
                       </div>
 
-                      <div className="rounded-xl border border-border/60 bg-muted/30 p-3 sm:p-4">
+                      <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 sm:p-3">
                         <p className="text-sm font-semibold text-foreground">Deliver to</p>
                         <p className="mt-1 text-sm font-medium text-foreground">{order.shipping_recipient_name || order.buyer_name || "Buyer"}</p>
                         {order.shipping_phone && <p className="mt-1 text-sm text-muted-foreground">Phone: {order.shipping_phone}</p>}
@@ -161,7 +161,7 @@ export default function SellerOrders() {
                         </div>
                       </div>
                     </Link>
-                    <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <div className="mt-3 flex flex-wrap justify-end gap-2">
                       <Button size="sm" variant="ghost" className="h-10 gap-1.5 text-sm" onClick={() => navigate(`/seller/chat?partner=${order.buyer_id}`)}><MessageSquare className="h-4 w-4" /> Message buyer</Button>
                       {(order.status === "pending" || order.status === "processing") && <Button size="sm" variant="outline" className="h-10 gap-1.5 text-sm" onClick={() => setShipDialogOrder(order)}><Truck className="h-4 w-4" /> Ship</Button>}
                     </div>
