@@ -6,7 +6,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useAuth } from "@/hooks/useAuth";
 import { useDedupedMutation } from "@/hooks/useDedupedMutation";
 import { supabase } from "@/integrations/supabase/client";
-import { logError } from "@/lib/errorHandler";
+import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
 import { toast } from "sonner";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -161,13 +161,12 @@ export default function CheckoutPage() {
         if (error) throw error;
         if (orderId) orderIds.push(orderId);
       }
-      if (directCheckoutItem) clearDirectCheckout();
-      else clearCart();
-
       const { data: payment, error: paymentError } = await supabase.functions.invoke("paystack", {
         body: { action: "initialize", orderIds, email: user.email },
       });
       if (paymentError || !payment?.authorization_url) throw paymentError || new Error("Could not start secure payment.");
+      if (directCheckoutItem) clearDirectCheckout();
+      else clearCart();
       toast.success("Order created. Complete payment securely with Paystack.");
       window.location.assign(payment.authorization_url);
     }, [user, address, saveAfter, addressLabel, saved.length, checkoutItems, directCheckoutItem, reconcileCheckoutItems, clearCart, clearDirectCheckout, navigate]),
@@ -191,7 +190,7 @@ export default function CheckoutPage() {
       await placeOrder(idempotencyKey);
     } catch (error: unknown) {
       logError(error, "checkout");
-      const message = error instanceof Error ? error.message : "Failed to place order. Please try again.";
+      const message = getUserFacingErrorMessage(error, "checkout");
       toast.error(message);
     } finally {
       setLoading(false);
