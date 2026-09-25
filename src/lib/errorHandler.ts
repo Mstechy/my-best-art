@@ -45,7 +45,8 @@ export function logError(error: unknown, context: string): void {
   const safeMessage = error instanceof Error ? error.message : String(error);
 
   if (DEV) {
-    console.error(`[${context}]`, error);
+    const details = error && typeof error === "object" ? JSON.stringify(error) : String(error);
+    console.error(`[${context}] ${details}`, error);
     return;
   }
 
