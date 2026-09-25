@@ -1,5 +1,8 @@
 // This file runs in Supabase Edge Functions (Deno), not the Vite/browser TypeScript environment.
-declare const Deno: { env: { get(name: string): string | undefined } };
+declare const Deno: {
+  env: { get(name: string): string | undefined };
+  serve(handler: (request: Request) => Response | Promise<Response>): void;
+};
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
