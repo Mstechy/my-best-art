@@ -887,7 +887,9 @@ export default function SellerProducts() {
       condition: (attr("condition") || condition).toLowerCase(),
       warranty: attr("warranty") || warrantyText,
       warranty_period: warrantyPeriod === "none" ? null : warrantyPeriod,
-      shipping_info: null,
+      // Preserve legacy product shipping text on edits; new listings rely on the
+      // platform policy and do not ask sellers to enter shipping terms.
+      shipping_info: editingProduct?.shipping_info ?? null,
       key_features: cleanFeatures,
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
@@ -1570,7 +1572,7 @@ export default function SellerProducts() {
                     </>
                   )}
                   <div>
-                    <label className="text-sm font-medium text-foreground">Warranty</label>
+                    <label className="text-sm font-medium text-foreground">Warranty duration</label>
                     <Select value={warrantyPeriod} onValueChange={setWarrantyPeriod}>
                       <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>
