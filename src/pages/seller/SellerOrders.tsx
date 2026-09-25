@@ -122,26 +122,42 @@ export default function SellerOrders() {
               return (
                 <Card key={order.id} className="border-border/60 transition-shadow hover:shadow-md">
                   <CardContent className="p-4">
-                    <Link to={`/seller/orders/${order.id}`} className="block">
-                      <div className="flex gap-3">
-                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    <Link to={`/seller/orders/${order.id}`} className="block space-y-4">
+                      <div className="flex gap-3 sm:gap-4">
+                        <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-muted sm:h-24 sm:w-24">
                           {first?.image_url ? <img src={first.image_url} alt={first.title || "Product"} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center"><Package className="h-6 w-6 text-muted-foreground" /></div>}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="line-clamp-2 font-semibold text-foreground">{first?.title || "Product details unavailable"}</p>
-                          {first?.variant && <p className="mt-1 text-xs text-muted-foreground">{first.variant}</p>}
-                          <p className="mt-1 text-xs text-muted-foreground">x{first?.quantity || 0}{order.items.length > 1 ? ` · +${order.items.length - 1} more` : ""}</p>
-                           <p className="mt-2 text-xs font-medium text-foreground">{order.shipping_recipient_name || order.buyer_name || "Buyer"}</p>
-                           {order.shipping_phone && <p className="text-xs text-muted-foreground">Phone: {order.shipping_phone}</p>}
-                           <p className="text-xs text-muted-foreground">{order.shipping_address_line || "Address unavailable"}</p>
-                           <p className="text-xs text-muted-foreground">{order.shipping_city || "City unavailable"}{order.shipping_country ? `, ${order.shipping_country}` : ""}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">#{order.id.slice(0, 8)} · {new Date(order.created_at).toLocaleDateString()}</p>
+                          <p className="line-clamp-2 text-base font-semibold leading-snug text-foreground">{first?.title || "Product details unavailable"}</p>
+                          {first?.variant && <p className="mt-1 text-sm text-muted-foreground">{first.variant}</p>}
+                          <p className="mt-1 text-sm text-muted-foreground">Quantity: {first?.quantity || 0}{order.items.length > 1 ? ` · +${order.items.length - 1} more item${order.items.length > 2 ? "s" : ""}` : ""}</p>
                         </div>
-                         <div className="flex w-full shrink-0 items-center justify-between gap-2 sm:w-auto sm:flex-col sm:items-end"><span className="font-display font-bold text-foreground">{order.currency} {Number(order.total_amount).toLocaleString()}</span><Badge className={statusColors[order.status] || ""}>{order.status}</Badge></div>
                       </div>
-                      {(order.carrier || order.tracking_number) && <p className="mt-3 text-xs text-muted-foreground">{order.carrier && `${order.carrier} · `}{order.tracking_number || "Tracking pending"}</p>}
+
+                      <div className="rounded-xl border border-border/60 bg-muted/30 p-3 sm:p-4">
+                        <p className="text-sm font-semibold text-foreground">Deliver to</p>
+                        <p className="mt-1 text-sm font-medium text-foreground">{order.shipping_recipient_name || order.buyer_name || "Buyer"}</p>
+                        {order.shipping_phone && <p className="mt-1 text-sm text-muted-foreground">Phone: {order.shipping_phone}</p>}
+                        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{order.shipping_address_line || "Address unavailable"}</p>
+                        <p className="text-sm leading-relaxed text-muted-foreground">{order.shipping_city || "City unavailable"}{order.shipping_country ? `, ${order.shipping_country}` : ""}</p>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
+                        <div className="text-sm text-muted-foreground">
+                          <p className="font-medium text-foreground">Order #{order.id.slice(0, 8)}</p>
+                          <p>{new Date(order.created_at).toLocaleDateString()}</p>
+                          {(order.carrier || order.tracking_number) && <p className="mt-1">{order.carrier && `${order.carrier} · `}{order.tracking_number || "Tracking pending"}</p>}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="font-display text-lg font-bold text-foreground">{order.currency} {Number(order.total_amount).toLocaleString()}</span>
+                          <Badge className={statusColors[order.status] || ""}>{order.status}</Badge>
+                        </div>
+                      </div>
                     </Link>
-                    <div className="mt-3 flex justify-end gap-2"><Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => navigate(`/seller/chat?partner=${order.buyer_id}`)}><MessageSquare className="h-3.5 w-3.5" /> Message buyer</Button>{(order.status === "pending" || order.status === "processing") && <Button size="sm" variant="outline" className="h-8 gap-1.5 text-xs" onClick={() => setShipDialogOrder(order)}><Truck className="h-3.5 w-3.5" /> Ship</Button>}</div>
+                    <div className="mt-4 flex flex-wrap justify-end gap-2">
+                      <Button size="sm" variant="ghost" className="h-10 gap-1.5 text-sm" onClick={() => navigate(`/seller/chat?partner=${order.buyer_id}`)}><MessageSquare className="h-4 w-4" /> Message buyer</Button>
+                      {(order.status === "pending" || order.status === "processing") && <Button size="sm" variant="outline" className="h-10 gap-1.5 text-sm" onClick={() => setShipDialogOrder(order)}><Truck className="h-4 w-4" /> Ship</Button>}
+                    </div>
                   </CardContent>
                 </Card>
               );
