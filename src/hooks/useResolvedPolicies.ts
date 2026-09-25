@@ -80,7 +80,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
   const policies = useMemo(() => {
     const store = query.data?.store ?? null;
     const platform = query.data?.platform ?? null;
-    const productRow: PolicyRow = { shipping_policy: product?.shipping_info, warranty: product?.warranty, warranty_period: product?.warranty_period };
+    const productRow: PolicyRow = { warranty: product?.warranty, warranty_period: product?.warranty_period };
     return {
       // Platform policy is authoritative for marketplace-wide terms.
       // Seller store values remain a compatibility fallback only.
@@ -89,7 +89,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
       warranty: first(warranty(productRow, "product"), platform ? warranty(platform, "platform") : null, store ? warranty(store, "seller") : null),
       protection: platform ? protection(platform) : null,
     };
-  }, [product?.shipping_info, product?.warranty, product?.warranty_period, query.data]);
+  }, [product?.warranty, product?.warranty_period, query.data]);
 
   return { ...query, policies, sourceLabel };
 }

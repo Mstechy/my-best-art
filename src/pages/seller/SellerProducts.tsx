@@ -887,7 +887,7 @@ export default function SellerProducts() {
       condition: (attr("condition") || condition).toLowerCase(),
       warranty: attr("warranty") || warrantyText,
       warranty_period: warrantyPeriod === "none" ? null : warrantyPeriod,
-      shipping_info: shippingInfo.trim() || null,
+      shipping_info: null,
       key_features: cleanFeatures,
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
@@ -1583,12 +1583,6 @@ export default function SellerProducts() {
                         <SelectItem value="lifetime">Lifetime</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-foreground">Shipping Info</label>
-                    <Textarea value={shippingInfo} onChange={(e) => setShippingInfo(e.target.value)}
-                      placeholder="e.g. Ships within 3-5 business days via standard courier"
-                      className="mt-1" rows={2} />
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">User Manual / Guide (optional PDF)</label>
