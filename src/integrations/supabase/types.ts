@@ -614,6 +614,9 @@ export type Database = {
           delivered_at: string | null
           estimated_delivery: string | null
           id: string
+          paid_at: string | null
+          payment_reference: string | null
+          payment_status: string
           seller_id: string
           shipped_at: string | null
           shipping_address: Json | null
@@ -636,6 +639,9 @@ export type Database = {
           delivered_at?: string | null
           estimated_delivery?: string | null
           id?: string
+          paid_at?: string | null
+          payment_reference?: string | null
+          payment_status?: string
           seller_id: string
           shipped_at?: string | null
           shipping_address?: Json | null
@@ -658,6 +664,9 @@ export type Database = {
           delivered_at?: string | null
           estimated_delivery?: string | null
           id?: string
+          paid_at?: string | null
+          payment_reference?: string | null
+          payment_status?: string
           seller_id?: string
           shipped_at?: string | null
           shipping_address?: Json | null

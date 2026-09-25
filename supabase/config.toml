@@ -3,3 +3,7 @@ project_id = "bnkyddmmhaaefzfvzpqs"
 [functions.visual-product-search]
 # Product discovery is available to visitors; the function's only secret stays server-side.
 verify_jwt = false
+
+[functions.paystack]
+# The function authenticates initialize requests itself and verifies Paystack webhook signatures.
+verify_jwt = false

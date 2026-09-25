@@ -163,9 +163,13 @@ export default function CheckoutPage() {
       }
       if (directCheckoutItem) clearDirectCheckout();
       else clearCart();
-      toast.success("Order placed successfully!");
-      if (orderIds.length === 1) navigate(`/order-success/${orderIds[0]}`);
-      else navigate("/buyer/orders");
+
+      const { data: payment, error: paymentError } = await supabase.functions.invoke("paystack", {
+        body: { action: "initialize", orderIds, email: user.email },
+      });
+      if (paymentError || !payment?.authorization_url) throw paymentError || new Error("Could not start secure payment.");
+      toast.success("Order created. Complete payment securely with Paystack.");
+      window.location.assign(payment.authorization_url);
     }, [user, address, saveAfter, addressLabel, saved.length, checkoutItems, directCheckoutItem, reconcileCheckoutItems, clearCart, clearDirectCheckout, navigate]),
     useCallback(() => "place-order", []),
   );
