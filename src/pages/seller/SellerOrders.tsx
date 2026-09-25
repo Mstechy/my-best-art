@@ -131,7 +131,10 @@ export default function SellerOrders() {
                           <p className="line-clamp-2 font-semibold text-foreground">{first?.title || "Product details unavailable"}</p>
                           {first?.variant && <p className="mt-1 text-xs text-muted-foreground">{first.variant}</p>}
                           <p className="mt-1 text-xs text-muted-foreground">x{first?.quantity || 0}{order.items.length > 1 ? ` · +${order.items.length - 1} more` : ""}</p>
-                          <p className="mt-2 text-xs text-muted-foreground">{order.buyer_name || "Buyer"} · {order.shipping_city || "City unavailable"}</p>
+                           <p className="mt-2 text-xs font-medium text-foreground">{order.shipping_recipient_name || order.buyer_name || "Buyer"}</p>
+                           {order.shipping_phone && <p className="text-xs text-muted-foreground">Phone: {order.shipping_phone}</p>}
+                           <p className="text-xs text-muted-foreground">{order.shipping_address_line || "Address unavailable"}</p>
+                           <p className="text-xs text-muted-foreground">{order.shipping_city || "City unavailable"}{order.shipping_country ? `, ${order.shipping_country}` : ""}</p>
                           <p className="mt-1 text-xs text-muted-foreground">#{order.id.slice(0, 8)} · {new Date(order.created_at).toLocaleDateString()}</p>
                         </div>
                         <div className="flex shrink-0 flex-col items-end gap-2"><span className="font-display font-bold text-foreground">{order.currency} {Number(order.total_amount).toLocaleString()}</span><Badge className={statusColors[order.status] || ""}>{order.status}</Badge></div>
