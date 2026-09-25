@@ -58,7 +58,7 @@ Deno.serve(async (req: Request) => {
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return json({ error: "Authentication required" }, 401);
   const { anon, admin } = clients();
-  const { data: auth } = await anon.auth.getUser(authHeader);
+  const { data: auth } = await anon.auth.getUser(authHeader.replace(/^Bearer\s+/i, ""));
   if (!auth.user) return json({ error: "Authentication required" }, 401);
   const ids = Array.isArray(body.orderIds) ? body.orderIds.filter((id): id is string => typeof id === "string") : [];
   if (!ids.length || ids.length > 50) return json({ error: "orderIds must contain 1-50 orders" }, 400);
