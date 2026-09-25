@@ -215,6 +215,72 @@ export function useSellerOrders(sellerId: string | undefined) {
   );
 }
 
+export type TabStatus = "all" | "pending" | "processing" | "shipped" | "delivered" | "cancelled";
+
+export interface SellerOrderCounts {
+  total: number;
+  byStatus: Record<string, number>;
+}
+
+export function useSellerOrderCounts(sellerId: string | undefined) {
+  return useSupabaseQuery(
+    [...supabaseKeys.table("orders"), "seller-counts", sellerId ?? ""],
+    async () => {
+      if (!sellerId) return { total: 0, byStatus: {} } as SellerOrderCounts;
+      const statuses = ["all", "pending", "processing", "shipped", "delivered", "cancelled"];
+      const counts = await Promise.all(statuses.map(async (status) => {
+        let query = supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", sellerId);
+        if (status !== "all") query = query.eq("status", status);
+        const { count } = await query;
+        return [status, count ?? 0] as const;
+      }));
+      const byStatus = Object.fromEntries(counts);
+      return { total: byStatus.all ?? 0, byStatus } as SellerOrderCounts;
+    },
+    { enabled: !!sellerId, staleTime: 30_000 },
+  );
+}
+
+export function useSellerOrdersPage(sellerId: string | undefined, page: number, pageSize: number, status: TabStatus, archived: boolean) {
+  return useSupabaseQuery(
+    [...supabaseKeys.table("orders"), "seller-page", sellerId ?? "", page, pageSize, status, archived],
+    async () => {
+      if (!sellerId) return [] as SellerOrder[];
+      const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      let query = supabase
+        .from("orders")
+        .select("id,buyer_id,status,total_amount,currency,tracking_number,carrier,estimated_delivery,created_at,shipping_recipient_name,shipping_phone,shipping_address_line,shipping_city,shipping_country,status_history")
+        .eq("seller_id", sellerId)
+        .order("created_at", { ascending: false })
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+      if (status !== "all") query = query.eq("status", status);
+      if (archived) query = query.in("status", ["delivered", "cancelled", "disputed"]).lt("created_at", cutoff);
+      else query = query.gte("created_at", cutoff).not("status", "in", "(delivered,cancelled,disputed)");
+      const { data: orderRows, error: orderError } = await query;
+      if (orderError) throw orderError;
+      const orders = (orderRows ?? []) as Omit<SellerOrder, "items" | "buyer_name">[];
+      if (!orders.length) return [] as SellerOrder[];
+      const ids = orders.map((order) => order.id);
+      const buyerIds = [...new Set(orders.map((order) => order.buyer_id))];
+      const [{ data: itemRows, error: itemError }, { data: profiles, error: profileError }] = await Promise.all([
+        supabase.from("order_items").select("id,order_id,product_id,product_variant_id,title,image_url,variant,quantity,unit_price,total_price").in("order_id", ids),
+        supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds),
+      ]);
+      if (itemError) throw itemError;
+      if (profileError) throw profileError;
+      const names = new Map((profiles ?? []).map((profile) => [profile.user_id, profile.full_name]));
+      const items = new Map<string, SellerOrderItem[]>();
+      (itemRows ?? []).forEach((item) => {
+        const list = items.get(item.order_id) ?? [];
+        list.push(item as SellerOrderItem);
+        items.set(item.order_id, list);
+      });
+      return orders.map((order) => ({ ...order, buyer_name: names.get(order.buyer_id) ?? null, items: items.get(order.id) ?? [] }));
+    },
+    { enabled: !!sellerId, staleTime: 30_000, placeholderData: (previous) => previous },
+  );
+}
+
 export function useSellerDashboard(userId: string | undefined) {
   const products = useSellerProducts(userId);
   const pendingApproval = usePendingApprovalCount(userId);

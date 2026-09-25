@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,9 @@ import ShipOrderDialog from "@/components/ShipOrderDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { useSellerOrders } from "@/hooks/useSellerDashboard";
+import { useSellerOrderCounts, useSellerOrdersPage, type SellerOrder } from "@/hooks/useSellerDashboard";
+
+const PAGE_SIZE = 20;
 
 type Tab = "all" | "pending" | "processing" | "shipped" | "delivered" | "cancelled";
 
@@ -30,11 +32,16 @@ export default function SellerOrders() {
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [showArchive, setShowArchive] = useState(false);
-  const [shipDialogOrder, setShipDialogOrder] = useState<ReturnType<typeof useSellerOrders>["data"][number] | null>(null);
+  const [shipDialogOrder, setShipDialogOrder] = useState<SellerOrder | null>(null);
+  const [page, setPage] = useState(0);
 
-  const ordersQuery = useSellerOrders(user?.id);
+  const countsQuery = useSellerOrderCounts(user?.id);
+  const ordersQuery = useSellerOrdersPage(user?.id, page, PAGE_SIZE, tab, showArchive);
   const orders = ordersQuery.data ?? [];
   const loading = ordersQuery.isLoading;
+  const counts = countsQuery.data?.byStatus ?? {};
+  const totalForTab = tab === "all" ? (countsQuery.data?.total ?? 0) : (counts[tab] ?? 0);
+  const totalPages = Math.max(1, Math.ceil(totalForTab / PAGE_SIZE));
 
   const confirmShip = async (data: { carrier: string; tracking_number: string; estimated_delivery: string | null }) => {
     if (!shipDialogOrder || !user) return;
@@ -58,14 +65,13 @@ export default function SellerOrders() {
     ordersQuery.refetch();
   };
 
-  const archiveCutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const isArchived = (order: (typeof orders)[number]) => ["delivered", "cancelled", "disputed"].includes(order.status) && new Date(order.created_at).getTime() < archiveCutoff;
-  const visibleOrders = orders.filter((order) => showArchive ? isArchived(order) : !isArchived(order));
-  const filtered = visibleOrders.filter(o => {
+  const filtered = orders.filter(o => {
     const matchesSearch = !search || o.id.includes(search) || o.buyer_name?.toLowerCase().includes(search.toLowerCase()) || o.items.some((item) => item.title?.toLowerCase().includes(search.toLowerCase()));
-    const matchesTab = tab === "all" || o.status === tab;
-    return matchesSearch && matchesTab;
+    return matchesSearch;
   });
+
+  const selectTab = (next: Tab) => { setTab(next); setPage(0); };
+  const selectArchive = () => { setShowArchive((value) => !value); setPage(0); };
 
   const tabs: Tab[] = ["all", "pending", "processing", "shipped", "delivered"];
 
@@ -75,8 +81,8 @@ export default function SellerOrders() {
         <div>
           <h1 className="font-display text-3xl font-bold text-foreground">Orders</h1>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-muted-foreground">{showArchive ? "Completed orders older than 30 days" : "Active order history"} ({visibleOrders.length})</p>
-            <Button size="sm" variant="outline" onClick={() => setShowArchive((value) => !value)}>{showArchive ? "Show active" : "View archive"}</Button>
+            <p className="text-muted-foreground">{showArchive ? "Completed orders older than 30 days" : "Active order history"} ({totalForTab} total)</p>
+            <Button size="sm" variant="outline" onClick={selectArchive}>{showArchive ? "Show active" : "View archive"}</Button>
           </div>
         </div>
       </AnimatedSection>
@@ -91,9 +97,9 @@ export default function SellerOrders() {
       <AnimatedSection variant="fade-up" delay={80}>
         <div className="flex gap-1 overflow-x-auto pb-2">
           {tabs.map(t => (
-            <button key={t} onClick={() => setTab(t)}
+            <button key={t} onClick={() => selectTab(t)}
               className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all capitalize ${tab === t ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
-            >{t === "all" ? "All" : t} <span className="ml-1 text-xs opacity-70">({t === "all" ? visibleOrders.length : visibleOrders.filter(o => o.status === t).length})</span></button>
+            >{t === "all" ? "All" : t} <span className="ml-1 text-xs opacity-70">({counts[t] ?? 0})</span></button>
           ))}
         </div>
       </AnimatedSection>
@@ -116,6 +122,7 @@ export default function SellerOrders() {
             </CardContent>
           </Card>
         ) : (
+          <>
           <div className="space-y-3">
             {filtered.map(order => {
               const first = order.items[0];
@@ -163,6 +170,14 @@ export default function SellerOrders() {
               );
             })}
           </div>
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 px-3 py-2">
+                <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage((value) => Math.max(0, value - 1))}>Previous</Button>
+                <span className="text-sm text-muted-foreground">Page {page + 1} of {totalPages}</span>
+                <Button size="sm" variant="outline" disabled={page + 1 >= totalPages} onClick={() => setPage((value) => value + 1)}>Next</Button>
+              </div>
+            )}
+          </>
         )}
       </AnimatedSection>
 
