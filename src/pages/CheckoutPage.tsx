@@ -161,8 +161,11 @@ export default function CheckoutPage() {
         if (error) throw error;
         if (orderId) orderIds.push(orderId);
       }
+      const { data: authSession } = await supabase.auth.getSession();
+      if (!authSession.session?.access_token) throw new Error("Your session expired. Please sign in again.");
       const { data: payment, error: paymentError } = await supabase.functions.invoke("paystack", {
         body: { action: "initialize", orderIds, email: user.email },
+        headers: { Authorization: `Bearer ${authSession.session.access_token}` },
       });
       if (paymentError || !payment?.authorization_url) throw paymentError || new Error("Could not start secure payment.");
       if (directCheckoutItem) clearDirectCheckout();
