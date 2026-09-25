@@ -1,3 +1,7 @@
+// This file runs in Supabase Edge Functions (Deno), not the Vite/browser TypeScript environment.
+declare const Deno: { env: { get(name: string): string | undefined } };
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
@@ -23,7 +27,9 @@ const hmac = async (body: string, secret: string) => {
   return Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)))).map((n) => n.toString(16).padStart(2, "0")).join("");
 };
 
-Deno.serve(async (req) => {
+type PayableOrder = { id: string; buyer_id: string; total_amount: number; currency: string; status: string; payment_status: string };
+
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const rawBody = await req.text();
   let body: { action?: string; orderIds?: string[]; email?: string };
@@ -53,8 +59,9 @@ Deno.serve(async (req) => {
   if (!auth.user) return json({ error: "Authentication required" }, 401);
   const ids = Array.isArray(body.orderIds) ? body.orderIds.filter((id): id is string => typeof id === "string") : [];
   if (!ids.length || ids.length > 50) return json({ error: "orderIds must contain 1-50 orders" }, 400);
-  const { data: orders, error: orderError } = await admin.from("orders").select("id,buyer_id,total_amount,currency,status,payment_status").in("id", ids);
-  if (orderError || !orders || orders.length !== ids.length) return json({ error: "Order not found" }, 404);
+  const { data: rawOrders, error: orderError } = await admin.from("orders").select("id,buyer_id,total_amount,currency,status,payment_status").in("id", ids);
+  const orders = (rawOrders ?? []) as PayableOrder[];
+  if (orderError || orders.length !== ids.length) return json({ error: "Order not found" }, 404);
   if (orders.some((order) => order.buyer_id !== auth.user.id || order.status !== "pending" || order.payment_status !== "unpaid")) return json({ error: "Orders are not payable" }, 409);
   if (orders.some((order) => order.currency !== "NGN")) return json({ error: "Paystack currently supports NGN orders only" }, 400);
   const amount = Math.round(orders.reduce((sum, order) => sum + Number(order.total_amount), 0) * 100);
