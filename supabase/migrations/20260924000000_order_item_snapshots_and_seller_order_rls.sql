@@ -93,7 +93,7 @@ BEGIN
   INSERT INTO public.orders (buyer_id, seller_id, total_amount, shipping_address, status,
     idempotency_key, idempotency_key_created_at, shipping_recipient_name, shipping_phone,
     shipping_address_line, shipping_city, shipping_country)
-  VALUES (auth.uid(), p_seller_id, 0, p_shipping_address, 'pending', p_idempotency_key,
+  VALUES (auth.uid(), p_seller_id, 1, p_shipping_address, 'pending', p_idempotency_key,
     CASE WHEN p_idempotency_key IS NOT NULL THEN now() ELSE NULL END,
     p_shipping_address->>'name', p_shipping_address->>'phone',
     concat_ws(', ', p_shipping_address->>'street', p_shipping_address->>'region', p_shipping_address->>'zip'),

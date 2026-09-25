@@ -55,7 +55,6 @@ export function logError(error: unknown, context: string): void {
   // When VITE_SENTRY_DSN is set, errors are automatically captured
   try {
     // Dynamic import — safe even if sentry.ts isn't in the bundle
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (import("@/lib/sentry") as any).then((sentry: any) => {
       sentry.captureError(error, context);
     }).catch(() => {
