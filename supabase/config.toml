@@ -7,8 +7,3 @@ verify_jwt = false
 [functions.paystack]
 # The function authenticates initialize requests itself and verifies Paystack webhook signatures.
 verify_jwt = false
-
-[functions.send-order-email]
-# Called by a database trigger, which cannot mint a scoped user JWT. The function
-# authenticates with the shared ORDER_EMAIL_WEBHOOK_SECRET instead.
-verify_jwt = false
