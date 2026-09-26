@@ -10,12 +10,18 @@ applyTheme(getPreferredTheme());
 // Lazy-load Sentry only when a DSN is configured to keep it out of the main bundle.
 // This also enables the dynamic import in errorHandler.ts to split @sentry/react into its own chunk.
 //
-// Sentry must never compete with the LCP path. @sentry/react is a heavy module
-// and measured ~1.2s of main-thread work when imported during startup, which
-// delayed the hero paint by seconds. Gate it behind the load event and then an
-// idle callback so it lands well after the first contentful paint and the hero
-// render. The trade-off is deliberate: an error thrown during the first paint
-// window is not reported, which is far cheaper than delaying LCP on every visit.
+// Sentry must never compete with the LCP path. @sentry/react measured 1185ms of
+// main-thread work on desktop and 2476ms on a throttled mobile connection.
+//
+// The previous gate used requestIdleCallback({ timeout: 5000 }). That timeout is
+// the bug: it FORCES the callback to run after 5s even when the main thread is
+// saturated, so on slow connections Sentry initialised during the LCP window
+// anyway. Idle time does not exist while React is blocking the main thread.
+//
+// Instead, wait for a real idle period with NO timeout, and skip entirely on
+// save-data and 2G, where the extra payload costs users real money for nothing.
+// The trade-off stays deliberate: an error thrown before Sentry loads is not
+// reported, which is far cheaper than delaying LCP on every visit.
 if (import.meta.env.VITE_SENTRY_DSN) {
   const startSentry = () =>
     import("@/lib/sentry")
@@ -24,18 +30,26 @@ if (import.meta.env.VITE_SENTRY_DSN) {
         // Sentry is optional and non-fatal
       });
 
-  const initWhenIdle = () => {
-    if ("requestIdleCallback" in window) {
-      window.requestIdleCallback(startSentry, { timeout: 5000 });
-    } else {
-      window.setTimeout(startSentry, 2000);
-    }
-  };
+  const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  const isConstrained = !!connection?.saveData || connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g";
 
-  if (document.readyState === "complete") {
-    initWhenIdle();
-  } else {
-    window.addEventListener("load", initWhenIdle, { once: true });
+  if (!isConstrained) {
+    const initWhenIdle = () => {
+      if ("requestIdleCallback" in window) {
+        // Long backstop only: genuine idle time is what normally triggers this.
+        // The point is that it is far longer than the LCP window, so a saturated
+        // main thread no longer forces Sentry to initialise early.
+        window.requestIdleCallback(startSentry, { timeout: 30000 });
+      } else {
+        window.setTimeout(startSentry, 5000);
+      }
+    };
+
+    if (document.readyState === "complete") {
+      initWhenIdle();
+    } else {
+      window.addEventListener("load", initWhenIdle, { once: true });
+    }
   }
 }
 
