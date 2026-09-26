@@ -35,10 +35,6 @@ export function initSentry(): void {
     release: `markethub@${import.meta.env.VITE_APP_VERSION || "1.0.0"}`,
     integrations: [
       Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration({
-        maskAllText: true,
-        blockAllMedia: true,
-      }),
     ],
     // Performance monitoring (sampling rate)
     tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
@@ -49,7 +45,6 @@ export function initSentry(): void {
     enabled: import.meta.env.PROD,
   });
 }
-
 /**
  * Report an error to Sentry. Safe to call even if Sentry is not configured.
  */
@@ -119,8 +114,7 @@ export function reportCoreWebVitals(): () => void {
     const clsObserver = new PerformanceObserver((list) => {
       let clsValue = 0;
       list.getEntries().forEach((entry) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        clsValue += (entry as any).value || 0;
+        clsValue += (entry as PerformanceEntry & { value: number }).value || 0;
       });
       const rating = clsValue < 0.1 ? "good" : clsValue < 0.25 ? "needs-improvement" : "poor";
       reportWebVital("CLS", clsValue, rating);

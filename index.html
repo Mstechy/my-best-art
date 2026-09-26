@@ -34,8 +34,12 @@
       }
     </script>
 
-    <!-- Preconnect to Supabase for API data used by the marketplace -->
-    <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin />
+    <!-- Preconnect to Supabase for API data used by the marketplace. The REST
+         calls go out with fetch(), which is a CORS request, so the connection
+         must be opened in CORS mode or it cannot be reused. Without
+         crossorigin the socket is opened anonymously, the API call opens a
+         second one, and the hint is wasted. -->
+    <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin="anonymous" />
     
     <!-- Preconnect to Google Fonts for faster font loading -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

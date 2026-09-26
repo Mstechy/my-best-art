@@ -34,27 +34,26 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   const isConstrained = !!connection?.saveData || connection?.effectiveType === "2g" || connection?.effectiveType === "slow-2g";
 
   if (!isConstrained) {
-    const initWhenIdle = () => {
-      // Feature-detect without `in`. TypeScript already declares
-      // requestIdleCallback on Window, so `"requestIdleCallback" in window`
-      // is always true and narrows the fallback branch to `never`.
-      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
-        .requestIdleCallback;
-      if (typeof idle === "function") {
-        // Long backstop only: genuine idle time is what normally triggers this.
-        // The point is that it is far longer than the LCP window, so a saturated
-        // main thread no longer forces Sentry to initialise early.
-        idle(startSentry, { timeout: 30000 });
-      } else {
-        window.setTimeout(startSentry, 5000);
-      }
+    let started = false;
+    const startOnce = () => {
+      if (started) return;
+      started = true;
+      startSentry();
     };
 
-    if (document.readyState === "complete") {
-      initWhenIdle();
-    } else {
-      window.addEventListener("load", initWhenIdle, { once: true });
-    }
+    // Any of these means the visitor is actually using the site. By then the
+    // page is already interactive, so the chunk costs nothing they were waiting
+    // for, and an error is far more likely to have been triggered by exactly
+    // the interaction that starts this.
+    const events: (keyof WindowEventMap)[] = ["pointerdown", "keydown", "touchstart", "scroll"];
+    events.forEach((event) =>
+      window.addEventListener(event, startOnce, { once: true, passive: true })
+    );
+
+    // Do not hold the listeners open forever on a page nobody touches.
+    window.setTimeout(() => {
+      events.forEach((event) => window.removeEventListener(event, startOnce));
+    }, 30000);
   }
 }
 

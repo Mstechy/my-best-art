@@ -17,6 +17,8 @@ type HeroImageSources = {
   mobileSrc?: string;
   width?: number;
   height?: number;
+  mobileWidth?: number;
+  mobileHeight?: number;
 };
 
 /**
@@ -32,6 +34,8 @@ function getHeroImageSources(src: string | null): HeroImageSources {
       mobileSrc: "/images/electronics-products-960x540.webp",
       width: 1600,
       height: 686,
+      mobileWidth: 960,
+      mobileHeight: 540,
     };
   }
 
@@ -160,7 +164,19 @@ const HeroSlider = memo(function HeroSlider({
               {/* Background image */}
               {imageSource.src && !failedImages.has(index) ? (
                 <picture className="block h-full w-full">
-                  {imageSource.mobileSrc && <source media="(max-width: 640px)" srcSet={imageSource.mobileSrc} type="image/webp" />}
+                  {/* The mobile source is a different aspect ratio to the desktop
+                      one, so it carries its own intrinsic size. Without this the
+                      <img> advertised 1600x686 while displaying a 960x540 file,
+                      which reserves the wrong box before CSS applies. */}
+                  {imageSource.mobileSrc && (
+                    <source
+                      media="(max-width: 640px)"
+                      srcSet={imageSource.mobileSrc}
+                      width={imageSource.mobileWidth}
+                      height={imageSource.mobileHeight}
+                      type="image/webp"
+                    />
+                  )}
                   <img
                     src={imageSource.src}
                     width={imageSource.width}
