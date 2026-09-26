@@ -50,7 +50,9 @@ export default function CategoriesPage() {
     navigate(`/marketplace${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`);
   };
 
-  return <div className="min-h-screen bg-[#FAFAFA] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
+  // `pb-16`: BottomTabBar (h≈58) is fixed over the last viewport of every
+  // phone-width page; without this the footer's copyright row sat behind it.
+  return <div className="min-h-screen bg-[#FAFAFA] pb-16 text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
     <MarketplaceNavbar showSearch={false} categories={categories.map((category) => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <main>
@@ -58,7 +60,7 @@ export default function CategoriesPage() {
         <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
           <nav aria-label="Breadcrumb" className="mb-6 text-xs text-white/60"><Link to="/" className="hover:text-white hover:underline">Home</Link><span className="mx-2">/</span><span>Departments</span></nav>
           <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
-            <div>
+            <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F6C75D]">Marketplace departments</p>
               <h1 className="mt-3 max-w-2xl text-4xl font-black uppercase tracking-tight md:text-6xl">Find products by department</h1>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">Start broad, then narrow by the details that matter—brand, size, condition, price, material, compatibility, and delivery destination.</p>

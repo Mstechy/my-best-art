@@ -410,7 +410,7 @@ export default function ProductDetailPage() {
       <CartDrawer />
       <Container className="py-6">
         {loading && !product ? (
-          <div className="grid lg:grid-cols-2 gap-8 animate-pulse">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-pulse">
             <div className="aspect-square bg-[#F2F3F5] dark:bg-[#202020] rounded-2xl" />
             <div className="space-y-4">
               <div className="h-6 bg-[#F2F3F5] dark:bg-[#202020] rounded w-3/4" />
@@ -428,7 +428,7 @@ export default function ProductDetailPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             <div>
               {mediaItems.length > 0 && (
                 <Carousel setApi={setCarouselApi} className="w-full">

@@ -1311,13 +1311,21 @@ export default function SellerProducts() {
                 <div className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">Simple listing path:</span> 1. Describe the product &rarr; 2. Add options and exact SKU prices &rarr; 3. Fill the requested details &rarr; 4. Add photos &rarr; 5. Review and publish. Fields marked <span className="font-semibold text-foreground">*</span> are required.
                 </div>
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="basic">1. Basics</TabsTrigger>
-                  <TabsTrigger value="variants">2. Options</TabsTrigger>
-                  <TabsTrigger value="specs">3. Details</TabsTrigger>
-                  <TabsTrigger value="media">4. Photos</TabsTrigger>
-                  <TabsTrigger value="preview">5. Review</TabsTrigger>
-                </TabsList>
+                {/* The five triggers are `whitespace-nowrap`, so at phone widths
+                    their sum is wider than the dialog: without a scroll wrapper
+                    the last tabs were pushed past the viewport edge (and clipped
+                    by `body`'s overflow-x clip). `w-max min-w-full` keeps the
+                    equal five-column layout from `sm` up while the wrapper
+                    scrolls horizontally below it. */}
+                <div className="overflow-x-auto pb-1">
+                  <TabsList className="grid w-max min-w-full grid-cols-5">
+                    <TabsTrigger value="basic">1. Basics</TabsTrigger>
+                    <TabsTrigger value="variants">2. Options</TabsTrigger>
+                    <TabsTrigger value="specs">3. Details</TabsTrigger>
+                    <TabsTrigger value="media">4. Photos</TabsTrigger>
+                    <TabsTrigger value="preview">5. Review</TabsTrigger>
+                  </TabsList>
+                </div>
 
                 <TabsContent value="basic" className="space-y-4 mt-4">
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
@@ -1359,7 +1367,7 @@ export default function SellerProducts() {
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="text-sm font-medium text-foreground">{hasVariantRows ? "Starting price (from SKU prices)" : "Price for a single-price product *"}</label>
                       {hasVariantRows ? (
@@ -1398,7 +1406,7 @@ export default function SellerProducts() {
                     <Input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} placeholder="5" className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">Shows "Only X left" when stock drops to this number.</p>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="text-sm font-medium text-foreground">{hasVariantRows ? "Total SKU stock" : "Stock quantity"}</label>
                       {hasVariantRows ? (
@@ -1425,7 +1433,10 @@ export default function SellerProducts() {
                           <label className="text-sm font-medium text-foreground">Discount %</label>
                           <Input type="number" min="1" max="99" value={flashDealDiscount} onChange={(e) => setFlashDealDiscount(e.target.value)} placeholder="e.g. 20" className="mt-1" />
                         </div>
-                        <div className="grid grid-cols-2 gap-4">
+                        {/* Two-up only from `sm`: at phone widths two
+                            datetime-local inputs side by side clip their
+                            own date/time segments. */}
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <div>
                             <label className="text-sm font-medium text-foreground">Start Date & Time</label>
                             <Input type="datetime-local" value={flashDealStart} onChange={(e) => setFlashDealStart(e.target.value)} className="mt-1" />
@@ -1479,7 +1490,7 @@ export default function SellerProducts() {
                   {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's “From” price.</p></div>}
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
-                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 sm:grid-cols-4 xl:grid-cols-7">
+                      <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 [&>label]:min-w-0 sm:grid-cols-4 xl:grid-cols-7">
                         {showLegacySizeColumn && <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Size</span><Input value={row.size} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, size: e.target.value } : item))} placeholder="e.g. Large" /></label>}
                         {showColourColumn && <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">Colour</span><Input value={row.color} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, color: e.target.value } : item))} placeholder="e.g. Black" /></label>}
                         {row.optionName && <label className="space-y-1"><span className="text-xs font-semibold text-muted-foreground">{variationTypeDetails(row.optionName).label}</span><Input value={row.optionValue || ""} onChange={e => setVariantRows(rows => rows.map((item, i) => i === index ? { ...item, optionValue: e.target.value } : item))} placeholder={variationTypeDetails(row.optionName).placeholder} /></label>}

@@ -10,19 +10,62 @@
     overflow-x: clip;
   }
 
-  body,
-  #root {
+  body {
     min-width: 0;
     max-width: 100%;
     overflow-x: clip;
   }
 
-  /* iOS Safari zooms focused form controls when their computed font size is
-     below 16px. Keep mobile controls readable and zoom-free. */
-  @media (max-width: 767px) {
-    input:not([type="checkbox"]):not([type="radio"]),
+  /* #root deliberately does NOT clip: `body` already clips the decorative
+     overflow this guards against, and a second clipping box inside the app
+     shell silently swallowed real layout overflow (it hid the checkout card
+     overflowing a phone viewport, which cut the Place Order button off). */
+  #root {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* A form control must never force its container wider than the screen.
+     Every browser gives text controls a default intrinsic width (~241px at a
+     16px font size). That width becomes the "content-based minimum" of any
+     grid/flex item wrapping the control, so a two-up field row used to drag
+     the whole checkout column out to ~550px inside a 390px phone viewport and
+     the excess was clipped away. `min-width: 0` on the control itself keeps it
+     shrinkable wherever it is itself the grid/flex item. */
+  input,
+  select,
+  textarea {
+    min-width: 0;
+  }
+
+  /* Layouts written as `grid lg:grid-cols-2` create their single phone column
+     IMPLICITLY, and an implicit track defaults to `auto`, i.e. it is floored
+     at the content's min-content size. One nowrap child (the product gallery
+     thumbnail strip, a long unbroken string) then drags the whole track — and
+     the page with it — past a 320px viewport, where `overflow-x: clip` on
+     `body` cuts the excess off. `minmax(0, 1fr)` is exactly what Tailwind's
+     own `grid-cols-1` emits: the track fills the available width and never
+     grows past it, so wide children scroll or wrap inside their column
+     instead of widening the page. Explicit templates (`grid-cols-*`,
+     `[240px_1fr]`) and intrinsic (max-content) sizing are unaffected, and the
+     codebase has no `grid-flow-col` grids depending on content-sized implicit
+     columns. */
+  .grid {
+    grid-auto-columns: minmax(0, 1fr);
+  }
+
+  /* iOS/iPadOS Safari zooms the entire page when a focused control's computed
+     font size is under 16px — the layout then looks magnified and the right
+     hand side (on checkout, the Place Order button) falls outside the visible
+     area. The trigger is the DEVICE, not the viewport width alone: every iPad
+     (768-1024px) and any iPhone held in landscape (up to 932px wide) is wider
+     than 767px yet still zooms. So size controls for coarse-pointer devices at
+     any width, and keep a phone/tablet fallback below the `lg` breakpoint. */
+  @media (max-width: 1023px), (hover: none) and (pointer: coarse) {
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
     select,
-    textarea {
+    textarea,
+    [contenteditable="true"] {
       font-size: 16px !important;
     }
   }

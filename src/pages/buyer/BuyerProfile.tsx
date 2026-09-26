@@ -222,7 +222,7 @@ export default function BuyerProfile() {
                   value={(newAddr as any)[key] || ""}
                   onChange={(e) => setNewAddr({ ...newAddr, [key]: (e.target as HTMLInputElement).value })} />
               ))}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <FieldInput label="City *" placeholder="City" value={newAddr.city || ""} onChange={(e) => setNewAddr({ ...newAddr, city: (e.target as HTMLInputElement).value })} />
                 <FieldInput label="Region" placeholder="State/Province" value={newAddr.region || ""} onChange={(e) => setNewAddr({ ...newAddr, region: (e.target as HTMLInputElement).value })} />
                 <FieldInput label="Postal Code" placeholder="ZIP / Postal" value={newAddr.postal_code || ""} onChange={(e) => setNewAddr({ ...newAddr, postal_code: (e.target as HTMLInputElement).value })} />

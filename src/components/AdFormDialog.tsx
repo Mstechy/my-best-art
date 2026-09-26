@@ -138,7 +138,7 @@ export default function AdFormDialog({ open, onOpenChange, ad, onSaved }: Props)
             <Label htmlFor="ad-target">Target URL</Label>
             <Input id="ad-target" value={targetUrl} onChange={e => setTargetUrl(e.target.value)} placeholder="/marketplace" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label>Placement</Label>
               <Select value={placement} onValueChange={setPlacement}>
@@ -158,7 +158,7 @@ export default function AdFormDialog({ open, onOpenChange, ad, onSaved }: Props)
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <Label htmlFor="ad-start">Start date</Label>
               <Input id="ad-start" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />

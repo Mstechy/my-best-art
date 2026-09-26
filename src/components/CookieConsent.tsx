@@ -24,7 +24,11 @@ export default function CookieConsent() {
   if (!visible) return null;
 
   return (
-    <div className="fixed inset-x-3 bottom-3 z-[60] sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-[360px] animate-fade-in">
+    /* Phones/tablets keep the persistent bottom chrome (BottomTabBar h≈58,
+       the checkout/product CTA bars h≈65), so the card is lifted clear of it
+       instead of covering — and being covered by — that navigation. `md` and
+       up have no bottom bar, so the normal corner offset applies there. */
+    <div className="fixed inset-x-3 bottom-[calc(6rem_+_env(safe-area-inset-bottom,0px))] z-[60] sm:inset-x-auto sm:right-4 sm:w-[360px] md:bottom-4 animate-fade-in">
       <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1A1A1A] shadow-xl p-4">
 
         {/* Close button */}

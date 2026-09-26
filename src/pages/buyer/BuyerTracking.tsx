@@ -227,8 +227,10 @@ export default function BuyerTracking() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* Carrier & tracking number row */}
-            <div className="grid grid-cols-2 gap-3 mt-1">
+            {/* Carrier & tracking number row — stacks below `sm` so the
+                mono tracking number has room instead of being truncated
+                inside a half-width card. */}
+            <div className="grid grid-cols-1 gap-3 mt-1 sm:grid-cols-2">
               <div className="rounded-xl bg-[#F8F8F8] dark:bg-[#111111] border border-[#F0F0F0] dark:border-[#222222] p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Truck className="h-3.5 w-3.5 text-[#3B82F6]" />
@@ -244,7 +246,10 @@ export default function BuyerTracking() {
                   <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880]">Tracking #</p>
                 </div>
                 <div className="flex items-center gap-1">
-                  <p className="text-sm font-mono font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">
+                  {/* `min-w-0`: as a flex child the mono number would
+                      otherwise refuse to shrink below its content and the
+                      copy button would be pushed out of the card. */}
+                  <p className="min-w-0 text-sm font-mono font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">
                     {modalOrder.tracking_number || "Not assigned"}
                   </p>
                   {modalOrder.tracking_number && (

@@ -44,7 +44,9 @@ export default function ProductRichDescription({
                       <td className="px-4 py-3 text-xs text-[#888880] dark:text-[#A0A0A0] w-2/5 capitalize border-r border-[#E8E8E8] dark:border-[#222222]">
                         {key.replace(/([A-Z])/g, " $1").trim()}
                       </td>
-                      <td className="px-4 py-3 text-xs font-medium text-[#111111] dark:text-[#FAF5F2]">
+                      {/* `break-words`: a long unbroken value (serial, URL)
+                          would otherwise widen the table past the card. */}
+                      <td className="px-4 py-3 text-xs font-medium text-[#111111] dark:text-[#FAF5F2] break-words">
                         {value}
                       </td>
                     </tr>

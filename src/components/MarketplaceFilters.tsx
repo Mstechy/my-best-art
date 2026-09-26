@@ -106,7 +106,7 @@ export default function MarketplaceFilters({
 
           <div>
             <Label>Condition</Label>
-            <div className="grid grid-cols-4 gap-2 mt-2">
+            <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-4">
               {["any", "new", "used", "refurbished"].map(c => (
                 <button key={c} onClick={() => setDraft(d => ({ ...d, condition: c }))}
                   className={`h-10 rounded-md border text-xs font-medium capitalize transition-colors ${draft.condition === c ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}>

@@ -33,8 +33,11 @@ interface SavedAddress {
   is_default: boolean;
 }
 
-// Shared input style
-const inputCls = "w-full h-10 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm text-[#111111] dark:text-[#FAF5F2] placeholder-[#C0C0B8] dark:placeholder-[#444444] outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors";
+// Shared input style. `text-base md:text-sm` keeps the control at 16px on
+// phones so iOS Safari does not zoom the page when the field is focused
+// (see the matching rule in src/index.css), and `min-w-0` lets it shrink
+// inside narrow grid columns instead of widening the card.
+const inputCls = "w-full min-w-0 h-10 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-base md:text-sm text-[#111111] dark:text-[#FAF5F2] placeholder-[#C0C0B8] dark:placeholder-[#444444] outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors";
 const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0] mb-1";
 
 export default function CheckoutPage() {
@@ -242,7 +245,7 @@ export default function CheckoutPage() {
       <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
 
-      <div className="mx-auto max-w-4xl px-4 lg:px-8 py-8">
+      <div className="mx-auto max-w-4xl px-4 lg:px-8 pt-8 pb-28 md:pb-8">
         <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-1.5 text-xs text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] mb-6 transition-colors"
@@ -252,9 +255,13 @@ export default function CheckoutPage() {
 
         <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight mb-8">Checkout</h1>
 
-        <div className="grid lg:grid-cols-5 gap-6">
+        {/* `min-w-0` on both columns: without it a grid item is floored by the
+            content-based minimum of its children (the truncated product title
+            and the field rows), which used to push the column past the phone
+            viewport and clip the order summary. */}
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* Left: shipping form */}
-          <div className="lg:col-span-3 space-y-5">
+          <div className="lg:col-span-3 min-w-0 space-y-5">
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5">
               <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Shipping Address</p>
 
@@ -289,7 +296,7 @@ export default function CheckoutPage() {
                   <label htmlFor="checkout-street" className={labelCls}>Street Address *</label>
                   <input id="checkout-street" className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="checkout-city" className={labelCls}>City *</label>
                     <input id="checkout-city" className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" />
@@ -299,7 +306,7 @@ export default function CheckoutPage() {
                     <input id="checkout-state" className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="checkout-zip" className={labelCls}>ZIP Code</label>
                     <input id="checkout-zip" className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
@@ -332,7 +339,7 @@ export default function CheckoutPage() {
           </div>
 
           {/* Right: order summary */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 min-w-0">
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 sticky top-20">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Order Summary</p>
@@ -383,7 +390,7 @@ export default function CheckoutPage() {
               <button
                 onClick={handlePlaceOrder}
                 disabled={loading}
-                className="w-full mt-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full mt-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50 hidden md:flex items-center justify-center gap-2"
               >
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
               </button>
@@ -405,6 +412,26 @@ export default function CheckoutPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Mobile checkout bar: below `md` the order summary sits under a long
+          form, so the Place Order CTA is pinned to the bottom of the screen
+          instead of being scrolled (or scrolled past) off the page. z-40 keeps
+          it under the cart drawer and sheets, matching the product page bar. */}
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E8E8E8] bg-white pb-[env(safe-area-inset-bottom,0px)] dark:border-[#222222] dark:bg-[#111111] md:hidden">
+        <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Total</p>
+            <p className="truncate text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(checkoutTotal)}</p>
+          </div>
+          <button
+            onClick={handlePlaceOrder}
+            disabled={loading}
+            className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] px-6 py-3 text-sm font-bold text-white dark:text-[#111111] transition-colors hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50"
+          >
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
+          </button>
         </div>
       </div>
     </div>
