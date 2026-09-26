@@ -21,6 +21,7 @@ import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
+import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
 
 interface Category {
   id: string;
@@ -127,8 +128,8 @@ function getListingHealth(product: Product, category?: Category): ListingHealthI
   if (product.product_images.length === 0) issues.push({ message: "Add a main product image", tone: "critical" });
   else if (product.product_images.length < 3) issues.push({ message: "Add more product views", tone: "warning" });
   if (!product.description || product.description.trim().length < 80) issues.push({ message: "Add a fuller description (80+ characters)", tone: "warning" });
-  if (!product.key_features?.some((feature) => feature.trim())) issues.push({ message: "Add key features", tone: "warning" });
-  else if (product.key_features.filter((feature) => feature.trim()).length < 3) issues.push({ message: "Add three key features", tone: "warning" });
+  // No key-feature check: the field is no longer collected in the form and the
+  // description carries that content instead.
   if (product.stock_quantity <= 0) issues.push({ message: "Restock this listing", tone: "critical" });
   else if (product.stock_quantity <= (product.low_stock_threshold ?? 5)) issues.push({ message: "Low stock", tone: "warning" });
   if (product.status === "active" && !product.is_approved) issues.push({ message: "Waiting for approval", tone: "warning" });
@@ -365,6 +366,93 @@ export default function SellerProducts() {
     localStorage.setItem(draftKey, JSON.stringify(draft));
   }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
+  // Persist the attached files alongside the text draft.
+  //
+  // localStorage cannot hold a File, so photos used to be lost on every reload
+  // and the seller had to re-pick them. The blobs live in IndexedDB instead (see
+  // `@/lib/listingDraftMedia`).
+  //
+  // Debounced for two reasons: `saveDraftMedia` replaces the whole set for the
+  // draft, so writing on every keystroke-adjacent state change would re-blob
+  // megabytes of images continuously; and an alt-text keystroke re-renders the
+  // media lists. The trailing edge means the final set is always written.
+  const mediaSignature = useMemo(
+    () => [imageItems, descriptionImageItems, videoItems, docFile].map((group) => {
+      if (Array.isArray(group)) return group.map((item) => `${item.id}:${item.file?.name ?? ""}:${item.file?.size ?? 0}`).join(",");
+      return group ? `${group.name}:${group.size}` : "";
+    }).join("|"),
+    [imageItems, descriptionImageItems, videoItems, docFile],
+  );
+
+  useEffect(() => {
+    if (editingProduct || !draftKey) return;
+    const files = [
+      ...imageItems.filter((item) => item.file).map((item) => ({ kind: "image" as const, itemId: item.id, file: item.file as File })),
+      ...descriptionImageItems.filter((item) => item.file).map((item) => ({ kind: "descriptionImage" as const, itemId: item.id, file: item.file as File })),
+      ...videoItems.filter((item) => item.file).map((item) => ({ kind: "video" as const, itemId: item.id, file: item.file as File })),
+      ...(docFile ? [{ kind: "doc" as const, itemId: "doc", file: docFile }] : []),
+    ];
+    if (files.length === 0) return;
+    const timer = window.setTimeout(() => {
+      void saveDraftMedia(draftKey, files);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [mediaSignature, draftKey, editingProduct, imageItems, descriptionImageItems, videoItems, docFile]);
+
+  /**
+   * Turn restored Files back into the shape the form renders.
+   *
+   * The object URLs must be minted fresh on every restore: the ones in the saved
+   * draft died with the page that created them, and a URL that 404s would show
+   * the seller a broken image for a photo they can plainly see in their
+   * picker. The first image stays primary so a saved ordering survives.
+   */
+  const applyRestoredMedia = useCallback((media: RestoredMedia) => {
+    if (media.images.length > 0) {
+      setImageItems((prev) => [
+        ...prev,
+        ...media.images.map((file, index) => ({
+          id: `restored-${Date.now()}-${index}`,
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          isPrimary: prev.length === 0 && index === 0,
+          alt: "",
+          status: "pending" as UploadState,
+          progress: 0,
+        })),
+      ]);
+    }
+    if (media.descriptionImages.length > 0) {
+      setDescriptionImageItems((prev) => [
+        ...prev,
+        ...media.descriptionImages.map((file, index) => ({
+          id: `restored-desc-${Date.now()}-${index}`,
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          alt: "",
+          status: "pending" as UploadState,
+          progress: 0,
+        })),
+      ]);
+    }
+    if (media.videos.length > 0) {
+      setVideoItems((prev) => [
+        ...prev,
+        ...media.videos.map((file, index) => ({
+          id: `restored-video-${Date.now()}-${index}`,
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          status: "pending" as UploadState,
+          progress: 0,
+        })),
+      ]);
+    }
+    if (media.doc) setDocFile(media.doc);
+  }, []);
+
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
   // just to recover work already entered.
@@ -388,13 +476,30 @@ export default function SellerProducts() {
       if (!hasContent) return;
       setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
       setDialogOpen(true);
-      toast({ title: "Unfinished listing reopened", description: "Continue exactly where you left off. Re-select files only if the browser was reloaded." });
+      // Restore the files too. The draft is only worth reopening once the
+      // blobs are back, so the dialog is opened first and the media applied as
+      // soon as the read resolves. A failed read leaves the text draft intact
+      // and simply reports that photos must be re-picked.
+      void loadDraftMedia(draftKey)
+        .then((media) => {
+          const restoredCount = media.images.length + media.descriptionImages.length + media.videos.length + (media.doc ? 1 : 0);
+          if (restoredCount === 0) {
+            toast({ title: "Unfinished listing reopened", description: "Continue exactly where you left off. Your photos could not be restored; please re-select them." });
+            return;
+          }
+          applyRestoredMedia(media);
+          toast({ title: "Unfinished listing reopened", description: `Continue exactly where you left off. ${restoredCount} file${restoredCount === 1 ? "" : "s"} restored.` });
+        })
+        .catch(() => {
+          toast({ title: "Unfinished listing reopened", description: "Continue where you left off. Your photos could not be restored; please re-select them." });
+        });
     } catch {
       localStorage.removeItem(draftKey);
     }
     // `toast` is the stable module-level function exported by use-toast.ts, so
     // listing it here satisfies the lint rule without ever re-running this effect.
-  }, [draftKey, toast]);
+    // `applyRestoredMedia` is a stable useCallback with no dependencies.
+  }, [draftKey, toast, applyRestoredMedia]);
 
   const revokeLocalMediaUrls = () => {
     imageItems.forEach((item) => {
@@ -572,20 +677,36 @@ export default function SellerProducts() {
     }
     resetForm();
     const saved = draftKey ? localStorage.getItem(draftKey) : null;
-    if (saved) {
-      try {
-        const draft = JSON.parse(saved) as ProductFormDraft;
-        setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
-        toast({ title: "Unfinished listing restored", description: "Your text and settings were recovered. Please reselect any files before submitting." });
-      } catch { localStorage.removeItem(draftKey); }
-    }
+    // A draft can hold photos with no text at all, so the files are checked
+    // independently of the localStorage entry. `resetForm` already cleared the
+    // in-memory lists, so nothing gets duplicated on the way back in.
+    void loadDraftMedia(draftKey || "").then((media) => {
+      const restoredCount = media.images.length + media.descriptionImages.length + media.videos.length + (media.doc ? 1 : 0);
+      if (restoredCount > 0) applyRestoredMedia(media);
+      if (saved) {
+        try {
+          const draft = JSON.parse(saved) as ProductFormDraft;
+          setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+          toast({
+            title: "Unfinished listing restored",
+            description: restoredCount > 0
+              ? `Your text, settings and ${restoredCount} file${restoredCount === 1 ? "" : "s"} were recovered.`
+              : "Your text and settings were recovered. Please reselect any files before submitting.",
+          });
+        } catch {
+          if (draftKey) localStorage.removeItem(draftKey);
+        }
+      } else if (restoredCount > 0) {
+        toast({ title: "Unfinished photos restored", description: `${restoredCount} file${restoredCount === 1 ? "" : "s"} from your last session were recovered.` });
+      }
+    });
     setDialogOpen(true);
   };
 
   const minimizeNewListing = () => {
     setDialogOpen(false);
     setListingMinimized(true);
-    toast({ title: "Listing minimized", description: "Your form and selected files are ready to continue on this page." });
+    toast({ title: "Listing minimized", description: "Your form and selected files are kept. Come back any time on this device." });
   };
 
   const handleListingDialogChange = (open: boolean) => {
@@ -603,7 +724,12 @@ export default function SellerProducts() {
   };
 
   const discardNewDraft = () => {
-    if (draftKey) localStorage.removeItem(draftKey);
+    if (draftKey) {
+      localStorage.removeItem(draftKey);
+      // The photos live outside localStorage, so they must be deleted explicitly
+      // or the next "Add Product" would resurrect the discarded images.
+      void clearDraftMedia(draftKey);
+    }
     resetForm();
     setDialogOpen(false);
     setListingMinimized(false);
@@ -813,12 +939,11 @@ export default function SellerProducts() {
     // Alt-text warning (non-blocking, per PRD)
     const missingAlt = [...imageItems, ...descriptionImageItems].some(item => !item.alt.trim());
     setAltWarning(missingAlt);
+    // Key features are no longer collected in the form, so the gate is gone.
+    // The description below is the required buyer-facing content and is checked
+    // separately. `keyFeatures` is still initialised from any stored value and
+    // written back unchanged, so editing an older listing never wipes it.
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
-    if (cleanFeatures.length < 3) {
-      toast({ title: "Add key features", description: "Add at least three buyer-facing highlights, such as condition, compatibility, or what is included.", variant: "destructive" });
-      setFormTab("media");
-      return;
-    }
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
     const cleanCategoryAttributes = Object.fromEntries(
       Object.entries(categoryAttributes)
@@ -831,11 +956,21 @@ export default function SellerProducts() {
     const selectedCategory = categories.find(c => c.id === categoryId);
     const selectedConfig = findCategoryConfig(selectedCategory);
     const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
+    // The old "at least 3 specifications" gate was an arbitrary count that sat in
+    // front of the real one and hard-blocked publishing with a toast, even for a
+    // product type that only defines two fields. The required-field check below
+    // is the meaningful gate, because it knows which fields the chosen product
+    // type actually demands.
+    //
+    // Extra specifications still help buyers compare listings, so a thin set is
+    // now a non-blocking warning rather than a wall. Publishing is only refused
+    // for a genuinely missing required field.
     const minimumSpecificationCount = 3;
     if (Object.keys(cleanCategoryAttributes).length < minimumSpecificationCount) {
-      toast({ title: "Add product specifications", description: `Add at least ${minimumSpecificationCount} relevant specifications so buyers can compare this listing.`, variant: "destructive" });
-      setFormTab("specs");
-      return;
+      toast({
+        title: "Fewer specifications than recommended",
+        description: `This listing has ${Object.keys(cleanCategoryAttributes).length} of ${minimumSpecificationCount} recommended specifications. More detail helps buyers compare it, but you can publish now.`,
+      });
     }
     const missingRequiredFields = getRequiredFields(selectedProductType)
       .filter(key => !cleanCategoryAttributes[key]?.trim())
@@ -1150,7 +1285,13 @@ export default function SellerProducts() {
       title: editingProduct ? "Product updated" : "Product submitted for approval",
       description: editingProduct ? undefined : "Your product will be visible on the marketplace once approved by admin.",
     });
-    if (draftKey) localStorage.removeItem(draftKey);
+    if (draftKey) {
+      localStorage.removeItem(draftKey);
+      // The listing is live now, so the stored blobs are dead weight. Clearing
+      // them also keeps the next "Add Product" from recovering this listing's
+      // photos into a fresh draft.
+      void clearDraftMedia(draftKey);
+    }
     resetForm();
     setDialogOpen(false);
     setListingMinimized(false);
@@ -1228,13 +1369,9 @@ export default function SellerProducts() {
     fetchProducts();
   };
 
-  const addFeature = () => { if (keyFeatures.length < 5) setKeyFeatures([...keyFeatures, ""]); };
-  const removeFeature = (index: number) => setKeyFeatures(keyFeatures.filter((_, i) => i !== index));
-  const updateFeature = (index: number, value: string) => {
-    const updated = [...keyFeatures];
-    updated[index] = value;
-    setKeyFeatures(updated);
-  };
+  // addFeature / removeFeature / updateFeature were removed with the Key Features
+  // input. The `keyFeatures` state stays because it still carries any previously
+  // stored values through an edit so they are written back unchanged.
 
   const filtered = products.filter((product) => {
     const category = categories.find((item) => item.id === product.category_id);
@@ -1261,7 +1398,7 @@ export default function SellerProducts() {
   const allVariantRowsPriced = hasVariantRows && variantRowsWithPrices.length === variantRows.length;
   const listingReadiness = [
     { label: "Product identity", detail: "Category, type, and a clear title", complete: Boolean(categoryId && productTypeKey && title.trim()) },
-    { label: "Buyer-facing content", detail: "80+ character description and at least 3 key features", complete: description.trim().length >= 80 && keyFeatures.filter((feature) => feature.trim()).length >= 3 },
+    { label: "Buyer-facing content", detail: "A clear description of at least 80 characters", complete: description.trim().length >= 80 },
     { label: "Offer", detail: hasVariantRows ? "A price and stock for every SKU" : "Price and available stock", complete: hasVariantRows ? allVariantRowsPriced && variantRows.every((row) => Number.isInteger(Number(row.stock)) && Number(row.stock) >= 0) : Number(price) > 0 && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 },
     { label: "Required specifications", detail: `${requiredSpecificationKeys.size} fields for this product type`, complete: [...requiredSpecificationKeys].every((key) => Boolean(categoryAttributes[key]?.trim())) },
     { label: "Main product photo", detail: "One is required; 3 or more views are recommended", complete: imageItems.length > 0 },
@@ -1303,7 +1440,7 @@ export default function SellerProducts() {
                   {!editingProduct && <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={minimizeNewListing}><Minus className="h-3.5 w-3.5" /> Minimize</Button>}
                 </div>
                 {!editingProduct && (
-                  <div className="mt-1 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Your progress is saved automatically. Minimize to continue later without losing this form; after a browser reload, re-select any files before submitting.</p><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
+                  <div className="mt-1 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Your progress is saved automatically, photos included. Minimize or close this page and your details and images will be waiting when you come back on this device.</p><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
                 )}
               </DialogHeader>
 
@@ -1311,21 +1448,37 @@ export default function SellerProducts() {
                 <div className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">Simple listing path:</span> 1. Describe the product &rarr; 2. Add options and exact SKU prices &rarr; 3. Fill the requested details &rarr; 4. Add photos &rarr; 5. Review and publish. Fields marked <span className="font-semibold text-foreground">*</span> are required.
                 </div>
-                {/* The five triggers are `whitespace-nowrap`, so at phone widths
-                    their sum is wider than the dialog: without a scroll wrapper
-                    the last tabs were pushed past the viewport edge (and clipped
-                    by `body`'s overflow-x clip). `w-max min-w-full` keeps the
-                    equal five-column layout from `sm` up while the wrapper
-                    scrolls horizontally below it. */}
-                <div className="overflow-x-auto pb-1">
-                  <TabsList className="grid w-max min-w-full grid-cols-5">
-                    <TabsTrigger value="basic">1. Basics</TabsTrigger>
-                    <TabsTrigger value="variants">2. Options</TabsTrigger>
-                    <TabsTrigger value="specs">3. Details</TabsTrigger>
-                    <TabsTrigger value="media">4. Photos</TabsTrigger>
-                    <TabsTrigger value="preview">5. Review</TabsTrigger>
-                  </TabsList>
-                </div>
+                {/* Five numbered steps. The triggers are `whitespace-nowrap` and
+                    their natural sum is wider than a phone-width dialog, which
+                    pushed steps 4 and 5 past the viewport edge and made the user
+                    scroll sideways to reach them.
+
+                    Two changes fix it without a scroll wrapper:
+                    1. `grid-cols-5` on a `w-full` list, so the columns share the
+                       available width instead of sizing to content.
+                    2. `whitespace-normal` plus a tighter horizontal padding on the
+                       triggers, so each label wraps onto two lines within its
+                       column rather than forcing the row wider.
+
+                    The single-digit step numbers are kept on their own line so the
+                    sequence still reads 1 to 5 at a glance. */}
+                <TabsList className="grid h-auto w-full grid-cols-5 gap-1">
+                  <TabsTrigger value="basic" className="h-full flex-col gap-0.5 whitespace-normal px-1 py-1.5 text-[11px] leading-tight sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:text-sm sm:px-3">
+                    <span className="font-semibold">1.</span> Basics
+                  </TabsTrigger>
+                  <TabsTrigger value="variants" className="h-full flex-col gap-0.5 whitespace-normal px-1 py-1.5 text-[11px] leading-tight sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:text-sm sm:px-3">
+                    <span className="font-semibold">2.</span> Options
+                  </TabsTrigger>
+                  <TabsTrigger value="specs" className="h-full flex-col gap-0.5 whitespace-normal px-1 py-1.5 text-[11px] leading-tight sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:text-sm sm:px-3">
+                    <span className="font-semibold">3.</span> Details
+                  </TabsTrigger>
+                  <TabsTrigger value="media" className="h-full flex-col gap-0.5 whitespace-normal px-1 py-1.5 text-[11px] leading-tight sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:text-sm sm:px-3">
+                    <span className="font-semibold">4.</span> Photos
+                  </TabsTrigger>
+                  <TabsTrigger value="preview" className="h-full flex-col gap-0.5 whitespace-normal px-1 py-1.5 text-[11px] leading-tight sm:flex-row sm:gap-1.5 sm:whitespace-nowrap sm:text-sm sm:px-3">
+                    <span className="font-semibold">5.</span> Review
+                  </TabsTrigger>
+                </TabsList>
 
                 <TabsContent value="basic" className="space-y-4 mt-4">
                   <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
@@ -1662,30 +1815,16 @@ export default function SellerProducts() {
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">Leave empty to ship worldwide.</p>
                   </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium text-foreground">Key Features <span className="text-xs text-muted-foreground font-normal">(up to 5)</span></label>
-                      <Button type="button" variant="ghost" size="sm" onClick={addFeature} disabled={keyFeatures.length >= 5} className="h-7 text-xs gap-1">
-                        <Plus className="h-3 w-3" /> Add Feature
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      {keyFeatures.map((feature, i) => (
-                        <div key={i} className="flex gap-2">
-                          <Input
-                            value={feature}
-                            onChange={(e) => updateFeature(i, e.target.value)}
-                            placeholder={`Feature ${i + 1}`}
-                          />
-                          {keyFeatures.length > 1 && (
-                            <Button type="button" variant="ghost" size="sm" onClick={() => removeFeature(i)} className="h-10 w-10 p-0 shrink-0">
-                              <X className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Key features are no longer collected in the form. The seller can
+                      put the same highlights in the description above, which is
+                      always required and always rendered on the product page.
+
+                      The `key_features` column is left intact: existing products
+                      keep whatever they already had (it is loaded into state on
+                      edit and written back unchanged), and ProductDetailPage
+                      still renders it when present. New products simply store an
+                      empty list, and the health check and the submit-time gate
+                      below were both relaxed so an empty value is not an error. */}
                 </TabsContent>
 
                 <TabsContent value="media" className="space-y-4 mt-4">
