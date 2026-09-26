@@ -69,10 +69,10 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
               <div key={group.parent} className="space-y-1">
                 <button
                   onClick={() => toggle(group.parent)}
-                  className="w-full flex items-center justify-between px-3 pt-2 pb-1 text-[10px] font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider"
+                  className="w-full flex items-center justify-between px-3 pt-2 pb-1 text-[10px] font-bold text-[#6E6C64] dark:text-[#A0A0A0] uppercase tracking-wider"
                 >
                   <span>{group.label}</span>
-                  <span className="text-[#888880] dark:text-[#A0A0A0]">{isOpen ? "−" : "+"}</span>
+                  <span className="text-[#6E6C64] dark:text-[#A0A0A0]">{isOpen ? "−" : "+"}</span>
                 </button>
                 {isOpen && group.subcategories.map(sub => {
                   const isActive = selectedCategory === sub.slug;

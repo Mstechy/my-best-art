@@ -22,10 +22,14 @@
         heroPreload.as = "image";
         heroPreload.type = "image/webp";
         heroPreload.href = "/images/electronics-products-1600x686.webp";
-        heroPreload.imageSrcset =
-          "/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w";
-        heroPreload.imagesizes = "100vw";
-        heroPreload.fetchPriority = "high";
+        /* Use the lowercase spec attribute names. The IDL aliases
+           (imageSrcset/imagesizes) are not reliable across browsers and can
+           silently drop the srcset, which would strand mobile on the 1600w
+           asset. */
+        heroPreload.setAttribute("imagesrcset",
+          "/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w");
+        heroPreload.setAttribute("imagesizes", "100vw");
+        heroPreload.setAttribute("fetchpriority", "high");
         document.head.appendChild(heroPreload);
       }
     </script>

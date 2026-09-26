@@ -255,7 +255,13 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 {hasCategories && (
                   <div className="w-44 shrink-0 border-r border-[#E8E8E8] dark:border-[#333333]">
                     <Select value={activeCategory} onValueChange={(value) => onCategoryChange?.(value === "__all__" ? null : value)}>
-                      <SelectTrigger className="h-12 w-full rounded-none border-0 bg-transparent px-4 text-sm font-medium text-[#111111] shadow-none focus:ring-0 dark:text-[#FAF5F2]">
+                      {/* Radix renders the trigger as role="combobox" with no text of
+                          its own until a value is chosen, which left it with an empty
+                          accessible name and failed the button-name audit. */}
+                      <SelectTrigger
+                        aria-label={t("nav.searchInCategory", { category: t("nav.allCategories") })}
+                        className="h-12 w-full rounded-none border-0 bg-transparent px-4 text-sm font-medium text-[#111111] shadow-none focus:ring-0 dark:text-[#FAF5F2]"
+                      >
                         <SelectValue placeholder={t("nav.allCategories")} />
                       </SelectTrigger>
                       <SelectContent>
