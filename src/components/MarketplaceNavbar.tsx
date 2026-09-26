@@ -238,7 +238,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">
               tradi
             </span>
-            <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D]">bu</span>
+            <span className="font-sans text-xl font-black tracking-tighter text-[#9E6300] dark:text-[#F6C75D]">bu</span>
           </Link>
 
           {/* Horizontal nav links */}
@@ -527,7 +527,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             </Dialog>
 
             <div className="mt-3 hidden lg:flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#888880] dark:text-[#A0A0A0]">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6E6C64] dark:text-[#A0A0A0]">
                 {t("nav.trending")}
               </span>
               {primarySuggestions.map((item) => (

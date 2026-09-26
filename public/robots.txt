@@ -5,6 +5,7 @@
 # their own "Allow: /" groups with no Disallow lines - actually let Googlebot
 # crawl /admin/, /buyer/ and /checkout/. Every rule below applies to every
 # crawler now.
+User-agent: *
 Allow: /
 
 # Authenticated / transactional surfaces (never useful in search results).

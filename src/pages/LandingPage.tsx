@@ -56,11 +56,11 @@ export default function LandingPage() {
             {/* Center: hero carousel */}
             <div className="min-w-0">
               {heroLoading ? (
-                <div className="aspect-[21/9] min-h-[320px] animate-pulse rounded-2xl bg-[#F2F3F5] dark:bg-[#202020] md:min-h-[420px]" />
+                <div className="aspect-[16/9] min-h-[240px] w-full animate-pulse rounded-2xl bg-[#F2F3F5] dark:bg-[#202020] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]" />
               ) : heroSlides.length > 0 ? (
                 <HeroSlider slides={heroSlides} />
               ) : heroFallback ? (
-                <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[21/9] min-h-[320px] overflow-hidden rounded-2xl bg-[#111111] md:min-h-[420px]">
+                <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[16/9] min-h-[240px] w-full overflow-hidden rounded-2xl bg-[#111111] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]">
                   {heroFallback.product_images[0]?.image_url && <ProductImage src={heroFallback.product_images[0].image_url} alt={heroFallback.title} className="h-full w-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105" loading="eager" />}
                   <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
                   <div className="relative z-10 flex max-w-md flex-col justify-end p-6 text-white md:p-10"><p className="line-clamp-2 text-2xl font-bold md:text-4xl">{heroFallback.title}</p><p className="mt-3 text-sm text-white/80">{formatPrice(heroFallback.price, heroFallback.currency)}</p></div>
@@ -97,9 +97,22 @@ export default function LandingPage() {
       </div>
 
       {/* Flash Deal Rail — real countdowns from flash_deal_end_at */}
-      {feeds.flash_deals.length > 0 && (
-        <Container className="order-2 py-10">
+      {(loading || feeds.flash_deals.length > 0) && (
+        <Container className="w-full order-2 py-10">
           <SectionHeader title={t("home.flashDeals")} subtitle={<span className="inline-flex items-center gap-2"><Flame className="h-4 w-4 text-destructive" />{t("home.limitedTime")}</span>} href="/marketplace?sort=flash_deals" linkLabel={t("common.viewAll")} className="mb-5" />
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+              {Array.from({ length: 5 }).map((_, index) => (
+                <div key={index} className="animate-pulse overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
+                  <div className="aspect-square bg-[#F2F3F5] dark:bg-[#202020]" />
+                  <div className="space-y-2 p-3">
+                    <div className="h-4 w-3/4 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
+                    <div className="h-4 w-1/2 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {feeds.flash_deals.slice(0, 5).map(product => {
               const image = product.product_images.find(i => i.is_primary)?.image_url || product.product_images[0]?.image_url;
@@ -121,7 +134,7 @@ export default function LandingPage() {
                       </div>
                     )}
                     {discount && (
-                      <span className="absolute left-3 top-3 rounded bg-[#E53935] px-2 py-0.5 text-[10px] font-bold text-white">-{discount}%</span>
+                      <span className="absolute left-3 top-3 rounded bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">-{discount}%</span>
                     )}
                     {product.flash_deal_end_at && (
                       <div className="absolute bottom-2 inset-x-2 flex justify-center">
@@ -132,9 +145,9 @@ export default function LandingPage() {
                   <div className="p-3">
                     <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">{product.title}</h3>
                     <div className="mt-2 flex items-baseline gap-2">
-                      <span className="font-bold text-[#E53935]">{formatPrice(product.price)}</span>
+                      <span className="font-bold text-destructive">{formatPrice(product.price)}</span>
                       {product.compare_at_price && product.compare_at_price > product.price && (
-                        <span className="text-xs text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
+                        <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
                       )}
                     </div>
                   </div>
@@ -142,16 +155,22 @@ export default function LandingPage() {
               );
             })}
           </div>
+          )}
+
         </Container>
       )}
 
       {/* Shop by Category - Grid */}
-      <Container className="order-1 py-10">
+      <Container className="w-full order-1 py-10">
         <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} href="/categories" linkLabel={t("home.allCategories")} className="mb-5" />
         {loading ? (
-          <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="h-28 w-40 shrink-0 animate-pulse rounded-2xl bg-[#F2F3F5] dark:bg-[#202020]" />
+              <div key={index} className="animate-pulse rounded-2xl border border-[#E8E8E8] bg-white p-5 dark:border-[#222222] dark:bg-[#1A1A1A]">
+                <div className="mb-4 h-6 w-6 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
+                <div className="h-4 w-3/4 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
+                <div className="mt-1 h-3 w-1/3 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
+              </div>
             ))}
           </div>
         ) : visibleCategories.length ? (
@@ -162,14 +181,14 @@ export default function LandingPage() {
                 to={`/categories/${category.slug}`}
                 className="rounded-2xl border border-[#E8E8E8] bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md dark:border-[#222222] dark:bg-[#1A1A1A]"
               >
-                <Package className="mb-4 h-6 w-6 text-[#F6C75D]" />
+                <Package className="mb-4 h-6 w-6 text-[#9E6300] dark:text-[#F6C75D]" />
                 <p className="font-semibold text-sm">{category.name}</p>
-                <p className="mt-1 text-xs text-[#888880]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
+                <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#888880] dark:border-[#333333] dark:bg-[#1A1A1A]">
+          <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#6E6C64] dark:text-[#A0A0A0] dark:border-[#333333] dark:bg-[#1A1A1A]">
             Categories will appear when approved products are available.
           </div>
         )}
@@ -177,7 +196,7 @@ export default function LandingPage() {
 
       {/* Product Feeds - Horizontal Scroll */}
       <div className="order-4">
-        {FEEDS.filter(feed => feeds[feed.key].length > 0).map(feed => (
+        {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
           <HorizontalScrollSection
             key={feed.key}
             title={feed.title}

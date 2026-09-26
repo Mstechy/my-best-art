@@ -142,7 +142,7 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
 
   // Empty state
   const defaultEmpty = emptyText ? (
-    <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#888880] dark:border-[#333333] dark:bg-[#1A1A1A]">
+    <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#6E6C64] dark:text-[#A0A0A0] dark:border-[#333333] dark:bg-[#1A1A1A]">
       {emptyText}
     </div>
   ) : null;

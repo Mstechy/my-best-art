@@ -29,14 +29,15 @@ export default function CookieConsent() {
        instead of covering — and being covered by — that navigation. `md` and
        up have no bottom bar, so the normal corner offset applies there. */
     <div className="fixed inset-x-3 bottom-[calc(6rem_+_env(safe-area-inset-bottom,0px))] z-[60] sm:inset-x-auto sm:right-4 sm:w-[360px] md:bottom-4 animate-fade-in">
-      <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1A1A1A] shadow-xl p-4">
+      <div className="relative rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1A1A1A] shadow-xl p-4">
 
         {/* Close button */}
         <button
           onClick={() => decide("declined")}
-          className="absolute top-3 right-3 h-6 w-6 flex items-center justify-center rounded-full text-[#888880] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+          aria-label="Close"
+          className="absolute top-0 right-0 h-11 w-11 flex items-center justify-center rounded-full text-[#5C5A54] hover:bg-[#F2F3F5] dark:text-[#A0A0A0] dark:hover:bg-[#222222] transition-colors"
         >
-          <X className="h-3.5 w-3.5" />
+          <X className="h-5 w-5" />
         </button>
 
         <div className="flex items-start gap-3 pr-6">
@@ -47,7 +48,7 @@ export default function CookieConsent() {
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">We use cookies</p>
-            <p className="mt-1 text-[11px] text-[#888880] dark:text-[#A0A0A0] leading-relaxed">
+            <p className="mt-1 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed">
               Essential cookies keep markethub running. Optional cookies help us improve your experience.{" "}
               <Link to="/cookies" className="text-[#111111] dark:text-[#FAF5F2] font-semibold underline underline-offset-2 hover:text-[#F6C75D] transition-colors">
                 Cookie Policy

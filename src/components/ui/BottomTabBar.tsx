@@ -40,7 +40,7 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
           to="/"
           className={cn(
             "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
-            isHome ? "text-[#F6C75D]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+            isHome ? "text-[#9E6300] dark:text-[#F6C75D]" : "text-[#6E6C64] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
           )}
         >
           <Home className={cn("h-5 w-5", isHome && "fill-current")} />
@@ -52,7 +52,7 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
           to="/categories"
           className={cn(
             "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
-            isCategory ? "text-[#F6C75D]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+            isCategory ? "text-[#9E6300] dark:text-[#F6C75D]" : "text-[#6E6C64] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
           )}
         >
           <LayoutGrid className={cn("h-5 w-5", isCategory && "fill-current")} />
@@ -64,13 +64,13 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
           onClick={() => openCart(true)}
           className={cn(
             "relative flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
-            isCart ? "text-[#F6C75D]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+            isCart ? "text-[#9E6300] dark:text-[#F6C75D]" : "text-[#6E6C64] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
           )}
         >
           <span className="relative">
             <ShoppingCart className={cn("h-5 w-5", isCart && "fill-current")} />
             {totalItems > 0 && (
-              <span className="absolute -right-2 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[#E53935] px-1 text-[9px] font-bold text-white">
+              <span className="absolute -right-2 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-bold text-destructive-foreground">
                 {totalItems > 99 ? "99+" : totalItems}
               </span>
             )}
@@ -89,7 +89,7 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
           }}
           className={cn(
             "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
-            isAccount ? "text-[#F6C75D]" : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+            isAccount ? "text-[#9E6300] dark:text-[#F6C75D]" : "text-[#6E6C64] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
           )}
         >
           <User className={cn("h-5 w-5", isAccount && "fill-current")} />
