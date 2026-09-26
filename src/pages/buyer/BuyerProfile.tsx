@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { User, MapPin, Lock, Plus, Trash2, Loader2 } from "lucide-react";
@@ -70,13 +70,15 @@ export default function BuyerProfile() {
     setAvatarUrl((profile as any).avatar_url || "");
   }, [profile, defaults.country]);
 
-  const loadAddresses = async () => {
+  // Memoised so the effect below can depend on it directly. Without this the
+  // identity changes every render and the address list would refetch in a loop.
+  const loadAddresses = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from("addresses").select("*").eq("user_id", user.id).order("is_default", { ascending: false });
     if (data) setAddresses(data as Address[]);
-  };
+  }, [user]);
 
-  useEffect(() => { loadAddresses(); }, [user?.id]);
+  useEffect(() => { loadAddresses(); }, [loadAddresses]);
 
   const saveProfile = async () => {
     if (!user) return;

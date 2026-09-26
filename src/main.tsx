@@ -35,11 +35,16 @@ if (import.meta.env.VITE_SENTRY_DSN) {
 
   if (!isConstrained) {
     const initWhenIdle = () => {
-      if ("requestIdleCallback" in window) {
+      // Feature-detect without `in`. TypeScript already declares
+      // requestIdleCallback on Window, so `"requestIdleCallback" in window`
+      // is always true and narrows the fallback branch to `never`.
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number })
+        .requestIdleCallback;
+      if (typeof idle === "function") {
         // Long backstop only: genuine idle time is what normally triggers this.
         // The point is that it is far longer than the LCP window, so a saturated
         // main thread no longer forces Sentry to initialise early.
-        window.requestIdleCallback(startSentry, { timeout: 30000 });
+        idle(startSentry, { timeout: 30000 });
       } else {
         window.setTimeout(startSentry, 5000);
       }

@@ -4,24 +4,7 @@ import { Button } from "../components/ui/button";
 import { Slider } from "../components/ui/slider";
 import { Label } from "../components/ui/label";
 import { Filter, Star } from "lucide-react";
-
-export interface MarketplaceFiltersState {
-  minPrice: number;
-  maxPrice: number;
-  minRating: number;
-  inStockOnly: boolean;
-  condition: string; // "any" | "new" | "used" | "refurbished"
-  categoryAttributes: Record<string, string>;
-}
-
-export const defaultFilters: MarketplaceFiltersState = {
-  minPrice: 0,
-  maxPrice: 10000,
-  minRating: 0,
-  inStockOnly: false,
-  condition: "any",
-  categoryAttributes: {},
-};
+import { defaultFilters, type MarketplaceFiltersState } from "./marketplaceFiltersState";
 
 interface Props {
   value: MarketplaceFiltersState;
@@ -170,14 +153,4 @@ export default function MarketplaceFilters({
       </SheetContent>
     </Sheet>
   );
-}
-
-export function countActive(f: MarketplaceFiltersState): number {
-  let n = 0;
-  if (f.minPrice > 0 || f.maxPrice < 10000) n++;
-  if (f.minRating > 0) n++;
-  if (f.inStockOnly) n++;
-  if (f.condition !== "any") n++;
-  n += Object.values(f.categoryAttributes).filter(Boolean).length;
-  return n;
 }
