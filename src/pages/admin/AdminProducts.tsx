@@ -43,7 +43,7 @@ export default function AdminProducts() {
   const loading = productsQuery.isLoading;
 
   const approveProduct = async (id: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: true, _status: "active" });
     if (error) { logError(error, "admin_product_approval"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product approved", description: "Product is now visible on the marketplace." });
@@ -51,7 +51,7 @@ export default function AdminProducts() {
   };
 
   const rejectProduct = async (id: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: false, _status: "draft" });
     if (error) { logError(error, "admin_product_rejection"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product hidden", description: "Product is no longer visible on the marketplace." });
@@ -59,7 +59,7 @@ export default function AdminProducts() {
   };
 
   const setFlashDealStatus = async (productId: string, status: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { error } = await (supabase as any).rpc("admin_set_flash_deal_status", { _product_id: productId, _new_status: status });
     if (error) { logError(error, "admin_flash_deal_status"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: `Flash deal ${status}`, description: `Flash deal has been ${status}.` });

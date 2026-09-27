@@ -62,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // we should not keep retrying an RPC that may fail with 400.
       if ((!profileRes.data || !rolesRes.data || rolesRes.data.length === 0) && !role) {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+           
           await (supabase.rpc as any)("ensure_user_profile");
           [profileRes, rolesRes] = await Promise.all([
             supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),

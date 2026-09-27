@@ -54,7 +54,7 @@ class BatchedViewTracker {
 
     try {
       // Use the same product_views table but insert all rows in one call
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       await (supabase.from("product_views" as any) as any).insert(
         batch.map((v) => ({
           product_id: v.product_id,
