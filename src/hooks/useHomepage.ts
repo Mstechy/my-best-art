@@ -6,7 +6,7 @@ import type { EnhancedCollection } from "@/lib/collectionResolver";
 
 // ── Types ────────────────────────────────────────────────────────────────
 export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; product_images: { image_url: string; is_primary: boolean }[] };
-export type Category = { id: string; name: string; slug: string };
+export type Category = { id: string; name: string; slug: string; image_url?: string | null };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
@@ -45,14 +45,37 @@ export function useHomepageCategories() {
     supabaseKeys.rpc("homepage_categories"),
     async () => {
       const [categoriesRes, countsRes] = await Promise.all([
-        supabase.from("categories").select("id,name,slug").order("sort_order"),
+        supabase.from("categories").select("id,name,slug,image_url").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
       ]);
       const categories = (categoriesRes.data ?? []) as Category[];
       const counts = Object.fromEntries(
         ((countsRes.data ?? []) as any[]).map((row: any) => [row.category_id, Number(row.product_count)])
       );
-      return { categories, counts };
+
+      // Departments carry no artwork of their own: categories.image_url is null for
+      // every seeded row, so a department card shows the first approved product
+      // listed in it. Only departments that actually have stock render a card, so
+      // the lookup is restricted to those ids and to a handful of products rather
+      // than scanning the whole catalogue.
+      const populatedIds = categories.filter((category) => (counts[category.id] ?? 0) > 0).map((category) => category.id);
+      const imageByCategory: Record<string, string> = {};
+      if (populatedIds.length > 0) {
+        const { data: products } = await supabase
+          .from("products")
+          .select("category_id, product_images(image_url, is_primary)")
+          .eq("status", "active")
+          .eq("is_approved", true)
+          .in("category_id", populatedIds)
+          .limit(12);
+        for (const product of (products ?? []) as any[]) {
+          if (!product?.category_id || imageByCategory[product.category_id]) continue;
+          const image = product.product_images?.find((item: any) => item.is_primary)?.image_url || product.product_images?.[0]?.image_url;
+          if (image) imageByCategory[product.category_id] = image;
+        }
+      }
+
+      return { categories, counts, imageByCategory };
     },
     { staleTime: 5 * 60 * 1000 },
   );
@@ -218,6 +241,7 @@ export function useHomepageData() {
     heroLoading: hero.isLoading,
     categories: categories.data?.categories ?? [],
     counts: categories.data?.counts ?? {},
+    categoryImages: categories.data?.imageByCategory ?? {},
     feeds,
     sellers: profiles.data instanceof Map ? profiles.data : new Map<string, Seller>(),
     loading,

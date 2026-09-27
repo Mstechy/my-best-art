@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { Package, Zap, Clock, UserPlus, Flame } from "lucide-react";
+import { Package, Zap, Clock, UserPlus, Flame, ArrowRight } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -20,7 +20,7 @@ import { useHomepageData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
 import { useSEO } from "@/hooks/useSEO";
 
 export default function LandingPage() {
-  const { categories, counts, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
+  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
@@ -193,26 +193,30 @@ export default function LandingPage() {
       <Container className="w-full order-1 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_500px]">
         <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} href="/categories" linkLabel={t("home.allCategories")} className="mb-5" />
         {loading ? (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="animate-pulse rounded-2xl border border-[#E8E8E8] bg-white p-5 dark:border-[#222222] dark:bg-[#1A1A1A]">
-                <div className="mb-4 h-6 w-6 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
-                <div className="h-4 w-3/4 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
-                <div className="mt-1 h-3 w-1/3 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
+              <div key={index} className="overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 dark:border-[#222222] dark:bg-[#1A1A1A]">
+                <div className="aspect-[4/3] animate-pulse rounded-lg bg-[#F3EEE9] dark:bg-[#28282B]" />
+                <div className="pt-3"><div className="h-4 w-2/3 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /></div>
               </div>
             ))}
           </div>
         ) : visibleCategories.length ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {visibleCategories.map(category => (
               <Link
                 key={category.id}
                 to={`/categories/${category.slug}`}
-                className="rounded-2xl border border-[#E8E8E8] bg-white p-5 transition hover:-translate-y-0.5 hover:shadow-md dark:border-[#222222] dark:bg-[#1A1A1A]"
+                className="group overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#111111] hover:shadow-lg dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2]"
               >
-                <Package className="mb-4 h-6 w-6 text-[#9E6300] dark:text-[#F6C75D]" />
-                <p className="font-semibold text-sm">{category.name}</p>
-                <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
+                <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F3EEE9] dark:bg-[#28282B]">
+                  {categoryImages[category.id] ? <img src={categoryImages[category.id]} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /> : <Package className="absolute inset-0 m-auto h-7 w-7 text-[#B49A75]" />}
+                </div>
+                <div className="pt-3">
+                  <p className="line-clamp-1 text-sm font-bold">{category.name}</p>
+                  <p className="mt-1 text-xs text-[#888880]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#555550] group-hover:text-[#111111] dark:group-hover:text-white">Explore <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></span>
+                </div>
               </Link>
             ))}
           </div>
