@@ -1,4 +1,12 @@
 // Visual query extraction for marketplace search. Set OPENAI_API_KEY as a Supabase Edge Function secret.
+
+// This file runs in Supabase Edge Functions (Deno), not the Vite/browser TypeScript
+// environment. The declaration below lets the editor type check the file without
+// pulling in Deno's own type packages; it is erased at runtime.
+declare const Deno: {
+  env: { get(name: string): string | undefined };
+  serve(handler: (request: Request) => Response | Promise<Response>): void;
+};
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",

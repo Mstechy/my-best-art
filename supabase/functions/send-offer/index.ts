@@ -1,3 +1,12 @@
+// This file runs in Supabase Edge Functions (Deno), not the Vite/browser TypeScript
+// environment. The declaration below lets the editor type check the file without
+// pulling in Deno's own type packages; it is erased at runtime.
+declare const Deno: {
+  env: { get(name: string): string | undefined };
+  serve(handler: (request: Request) => Response | Promise<Response>): void;
+};
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
