@@ -35,7 +35,10 @@ export default defineConfig({
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(APP_VERSION),
   },
   build: {
-    target: "es2020",
+    // es2022 keeps class static blocks, top-level await and `.at()` native, so
+    // browsers stop receiving transpiled fallbacks. Lighthouse was penalising the
+    // es2020 output with an "avoid serving legacy JavaScript" deduction.
+    target: "es2022",
     cssMinify: "lightningcss",
     minify: "esbuild",
     rollupOptions: {
