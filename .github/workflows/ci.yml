@@ -52,8 +52,12 @@ jobs:
 
       # TypeScript reports type errors, not just syntax problems. ESLint is
       # allowed to emit its existing warnings, but any error fails the run.
+      # `npm run typecheck` runs `tsc -p tsconfig.app.json`, which is the only
+      # config that actually includes `src`. A bare `npx tsc --noEmit` resolves the
+      # root tsconfig.json, which has `"files": []` plus project references that
+      # plain `tsc` does not build - so it listed zero files and always passed.
       - name: Typecheck
-        run: npx tsc --noEmit
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint
