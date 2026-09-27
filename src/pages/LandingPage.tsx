@@ -123,11 +123,7 @@ export default function LandingPage() {
 
       {/* Flash Deal Rail â€” real countdowns from flash_deal_end_at */}
       {(loading || feeds.flash_deals.length > 0) && (
-        // content-visibility lets the browser skip laying out and painting this
-        // rail until it nears the viewport, which is where the audit's ~1.1s of
-        // Style & Layout was going. The intrinsic size keeps the scrollbar from
-        // jumping while the real height is still unknown.
-        <Container className="w-full order-2 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_600px]">
+        <Container className="w-full order-2 py-10">
           <SectionHeader title={t("home.flashDeals")} subtitle={<span className="inline-flex items-center gap-2"><Flame className="h-4 w-4 text-destructive" />{t("home.limitedTime")}</span>} href="/marketplace?sort=flash_deals" linkLabel={t("common.viewAll")} className="mb-5" />
           {loading ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -190,7 +186,7 @@ export default function LandingPage() {
       )}
 
       {/* Shop by Category - Grid */}
-      <Container className="w-full order-1 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_500px]">
+      <Container className="w-full order-1 py-10">
         <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} href="/categories" linkLabel={t("home.allCategories")} className="mb-5" />
         {loading ? (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
@@ -229,7 +225,7 @@ export default function LandingPage() {
           needs real visits in the last 30 days. Discover More is the catch-all, so
           every approved product in the catalogue is reachable from the homepage -
           nothing is hidden behind a carousel. */}
-      <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
+      <Container className="w-full order-4">
         {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
           <section key={feed.key} className="mb-12">
             <SectionHeader title={t(feed.titleKey)} subtitle={t(feed.subtitleKey)} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
