@@ -191,7 +191,10 @@ export default function LandingPage() {
 
       {/* Shop by Category - Grid */}
       <Container className="w-full order-1 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_500px]">
-        <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} href="/categories" linkLabel={t("home.allCategories")} className="mb-5" />
+        {/* No "All categories" link: the department cards below are the way into a
+            department now, and this header used to be a second route to the bare
+            /categories directory sitting right above them. */}
+        <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} className="mb-5" />
         {loading ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, index) => (

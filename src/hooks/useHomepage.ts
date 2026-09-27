@@ -6,7 +6,7 @@ import type { EnhancedCollection } from "@/lib/collectionResolver";
 
 // ── Types ────────────────────────────────────────────────────────────────
 export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; product_images: { image_url: string; is_primary: boolean }[] };
-export type Category = { id: string; name: string; slug: string; image_url?: string | null };
+export type Category = { id: string; name: string; slug: string };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
@@ -45,7 +45,7 @@ export function useHomepageCategories() {
     supabaseKeys.rpc("homepage_categories"),
     async () => {
       const [categoriesRes, countsRes] = await Promise.all([
-        supabase.from("categories").select("id,name,slug,image_url").order("sort_order"),
+        supabase.from("categories").select("id,name,slug").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
       ]);
       const categories = (categoriesRes.data ?? []) as Category[];
