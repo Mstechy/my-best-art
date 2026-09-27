@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
@@ -206,17 +206,57 @@ function AppRoutes() {
   );
 }
 
+/**
+ * Defers non-critical shell work until after the first paint.
+ *
+ * The audit that motivated this showed 88% of Largest Contentful Paint was
+ * Render Delay: the hero image was downloaded and decoded in 263 ms and still
+ * did not paint for over five seconds, because the main thread was busy. Every
+ * component mounted here competes with that first paint for the same thread.
+ *
+ * These children open Supabase realtime channels and fire analytics beacons.
+ * Neither is needed to show a pixel, so both wait for `load` plus two animation
+ * frames - two frames, because the first frame only schedules the paint and the
+ * second confirms the browser has actually put it on screen.
+ *
+ * A timeout is deliberately not used as the trigger: a timer fires on schedule
+ * whether or not the main thread is free, which is exactly the mistake that put
+ * Sentry on the critical path earlier. A component that must not be missed
+ * belongs on the critical path, not here.
+ */
+function AfterFirstPaint({ children }: { children: ReactNode }) {
+  const [painted, setPainted] = useState(false);
+
+  useEffect(() => {
+    if (document.readyState === "complete") {
+      setPainted(true);
+      return;
+    }
+    const afterPaint = () => {
+      requestAnimationFrame(() => requestAnimationFrame(() => setPainted(true)));
+    };
+    window.addEventListener("load", afterPaint, { once: true });
+    return () => window.removeEventListener("load", afterPaint);
+  }, []);
+
+  return painted ? children : null;
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <SiteAnalyticsTracker />
+        <AfterFirstPaint>
+          <SiteAnalyticsTracker />
+        </AfterFirstPaint>
         <AuthProvider>
           <CurrencyProvider>
             <CartProvider>
-              <NotificationsHub />
+              <AfterFirstPaint>
+                <NotificationsHub />
+              </AfterFirstPaint>
               <CookieConsent />
               <AppRoutes />
             </CartProvider>
