@@ -32,6 +32,12 @@ const hmac = async (body: string, secret: string) => {
 
 type PayableOrder = { id: string; buyer_id: string; total_amount: number; currency: string; status: string; payment_status: string };
 
+// createClient is imported from a URL, so every query result comes back as `any` and
+// the callbacks consuming it would otherwise have implicitly-any parameters. Asserting
+// the selected shape once keeps the webhook logic type checked.
+type OrderRow = { id: string; status: string; payment_status: string; reservation_expires_at: string | null };
+type IdRow = { id: string };
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const rawBody = await req.text();
@@ -68,11 +74,12 @@ Deno.serve(async (req: Request) => {
       .in("id", ids);
     if (readError) return json({ error: "Could not read orders" }, 500);
 
-    const windowOpen = (row: { reservation_expires_at: string | null }) =>
+    const windowOpen = (row: OrderRow) =>
       !row.reservation_expires_at || new Date(row.reservation_expires_at) > new Date(paidAt);
-    const payableIds = (rows ?? [])
+    const orderRows = (rows ?? []) as OrderRow[];
+    const payableIds = orderRows
       .filter((row) => row.status === "pending" && row.payment_status !== "paid" && windowOpen(row))
-      .map((row) => row.id as string);
+      .map((row) => row.id);
 
     let fulfilledIds: string[] = [];
     if (payableIds.length) {
@@ -84,7 +91,7 @@ Deno.serve(async (req: Request) => {
         .neq("payment_status", "paid")
         .select("id");
       if (fulfilError) return json({ error: "Could not update orders" }, 500);
-      fulfilledIds = (fulfilled ?? []).map((row) => row.id as string);
+      fulfilledIds = ((fulfilled ?? []) as IdRow[]).map((row) => row.id);
     }
 
     // Anything paid but not fulfilled is money with no order behind it. Cancelled
@@ -93,9 +100,9 @@ Deno.serve(async (req: Request) => {
     const outstanding = ids.filter((id) => !fulfilledIds.includes(id));
     let refundRequired: string[] = [];
     if (outstanding.length) {
-      const cancelled = (rows ?? [])
-        .filter((row) => outstanding.includes(row.id as string) && row.status === "cancelled" && row.payment_status !== "paid")
-        .map((row) => row.id as string);
+      const cancelled = orderRows
+        .filter((row) => outstanding.includes(row.id) && row.status === "cancelled" && row.payment_status !== "paid")
+        .map((row) => row.id);
       if (cancelled.length) {
         const { data: flagged, error: flagError } = await admin
           .from("orders")
@@ -107,7 +114,7 @@ Deno.serve(async (req: Request) => {
           console.error("paystack: could not flag cancelled orders for refund", JSON.stringify(flagError));
           refundRequired = cancelled;
         } else {
-          refundRequired = (flagged ?? []).map((row) => row.id as string);
+          refundRequired = ((flagged ?? []) as IdRow[]).map((row) => row.id);
         }
         // Surfaced in the function log: these need a refund issued manually.
         console.error("paystack: payment received for cancelled orders - refund required", JSON.stringify({ orders: refundRequired, reference }));
