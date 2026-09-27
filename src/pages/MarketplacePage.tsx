@@ -20,6 +20,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useCachedFetch, cacheKeyFor } from "@/hooks/useCachedFetch";
 import { useProductViewTracking } from "@/hooks/useProductViewTracking";
+import { useSEO } from "@/hooks/useSEO";
+import { usePopulatedCategories } from "@/hooks/useHomepage";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { COUNTRIES, countryName } from "@/lib/countries";
@@ -429,6 +431,44 @@ export default function MarketplacePage() {
 
   const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
+
+  // Departments with stock only. The catalogue holds 26 categories so it can grow, and
+  // offering a department with nothing in it just leads to an empty grid.
+  const populatedCategories = usePopulatedCategories();
+
+  // The catalogue rendered no SEO at all, so every /categories/<slug> URL shared the
+  // static title from index.html and Google could not tell 26 departments apart. A
+  // department now gets its own title, description, canonical URL and breadcrumb
+  // schema. The structured payload is memoised because it is an effect dependency and
+  // this page re-renders on every keystroke and scroll.
+  const departmentUrl = selectedCategoryRecord ? `/categories/${selectedCategoryRecord.slug}` : "/marketplace";
+  const departmentSchema = useMemo(
+    () =>
+      selectedCategoryRecord
+        ? {
+            "@type": "CollectionPage",
+            url: departmentUrl,
+            breadcrumb: {
+              "@type": "BreadcrumbList",
+              itemListElement: [
+                { "@type": "ListItem", position: 1, name: t("marketplace.breadcrumbHome"), item: "/" },
+                { "@type": "ListItem", position: 2, name: t("marketplace.breadcrumbCategories"), item: "/categories" },
+                { "@type": "ListItem", position: 3, name: selectedCategoryRecord.name },
+              ],
+            },
+          }
+        : undefined,
+    [selectedCategoryRecord, departmentUrl, t],
+  );
+  useSEO({
+    title: selectedCategoryRecord ? selectedCategoryRecord.name : t("marketplace.title"),
+    description: selectedCategoryRecord
+      ? t("marketplace.categoryDescription", { category: selectedCategoryRecord.name })
+      : t("marketplace.defaultDescription"),
+    url: departmentUrl,
+    type: "website",
+    structuredData: departmentSchema,
+  });
   const selectedCategoryProducts = useMemo(
     () => products.filter(product => !selectedCategory || product.category_id === selectedCategory),
     [products, selectedCategory]
@@ -492,7 +532,7 @@ export default function MarketplacePage() {
       <MarketplaceNavbar
         search={search}
         onSearchChange={setSearch}
-        categories={categories.map(category => ({ label: category.name, value: category.id }))}
+        categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))}
         selectedCategory={selectedCategory}
         onCategoryChange={(value) => {
           setSelectedCategory(value);
@@ -511,7 +551,7 @@ export default function MarketplacePage() {
                   setSelectedCategory(match?.id || null);
                   setFilters(f => ({ ...f, categoryAttributes: {} }));
                 }}
-                categories={categories.map(cat => ({ id: cat.id, name: cat.name, slug: cat.slug }))}
+                categories={populatedCategories.map(cat => ({ id: cat.id, name: cat.name, slug: cat.slug }))}
               />
             </div>
           </div>
@@ -555,7 +595,7 @@ export default function MarketplacePage() {
                   className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
                   All
                 </button>
-                {categories.map(cat => (
+                {populatedCategories.map(cat => (
                   <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
                     className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
                     {cat.name}
