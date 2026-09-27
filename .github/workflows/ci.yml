@@ -59,6 +59,12 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      # The edge functions are server-side money and security code, and they are not
+      # part of any tsconfig project, so nothing else type checks them. They import
+      # from a URL, so --noImplicitAny is what surfaces untyped query callbacks.
+      - name: Typecheck edge functions
+        run: npm run typecheck:edge
+
       - name: Lint
         run: npm run lint
 

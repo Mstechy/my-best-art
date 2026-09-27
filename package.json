@@ -10,6 +10,7 @@
     "build:dev": "vite build --mode development",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "typecheck:node": "tsc -p tsconfig.node.json",
+    "typecheck:edge": "tsc --noEmit --noImplicitAny --target es2022 --lib es2022,dom,dom.iterable --module esnext --moduleResolution bundler --skipLibCheck supabase/functions/paystack/index.ts supabase/functions/send-offer/index.ts supabase/functions/respond-offer/index.ts supabase/functions/visual-product-search/index.ts",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
