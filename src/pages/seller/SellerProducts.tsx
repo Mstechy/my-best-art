@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, AlertCircle, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,6 +22,7 @@ import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
+import { buildListingReadiness } from "@/lib/listingReadiness";
 
 interface Category {
   id: string;
@@ -879,13 +880,20 @@ export default function SellerProducts() {
   };
 
   const handleSave = async () => {
-    if (!user || !title.trim()) return;
+    if (!user) return;
+    if (!title.trim()) {
+      toast({ title: "Add a product title", description: "Every listing needs a title before it can be submitted.", variant: "destructive" });
+      setFormTab("basic");
+      return;
+    }
     if (!categoryId) {
       toast({ title: "Choose a category", description: "Select a category before submitting this product.", variant: "destructive" });
+      setFormTab("basic");
       return;
     }
     if (!productTypeKey) {
       toast({ title: "Choose a product type", description: "Select a product type so buyers see the right details.", variant: "destructive" });
+      setFormTab("basic");
       return;
     }
     if (!imageItems.length) {
@@ -1395,14 +1403,24 @@ export default function SellerProducts() {
   const variantRowsWithPrices = variantRows.filter((row) => Number.isFinite(Number(row.price)) && Number(row.price) > 0);
   const lowestVariantPrice = variantRowsWithPrices.length > 0 ? Math.min(...variantRowsWithPrices.map((row) => Number(row.price))) : null;
   const totalVariantStock = variantRows.reduce((total, row) => total + (Number.isInteger(Number(row.stock)) && Number(row.stock) > 0 ? Number(row.stock) : 0), 0);
-  const allVariantRowsPriced = hasVariantRows && variantRowsWithPrices.length === variantRows.length;
-  const listingReadiness = [
-    { label: "Product identity", detail: "Category, type, and a clear title", complete: Boolean(categoryId && productTypeKey && title.trim()) },
-    { label: "Buyer-facing content", detail: "A clear description of at least 80 characters", complete: description.trim().length >= 80 },
-    { label: "Offer", detail: hasVariantRows ? "A price and stock for every SKU" : "Price and available stock", complete: hasVariantRows ? allVariantRowsPriced && variantRows.every((row) => Number.isInteger(Number(row.stock)) && Number(row.stock) >= 0) : Number(price) > 0 && Number.isInteger(Number(stockQuantity)) && Number(stockQuantity) >= 0 },
-    { label: "Required specifications", detail: `${requiredSpecificationKeys.size} fields for this product type`, complete: [...requiredSpecificationKeys].every((key) => Boolean(categoryAttributes[key]?.trim())) },
-    { label: "Main product photo", detail: "One is required; 3 or more views are recommended", complete: imageItems.length > 0 },
-  ];
+  // Single source of truth for "can this be submitted?" and "what is missing?".
+  // Each entry carries the tab it belongs to, so the submit button can send the
+  // seller straight to whatever is missing instead of just refusing to submit.
+  // handleSave re-checks all of it before writing, so this list can only ever be
+  // more forgiving than the real validation, never less.
+  const listingReadiness = buildListingReadiness({
+    categoryId,
+    productTypeKey,
+    title,
+    description,
+    price,
+    stockQuantity,
+    categoryAttributes,
+    requiredSpecificationKeys: [...requiredSpecificationKeys],
+    imageCount: imageItems.length,
+    variantRows,
+  });
+  const outstandingRequirements = listingReadiness.filter((item) => !item.complete);
   const updateCategoryAttribute = (key: string, value: string) => {
     setCategoryAttributes(prev => ({ ...prev, [key]: value }));
   };
@@ -2126,7 +2144,36 @@ export default function SellerProducts() {
                 </TabsContent>
               </Tabs>
 
-              <Button onClick={handleSave} disabled={saving || !title.trim() || !price || !categoryId || !productTypeKey} className="w-full mt-4 gradient-seller text-primary-foreground">
+              {/* The button used to be disabled with no explanation, which left
+                  sellers staring at a dead control - and because the price field
+                  is read-only once SKU rows exist, `!price` locked out every
+                  option-based listing entirely. The missing items are now listed
+                  and each one jumps to the tab that fixes it. */}
+              {outstandingRequirements.length > 0 && !saving && (
+                <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+                  <p className="text-sm font-semibold">
+                    {outstandingRequirements.length === 1
+                      ? "One more thing before this can be submitted"
+                      : `${outstandingRequirements.length} more things before this can be submitted`}
+                  </p>
+                  <ul className="mt-2 space-y-1.5">
+                    {outstandingRequirements.map((item) => (
+                      <li key={item.label}>
+                        <button
+                          type="button"
+                          onClick={() => setFormTab(item.tab)}
+                          className="flex w-full items-start gap-2 rounded text-left text-xs hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                          <span><span className="font-semibold">{item.label}:</span> {item.detail}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <Button onClick={handleSave} disabled={saving || outstandingRequirements.length > 0} className="w-full mt-4 gradient-seller text-primary-foreground">
                 {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
               </Button>
             </DialogContent>
