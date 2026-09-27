@@ -160,6 +160,11 @@ export function useHomepageData() {
     // of the same catalogue. Priority is deliberate: time-bound deals, fresh
     // stock, proven sellers, active trends, then broad discovery.
     const feedPriority: FeedName[] = ["flash_deals", "new_arrivals", "best_sellers", "trending", "recommended"];
+    // Budget each rail. Without a cap, a rail that qualifies for a large share of the
+    // catalogue consumes every unique id through seenAcrossHomepage and the remaining
+    // rails render empty, so the homepage collapses into a single long strip. Capping
+    // per rail keeps the spread even when one feed is unusually broad.
+    const RAIL_BUDGET = 8;
     const seenAcrossHomepage = new Set<string>();
     const distinctFeeds = new Map<FeedName, FeedItem[]>();
     feedPriority.forEach((name) => {
@@ -180,7 +185,7 @@ export function useHomepageData() {
               flash_deal_end_at: flashDealEndAt,
             }];
           });
-        distinctFeeds.set(name, items);
+        distinctFeeds.set(name, items.slice(0, RAIL_BUDGET));
     });
     return Object.fromEntries(feedNames.map((name) => [name, distinctFeeds.get(name) ?? []])) as Record<FeedName, FeedItem[]>;
   }, [products.data, feedResults]);
