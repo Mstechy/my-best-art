@@ -50,9 +50,75 @@ Deno.serve(async (req: Request) => {
     const ids: string[] = Array.isArray(verified.data?.metadata?.order_ids) ? verified.data.metadata.order_ids : [];
     if (!ids.length) return json({ error: "Order metadata missing" }, 400);
     const { admin } = clients();
-    const { error } = await admin.from("orders").update({ payment_status: "paid", paid_at: new Date().toISOString(), status: "processing" }).in("id", ids);
-    if (error) return json({ error: "Could not update orders" }, 500);
-    return json({ received: true });
+    const paidAt = new Date().toISOString();
+
+    // A payment can arrive after the 30-minute reservation window closed and the
+    // expiry sweep already cancelled the order and released its stock. Fulfilment is
+    // therefore conditional, never blind:
+    //   * orders are only fulfilled while they are still 'pending' and unpaid;
+    //   * an order whose reservation window has already passed is treated as expired
+    //     even if the sweep has not run yet.
+    // The 'pending' predicate is evaluated by Postgres on the row being updated, so
+    // this update and the expiry sweep cannot both succeed - whichever one moves the
+    // order out of 'pending' first leaves the other with nothing to do. That is what
+    // keeps released stock from being sold twice.
+    const { data: rows, error: readError } = await admin
+      .from("orders")
+      .select("id, status, payment_status, reservation_expires_at")
+      .in("id", ids);
+    if (readError) return json({ error: "Could not read orders" }, 500);
+
+    const windowOpen = (row: { reservation_expires_at: string | null }) =>
+      !row.reservation_expires_at || new Date(row.reservation_expires_at) > new Date(paidAt);
+    const payableIds = (rows ?? [])
+      .filter((row) => row.status === "pending" && row.payment_status !== "paid" && windowOpen(row))
+      .map((row) => row.id as string);
+
+    let fulfilledIds: string[] = [];
+    if (payableIds.length) {
+      const { data: fulfilled, error: fulfilError } = await admin
+        .from("orders")
+        .update({ payment_status: "paid", paid_at: paidAt, status: "processing" })
+        .in("id", payableIds)
+        .eq("status", "pending")
+        .neq("payment_status", "paid")
+        .select("id");
+      if (fulfilError) return json({ error: "Could not update orders" }, 500);
+      fulfilledIds = (fulfilled ?? []).map((row) => row.id as string);
+    }
+
+    // Anything paid but not fulfilled is money with no order behind it. Cancelled
+    // orders are flagged for refund or manual reconciliation - never fulfilled, and
+    // never silently downgraded from 'paid' (that case is a replayed webhook).
+    const outstanding = ids.filter((id) => !fulfilledIds.includes(id));
+    let refundRequired: string[] = [];
+    if (outstanding.length) {
+      const cancelled = (rows ?? [])
+        .filter((row) => outstanding.includes(row.id as string) && row.status === "cancelled" && row.payment_status !== "paid")
+        .map((row) => row.id as string);
+      if (cancelled.length) {
+        const { data: flagged, error: flagError } = await admin
+          .from("orders")
+          .update({ payment_status: "refund_required" })
+          .in("id", cancelled)
+          .neq("payment_status", "paid")
+          .select("id, status, payment_status, buyer_id, total_amount, currency");
+        if (flagError) {
+          console.error("paystack: could not flag cancelled orders for refund", JSON.stringify(flagError));
+          refundRequired = cancelled;
+        } else {
+          refundRequired = (flagged ?? []).map((row) => row.id as string);
+        }
+        // Surfaced in the function log: these need a refund issued manually.
+        console.error("paystack: payment received for cancelled orders - refund required", JSON.stringify({ orders: refundRequired, reference }));
+      }
+      const replays = outstanding.filter((id) => !refundRequired.includes(id));
+      if (replays.length) {
+        console.error("paystack: payment for orders already handled - ignored", JSON.stringify({ orders: replays, reference }));
+      }
+    }
+
+    return json({ received: true, fulfilled: fulfilledIds.length, refund_required: refundRequired.length });
   }
   if (body.action !== "initialize") return json({ error: "Unsupported action" }, 400);
   const authHeader = req.headers.get("Authorization");
