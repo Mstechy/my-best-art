@@ -4,6 +4,12 @@ const CARD_SIZE = 900;
 const CARD_QUALITY = 0.86;
 const CARD_MIME_TYPE = "image/webp";
 
+// Grid cards are roughly 180px on a phone and 300px on a desktop, so the 900px
+// derivative was 3-5x larger than the slot it filled (280 KB on average). A 320px
+// variant is the size a phone actually needs and is uploaded alongside the large one.
+const SMALL_CARD_SIZE = 320;
+const SMALL_CARD_QUALITY = 0.8;
+
 const BLOCKED_EXTENSIONS = new Set([
   "exe", "bat", "cmd", "sh", "bash", "zsh", "ps1", "vbs", "js", "jse",
   "vba", "vbe", "wsf", "wsh", "msi", "msp", "scr", "pif", "hta",
@@ -52,28 +58,28 @@ const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) 
     }, type, quality);
   });
 
-export async function createProductCardImage(file: File): Promise<Blob> {
+export async function createProductCardImage(file: File, size = CARD_SIZE, quality = CARD_QUALITY): Promise<Blob> {
   const image = await loadImage(file);
   const canvas = document.createElement("canvas");
-  canvas.width = CARD_SIZE;
-  canvas.height = CARD_SIZE;
+  canvas.width = size;
+  canvas.height = size;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Image optimization is not supported in this browser");
 
   ctx.fillStyle = "#f7f7f5";
-  ctx.fillRect(0, 0, CARD_SIZE, CARD_SIZE);
+  ctx.fillRect(0, 0, size, size);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
 
-  const scale = Math.max(CARD_SIZE / image.naturalWidth, CARD_SIZE / image.naturalHeight);
+  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
   const width = Math.round(image.naturalWidth * scale);
   const height = Math.round(image.naturalHeight * scale);
-  const x = Math.round((CARD_SIZE - width) / 2);
-  const y = Math.round((CARD_SIZE - height) / 2);
+  const x = Math.round((size - width) / 2);
+  const y = Math.round((size - height) / 2);
 
   ctx.drawImage(image, x, y, width, height);
-  return canvasToBlob(canvas, CARD_MIME_TYPE, CARD_QUALITY);
+  return canvasToBlob(canvas, CARD_MIME_TYPE, quality);
 }
 
 export function getProductCardImageUrl(originalUrl: string | null | undefined) {
@@ -89,6 +95,7 @@ export async function uploadProductImagePair(file: File, basePath: string) {
   const stem = `${timestamp}-${safeFileStem(file.name)}`;
   const originalPath = `${basePath}/original-${stem}.${extensionFor(file)}`;
   const cardPath = `${basePath}/card-${stem}.webp`;
+  const cardSmallPath = `${basePath}/card320-${stem}.webp`;
 
   const { error: originalError } = await supabase.storage
     .from("product-images")
@@ -106,8 +113,24 @@ export async function uploadProductImagePair(file: File, basePath: string) {
   }
 
   const { data } = supabase.storage.from("product-images").getPublicUrl(originalPath);
+  let cardSmallUrl: string | null = null;
+  try {
+    const smallBlob = await createProductCardImage(file, SMALL_CARD_SIZE, SMALL_CARD_QUALITY);
+    const { error: smallError } = await supabase.storage
+      .from("product-images")
+      .upload(cardSmallPath, smallBlob, { contentType: CARD_MIME_TYPE, upsert: false });
+    if (smallError) {
+      console.warn("Small card derivative failed; the grid will use the 900px asset.", smallError);
+    } else {
+      cardSmallUrl = supabase.storage.from("product-images").getPublicUrl(cardSmallPath).data.publicUrl;
+    }
+  } catch (error) {
+    console.warn("Small card derivative failed; the grid will use the 900px asset.", error);
+  }
+
   return {
     originalUrl: data.publicUrl,
     cardUrl: getProductCardImageUrl(data.publicUrl),
+    cardSmallUrl,
   };
 }

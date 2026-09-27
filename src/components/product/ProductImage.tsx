@@ -6,6 +6,9 @@ import ProgressiveImage from "@/components/ui/ProgressiveImage";
 interface ProductImageProps {
   src?: string | null;
   alt: string;
+  // 320px derivative for grid cards. When present the browser picks between it and the
+  // 900px asset, so a phone stops downloading a 280 KB image for a 180px slot.
+  cardSmallUrl?: string | null;
   variant?: "card" | "detail" | "thumb";
   className?: string;
   loading?: "lazy" | "eager";
@@ -16,6 +19,7 @@ interface ProductImageProps {
 export default function ProductImage({
   src,
   alt,
+  cardSmallUrl,
   variant = "card",
   className,
   loading = "lazy",
@@ -31,16 +35,29 @@ export default function ProductImage({
     },
     [originalSrc, variant],
   );
-  const [currentSrc, setCurrentSrc] = useState<string | null>(cardSrc);
+  // A phone only needs the 320px derivative; the 900px asset stays available for wider
+  // viewports and high-density screens. srcSet is only emitted when the small file is
+  // known to exist, so the browser is never asked for a missing image.
+  const responsiveSrc = useMemo(() => {
+    if (variant !== "card" && variant !== "thumb") return null;
+    if (!cardSmallUrl || !cardSrc || cardSmallUrl === cardSrc) return null;
+    return { srcSet: `${cardSmallUrl} 320w, ${cardSrc} 900w`, sizes: "(min-width: 1280px) 17vw, (min-width: 1024px) 20vw, (min-width: 640px) 30vw, 45vw" };
+  }, [cardSmallUrl, cardSrc, variant]);
+  const [currentSrc, setCurrentSrc] = useState<string | null>(responsiveSrc?.srcSet ? cardSmallUrl ?? cardSrc : cardSrc);
   const [triedFallback, setTriedFallback] = useState(false);
 
   useEffect(() => {
-    setCurrentSrc(cardSrc);
+    setCurrentSrc(responsiveSrc ? cardSmallUrl ?? cardSrc : cardSrc);
     setTriedFallback(false);
-  }, [cardSrc]);
+  }, [cardSrc, cardSmallUrl, responsiveSrc]);
 
   const handleError = () => {
-    // If we're showing the card-optimized URL and it fails, fall back to the original URL
+    // Never leave a shopper with a broken tile. The 320px derivative is the first
+    // fallback, then the 900px card, then the original upload.
+    if (currentSrc === cardSmallUrl && cardSmallUrl && cardSrc && cardSrc !== cardSmallUrl) {
+      setCurrentSrc(cardSrc);
+      return;
+    }
     if (!triedFallback && cardSrc && originalSrc && cardSrc !== originalSrc) {
       setTriedFallback(true);
       setCurrentSrc(originalSrc);
@@ -62,6 +79,8 @@ export default function ProductImage({
       <div className={cn("h-full w-full", className)}>
         <ProgressiveImage
           src={currentSrc}
+          srcSet={responsiveSrc?.srcSet}
+          sizes={responsiveSrc?.sizes}
           alt={alt}
           loading={loading}
           fetchPriority={fetchPriority}

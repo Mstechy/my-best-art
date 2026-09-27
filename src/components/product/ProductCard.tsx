@@ -19,6 +19,9 @@ export type ProductCardProduct = {
   // starts with zero reviews and no rating is shown at all.
   soldCount?: number;
   imageUrl?: string | null;
+  // 320px grid derivative. Present only for listings uploaded after responsive cards
+  // were added, so the card must keep working when it is absent.
+  imageSmallUrl?: string | null;
   flashDealEndAt?: string | null;
   badge?: { label: string; tone?: "destructive" | "seller" | "brand" | "success" } | null;
   videoUrl?: string | null;
@@ -82,7 +85,7 @@ export function ProductCard({
       <Link to={`/product/${product.id}`} onClick={onProductClick} className="block">
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
           {product.imageUrl ? (
-            <ProductImage src={product.imageUrl} alt={product.title} className="group-hover:scale-105" loading="lazy" />
+            <ProductImage src={product.imageUrl} cardSmallUrl={product.imageSmallUrl} alt={product.title} className="group-hover:scale-105" loading="lazy" />
           ) : (
             <div className="flex h-full items-center justify-center text-muted-foreground">
               <Package className="h-8 w-8" />

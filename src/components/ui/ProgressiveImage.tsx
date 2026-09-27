@@ -8,6 +8,8 @@ interface ProgressiveImageProps {
   style?: React.CSSProperties;
   width?: number;
   height?: number;
+  srcSet?: string;
+  sizes?: string;
   loading?: "lazy" | "eager";
   fetchPriority?: "high" | "low" | "auto";
   decoding?: "async" | "sync" | "auto";
@@ -32,6 +34,8 @@ const ProgressiveImage = memo(function ProgressiveImage({
   style,
   width,
   height,
+  srcSet,
+  sizes,
   loading = "lazy",
   fetchPriority = "auto",
   decoding = "async",
@@ -132,6 +136,8 @@ const ProgressiveImage = memo(function ProgressiveImage({
         <img
           ref={imgRef}
           src={src}
+          srcSet={srcSet}
+          sizes={sizes}
           alt={alt}
           className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
             loaded ? "opacity-100" : "opacity-0"

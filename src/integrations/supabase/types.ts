@@ -749,6 +749,7 @@ export type Database = {
         Row: {
           id: string
           image_url: string
+          card_small_url: string | null
           is_primary: boolean
           product_id: string
           sort_order: number
@@ -758,6 +759,7 @@ export type Database = {
         Insert: {
           id?: string
           image_url: string
+          card_small_url?: string | null
           is_primary?: boolean
           product_id: string
           sort_order?: number
@@ -767,6 +769,7 @@ export type Database = {
         Update: {
           id?: string
           image_url?: string
+          card_small_url?: string | null
           is_primary?: boolean
           product_id?: string
           sort_order?: number

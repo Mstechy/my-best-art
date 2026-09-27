@@ -874,11 +874,12 @@ export default function SellerProducts() {
         try {
           updateImageUploadState(item.id, { status: "uploading", progress: 20, error: undefined });
           const visualHash = await createVisualHash(item.file);
-          const { originalUrl } = await uploadProductImagePair(item.file, `${user.id}/${productId}`);
+          const { originalUrl, cardSmallUrl } = await uploadProductImagePair(item.file, `${user.id}/${productId}`);
           updateImageUploadState(item.id, { progress: 80 });
           const { data: inserted, error: insertError } = await supabase.from("product_images").insert({
             product_id: productId,
             image_url: originalUrl,
+            card_small_url: cardSmallUrl,
             is_primary: item.isPrimary,
             sort_order: i,
             alt: item.alt.trim() || null,
