@@ -42,8 +42,15 @@ param(
 # `throw` and $LASTEXITCODE checks below instead.
 $ErrorActionPreference = 'Continue'
 $projectRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+# Both values are consumed below, but the reads are written as -f format arguments
+# rather than string interpolation ("db-$stamp.sql"). PSScriptAnalyzer's
+# PSUseDeclaredVarsMoreThanAssignments rule does not always count a variable read that
+# only appears inside an interpolated string, and then reports it as unused. Building
+# the full paths here keeps each variable's read in a plain expression position.
 $backupDir = Join-Path $env:TEMP 'tradibu-db-backup'
 $stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$dumpPath = Join-Path ('{0}' -f $backupDir) ('db-{0}.sql' -f $stamp)
+$diffPath = Join-Path ('{0}' -f $backupDir) ('remote-schema-{0}.sql' -f $stamp)
 
 function Write-Step($text) { Write-Host "`n=== $text ===" -ForegroundColor Cyan }
 function Write-Ok($text)   { Write-Host "  $text" -ForegroundColor Green }
@@ -108,17 +115,15 @@ if (-not $env:SUPABASE_DB_PASSWORD) {
 New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
 
 Write-Step '1/5  Backing up the live database'
-$dump = Join-Path $backupDir "db-$stamp.sql"
-supabase db dump --linked --file $dump
-if (-not (Test-Path $dump)) {
+supabase db dump --linked --file $dumpPath
+if (-not (Test-Path $dumpPath)) {
     throw "Backup failed - stop here.$([Environment]::NewLine)  No repair has been made yet, so the database is untouched."
 }
-Write-Ok "backup written: $dump"
+Write-Ok "backup written: $dumpPath"
 
 Write-Step '2/5  Snapshotting the remote schema (for the record)'
-$diff = Join-Path $backupDir "remote-schema-$stamp.sql"
-supabase db diff --linked --schema public --file $diff
-if (Test-Path $diff) { Write-Ok "schema snapshot: $diff" } else { Write-Warn 'no snapshot produced' }
+supabase db diff --linked --schema public --file $diffPath
+if (Test-Path $diffPath) { Write-Ok "schema snapshot: $diffPath" } else { Write-Warn 'no snapshot produced' }
 
 Write-Step "3/5  Marking $($toRepair.Count) migrations as applied"
 $failed = @()
