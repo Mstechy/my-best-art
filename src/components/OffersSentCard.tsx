@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow, isPast } from "date-fns";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Offer {
   id: string;
@@ -31,6 +32,7 @@ const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; lab
 };
 
 export default function OffersSentCard() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -201,7 +203,7 @@ export default function OffersSentCard() {
                 <div className="mt-2 flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1 text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">
                     <DollarSign className="h-3 w-3 text-[#888880]" />
-                    {offer.amount.toFixed(2)} {offer.currency}
+                    {formatPrice(offer.amount, offer.currency)}
                   </span>
                   <span className="flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
                     <Clock className="h-3 w-3" />

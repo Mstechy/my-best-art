@@ -51,6 +51,25 @@ vi.mock("@/hooks/useAuth", () => ({
 }));
 
 /**
+ * SellerProducts now formats every amount through the currency context (prices are
+ * stored in naira, so a hardcoded "$" would be wrong), and the real CurrencyProvider
+ * would fetch exchange rates on mount. The draft-recovery behaviour under test is
+ * unrelated to currency, so the context is stubbed with a naira formatter.
+ */
+vi.mock("@/hooks/useCurrency", () => ({
+  useCurrency: () => ({
+    formatPrice: (amount: number) => `\u20A6${Math.round(Number(amount)).toLocaleString("en-NG")}`,
+    convertPrice: (amount: number) => Number(amount),
+    currency: { code: "NGN", symbol: "\u20A6", rate: 1550 },
+    currencies: {},
+    country: "NG",
+    detectedCountry: "NG",
+    setCurrencyCode: () => {},
+    setCountry: () => {},
+  }),
+}));
+
+/**
  * The draft's files live in IndexedDB, which jsdom does not implement. Mocking
  * the store keeps these tests focused on the behaviour the page guarantees:
  * whatever the store hands back must reappear in the form, and discarding must

@@ -9,10 +9,12 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useSellerDashboard } from "@/hooks/useSellerDashboard";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const SellerRevenueChart = lazy(() => import("@/components/seller/SellerRevenueChart"));
 
 export default function SellerDashboard() {
+  const { formatPrice } = useCurrency();
   const { user, profile, refetchProfile } = useAuth();
   const [isApproved, setIsApproved] = useState<boolean>(profile?.is_approved ?? false);
   const [checkingApproval, setCheckingApproval] = useState<boolean>(profile?.is_approved === undefined);
@@ -106,7 +108,7 @@ export default function SellerDashboard() {
   const showChecking = Boolean(checkingApproval || (loading && (!products.length && !stats.totalRevenue)));
 
   const statCards = [
-    { label: "Total Revenue", value: `$${(stats.totalRevenue || 0).toFixed(2)}`, icon: DollarSign, cardClass: "stat-card stat-card-seller" },
+    { label: "Total Revenue", value: formatPrice(stats.totalRevenue || 0), icon: DollarSign, cardClass: "stat-card stat-card-seller" },
     { label: "Active Products", value: String(products.length), icon: Package, cardClass: "stat-card" },
     { label: "Pending Approval", value: String(stats.pendingApproval || 0), icon: Clock, cardClass: (stats.pendingApproval || 0) > 0 ? "stat-card stat-card-destructive" : "stat-card" },
     { label: "Pending Orders", value: String(pendingOrdersCount), icon: ShoppingCart, cardClass: "stat-card stat-card-buyer" },
@@ -236,7 +238,7 @@ export default function SellerDashboard() {
                         <p className="text-xs text-muted-foreground">from {order.buyer_name}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-sm text-foreground">${order.total_amount}</span>
+                        <span className="font-semibold text-sm text-foreground">{formatPrice(Number(order.total_amount))}</span>
                         <Badge className={`${statusColors[order.status] || ""} capitalize text-xs`}>{order.status}</Badge>
                       </div>
                     </div>

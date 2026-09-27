@@ -5,6 +5,7 @@ import { Slider } from "../components/ui/slider";
 import { Label } from "../components/ui/label";
 import { Filter, Star } from "lucide-react";
 import { defaultFilters, type MarketplaceFiltersState } from "./marketplaceFiltersState";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Props {
   value: MarketplaceFiltersState;
@@ -25,6 +26,7 @@ export default function MarketplaceFilters({
   categoryFilters = [],
   categoryFilterOptions = {},
 }: Props) {
+  const { formatPrice } = useCurrency();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
 
@@ -67,8 +69,8 @@ export default function MarketplaceFilters({
                 onValueChange={([min, max]) => setDraft(d => ({ ...d, minPrice: min, maxPrice: max }))}
               />
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                <span>${draft.minPrice}</span>
-                <span>${draft.maxPrice}{draft.maxPrice === 10000 ? "+" : ""}</span>
+                <span>{formatPrice(draft.minPrice)}</span>
+                <span>{formatPrice(draft.maxPrice)}{draft.maxPrice === 10000 ? "+" : ""}</span>
               </div>
             </div>
           </div>

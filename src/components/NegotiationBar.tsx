@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Offer {
   id: string;
@@ -47,6 +48,7 @@ function formatTimeLeft(ms: number): string {
 }
 
 export default function NegotiationBar({ currentUserId, partnerId, role }: Props) {
+  const { formatPrice } = useCurrency();
   const [offer, setOffer] = useState<Offer | null>(null);
   const [productTitle, setProductTitle] = useState<string>("");
   const [productPrice, setProductPrice] = useState<number>(0);
@@ -83,7 +85,7 @@ export default function NegotiationBar({ currentUserId, partnerId, role }: Props
                          (row.buyer_id === partnerId && row.seller_id === currentUserId);
         if (!involved) return;
         if (payload.eventType === "UPDATE" && offer && row.id === offer.id) {
-          if (row.status === "accepted") toast.success(`Offer accepted: $${Number(row.amount).toFixed(2)}`);
+          if (row.status === "accepted") toast.success(`Offer accepted: ${formatPrice(Number(row.amount))}`);
           if (row.status === "rejected") toast.error("Offer rejected");
           if (row.status === "expired") toast("Offer expired");
           if (row.status === "countered") toast("Seller countered the offer");
@@ -143,8 +145,8 @@ export default function NegotiationBar({ currentUserId, partnerId, role }: Props
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs text-muted-foreground truncate">{productTitle || "Product"}</p>
-          <p className="text-sm font-bold text-foreground">${offer.amount.toFixed(2)}
-            {productPrice > 0 && <span className="ml-2 text-[10px] text-muted-foreground line-through">${productPrice.toFixed(2)}</span>}
+          <p className="text-sm font-bold text-foreground">{formatPrice(offer.amount)}
+            {productPrice > 0 && <span className="ml-2 text-[10px] text-muted-foreground line-through">{formatPrice(productPrice)}</span>}
           </p>
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
 } from "recharts";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Bucket { week: string; value: number }
 interface TopProduct { title: string; total: number }
@@ -52,6 +53,7 @@ function bucketize(rows: { created_at: string; amount?: number }[], weeks: Date[
 }
 
 export default function AdminAnalytics() {
+  const { formatPrice } = useCurrency();
   const [stats, setStats] = useState({ users: 0, products: 0, orders: 0, sellers: 0 });
   const [ordersSeries, setOrdersSeries] = useState<Bucket[]>([]);
   const [usersSeries, setUsersSeries] = useState<Bucket[]>([]);
@@ -293,7 +295,7 @@ export default function AdminAnalytics() {
                     <CartesianGrid stroke={chartTheme.grid} strokeDasharray="3 3" />
                     <XAxis dataKey="week" stroke={chartTheme.text} fontSize={11} />
                     <YAxis stroke={chartTheme.text} fontSize={11} />
-                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => `$${Number(v).toFixed(2)}`} />
+                    <Tooltip contentStyle={tooltipStyle} formatter={(v: number) => formatPrice(Number(v))} />
                     <Area type="monotone" dataKey="value" stroke={chartTheme.primary} strokeWidth={2.5} fill="url(#revFill)" />
                   </AreaChart>
                 </ResponsiveContainer>

@@ -12,6 +12,7 @@ import { countryName } from "../lib/countries";
 import ProductImage from "@/components/product/ProductImage";
 import StarRating from "@/components/ui/StarRating";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface SellerProfile {
   user_id: string;
@@ -43,6 +44,7 @@ interface Product {
 interface StoreCollection { id: string; title: string; slug: string; description: string | null; image_url: string | null; }
 
 export default function SellerStorePage() {
+  const { formatPrice } = useCurrency();
   const { id } = useParams<{ id: string }>();
   const [seller, setSeller] = useState<SellerProfile | null>(null);
   const [store, setStore] = useState<StoreProfile | null>(null);
@@ -223,9 +225,9 @@ export default function SellerStorePage() {
                     <div className="p-3">
                       <h3 className="text-xs font-medium text-foreground line-clamp-2 min-h-[2rem]">{product.title}</h3>
                       <div className="mt-1.5 flex items-baseline gap-1">
-                        <span className="font-display text-base font-bold text-destructive">${product.price}</span>
+                        <span className="font-display text-base font-bold text-destructive">{formatPrice(product.price)}</span>
                         {product.compare_at_price && product.compare_at_price > product.price && (
-                          <span className="text-[10px] text-muted-foreground line-through">${product.compare_at_price}</span>
+                          <span className="text-[10px] text-muted-foreground line-through">{formatPrice(product.compare_at_price)}</span>
                         )}
                       </div>
                       <div className="mt-1 flex items-center justify-between text-[10px] text-muted-foreground">

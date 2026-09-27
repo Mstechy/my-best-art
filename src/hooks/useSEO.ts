@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface SEOProps {
   title?: string;
@@ -152,9 +153,12 @@ export function useProductSEO({
   reviewCount?: number;
   brand?: string | null;
 }) {
+  // Price in the visitor's currency for the human-readable description. The JSON-LD offer
+  // below deliberately keeps the real transaction currency and amount instead.
+  const { formatPrice } = useCurrency();
   return useSEO({
     title: productName,
-    description: description || `Buy ${productName} for $${price.toFixed(2)} on Tradibu. Secure escrow payments, buyer protection, fast delivery worldwide.`,
+    description: description || `Buy ${productName} for ${formatPrice(price, currency)} on Tradibu. Secure escrow payments, buyer protection, fast delivery worldwide.`,
     image: image || DEFAULT_IMAGE,
     url: `/product/${id}`,
     type: "product",
@@ -167,7 +171,7 @@ export function useProductSEO({
       offers: {
         "@type": "Offer",
         url: new URL(`/product/${id}`, SITE_URL).toString(),
-        priceCurrency: currency,
+        priceCurrency: currency || "NGN",
         price: price.toFixed(2),
         availability: `https://schema.org/${availability || "InStock"}`,
         itemCondition: "https://schema.org/NewCondition",

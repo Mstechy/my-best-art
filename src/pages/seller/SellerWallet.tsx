@@ -8,6 +8,7 @@ import EmptyState from "@/components/EmptyState";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface WalletTx {
   id: string;
@@ -26,7 +27,15 @@ const TYPE_BADGE: Record<string, string> = {
   refund: "bg-destructive/15 text-destructive border-destructive/30",
 };
 
+/**
+ * Minimum withdrawable balance, in naira. Named so the threshold and the message
+ * that announces it cannot drift apart, and so no raw number is ever shown to a
+ * seller without its currency.
+ */
+const MIN_PAYOUT = 10;
+
 export default function SellerWallet() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const [available, setAvailable] = useState(0);
@@ -78,9 +87,9 @@ export default function SellerWallet() {
   }, [filtered]);
 
   const walletStats = [
-    { label: "Available Balance", value: `$${available.toFixed(2)}`, icon: Wallet, gradient: "gradient-seller", desc: "Ready to withdraw" },
-    { label: "Pending", value: `$${pending.toFixed(2)}`, icon: Clock, gradient: "gradient-primary", desc: "In escrow until delivered" },
-    { label: "Total Earned", value: `$${totalEarned.toFixed(2)}`, icon: TrendingUp, gradient: "gradient-buyer", desc: "Lifetime earnings" },
+    { label: "Available Balance", value: formatPrice(available), icon: Wallet, gradient: "gradient-seller", desc: "Ready to withdraw" },
+    { label: "Pending", value: formatPrice(pending), icon: Clock, gradient: "gradient-primary", desc: "In escrow until delivered" },
+    { label: "Total Earned", value: formatPrice(totalEarned), icon: TrendingUp, gradient: "gradient-buyer", desc: "Lifetime earnings" },
   ];
 
   const filterPills: { id: Filter; label: string }[] = [
@@ -91,8 +100,9 @@ export default function SellerWallet() {
   ];
 
   const handleWithdraw = () => {
-    if (available < 10) {
-      toast({ title: "Minimum payout is $10", description: "Reach $10 in available balance to request a withdrawal.", variant: "destructive" });
+    if (available < MIN_PAYOUT) {
+      // The threshold is an naira amount; say so in the visitor's own currency.
+      toast({ title: `Minimum payout is ${formatPrice(MIN_PAYOUT)}`, description: `Reach ${formatPrice(MIN_PAYOUT)} in available balance to request a withdrawal.`, variant: "destructive" });
       return;
     }
     toast({ title: "Payout requested", description: "Your withdrawal will be processed within 1–3 business days." });
@@ -106,7 +116,7 @@ export default function SellerWallet() {
             <h1 className="font-display text-3xl font-bold text-foreground">Wallet</h1>
             <p className="mt-1 text-muted-foreground">Your earnings and withdrawal management</p>
           </div>
-          <Button onClick={handleWithdraw} disabled={available < 10}
+          <Button onClick={handleWithdraw} disabled={available < MIN_PAYOUT}
             className="gap-2 gradient-seller text-primary-foreground shadow-glow-seller disabled:opacity-50">
             <ArrowUpRight className="h-4 w-4" /> Request Payout
           </Button>
@@ -173,7 +183,7 @@ export default function SellerWallet() {
                               </div>
                             </div>
                             <span className={`font-display font-bold shrink-0 ${isNegative ? "text-destructive" : "text-success"}`}>
-                              {isNegative ? "-" : "+"}${Math.abs(Number(tx.amount)).toFixed(2)}
+                              {isNegative ? "-" : "+"}{formatPrice(Math.abs(Number(tx.amount)))}
                             </span>
                           </div>
                         );

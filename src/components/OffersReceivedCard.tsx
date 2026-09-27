@@ -18,6 +18,7 @@ import {
 } from "./ui/alert-dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Offer {
   id: string;
@@ -36,6 +37,7 @@ interface Offer {
 }
 
 export default function OffersReceivedCard() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -216,7 +218,7 @@ export default function OffersReceivedCard() {
                   <div className="mt-2 flex items-center gap-4 text-sm text-muted-foreground">
                     <span className="flex items-center gap-1 font-semibold text-foreground">
                       <DollarSign className="h-4 w-4" />
-                      {offer.amount.toFixed(2)} {offer.currency}
+                      {formatPrice(offer.amount, offer.currency)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-4 w-4" />
@@ -295,7 +297,7 @@ export default function OffersReceivedCard() {
           <AlertDialogHeader>
             <AlertDialogTitle>Make a Counter Offer</AlertDialogTitle>
             <AlertDialogDescription>
-              Current offer: ${(selectedOffer?.amount ?? 0).toFixed(2)}
+              Current offer: {formatPrice(selectedOffer?.amount ?? 0)}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="space-y-4">

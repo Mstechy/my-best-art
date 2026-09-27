@@ -14,6 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 import ProductImage from "@/components/product/ProductImage";
 import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
 import { useAdminProducts } from "@/hooks/useAdminDashboard";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Product {
   id: string;
@@ -32,6 +33,7 @@ interface Product {
 type Tab = "all" | "pending" | "approved" | "archived";
 
 export default function AdminProducts() {
+  const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -182,7 +184,7 @@ export default function AdminProducts() {
                             <p className="text-xs text-muted-foreground">{product.seller_email}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">${product.price}</TableCell>
+                        <TableCell className="font-medium">{formatPrice(product.price)}</TableCell>
                         <TableCell>{product.stock_quantity}</TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">

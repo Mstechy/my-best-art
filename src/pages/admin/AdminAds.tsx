@@ -7,8 +7,10 @@ import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import AdFormDialog, { AdRow } from "@/components/AdFormDialog";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function AdminAds() {
+  const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [ads, setAds] = useState<AdRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,7 @@ export default function AdminAds() {
     { label: "Active Ads", value: String(ads.filter(a => a.status === "active").length), icon: Megaphone, gradient: "gradient-admin" },
     { label: "Total Impressions", value: String(totalImpressions), icon: Eye, gradient: "gradient-primary" },
     { label: "Total Clicks", value: String(totalClicks), icon: MousePointer, gradient: "gradient-seller" },
-    { label: "Spend", value: `$${totalSpent.toFixed(2)}`, icon: DollarSign, gradient: "gradient-buyer" },
+    { label: "Spend", value: formatPrice(totalSpent), icon: DollarSign, gradient: "gradient-buyer" },
   ];
 
   const statusColors: Record<string, string> = {
@@ -119,7 +121,7 @@ export default function AdminAds() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm text-muted-foreground">${Number(ad.spent).toFixed(2)} / ${Number(ad.budget).toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground">{formatPrice(Number(ad.spent))} / {formatPrice(Number(ad.budget))}</span>
                       <Badge className={statusColors[ad.status] || ""}>{ad.status}</Badge>
                       <Button size="sm" variant="outline" onClick={() => openEdit(ad)} className="gap-1"><Pencil className="h-3 w-3" /> Edit</Button>
                       {ad.status === "active" ? (

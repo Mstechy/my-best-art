@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Heart, Package } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import ProductImage from "@/components/product/ProductImage";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Item {
   product: {
@@ -18,6 +19,7 @@ interface Item {
 }
 
 export default function PublicWishlistPage() {
+  const { formatPrice } = useCurrency();
   const { userId } = useParams<{ userId: string }>();
   const [items, setItems] = useState<Item[]>([]);
   const [ownerName, setOwnerName] = useState<string>("");
@@ -73,7 +75,7 @@ export default function PublicWishlistPage() {
                     {discount && <Badge className="absolute top-2 left-2 bg-destructive text-destructive-foreground">-{discount}%</Badge>}
                   </div>
                   <p className="mt-2 text-sm font-medium text-foreground line-clamp-2">{product.title}</p>
-                  <p className="text-base font-bold text-primary">${product.price}</p>
+                  <p className="text-base font-bold text-primary">{formatPrice(product.price)}</p>
                 </Link>
               );
             })}

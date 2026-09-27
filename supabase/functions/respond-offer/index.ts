@@ -83,7 +83,14 @@ Deno.serve(async (req) => {
       seller_id: offer.seller_id,
       amount: counterAmount,
       currency: product.currency || "NGN",
-      note: `Counter offer: $${counterAmount.toFixed(2)}`,
+      // Naira, not dollars: this note is shown verbatim in the buyer's chat.
+      note: `Counter offer: ${((): string => {
+        try {
+          return new Intl.NumberFormat("en-NG", { style: "currency", currency: product.currency || "NGN", maximumFractionDigits: 0 }).format(counterAmount);
+        } catch {
+          return `\u20A6${Math.round(Number(counterAmount)).toLocaleString("en-NG")}`;
+        }
+      })()}`,
       parent_offer_id: offer.id,
       expires_at: new Date(Date.now() + 24 * 3600 * 1000).toISOString(),
     }).select("id, expires_at").single();

@@ -23,11 +23,13 @@ import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
 import { buildListingReadiness } from "@/lib/listingReadiness";
+import { useCurrency } from "@/hooks/useCurrency";
 
 import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
 import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
 
 export default function SellerProducts() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
@@ -1897,8 +1899,8 @@ export default function SellerProducts() {
                         <h3 className="mt-1 font-display text-lg font-semibold text-foreground">{title || "Product name"}</h3>
                       </div>
                       <div className="text-right">
-                        <p className="font-display text-lg font-bold text-foreground">{price ? `$${Number(price).toFixed(2)}` : "$0.00"}</p>
-                        {compareAtPrice && <p className="text-xs text-muted-foreground line-through">${Number(compareAtPrice).toFixed(2)}</p>}
+                        <p className="font-display text-lg font-bold text-foreground">{price ? formatPrice(Number(price)) : formatPrice(0)}</p>
+                        {compareAtPrice && <p className="text-xs text-muted-foreground line-through">{formatPrice(Number(compareAtPrice))}</p>}
                       </div>
                     </div>
                     {description && <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{description}</p>}
@@ -2076,9 +2078,9 @@ export default function SellerProducts() {
                   <CardContent className="p-4">
                     <h3 className="font-display font-semibold text-foreground truncate">{product.title}</h3>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="font-display text-lg font-bold text-foreground">${product.price}</span>
+                      <span className="font-display text-lg font-bold text-foreground">{formatPrice(product.price)}</span>
                       {product.compare_at_price && (
-                        <span className="text-sm text-muted-foreground line-through">${product.compare_at_price}</span>
+                        <span className="text-sm text-muted-foreground line-through">{formatPrice(product.compare_at_price)}</span>
                       )}
                     </div>
                     {product.brand && (

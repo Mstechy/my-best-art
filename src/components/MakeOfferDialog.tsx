@@ -9,6 +9,7 @@ import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const offerSchema = z.object({
   offer: z.number().positive().max(9_999_999),
@@ -27,6 +28,7 @@ interface MakeOfferDialogProps {
 const MAX_FILE_BYTES = 5 * 1024 * 1024;
 
 export default function MakeOfferDialog({ open, onOpenChange, productId, productTitle, productPrice, onSent }: MakeOfferDialogProps) {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { toast } = useToast();
   const [offer, setOffer] = useState<string>(((productPrice * 0.9).toFixed(2)));
@@ -99,7 +101,7 @@ export default function MakeOfferDialog({ open, onOpenChange, productId, product
             <Label htmlFor="offer-price">Your offer (USD)</Label>
             <Input id="offer-price" type="number" step="0.01" min="0" max="9999999" inputMode="decimal"
               value={offer} onChange={(e) => setOffer(e.target.value)} className="h-11" />
-            <p className="mt-1 text-xs text-muted-foreground">Listed at ${productPrice.toFixed(2)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">Listed at ${formatPrice(productPrice)}</p>
           </div>
           <div>
             <Label htmlFor="offer-note">Note (optional, max 500)</Label>

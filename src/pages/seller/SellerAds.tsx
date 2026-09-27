@@ -6,6 +6,7 @@ import { Megaphone, Plus, Eye, MousePointer, DollarSign, TrendingUp } from "luci
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Ad {
   id: string;
@@ -21,6 +22,7 @@ interface Ad {
 }
 
 export default function SellerAds() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const [ads, setAds] = useState<Ad[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,7 +41,7 @@ export default function SellerAds() {
     { label: "Active Campaigns", value: String(ads.filter(a => a.status === "active").length), icon: Megaphone, gradient: "gradient-seller" },
     { label: "Total Impressions", value: String(totalImpressions), icon: Eye, gradient: "gradient-primary" },
     { label: "Total Clicks", value: String(totalClicks), icon: MousePointer, gradient: "gradient-buyer" },
-    { label: "Ad Spend", value: `$${totalSpent.toFixed(2)}`, icon: DollarSign, gradient: "gradient-admin" },
+    { label: "Ad Spend", value: formatPrice(totalSpent), icon: DollarSign, gradient: "gradient-admin" },
   ];
 
   const statusColors: Record<string, string> = {
@@ -107,7 +109,7 @@ export default function SellerAds() {
                       <p className="text-xs text-muted-foreground mt-1">{ad.placement} • {ad.impressions} impressions • {ad.clicks} clicks</p>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground">${Number(ad.spent).toFixed(2)} / ${Number(ad.budget).toFixed(2)}</span>
+                      <span className="text-sm text-muted-foreground">{formatPrice(Number(ad.spent))} / {formatPrice(Number(ad.budget))}</span>
                       <Badge className={statusColors[ad.status] || ""}>{ad.status}</Badge>
                     </div>
                   </div>

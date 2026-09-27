@@ -4,8 +4,10 @@ import { BarChart3, TrendingUp, Users, DollarSign, Repeat } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 
 export default function SellerAnalytics() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const [topProducts, setTopProducts] = useState<{ name: string; revenue: number }[]>([]);
   const [stats, setStats] = useState({ completion: 0, views: 0, aov: 0, repeat: 0 });
@@ -77,7 +79,7 @@ export default function SellerAnalytics() {
   const kpis = [
     { label: "Completion Rate", value: `${stats.completion.toFixed(1)}%`, icon: TrendingUp },
     { label: "Profile Views (mo)", value: String(stats.views), icon: Users },
-    { label: "Avg Order Value", value: `$${stats.aov.toFixed(2)}`, icon: DollarSign },
+    { label: "Avg Order Value", value: formatPrice(stats.aov), icon: DollarSign },
     { label: "Repeat Buyer Rate", value: `${stats.repeat.toFixed(1)}%`, icon: Repeat },
   ];
 

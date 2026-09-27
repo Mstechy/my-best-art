@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 
 /**
  * Global, mounted-once listener for offer lifecycle events and new messages.
  * Surfaces in-app toasts with a clickable link to the negotiation chat.
  */
 export default function NotificationsHub() {
+  const { formatPrice } = useCurrency();
   const { user, role } = useAuth();
   const navigate = useNavigate();
   const seen = useRef<Set<string>>(new Set());
@@ -31,7 +33,7 @@ export default function NotificationsHub() {
 
         const partnerId = row.buyer_id === user.id ? row.seller_id : row.buyer_id;
         const open = () => navigate(`${chatPath}?seller=${partnerId}&product=${row.product_id}`);
-        const amount = `$${Number(row.amount).toFixed(2)}`;
+        const amount = formatPrice(Number(row.amount));
 
         const opts = { action: { label: "Open chat", onClick: open } };
         switch (row.status) {
@@ -53,7 +55,7 @@ export default function NotificationsHub() {
         const key = `new:${row.id}`;
         if (seen.current.has(key)) return;
         seen.current.add(key);
-        toast(`New offer: $${Number(row.amount).toFixed(2)}`, {
+        toast(`New offer: ${formatPrice(Number(row.amount))}`, {
           action: { label: "Review", onClick: () => navigate(`${chatPath}?seller=${row.buyer_id}&product=${row.product_id}`) },
         });
       })

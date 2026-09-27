@@ -8,6 +8,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface SystemAlert {
   id: string;
@@ -18,6 +19,7 @@ interface SystemAlert {
 }
 
 export default function AdminDashboard() {
+  const { formatPrice } = useCurrency();
   const { profile } = useAuth();
   const [stats, setStats] = useState({ sellers: 0, buyers: 0, totalUsers: 0, products: 0, orders: 0, disputes: 0, revenue: 0, pendingProducts: 0, pendingSellers: 0 });
   const [recentOrders, setRecentOrders] = useState<Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string; seller_id: string; buyer_name?: string; seller_name?: string }>>([]);
@@ -104,7 +106,7 @@ export default function AdminDashboard() {
   };
 
   const statCards = [
-    { label: "Total Revenue", value: `$${stats.revenue.toFixed(2)}`, icon: DollarSign, cardClass: "stat-card" },
+    { label: "Total Revenue", value: formatPrice(stats.revenue), icon: DollarSign, cardClass: "stat-card" },
     { label: "Pending Products", value: String(stats.pendingProducts), icon: Clock, cardClass: stats.pendingProducts > 0 ? "stat-card stat-card-destructive" : "stat-card" },
     { label: "Active Sellers", value: String(stats.sellers), icon: Store, cardClass: "stat-card stat-card-seller" },
     { label: "Total Buyers", value: String(stats.buyers), icon: Users, cardClass: "stat-card stat-card-buyer" },
@@ -231,7 +233,7 @@ export default function AdminDashboard() {
                         <p className="text-xs text-muted-foreground">{order.buyer_name} → {order.seller_name}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-semibold text-sm text-foreground">${order.total_amount}</span>
+                        <span className="font-semibold text-sm text-foreground">{formatPrice(Number(order.total_amount))}</span>
                         <Badge className={`${statusColors[order.status] || ""} capitalize text-xs`}>{order.status}</Badge>
                       </div>
                     </div>

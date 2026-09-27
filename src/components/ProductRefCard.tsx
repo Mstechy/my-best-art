@@ -4,6 +4,7 @@ import { Package, Tag, Truck, Paperclip } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import AttachmentLightbox from "./AttachmentLightbox";
 import ProductImage from "@/components/product/ProductImage";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const PRODUCT_REF_RE = /\[product:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/i;
 const ORDER_REF_RE = /\[order:([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\]/i;
@@ -80,6 +81,7 @@ interface Props {
 }
 
 export default function ProductRefCard({ productId, orderId, offerPrice, attachmentUrl }: Props) {
+  const { formatPrice } = useCurrency();
   const [product, setProduct] = useState<MiniProduct | null | undefined>(productId ? cache.get(productId) : null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -126,12 +128,12 @@ export default function ProductRefCard({ productId, orderId, offerPrice, attachm
               {offerPrice != null ? (
                 <div className="flex flex-col items-end">
                   <span className="inline-flex items-center gap-1 text-sm font-bold text-success">
-                    <Tag className="h-3 w-3" /> ${offerPrice.toFixed(2)}
+                    <Tag className="h-3 w-3" /> {formatPrice(offerPrice)}
                   </span>
-                  <span className="text-[10px] text-muted-foreground line-through">${product.price.toFixed(2)}</span>
+                  <span className="text-[10px] text-muted-foreground line-through">{formatPrice(product.price)}</span>
                 </div>
               ) : (
-                <span className="text-sm font-bold text-primary">${product.price.toFixed(2)}</span>
+                <span className="text-sm font-bold text-primary">{formatPrice(product.price)}</span>
               )}
             </div>
           </div>

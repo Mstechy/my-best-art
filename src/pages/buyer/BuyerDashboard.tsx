@@ -13,6 +13,7 @@ import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend
 } from "recharts";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface CategoryData {
   name: string;
@@ -22,6 +23,7 @@ interface CategoryData {
 const COLORS = ["#F6C75D", "#3B82F6", "#10B981", "#8B5CF6", "#EC4899", "#3F3F46"];
 
 export default function BuyerDashboard() {
+  const { formatPrice } = useCurrency();
   const { user, profile } = useAuth();
   const [stats, setStats] = useState({ activeOrders: 0, inTransit: 0, totalSpent: 0 });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
@@ -158,7 +160,7 @@ export default function BuyerDashboard() {
     },
     {
       label: "Total Spent",
-      value: `$${stats.totalSpent.toFixed(2)}`,
+      value: formatPrice(stats.totalSpent),
       icon: DollarSign,
       iconBg: "bg-emerald-50 dark:bg-emerald-950/20",
       iconColor: "text-emerald-600 dark:text-emerald-400",
@@ -308,7 +310,7 @@ export default function BuyerDashboard() {
                       </defs>
                       <CartesianGrid strokeDasharray="2 4" stroke="#DBEAFE" vertical={false} className="dark:[stroke:#222222]" />
                       <XAxis dataKey="month" tick={{ fill: "#888880", fontSize: 9 }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fill: "#888880", fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={(v) => `$${v}`} />
+                      <YAxis tick={{ fill: "#888880", fontSize: 9 }} tickLine={false} axisLine={false} tickFormatter={(v) => formatPrice(Number(v))} />
                       <Tooltip contentStyle={{ background: "white", border: "1px solid #E8E8E8", borderRadius: 8, fontSize: 10, color: "#111111" }} />
                       <Area type="monotone" dataKey="total" stroke="#3B82F6" strokeWidth={1.5} fill="url(#spendGrad)" />
                     </AreaChart>
@@ -346,7 +348,7 @@ export default function BuyerDashboard() {
                           <p className="text-[8px] text-[#888880] truncate">from {order.seller_name}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">${Number(order.total_amount).toFixed(2)}</span>
+                          <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(order.total_amount)}</span>
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-[8px] font-bold ${s.bg} ${s.text}`}>{s.label}</span>
                         </div>
                       </div>

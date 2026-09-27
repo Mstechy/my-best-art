@@ -6,6 +6,7 @@ import ProductImage from "@/components/product/ProductImage";
 import { useCart } from "@/hooks/useCart";
 import { toast } from "sonner";
 import InfiniteScrollTrigger from "@/components/ui/InfiniteScrollTrigger";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface RecItem {
   id: string;
@@ -23,6 +24,7 @@ interface RecItem {
 const PAGE_SIZE = 12;
 
 export default function RecommendedProducts({ productId, categoryId }: { productId: string; categoryId: string | null }) {
+  const { formatPrice } = useCurrency();
   const [items, setItems] = useState<RecItem[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -93,9 +95,9 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                   <div className="text-xs text-[#666666] dark:text-[#A0A0A0] truncate">{p.title}</div>
                 </Link>
                 <div className="flex items-center gap-1.5 relative h-7">
-                  <span className="text-base font-black text-[#111111] dark:text-[#FAF5F2] tracking-tight">${p.price}</span>
+                  <span className="text-base font-black text-[#111111] dark:text-[#FAF5F2] tracking-tight">{formatPrice(p.price)}</span>
                   {p.compare_at_price && (
-                    <span className="text-[10px] text-[#C0C0B8] line-through">${p.compare_at_price}</span>
+                    <span className="text-[10px] text-[#C0C0B8] line-through">{formatPrice(p.compare_at_price)}</span>
                   )}
                   <button
                     onClick={(e) => {

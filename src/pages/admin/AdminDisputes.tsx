@@ -9,6 +9,7 @@ import { AlertTriangle, Search, Shield, Clock, Paperclip, Snowflake } from "luci
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface OrderContext {
   id: string;
@@ -40,6 +41,7 @@ interface Dispute {
 type Tab = "all" | "open" | "investigating" | "resolved" | "dismissed";
 
 export default function AdminDisputes() {
+  const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [disputes, setDisputes] = useState<Dispute[]>([]);
   const [loading, setLoading] = useState(true);
@@ -207,14 +209,14 @@ export default function AdminDisputes() {
                         Buyer: <span className="text-foreground">{dispute.order.buyer_name || dispute.buyer_id.slice(0, 8)}</span> ·
                         Seller: <span className="text-foreground">{dispute.order.seller_name || dispute.seller_id.slice(0, 8)}</span>
                       </p>
-                      <p className="text-muted-foreground">Total: <span className="text-foreground font-medium">${dispute.order.total_amount.toFixed(2)}</span></p>
+                      <p className="text-muted-foreground">Total: <span className="text-foreground font-medium">{formatPrice(dispute.order.total_amount)}</span></p>
                       {dispute.order.tracking_number && (
                         <p className="text-muted-foreground">Tracking: <span className="font-mono text-foreground">{dispute.order.carrier} {dispute.order.tracking_number}</span></p>
                       )}
                       {dispute.order.items && dispute.order.items.length > 0 && (
                         <ul className="mt-1 list-disc pl-4 text-muted-foreground">
                           {dispute.order.items.map((it, idx) => (
-                            <li key={idx}>{it.product_title} × {it.quantity} (${Number(it.unit_price).toFixed(2)})</li>
+                            <li key={idx}>{it.product_title} × {it.quantity} (${formatPrice(Number(it.unit_price))})</li>
                           ))}
                         </ul>
                       )}

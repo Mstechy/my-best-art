@@ -10,6 +10,7 @@ import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface OrderItem {
   id: string;
@@ -53,6 +54,7 @@ const STATUS_META: Record<string, { icon: React.ElementType; iconColor: string; 
 };
 
 export default function BuyerOrders() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -321,7 +323,7 @@ export default function BuyerOrders() {
 
                   {/* Action buttons + total */}
                   <div className="flex flex-wrap items-center gap-1.5 mt-3">
-                    <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mr-1">${order.total_amount}</span>
+                    <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mr-1">{formatPrice(order.total_amount)}</span>
 
                     {order.status === "pending" && (
                       <button onClick={() => setCancelOrder(order)}

@@ -8,6 +8,7 @@ import { Search, ShoppingCart, Package, Download } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface OrderWithDetails {
   id: string;
@@ -33,6 +34,7 @@ const statusColors: Record<string, string> = {
 };
 
 export default function AdminOrders() {
+  const { formatPrice } = useCurrency();
   const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -169,7 +171,7 @@ export default function AdminOrders() {
                         </TableCell>
                         <TableCell className="text-sm text-foreground">{order.seller_name}</TableCell>
                         <TableCell>{order.item_count}</TableCell>
-                        <TableCell className="font-semibold">${order.total_amount}</TableCell>
+                        <TableCell className="font-semibold">{formatPrice(order.total_amount)}</TableCell>
                         <TableCell>
                           <Badge className={`${statusColors[order.status] || ""} capitalize text-xs`}>{order.status}</Badge>
                         </TableCell>

@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import ProductImage from "@/components/product/ProductImage";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface WishlistItem {
   id: string;
@@ -31,6 +32,7 @@ interface WishlistItem {
 type SortKey = "newest" | "price_asc" | "price_desc";
 
 export default function BuyerWishlist() {
+  const { formatPrice } = useCurrency();
   const { user } = useAuth();
   const { addItem } = useCart();
   const { toast } = useToast();
@@ -136,9 +138,9 @@ export default function BuyerWishlist() {
             <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate leading-snug group-hover:opacity-70 transition-opacity">{item.product.title}</p>
           </Link>
           <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">${item.product.price}</span>
+            <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(item.product.price)}</span>
             {item.product.compare_at_price && item.product.compare_at_price > item.product.price && (
-              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">${item.product.compare_at_price}</span>
+              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(item.product.compare_at_price)}</span>
             )}
           </div>
           <div className="flex gap-2 mt-3">

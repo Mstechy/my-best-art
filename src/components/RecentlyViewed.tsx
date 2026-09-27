@@ -6,6 +6,7 @@ import { useRecentlyViewed } from "../hooks/useRecentlyViewed";
 import ProductImage from "@/components/product/ProductImage";
 import { useCart } from "@/hooks/useCart";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface Item {
   id: string;
@@ -21,6 +22,7 @@ interface Item {
 }
 
 export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
+  const { formatPrice } = useCurrency();
   const { ids } = useRecentlyViewed();
   const [items, setItems] = useState<Item[]>([]);
   const { addItem } = useCart();
@@ -67,9 +69,9 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                 </Link>
                 
                 <div className="flex items-center gap-1.5 relative h-7">
-                  <span className="text-base font-black text-[#111111] dark:text-[#FAF5F2] tracking-tight">${p.price}</span>
+                  <span className="text-base font-black text-[#111111] dark:text-[#FAF5F2] tracking-tight">{formatPrice(p.price)}</span>
                   {p.compare_at_price && (
-                    <span className="text-[10px] text-[#C0C0B8] line-through">${p.compare_at_price}</span>
+                    <span className="text-[10px] text-[#C0C0B8] line-through">{formatPrice(p.compare_at_price)}</span>
                   )}
                   
                   <button 

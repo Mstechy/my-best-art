@@ -75,7 +75,16 @@ Deno.serve(async (req) => {
       attachmentUrl = pub.publicUrl;
     }
 
-    const cleanNote = (note.trim() || `I'd like to offer $${offerPrice.toFixed(2)} for "${product.title}".`).slice(0, 500);
+    // Offer amounts are stored in the product's own currency (NGN for this marketplace).
+    // Never render a dollar sign: a Nigerian buyer must not read an offer as USD.
+    const fmtMoney = (n: number) => {
+      try {
+        return new Intl.NumberFormat("en-NG", { style: "currency", currency: product.currency || "NGN", maximumFractionDigits: 0 }).format(Number(n));
+      } catch {
+        return `\u20A6${Math.round(Number(n)).toLocaleString("en-NG")}`;
+      }
+    };
+    const cleanNote = (note.trim() || `I'd like to offer ${fmtMoney(offerPrice)} for "${product.title}".`).slice(0, 500);
     const expiresAt = new Date(Date.now() + hours * 3600 * 1000).toISOString();
 
     const { data: offer, error: offerErr } = await admin.from("offers").insert({
