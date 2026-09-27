@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
 import { fetchHeroCollections } from "@/lib/collectionResolver";
@@ -52,16 +52,16 @@ export function useHomepageCategories() {
 }
 
 /** Raw feed data from a single RPC call (returns product IDs + metadata) */
-export function useHomepageFeed(feedName: FeedName, discoverySeed: string) {
+export function useHomepageFeed(feedName: FeedName) {
   return useSupabaseQuery(
-    supabaseKeys.rpcWithArgs("homepage_product_feed", { section: feedName, discoverySeed }),
+    supabaseKeys.rpcWithArgs("homepage_product_feed", { section: feedName }),
     async () => {
       const { data } = await (supabase as any).rpc("homepage_product_feed", {
         p_section: feedName,
         // Fetch a small reserve. Products that appeared in an earlier rail are
         // removed below, so later rails still have enough unique cards.
         p_limit: 18,
-        p_seed: discoverySeed,
+        // p_seed is omitted on purpose: ordering must be deterministic (see useHomepageData).
       });
       return (data ?? []) as any[];
     },
@@ -113,23 +113,18 @@ export function useSellerProfiles(userIds: string[]) {
 export function useHomepageData() {
   const hero = useHeroCollections();
   const categories = useHomepageCategories();
-  // A new seed is created for each page visit. It lets the database begin each
-  // rail at a different point in its indexed catalogue, so a browser refresh
-  // reveals different inventory without an expensive ORDER BY random().
-  const [discoverySeeds] = useState<Record<FeedName, string>>(() => ({
-    flash_deals: crypto.randomUUID(),
-    best_sellers: crypto.randomUUID(),
-    new_arrivals: crypto.randomUUID(),
-    trending: crypto.randomUUID(),
-    recommended: crypto.randomUUID(),
-  }));
+  // Ordering comes from real signals only, so p_seed is deliberately left at its
+  // default for every section: delivered units for Best Sellers, discovery events for
+  // Trending, created_at for New Arrivals, rating for Discover More. The previous
+  // per-visit random seed rotated the starting point on every refresh, which only made
+  // the page look arbitrary and stopped the same product from holding the same spot.
 
   // Fetch all 5 feeds in parallel
-  const flashDeals = useHomepageFeed("flash_deals", discoverySeeds.flash_deals);
-  const bestSellers = useHomepageFeed("best_sellers", discoverySeeds.best_sellers);
-  const newArrivals = useHomepageFeed("new_arrivals", discoverySeeds.new_arrivals);
-  const trending = useHomepageFeed("trending", discoverySeeds.trending);
-  const recommended = useHomepageFeed("recommended", discoverySeeds.recommended);
+  const flashDeals = useHomepageFeed("flash_deals");
+  const bestSellers = useHomepageFeed("best_sellers");
+  const newArrivals = useHomepageFeed("new_arrivals");
+  const trending = useHomepageFeed("trending");
+  const recommended = useHomepageFeed("recommended");
 
   const feedResults = useMemo(
     () => [flashDeals, bestSellers, newArrivals, trending, recommended] as const,
@@ -160,11 +155,12 @@ export function useHomepageData() {
     // of the same catalogue. Priority is deliberate: time-bound deals, fresh
     // stock, proven sellers, active trends, then broad discovery.
     const feedPriority: FeedName[] = ["flash_deals", "new_arrivals", "best_sellers", "trending", "recommended"];
-    // Budget each rail. Without a cap, a rail that qualifies for a large share of the
-    // catalogue consumes every unique id through seenAcrossHomepage and the remaining
-    // rails render empty, so the homepage collapses into a single long strip. Capping
-    // per rail keeps the spread even when one feed is unusually broad.
-    const RAIL_BUDGET = 8;
+    // Budget each section. A section that qualifies for a large share of the
+    // catalogue would otherwise consume every unique id through seenAcrossHomepage and
+    // the later sections would render empty, so the homepage would collapse into one
+    // long block. The cap keeps the stack balanced; anything left over still appears in
+    // the final Discover More section, so nothing is ever hidden from shoppers.
+    const SECTION_LIMIT = 10;
     const seenAcrossHomepage = new Set<string>();
     const distinctFeeds = new Map<FeedName, FeedItem[]>();
     feedPriority.forEach((name) => {
@@ -185,7 +181,7 @@ export function useHomepageData() {
               flash_deal_end_at: flashDealEndAt,
             }];
           });
-        distinctFeeds.set(name, items.slice(0, RAIL_BUDGET));
+        distinctFeeds.set(name, items.slice(0, SECTION_LIMIT));
     });
     return Object.fromEntries(feedNames.map((name) => [name, distinctFeeds.get(name) ?? []])) as Record<FeedName, FeedItem[]>;
   }, [products.data, feedResults]);

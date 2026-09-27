@@ -1,4 +1,4 @@
-import { useMemo, memo } from "react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Package, Zap, Clock, UserPlus, Flame } from "lucide-react";
@@ -11,13 +11,12 @@ import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
 import HeroSlider from "@/components/HeroSlider";
-import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useHomepageData, FEEDS, type FeedItem, type Seller } from "@/hooks/useHomepage";
+import { useHomepageData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
 import { useSEO } from "@/hooks/useSEO";
 
 export default function LandingPage() {
@@ -35,12 +34,33 @@ export default function LandingPage() {
   const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
   const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
 
+  // Map a feed row onto the marketplace card. A discount badge is shown only when the
+  // seller genuinely set a higher compare-at price, and no badge is invented otherwise.
+  const toCardProduct = (product: FeedItem) => {
+    const image = product.product_images.find(item => item.is_primary)?.image_url || product.product_images[0]?.image_url;
+    const discount = product.compare_at_price && product.compare_at_price > product.price
+      ? Math.round((1 - product.price / product.compare_at_price) * 100)
+      : null;
+    return {
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      compareAtPrice: product.compare_at_price,
+      stockQuantity: product.stock_quantity,
+      averageRating: product.average_rating,
+      reviewCount: product.review_count,
+      imageUrl: image,
+      flashDealEndAt: product.flash_deal_end_at,
+      badge: discount ? { label: `-${discount}%`, tone: "destructive" as const } : null,
+    };
+  };
+
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
     <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="flex flex-col pb-8">
-      {/* Hero area — 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
+      {/* Hero area â€” 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
           <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_220px] gap-4">
@@ -96,7 +116,7 @@ export default function LandingPage() {
         </Container>
       </div>
 
-      {/* Flash Deal Rail — real countdowns from flash_deal_end_at */}
+      {/* Flash Deal Rail â€” real countdowns from flash_deal_end_at */}
       {(loading || feeds.flash_deals.length > 0) && (
         <Container className="w-full order-2 py-10">
           <SectionHeader title={t("home.flashDeals")} subtitle={<span className="inline-flex items-center gap-2"><Flame className="h-4 w-4 text-destructive" />{t("home.limitedTime")}</span>} href="/marketplace?sort=flash_deals" linkLabel={t("common.viewAll")} className="mb-5" />
@@ -194,66 +214,39 @@ export default function LandingPage() {
         )}
       </Container>
 
-      {/* Product Feeds - Horizontal Scroll */}
-      <div className="order-4">
+      {/* Product sections - vertical grids stacked down one long page.
+          A section only renders when products genuinely qualify for it: Flash Deals
+          needs a live time-boxed deal, Popular picks needs delivered units, Trending
+          needs real visits in the last 30 days. Discover More is the catch-all, so
+          every approved product in the catalogue is reachable from the homepage -
+          nothing is hidden behind a carousel. */}
+      <Container className="w-full order-4">
         {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
-          <HorizontalScrollSection
-            key={feed.key}
-            title={feed.title}
-            subtitle={feed.subtitle}
-            href={feed.href}
-            loading={loading}
-            loadingCount={8}
-            emptyText={feed.empty}
-            itemWidth={220}
-            gap={16}
-            showDots
-          >
-            {feeds[feed.key].map(product => (
-              <HorizontalProductCard
-                key={product.id}
-                product={product}
-                seller={sellers.get(product.seller_id)}
-                formatPrice={formatPrice}
-              />
-            ))}
-          </HorizontalScrollSection>
+          <section key={feed.key} className="mb-12">
+            <SectionHeader title={feed.title} subtitle={feed.subtitle} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
+            {loading ? (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                {Array.from({ length: 10 }).map((_, index) => (
+                  <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+                {feeds[feed.key].map(product => (
+                  <ProductCard
+                    key={product.id}
+                    product={toCardProduct(product)}
+                    formatPrice={(amount) => formatPrice(amount, product.currency)}
+                    sellerName={sellers.get(product.seller_id)?.full_name || undefined}
+                    sellerVerified={sellers.get(product.seller_id)?.is_verified}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         ))}
-      </div>
+      </Container>
     </main>
     <SiteFooter />
   </div>;
 }
-
-// Horizontal scroll product card (compact, for carousel)
-const HorizontalProductCard = memo(function HorizontalProductCard({
-  product,
-  seller,
-  formatPrice,
-}: {
-  product: FeedItem;
-  seller?: Seller;
-  formatPrice: (amount: number, sourceCurrency?: string) => string;
-}) {
-  const image = useMemo(
-    () => product.product_images.find(item => item.is_primary)?.image_url || product.product_images[0]?.image_url,
-    [product.product_images]
-  );
-  const discount = useMemo(
-    () => product.compare_at_price && product.compare_at_price > product.price
-      ? Math.round((1 - product.price / product.compare_at_price) * 100)
-      : null,
-    [product.price, product.compare_at_price]
-  );
-
-  return (
-    <div className="shrink-0" style={{ width: 220 }} role="listitem">
-      <ProductCard
-        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: product.compare_at_price, stockQuantity: product.stock_quantity, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: image, badge: discount ? { label: `-${discount}%`, tone: "destructive" } : null }}
-        formatPrice={(amount) => formatPrice(amount, product.currency)}
-        sellerName={seller?.full_name || undefined}
-        sellerVerified={seller?.is_verified}
-      />
-    </div>
-  );
-});
