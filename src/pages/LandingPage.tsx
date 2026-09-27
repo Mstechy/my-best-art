@@ -223,7 +223,7 @@ export default function LandingPage() {
       <Container className="w-full order-4">
         {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
           <section key={feed.key} className="mb-12">
-            <SectionHeader title={feed.title} subtitle={feed.subtitle} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
+            <SectionHeader title={t(feed.titleKey)} subtitle={t(feed.subtitleKey)} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
             {loading ? (
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
                 {Array.from({ length: 10 }).map((_, index) => (

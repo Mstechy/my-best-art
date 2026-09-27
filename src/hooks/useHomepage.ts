@@ -11,16 +11,18 @@ export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
 
-// Homepage sections. Only evidence-based ones are listed first: Best Sellers needs
-// delivered units, Trending needs real visits, Flash Deals needs a live deal. The final
-// "All products" entry is the catch-all - it lists every approved product that no section
-// claimed, newest first and uncapped, so nothing is ever hidden from a shopper. A
-// "Discover More" section was removed because with a young catalogue every rating is 0,
-// so it was only ever the leftovers under a heading that told a shopper nothing.
-export const FEEDS: { key: FeedName; title: string; subtitle: string; href: string; empty: string }[] = [
-  { key: "best_sellers", title: "Best Sellers", subtitle: "Most popular this week", href: "/marketplace?sort=best_sellers", empty: "Sales will appear here once orders are delivered." },
-  { key: "trending", title: "Trending", subtitle: "What shoppers love", href: "/marketplace?sort=trending", empty: "Trending products will appear as shoppers engage with them." },
-  { key: "new_arrivals", title: "All products", subtitle: "Everything available right now", href: "/marketplace?sort=newest", empty: "Approved listings will appear here." },
+// Homepage sections, defined by translation key rather than by literal text so a French
+// visitor sees French headings. Only evidence-based sections are listed first: Best
+// Sellers needs delivered units, Trending needs real visits, Flash Deals needs a live
+// deal. The final "All products" entry is the catch-all - it lists every approved
+// product that no section claimed, newest first and uncapped, so nothing is ever
+// hidden from a shopper. A "Discover More" section was removed because with a young
+// catalogue every rating is 0, so it was only ever the leftovers under a heading that
+// told a shopper nothing.
+export const FEEDS: { key: FeedName; titleKey: string; subtitleKey: string; href: string; emptyKey: string }[] = [
+  { key: "best_sellers", titleKey: "home.bestSellers", subtitleKey: "home.bestSellersSubtitle", href: "/marketplace?sort=best_sellers", emptyKey: "home.bestSellersEmpty" },
+  { key: "trending", titleKey: "home.trending", subtitleKey: "home.trendingSubtitle", href: "/marketplace?sort=trending", emptyKey: "home.trendingEmpty" },
+  { key: "new_arrivals", titleKey: "home.allProducts", subtitleKey: "home.allProductsSubtitle", href: "/marketplace?sort=newest", emptyKey: "home.allProductsEmpty" },
 ];
 
 // ── Individual hooks (each is independently cached by React Query) ───────
