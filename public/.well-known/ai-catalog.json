@@ -1,0 +1,34 @@
+{
+  "specVersion": "1.0",
+  "host": {
+    "displayName": "Tradibu",
+    "identifier": "did:web:tradibu.com",
+    "documentationUrl": "https://www.tradibu.com/"
+  },
+  "entries": [
+    {
+      "identifier": "urn:air:tradibu.com:marketplace:catalog",
+      "displayName": "Tradibu Marketplace Catalog",
+      "type": "application/ai-catalog+json",
+      "description": "Tradibu is a multi-vendor marketplace where independent sellers list products and buyers pay through secure escrow with buyer protection. Every listing is a browsable department page carrying the product's price in Nigerian naira (NGN), its stock, its seller and its delivery destinations.",
+      "url": "https://www.tradibu.com/ai-catalog.json",
+      "representativeQueries": [
+        "electronics",
+        "phones and accessories",
+        "affordable gadgets with escrow delivery"
+      ]
+    },
+    {
+      "identifier": "urn:air:tradibu.com:marketplace:electronics",
+      "displayName": "Tradibu Electronics Department",
+      "type": "application/ai-catalog+json",
+      "description": "The electronics department of the Tradibu marketplace, listing approved and in-stock products available to buyers in Nigeria.",
+      "url": "https://www.tradibu.com/categories/electronics",
+      "representativeQueries": [
+        "electronics",
+        "consumer electronics",
+        "phones"
+      ]
+    }
+  ]
+}

@@ -217,7 +217,7 @@ export default function LandingPage() {
                 </div>
                 <div className="pt-3">
                   <p className="line-clamp-1 text-sm font-bold">{category.name}</p>
-                  <p className="mt-1 text-xs text-[#888880]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
+                  <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
                   <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#555550] group-hover:text-[#111111] dark:group-hover:text-white">Explore <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></span>
                 </div>
               </Link>

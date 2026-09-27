@@ -1,0 +1,43 @@
+# Tradibu
+
+> Tradibu is a multi-vendor online marketplace. Independent sellers list products,
+> buyers browse by department, and every payment is held in secure escrow until
+> the order is delivered. Prices are shown in Nigerian naira (NGN).
+
+## What Tradibu does
+
+- A department directory covering electronics and further departments as sellers
+  list in them.
+- Product pages carrying price, stock, seller identity, ratings and the
+  destinations an order can ship to.
+- Checkout through secure escrow: funds are released only after delivery.
+- Buyer protection and an order history for every purchase.
+
+## Main pages
+
+- [Homepage](https://www.tradibu.com/): featured departments, flash deals, best
+  sellers, trending products and all current listings.
+- [Marketplace](https://www.tradibu.com/marketplace): the full catalogue with
+  search, filters and sorting.
+- [Departments](https://www.tradibu.com/categories): the complete department
+  directory, including departments that are being prepared.
+- [Search all products](https://www.tradibu.com/marketplace?search=): search
+  across titles, brands and categories.
+
+## Departments
+
+- [Electronics](https://www.tradibu.com/categories/electronics): consumer
+  electronics and accessories currently in stock.
+
+## Policies and help
+
+- [Terms of Service](https://www.tradibu.com/legal/terms)
+- [Privacy Policy](https://www.tradibu.com/legal/privacy)
+- [Refund Policy](https://www.tradibu.com/legal/refund)
+- [Contact](https://www.tradibu.com/contact)
+
+## Notes for automated agents
+
+Prices on Tradibu are denominated in Nigerian naira and are formatted with the
+₦ symbol. Order and payment actions require an authenticated shopper session;
+there is no anonymous checkout.

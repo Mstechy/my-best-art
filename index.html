@@ -100,6 +100,11 @@
     <!-- Additional SEO -->
     <meta name="keywords" content="marketplace, multi-vendor, e-commerce, online shopping, verified sellers, secure payments, buyer protection" />
     <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <!-- Agent discovery. The rel token must be exactly "ai-catalog": that is what an
+         agent (and Lighthouse's Agentic browsing audits) looks for, and "alternate"
+         is ignored. /llms.txt is the plain-text briefing. -->
+    <link rel="alternate ai-catalog" type="application/ai-catalog+json" title="Tradibu AI catalog" href="/ai-catalog.json" />
     
     <!-- Open Graph / Social Sharing -->
     <meta property="og:url" content="https://www.tradibu.com/" />
