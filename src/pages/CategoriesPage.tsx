@@ -5,6 +5,7 @@ import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import SiteFooter from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
+import { usePopulatedCategories } from "@/hooks/useHomepage";
 import { fetchCollectionsByPlacement, type EnhancedCollection } from "@/lib/collectionResolver";
 
 type Category = { id: string; name: string; slug: string; icon: string | null; image_url?: string | null; product_count?: number; };
@@ -16,6 +17,8 @@ export default function CategoriesPage() {
   const [collections, setCollections] = useState<EnhancedCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  // Departments with stock only. The page body below still lists the full directory.
+  const populatedCategories = usePopulatedCategories();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -53,7 +56,7 @@ export default function CategoriesPage() {
   // `pb-16`: BottomTabBar (h≈58) is fixed over the last viewport of every
   // phone-width page; without this the footer's copyright row sat behind it.
   return <div className="min-h-screen bg-[#FAFAFA] pb-16 text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
-    <MarketplaceNavbar showSearch={false} categories={categories.map((category) => ({ label: category.name, value: category.id }))} />
+    <MarketplaceNavbar showSearch={false} categories={populatedCategories.map((category) => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <main>
       <section className="border-b border-[#E8E8E8] bg-[#1A1A1A] text-white dark:border-[#333333]">

@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { CheckCircle2, Flame, Heart, Package, ShoppingCart, Star } from "lucide-react";
 
 import FlashDealCountdown from "@/components/FlashDealCountdown";
@@ -14,6 +15,9 @@ export type ProductCardProduct = {
   stockQuantity: number;
   averageRating?: number;
   reviewCount?: number;
+  // Delivered units. Real social proof for a young catalogue, where every product
+  // starts with zero reviews and no rating is shown at all.
+  soldCount?: number;
   imageUrl?: string | null;
   flashDealEndAt?: string | null;
   badge?: { label: string; tone?: "destructive" | "seller" | "brand" | "success" } | null;
@@ -68,6 +72,7 @@ export function ProductCard({
   removeFromWishlistLabel,
   className,
 }: ProductCardProps) {
+  const { t } = useTranslation();
   const compareAtVisible = product.compareAtPrice && product.compareAtPrice > product.price;
   const unavailable = product.stockQuantity === 0;
   const showPurchaseActions = Boolean(onBuyNow || onAddToCart);
@@ -105,6 +110,14 @@ export function ProductCard({
           <Link to={`/product/${product.id}`} onClick={onProductClick}>
             <h3 className="min-h-10 line-clamp-2 text-sm font-semibold leading-snug text-foreground hover:underline">{product.title}</h3>
           </Link>
+          {(product.soldCount ?? 0) > 0 && (
+            <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">
+                {product.soldCount!.toLocaleString()}{(product.soldCount ?? 0) >= 1000 ? "+" : ""}
+              </span>
+              <span>{t("product.soldCount")}</span>
+            </div>
+          )}
           {(product.averageRating ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Star className="h-3 w-3 fill-seller text-seller" />

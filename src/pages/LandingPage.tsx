@@ -31,7 +31,11 @@ export default function LandingPage() {
     url: "/",
   });
 
-  const visibleCategories = useMemo(() => categories.filter(category => counts[category.id] > 0).slice(0, 8), [categories, counts]);
+  // The catalogue is seeded with 26 departments so it can scale, which means most of
+  // them hold no stock today. Navigation must only offer departments a shopper can
+  // actually buy from - an empty department is a dead end that reads as a broken site.
+  const populatedCategories = useMemo(() => categories.filter(category => (counts[category.id] ?? 0) > 0), [categories, counts]);
+  const visibleCategories = useMemo(() => populatedCategories.slice(0, 8), [populatedCategories]);
   const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
 
   // Map a feed row onto the marketplace card. A discount badge is shown only when the
@@ -49,6 +53,7 @@ export default function LandingPage() {
       stockQuantity: product.stock_quantity,
       averageRating: product.average_rating,
       reviewCount: product.review_count,
+      soldCount: Number(product.sold_count ?? 0),
       imageUrl: image,
       flashDealEndAt: product.flash_deal_end_at,
       badge: discount ? { label: `-${discount}%`, tone: "destructive" as const } : null,
@@ -56,7 +61,7 @@ export default function LandingPage() {
   };
 
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
-    <MarketplaceNavbar categories={categories.map(category => ({ label: category.name, value: category.id }))} />
+    <MarketplaceNavbar categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="flex flex-col pb-8">
@@ -69,7 +74,7 @@ export default function LandingPage() {
               <CategorySidebar
                 selectedCategory={null}
                 onSelect={(slug) => { navigate(slug ? `/categories/${slug}` : "/marketplace"); }}
-                categories={categories.map(category => ({ id: category.id, name: category.name, slug: category.slug }))}
+                categories={populatedCategories.map(category => ({ id: category.id, name: category.name, slug: category.slug }))}
               />
             </div>
 

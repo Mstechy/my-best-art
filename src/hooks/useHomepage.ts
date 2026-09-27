@@ -58,6 +58,20 @@ export function useHomepageCategories() {
   );
 }
 
+/**
+ * Departments that actually have approved stock. The catalogue is pre-seeded with 26
+ * departments so it can grow, which means most of them are empty until sellers list
+ * in them. Navigation (header dropdown, category sidebar) must only offer departments a
+ * shopper can actually buy from; the full directory stays on /categories.
+ */
+export function usePopulatedCategories() {
+  const { data } = useHomepageCategories();
+  return useMemo(
+    () => (data?.categories ?? []).filter((category) => (data?.counts?.[category.id] ?? 0) > 0),
+    [data],
+  );
+}
+
 /** Raw feed data from a single RPC call (returns product IDs + metadata) */
 export function useHomepageFeed(feedName: FeedName) {
   return useSupabaseQuery(
