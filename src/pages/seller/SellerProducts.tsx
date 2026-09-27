@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus } from "lucide-react";
@@ -1440,7 +1440,13 @@ export default function SellerProducts() {
                   {!editingProduct && <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={minimizeNewListing}><Minus className="h-3.5 w-3.5" /> Minimize</Button>}
                 </div>
                 {!editingProduct && (
-                  <div className="mt-1 flex items-center justify-between gap-3"><p className="text-sm text-muted-foreground">Your progress is saved automatically, photos included. Minimize or close this page and your details and images will be waiting when you come back on this device.</p><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
+                  <div className="mt-1 flex items-center justify-between gap-3"><DialogDescription className="flex-1 text-left text-sm text-muted-foreground">Your progress is saved automatically, photos included. Minimize or close this page and your details and images will be waiting when you come back on this device.</DialogDescription><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
+                )}
+                {editingProduct && (
+                  // Radix requires every DialogContent to have a Description.
+                  // The new-listing case above already renders one, so this
+                  // covers the edit case without duplicating text on screen.
+                  <DialogDescription className="sr-only">Update the details, options and photos for this listing. Changes go live when you save.</DialogDescription>
                 )}
               </DialogHeader>
 
@@ -2152,10 +2158,10 @@ export default function SellerProducts() {
             <DialogContent className="sm:max-w-md">
               <DialogHeader>
                 <DialogTitle>Review bulk listing changes</DialogTitle>
+                <DialogDescription>
+                  Apply the same base price or base stock quantity to {selectedProductIds.length} selected listing{selectedProductIds.length === 1 ? "" : "s"}. Leave either field empty to keep its current value.
+                </DialogDescription>
               </DialogHeader>
-              <p className="text-sm text-muted-foreground">
-                Apply the same base price or base stock quantity to {selectedProductIds.length} selected listing{selectedProductIds.length === 1 ? "" : "s"}. Leave either field empty to keep its current value.
-              </p>
               <div className="grid gap-4 py-2 sm:grid-cols-2">
                 <label className="grid gap-1.5 text-sm font-medium">Base price
                   <Input inputMode="decimal" value={bulkPrice} onChange={(event) => setBulkPrice(event.target.value)} placeholder="Keep current" />

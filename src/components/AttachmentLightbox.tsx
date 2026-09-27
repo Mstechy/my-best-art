@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from "./ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog";
 import { Paperclip, ExternalLink } from "lucide-react";
 
 interface Props {
@@ -27,6 +27,11 @@ export default function AttachmentLightbox({ open, onOpenChange, url }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl bg-background/95 p-2">
+        {/* A screen-reader title/description pair: the lightbox shows only an
+            image, so there is no visible heading for Radix to bind to, but
+            without these it logs a missing-Description warning on every open. */}
+        <DialogTitle className="sr-only">Attachment preview</DialogTitle>
+        <DialogDescription className="sr-only">Enlarged view of the attachment attached to this conversation.</DialogDescription>
         {!safe ? (
           <div className="p-8 text-center space-y-3">
             <Paperclip className="h-10 w-10 mx-auto text-muted-foreground" />
