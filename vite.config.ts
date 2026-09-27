@@ -2,7 +2,6 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
 import path from "path";
-import { componentTagger } from "lovable-tagger";
 
 // Identify the exact deploy in error reports. VITE_APP_VERSION wins when CI sets
 // it; otherwise the git short SHA does, so every build is distinguishable in
@@ -20,7 +19,7 @@ function resolveAppVersion(): string {
 const APP_VERSION = resolveAppVersion();
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }) => ({
+export default defineConfig({
   server: {
     host: "::",
     port: 8080,
@@ -28,7 +27,7 @@ export default defineConfig(({ mode }) => ({
       overlay: false,
     },
   },
-  plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
+  plugins: [react()],
   // Inline the deploy identity so src/lib/sentry.ts can name the exact release.
   // Without this define the constant computed above is thrown away, and every
   // production build reports "dev" in error monitoring.
@@ -67,4 +66,4 @@ export default defineConfig(({ mode }) => ({
     },
     dedupe: ["react", "react-dom"],
   },
-}));
+});
