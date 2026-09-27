@@ -24,222 +24,8 @@ import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
 import { buildListingReadiness } from "@/lib/listingReadiness";
 
-interface Category {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-interface ProductImage {
-  id: string;
-  image_url: string;
-  is_primary: boolean;
-  sort_order?: number;
-  alt?: string | null;
-}
-
-interface ProductVariant {
-  id: string;
-  option_values: Record<string, string> | null;
-  sku: string | null;
-  price: number | null;
-  stock_quantity: number;
-  image_url: string | null;
-}
-
-interface Product {
-  id: string;
-  title: string;
-  description: string | null;
-  price: number;
-  compare_at_price: number | null;
-  currency: string;
-  category_id: string | null;
-  status: "draft" | "active" | "archived";
-  is_approved: boolean;
-  stock_quantity: number;
-  sku: string | null;
-  brand: string | null;
-  weight: string | null;
-  dimensions: string | null;
-  material: string | null;
-  color: string | null;
-  condition: string;
-  warranty: string | null;
-  warranty_period: string | null;
-  shipping_info: string | null;
-  key_features: string[] | null;
-  tags: string[] | null;
-  ships_to: string[] | null;
-  variants: Record<string, unknown> | null;
-  show_sold_count: boolean | null;
-  flash_deal_discount_percent: number | null;
-  flash_deal_start_at: string | null;
-  flash_deal_end_at: string | null;
-  seo_slug: string | null;
-  meta_description: string | null;
-  low_stock_threshold: number | null;
-  description_images: { url: string; alt: string | null; order: number }[] | null;
-  created_at: string;
-  product_images: ProductImage[];
-}
-
-// Raw row type from Supabase products table (snake_case fields)
-interface ProductRow {
-  id: string;
-  title: string;
-  description: string | null;
-  price: number;
-  compare_at_price: number | null;
-  currency: string;
-  category_id: string | null;
-  status: "draft" | "active" | "archived";
-  is_approved: boolean | null;
-  stock_quantity: number;
-  sku: string | null;
-  brand: string | null;
-  weight: string | null;
-  dimensions: string | null;
-  material: string | null;
-  color: string | null;
-  condition: string | null;
-  warranty: string | null;
-  warranty_period: string | null;
-  shipping_info: string | null;
-  key_features: string[] | null;
-  tags: string[] | null;
-  ships_to: string[] | null;
-  variants: Record<string, unknown> | null;
-  show_sold_count: boolean | null;
-  flash_deal_discount_percent: number | null;
-  flash_deal_start_at: string | null;
-  flash_deal_end_at: string | null;
-  seo_slug: string | null;
-  meta_description: string | null;
-  low_stock_threshold: number | null;
-  description_images: { url: string; alt: string | null; order: number }[] | null;
-  created_at: string;
-  product_images: ProductImage[] | null;
-}
-
-type ListingHealthIssue = { message: string; tone: "warning" | "critical" };
-
-function getListingHealth(product: Product, category?: Category): ListingHealthIssue[] {
-  const issues: ListingHealthIssue[] = [];
-  if (product.product_images.length === 0) issues.push({ message: "Add a main product image", tone: "critical" });
-  else if (product.product_images.length < 3) issues.push({ message: "Add more product views", tone: "warning" });
-  if (!product.description || product.description.trim().length < 80) issues.push({ message: "Add a fuller description (80+ characters)", tone: "warning" });
-  // No key-feature check: the field is no longer collected in the form and the
-  // description carries that content instead.
-  if (product.stock_quantity <= 0) issues.push({ message: "Restock this listing", tone: "critical" });
-  else if (product.stock_quantity <= (product.low_stock_threshold ?? 5)) issues.push({ message: "Low stock", tone: "warning" });
-  if (product.status === "active" && !product.is_approved) issues.push({ message: "Waiting for approval", tone: "warning" });
-  const savedProductType = getProductType(product.variants);
-  const productType = findProductTypeConfig(category, savedProductType?.key);
-  const attributes = getCategoryAttributes(product.variants);
-  if (Object.keys(attributes).length < 3) issues.push({ message: "Add relevant specifications", tone: "warning" });
-  const missingSpecifications = getRequiredFields(productType)
-    .filter((key) => !attributes[key]?.trim())
-    .map((key) => productType.fields.find((field) => field.key === key)?.label || key);
-  if (missingSpecifications.length > 0) {
-    issues.push({ message: `Missing required details: ${missingSpecifications.slice(0, 2).join(", ")}${missingSpecifications.length > 2 ? ` +${missingSpecifications.length - 2}` : ""}`, tone: "warning" });
-  }
-  if (["clothes", "shirt", "iphone", "apron", "nuckles"].includes(product.title.trim().toLowerCase())) issues.push({ message: "Use a specific searchable title", tone: "warning" });
-  return issues;
-}
-
-type UploadState = "local" | "uploading" | "uploaded" | "error";
-const MAX_PRODUCT_IMAGES = 12;
-const MAX_IMAGE_SIZE_BYTES = 10 * 1024 * 1024;
-const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024;
-const MAX_DOCUMENT_SIZE_BYTES = 10 * 1024 * 1024;
-const ACCEPTED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
-
-interface ImageMediaItem {
-  id: string;
-  dbId?: string;
-  file?: File;
-  url: string;
-  name: string;
-  isPrimary: boolean;
-  alt: string;
-  status: UploadState;
-  progress: number;
-  error?: string;
-}
-
-interface DescriptionImageItem {
-  id: string;
-  file?: File;
-  url: string;
-  name: string;
-  alt: string;
-  status: UploadState;
-  progress: number;
-  error?: string;
-}
-
-interface VideoMediaItem {
-  id: string;
-  file?: File;
-  url: string;
-  name: string;
-  status: UploadState;
-  progress: number;
-  error?: string;
-}
-
-interface VariantDraft { key: string; size: string; color: string; optionName: string; optionValue: string; sku: string; price: string; stock: string; imageUrl: string; imageSourceId?: string; imageFile?: File; }
-type ProductFormDraft = { title: string; description: string; price: string; compareAtPrice: string; currency: string; categoryId: string; stockQuantity: string; sku: string; brand: string; weight: string; dimensions: string; material: string; color: string; condition: string; warrantyPeriod: string; shippingInfo: string; keyFeatures: string[]; tagsInput: string; shipsTo: string[]; categoryAttributes: Record<string, string>; productTypeKey: string; variantRows: VariantDraft[]; variantColorValues: string; variantStorageValues: string; variantPrimaryOption?: string; showSoldCount: boolean; formTab: string; seoSlug: string; metaDescription: string; lowStockThreshold: string; };
-const LISTING_CURRENCIES = ["NGN", "USD", "GBP", "EUR", "CAD", "AUD", "ZAR", "KES", "GHS", "INR", "JPY", "BRL", "MXN"];
-const VARIATION_TYPES = [
-  { value: "storage", label: "Storage capacity", placeholder: "128GB, 256GB, 512GB" },
-  { value: "size", label: "Size", placeholder: "Small, Medium, Large" },
-  { value: "model", label: "Model", placeholder: "Standard, Pro, Max" },
-  { value: "finish", label: "Finish", placeholder: "Matte, Glossy" },
-  { value: "material", label: "Material", placeholder: "Leather, Stainless steel" },
-  { value: "pack_size", label: "Pack size", placeholder: "Single, Pack of 2, Pack of 6" },
-];
-
-function variationTypeDetails(value: string) {
-  return VARIATION_TYPES.find((type) => type.value === value)
-    ?? { value, label: value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase()), placeholder: "Enter values separated by commas" };
-}
-
-function splitVariantValues(values: string): string[] {
-  return [...new Set(values.split(/[\n,]/).map((value) => value.trim()).filter(Boolean))];
-}
-
-function variantValueKey(value: string): string {
-  return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
-function optionColorVariantKey(color: string, optionName: string, optionValue: string): string {
-  return `${color.trim().toLowerCase()}|${optionName.trim().toLowerCase()}|${optionValue.trim().toLowerCase()}`;
-}
-
-function normalizeProductRow(row: ProductRow): Product {
-  const images = (row.product_images || []).sort(
-    (a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0)
-  );
-  return {
-    ...row,
-    product_images: images,
-    is_approved: row.is_approved ?? false,
-    brand: row.brand ?? null,
-    weight: row.weight ?? null,
-    dimensions: row.dimensions ?? null,
-    material: row.material ?? null,
-    color: row.color ?? null,
-    condition: row.condition ?? "new",
-    warranty: row.warranty ?? null,
-    shipping_info: row.shipping_info ?? null,
-    key_features: row.key_features ?? null,
-    tags: row.tags ?? null,
-    ships_to: row.ships_to ?? null,
-    variants: row.variants ?? null,
-  };
-}
+import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
+import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
 
 export default function SellerProducts() {
   const { user } = useAuth();
@@ -260,7 +46,7 @@ export default function SellerProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formTab, setFormTab] = useState("basic");
 
-  // Form state — basic
+  // Form state â€” basic
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -291,7 +77,7 @@ export default function SellerProducts() {
   const [descriptionError, setDescriptionError] = useState("");
   const [altWarning, setAltWarning] = useState(false);
 
-  // Form state — specifications
+  // Form state â€” specifications
   const [brand, setBrand] = useState("");
   const [weight, setWeight] = useState("");
   const [dimensions, setDimensions] = useState("");
@@ -1535,8 +1321,8 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
-                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
-                    <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: “Original iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version.”</p>
+                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description â€” features, use cases, what's in the box..." className="mt-1" rows={5} />
+                    <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: â€œOriginal iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version.â€</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
                       {description.length > 0 && description.length < 80 && (
@@ -1664,7 +1450,7 @@ export default function SellerProducts() {
                       </div>
                     </div>
                   </div>
-                  {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's “From” price.</p></div>}
+                  {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's â€œFromâ€ price.</p></div>}
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
                       <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 [&>label]:min-w-0 sm:grid-cols-4 xl:grid-cols-7">
@@ -1723,7 +1509,7 @@ export default function SellerProducts() {
                       <div className="rounded-lg border border-border bg-muted/30 p-3">
                         <p className="text-sm font-medium text-foreground">{selectedProductTypeConfig.label} Details</p>
                         <p className="mt-1 text-xs text-muted-foreground">Fields marked * are required before submission. These details help buyers compare products in {selectedCategory?.name || "this category"}.</p>
-                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For Wi-Fi-only devices, choose “Wi-Fi only” and “No SIM or eSIM support”; carrier and account-lock fields are optional. For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
+                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For Wi-Fi-only devices, choose â€œWi-Fi onlyâ€ and â€œNo SIM or eSIM supportâ€; carrier and account-lock fields are optional. For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {selectedProductTypeConfig.fields.map((field) => (
@@ -1949,7 +1735,7 @@ export default function SellerProducts() {
                     )}
                     <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
                       <p className="font-medium text-foreground">Photo quality checklist</p>
-                      <p className="mt-1">Use a clean, well-lit main image that shows the full product. Add close-ups, back/side views, packaging, dimensions, and any flaws. Keep the same framing for colour options and use descriptive alt text, such as “Navy backpack, front view”.</p>
+                      <p className="mt-1">Use a clean, well-lit main image that shows the full product. Add close-ups, back/side views, packaging, dimensions, and any flaws. Keep the same framing for colour options and use descriptive alt text, such as â€œNavy backpack, front viewâ€.</p>
                     </div>
                   </div>
                   <div>
@@ -1968,7 +1754,7 @@ export default function SellerProducts() {
                       <ImagePlus className="h-7 w-7 text-muted-foreground" />
                       <div className="text-center">
                         <span className="text-sm font-medium text-foreground">Drop description photos here or browse files</span>
-                        <p className="text-xs text-muted-foreground mt-1">These build a visual story below the written description—use them for size charts, installation steps, packaging, comparison details, or proof of condition. They are optional and do not replace main gallery photos.</p>
+                        <p className="text-xs text-muted-foreground mt-1">These build a visual story below the written descriptionâ€”use them for size charts, installation steps, packaging, comparison details, or proof of condition. They are optional and do not replace main gallery photos.</p>
                       </div>
                       <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addDescriptionImageFiles(Array.from(e.target.files || []))} />
                     </label>
@@ -2218,7 +2004,7 @@ export default function SellerProducts() {
                 </label>
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                This changes only the base listing. Variant SKU prices and inventory remain unchanged; edit a product’s Variants tab when each SKU needs a different value.
+                This changes only the base listing. Variant SKU prices and inventory remain unchanged; edit a productâ€™s Variants tab when each SKU needs a different value.
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setBulkEditOpen(false)} disabled={bulkSaving}>Cancel</Button>
@@ -2295,7 +2081,7 @@ export default function SellerProducts() {
                       )}
                     </div>
                     {product.brand && (
-                      <p className="text-xs text-muted-foreground mt-1">{product.brand} · {product.condition}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{product.brand} Â· {product.condition}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <p className="text-xs text-muted-foreground">Stock: {product.stock_quantity}</p>
@@ -2312,7 +2098,7 @@ export default function SellerProducts() {
                     {healthIssues.length > 0 && (
                       <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                         <p className="font-semibold">Listing health: needs attention</p>
-                        <p className="mt-0.5">{healthIssues.slice(0, 2).map((issue) => issue.message).join(" · ")}{healthIssues.length > 2 ? ` · +${healthIssues.length - 2} more` : ""}</p>
+                        <p className="mt-0.5">{healthIssues.slice(0, 2).map((issue) => issue.message).join(" Â· ")}{healthIssues.length > 2 ? ` Â· +${healthIssues.length - 2} more` : ""}</p>
                       </div>
                     )}
                     <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-muted/30 px-2 py-1.5 text-center">
