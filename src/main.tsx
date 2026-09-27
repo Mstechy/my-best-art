@@ -7,6 +7,16 @@ import { applyTheme, getPreferredTheme } from "@/lib/theme";
 
 applyTheme(getPreferredTheme());
 
+// Start Core Web Vitals collection straight away. These observers are a couple of
+// kilobytes and report nothing until Sentry registers a sink, so they cost the LCP
+// path effectively nothing while still capturing the metrics that Sentry is too
+// slow to be present for. INP/LCP/CLP are buffered and flushed once Sentry loads.
+import("@/lib/webVitals")
+  .then(({ startWebVitals }) => startWebVitals())
+  .catch(() => {
+    // Web vitals are optional and non-fatal
+  });
+
 // Lazy-load Sentry only when a DSN is configured to keep it out of the main bundle.
 // This also enables the dynamic import in errorHandler.ts to split @sentry/react into its own chunk.
 //
