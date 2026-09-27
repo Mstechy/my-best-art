@@ -11,11 +11,16 @@ export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
 
+// Homepage sections. Only evidence-based ones are listed first: Best Sellers needs
+// delivered units, Trending needs real visits, Flash Deals needs a live deal. The final
+// "All products" entry is the catch-all - it lists every approved product that no section
+// claimed, newest first and uncapped, so nothing is ever hidden from a shopper. A
+// "Discover More" section was removed because with a young catalogue every rating is 0,
+// so it was only ever the leftovers under a heading that told a shopper nothing.
 export const FEEDS: { key: FeedName; title: string; subtitle: string; href: string; empty: string }[] = [
   { key: "best_sellers", title: "Best Sellers", subtitle: "Most popular this week", href: "/marketplace?sort=best_sellers", empty: "Sales will appear here once orders are delivered." },
-  { key: "new_arrivals", title: "New Arrivals", subtitle: "Fresh from sellers", href: "/marketplace?sort=newest", empty: "New approved listings will appear here." },
   { key: "trending", title: "Trending", subtitle: "What shoppers love", href: "/marketplace?sort=trending", empty: "Trending products will appear as shoppers engage with them." },
-  { key: "recommended", title: "Discover More", subtitle: "More worth exploring", href: "/marketplace?sort=random", empty: "More products will appear as the catalogue grows." },
+  { key: "new_arrivals", title: "All products", subtitle: "Everything available right now", href: "/marketplace?sort=newest", empty: "Approved listings will appear here." },
 ];
 
 // ── Individual hooks (each is independently cached by React Query) ───────
@@ -60,7 +65,7 @@ export function useHomepageFeed(feedName: FeedName) {
         p_section: feedName,
         // Fetch a small reserve. Products that appeared in an earlier rail are
         // removed below, so later rails still have enough unique cards.
-        p_limit: 18,
+        p_limit: 24,
         // p_seed is omitted on purpose: ordering must be deterministic (see useHomepageData).
       });
       return (data ?? []) as any[];
@@ -124,11 +129,10 @@ export function useHomepageData() {
   const bestSellers = useHomepageFeed("best_sellers");
   const newArrivals = useHomepageFeed("new_arrivals");
   const trending = useHomepageFeed("trending");
-  const recommended = useHomepageFeed("recommended");
 
   const feedResults = useMemo(
-    () => [flashDeals, bestSellers, newArrivals, trending, recommended] as const,
-    [flashDeals, bestSellers, newArrivals, trending, recommended],
+    () => [flashDeals, bestSellers, newArrivals, trending] as const,
+    [flashDeals, bestSellers, newArrivals, trending],
   );
   const allFeedData = useMemo(() => feedResults.flatMap(r => (Array.isArray(r.data) ? r.data : []) as any[]), [feedResults]);
   const feedLoading = feedResults.some(r => r.isLoading);
@@ -149,18 +153,20 @@ export function useHomepageData() {
   // Merge feed data with product details and seller profiles
   const feeds = useMemo(() => {
     const productMap = new Map((Array.isArray(products.data) ? products.data : []).map(p => [p.id, p]));
-    const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending", "recommended"];
+    const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending"];
 
     // A homepage is a set of distinct merchandising stories, not five copies
     // of the same catalogue. Priority is deliberate: time-bound deals, fresh
     // stock, proven sellers, active trends, then broad discovery.
-    const feedPriority: FeedName[] = ["flash_deals", "new_arrivals", "best_sellers", "trending", "recommended"];
+    const feedPriority: FeedName[] = ["flash_deals", "best_sellers", "trending", "new_arrivals"];
     // Budget each section. A section that qualifies for a large share of the
     // catalogue would otherwise consume every unique id through seenAcrossHomepage and
     // the later sections would render empty, so the homepage would collapse into one
     // long block. The cap keeps the stack balanced; anything left over still appears in
     // the final Discover More section, so nothing is ever hidden from shoppers.
     const SECTION_LIMIT = 10;
+    // Matches the database ceiling (least(p_limit, 24)) for the catch-all section.
+    const CATCH_ALL_LIMIT = 24;
     const seenAcrossHomepage = new Set<string>();
     const distinctFeeds = new Map<FeedName, FeedItem[]>();
     feedPriority.forEach((name) => {
@@ -181,7 +187,10 @@ export function useHomepageData() {
               flash_deal_end_at: flashDealEndAt,
             }];
           });
-        distinctFeeds.set(name, items.slice(0, SECTION_LIMIT));
+        // The catch-all is never capped - it is the promise that every approved product
+        // is reachable from the homepage. Evidence-based sections stay bounded so one
+        // broad feed cannot crowd out the rest of the page.
+        distinctFeeds.set(name, items.slice(0, name === "new_arrivals" ? CATCH_ALL_LIMIT : SECTION_LIMIT));
     });
     return Object.fromEntries(feedNames.map((name) => [name, distinctFeeds.get(name) ?? []])) as Record<FeedName, FeedItem[]>;
   }, [products.data, feedResults]);
