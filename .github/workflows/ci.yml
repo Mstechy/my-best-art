@@ -1,0 +1,65 @@
+name: CI
+
+# Every push and PR gets type-checked, linted, tested and built.
+# Before this workflow existed none of that ran automatically, so a
+# type error or a failing test could reach production unnoticed.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# If a newer commit lands on the same branch, cancel the run that is
+# already superseded rather than burning Actions minutes on it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Typecheck, lint, test, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # `npm ci` installs exactly what package-lock.json declares, and fails
+      # loudly if the lockfile and package.json have drifted apart. `npm install`
+      # would silently reconcile them and hide that drift.
+      - name: Install dependencies
+        run: npm ci
+
+      # Runtime throw in integrations/supabase/client.ts, so the build and the
+      # component tests only need the names to exist. Real values would have to
+      # be checked in as CI secrets, and neither the build nor vitest reads them.
+      - name: Provide placeholder build env
+        run: |
+          {
+            echo 'VITE_SUPABASE_URL=https://placeholder.supabase.co'
+            echo 'VITE_SUPABASE_ANON=placeholder-anon-key'
+          } >> .env
+
+      # TypeScript reports type errors, not just syntax problems. ESLint is
+      # allowed to emit its existing warnings, but any error fails the run.
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
