@@ -14,26 +14,27 @@
     <meta name="google-site-verification" content="89XTJNqWIy_z32sTfKF8xTzfMffRswBFJPceIi4NVFM" />
     <title>Tradibu | Online Marketplace for Trusted Shopping</title>
     
-<!-- Start the known home hero before React or Supabase. Other routes do not download it. -->
-    <script>
-      if (window.location.pathname === "/" || window.location.pathname === "") {
-        const heroPreload = document.createElement("link");
-        heroPreload.rel = "preload";
-        heroPreload.as = "image";
-        heroPreload.type = "image/webp";
-        heroPreload.href = "/images/electronics-products-1600x686.webp";
-        /* Use the lowercase spec attribute names. The IDL aliases
-           (imageSrcset/imagesizes) are not reliable across browsers and can
-           silently drop the srcset, which would strand mobile on the 1600w
-           asset. */
-        heroPreload.setAttribute("imagesrcset",
-          "/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w");
-        heroPreload.setAttribute("imagesizes", "100vw");
-        heroPreload.setAttribute("fetchpriority", "high");
-        document.head.appendChild(heroPreload);
-      }
-    </script>
+<!-- The home hero is the Largest Contentful Paint element, and it is preloaded
+         as a STATIC link on purpose. The preload scanner reads raw HTML and only
+         sees <link rel="preload"> elements. Building the same link from an inline
+         <script> meant the image could not be requested until the HTML was parsed
+         and that script had been downloaded and executed - three requests before
+         the LCP image even started, which is exactly what Lighthouse flagged as
+         "the LCP image request is not initiated by the HTML document".
 
+         imagesrcset/imagesizes mirror the <picture> in HeroSlider so the browser
+         picks the same candidate the <img> will ask for: the 960w file on phones,
+         the 1600w one above 640px. If they disagree the preload is discarded as a
+         mismatch and the whole thing is wasted, so the two must stay in step. -->
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      href="/images/electronics-products-1600x686.webp"
+      imagesrcset="/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
     <!-- Preconnect to Supabase for API data used by the marketplace. The REST
          calls go out with fetch(), which is a CORS request, so the connection
          must be opened in CORS mode or it cannot be reused. Without
