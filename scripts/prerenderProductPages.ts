@@ -136,6 +136,12 @@ async function prerender(root: string, mode: string): Promise<void> {
     // purpose: if a build ever fails to fetch products, the .html file simply is
     // absent and the request falls through to the catch-all rewrite and serves
     // today's shell - whereas a rewrite to a missing file is a hard 404.
+    //
+    // That fallback only exists while the catch-all is reachable at all, which
+    // it was not: `cleanUrls` strips `.html` from rewrite DESTINATIONS too, so
+    // aiming it at `/index.html` resolved to nothing and Vercel returned its
+    // plain-text platform 404 for every unrouted path. The destination is
+    // `/index`, and src/test/vercelRouting.test.ts fails if that regresses.
     await fs.writeFile(path.join(directory, "index.html"), html, "utf8");
     await fs.writeFile(path.join(outputRoot, `${product.id}.html`), html, "utf8");
   }
