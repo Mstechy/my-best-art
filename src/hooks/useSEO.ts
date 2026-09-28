@@ -1,5 +1,11 @@
 import { useEffect } from "react";
-import { useCurrency } from "@/hooks/useCurrency";
+import {
+  buildPageTitle,
+  buildProductDescription,
+  buildProductJsonLd,
+  PRODUCT_STRUCTURED_DATA_ID,
+  type ProductSeoInput,
+} from "@/lib/productSeo";
 
 interface SEOProps {
   title?: string;
@@ -17,6 +23,9 @@ const SITE_URL = "https://www.tradibu.com";
 const DEFAULT_DESCRIPTION = "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using secure escrow payments, buyer protection guarantees, and fast global delivery.";
 const DEFAULT_IMAGE = "/placeholder.svg";
 
+/** `id` of the structured-data script `useSEO` itself owns. Exported because the reconciliation tests assert against it. */
+export const PAGE_STRUCTURED_DATA_ID = "page-structured-data";
+
 export function useSEO({
   title,
   description = DEFAULT_DESCRIPTION,
@@ -28,7 +37,7 @@ export function useSEO({
   structuredData,
 }: SEOProps = {}) {
   useEffect(() => {
-    const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
+    const fullTitle = buildPageTitle(title);
     const absoluteUrl = url ? new URL(url, SITE_URL).toString() : SITE_URL;
     const absoluteImage = image.startsWith("http") ? image : new URL(image, SITE_URL).toString();
 
@@ -90,9 +99,16 @@ export function useSEO({
     setLink("canonical", absoluteUrl);
 
     // Structured data
-    const existingScript = document.querySelector('#page-structured-data');
-    if (existingScript) {
-      existingScript.remove();
+    // Two scripts are cleared, not one:
+    //  - `page-structured-data` is ours from the previous render; removing it
+    //    keeps repeated navigations from stacking.
+    //  - `product-structured-data` is the node `injectProductHead` baked into
+    //    prerendered product HTML. It is cleared on EVERY route, so a direct
+    //    load of /product/<id> is replaced rather than doubled, and so leaving
+    //    a product page does not strand a Product block beside the WebSite one
+    //    written below.
+    for (const id of [PAGE_STRUCTURED_DATA_ID, PRODUCT_STRUCTURED_DATA_ID]) {
+      document.getElementById(id)?.remove();
     }
 
     const schemaData: Record<string, unknown> = {
@@ -115,7 +131,7 @@ export function useSEO({
     };
 
     const script = document.createElement("script");
-    script.id = "page-structured-data";
+    script.id = PAGE_STRUCTURED_DATA_ID;
     script.type = "application/ld+json";
     script.text = JSON.stringify(schemaData);
     document.head.appendChild(script);
@@ -153,36 +169,34 @@ export function useProductSEO({
   reviewCount?: number;
   brand?: string | null;
 }) {
-  // Price in the visitor's currency for the human-readable description. The JSON-LD offer
-  // below deliberately keeps the real transaction currency and amount instead.
-  const { formatPrice } = useCurrency();
+  // Price in the visitor's currency for the human-readable description is no
+  // longer used here: `formatPrice` converts into whatever currency the visitor
+  // selected, so a crawler would have been quoted an amount that contradicts
+  // `offers.priceCurrency`. The shared builder prices in the listing currency.
+  const seoInput: ProductSeoInput = {
+    id,
+    url: new URL(`/product/${id}`, SITE_URL).toString(),
+    productName,
+    price,
+    currency,
+    image,
+    description,
+    availability,
+    rating,
+    reviewCount,
+    brand,
+  };
+
+  // Every value below comes from the shared builders, which
+  // scripts/prerenderProductPages.ts also calls at build time. The HTML a
+  // crawler fetches and the HTML it sees after running JavaScript are therefore
+  // produced by one implementation instead of two that can drift.
   return useSEO({
     title: productName,
-    description: description || `Buy ${productName} for ${formatPrice(price, currency)} on Tradibu. Secure escrow payments, buyer protection, fast delivery worldwide.`,
+    description: buildProductDescription(seoInput),
     image: image || DEFAULT_IMAGE,
     url: `/product/${id}`,
     type: "product",
-    structuredData: {
-      "@type": "Product",
-      name: productName,
-      image: image ? [image.startsWith("http") ? image : new URL(image, SITE_URL).toString()] : undefined,
-      description: description || `Buy ${productName} on Tradibu.`,
-      ...(brand ? { brand: { "@type": "Brand", name: brand } } : {}),
-      offers: {
-        "@type": "Offer",
-        url: new URL(`/product/${id}`, SITE_URL).toString(),
-        priceCurrency: currency || "NGN",
-        price: price.toFixed(2),
-        availability: `https://schema.org/${availability || "InStock"}`,
-        itemCondition: "https://schema.org/NewCondition",
-      },
-      ...(rating && reviewCount ? {
-        aggregateRating: {
-          "@type": "AggregateRating",
-          ratingValue: rating.toFixed(1),
-          reviewCount,
-        },
-      } : {}),
-    },
+    structuredData: buildProductJsonLd(seoInput),
   });
 }

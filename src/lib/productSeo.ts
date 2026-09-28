@@ -1,0 +1,320 @@
+/**
+ * Product SEO primitives shared by the client-side `useProductSEO` hook and the
+ * build-time prerenderer in `scripts/prerenderProductPages.ts`.
+ *
+ * Both must produce byte-identical output. The prerendered <head> is what a
+ * crawler reads on its first, HTML-only pass; the hook is what it reads after
+ * executing JavaScript. If the two drift, Google is shown a price in the
+ * structured data that the rendered page then contradicts, which is exactly the
+ * kind of mismatch that gets rich results withdrawn.
+ *
+ * Kept free of DOM and Node APIs so it type-checks under BOTH tsconfig.app.json
+ * (lib: ES2020 + DOM) and tsconfig.node.json (lib: ES2023, strict). That means
+ * no `replaceAll` and no `Array.prototype.at` - both are newer than ES2020.
+ */
+
+export type ProductAvailability = "InStock" | "OutOfStock";
+
+export interface ProductSeoInput {
+  /** Product id. Used as `sku` so the structured data ties back to the row. */
+  id: string;
+  /** Absolute canonical URL of this product page. */
+  url: string;
+  productName: string;
+  price: number;
+  currency: string;
+  image?: string | null;
+  description?: string | null;
+  availability?: ProductAvailability;
+  rating?: number;
+  reviewCount?: number;
+  brand?: string | null;
+}
+
+const SITE_NAME = "Tradibu";
+
+/**
+ * `id` of the Product JSON-LD script `injectProductHead` bakes into prerendered
+ * HTML.
+ *
+ * `useSEO` looks for this exact element on mount and removes it before
+ * installing its own structured-data script. Without a stable handle the static
+ * node is invisible to the hook, so a direct load of `/product/<id>` ends the
+ * render with two Product blocks.
+ */
+export const PRODUCT_STRUCTURED_DATA_ID = "product-structured-data";
+
+/**
+ * Canonical origin. The prerenderer runs in Node where there is no `location`,
+ * and the hook runs in the browser where `location.href` can carry a query
+ * string, so both resolve against this constant instead.
+ */
+const SITE_URL = "https://www.tradibu.com";
+
+/** Meta description cap. Google truncates SERP snippets around here anyway. */
+const META_DESCRIPTION_MAX = 160;
+
+/** Rendered without decimals, mirroring the NO_DECIMAL set in useCurrency. */
+const NO_DECIMAL_CURRENCIES = ["NGN", "KES", "JPY"];
+
+const FALLBACK_TRAIL = "Secure escrow payments, buyer protection, fast delivery worldwide.";
+
+/**
+ * Page title shared by `useSEO` and the prerenderer.
+ *
+ * Exported rather than re-implemented so the `<head>` a crawler fetches and the
+ * `<head>` it sees after running JavaScript can never disagree about the title.
+ */
+export function buildPageTitle(title?: string): string {
+  return title ? `${title} | ${SITE_NAME}` : SITE_NAME;
+}
+
+/**
+ * `<product> | Tradibu`.
+ *
+ * Deliberately unchanged from what the client already publishes: the product
+ * name is the part that matches the query, and anything appended after the site
+ * name is cut off in the SERP anyway.
+ */
+export function buildProductTitle(productName: string): string {
+  return buildPageTitle(productName.trim() || "Product");
+}
+
+/** Resolve a possibly relative asset path against the canonical origin. */
+export function resolveSiteUrl(path: string): string {
+  return new URL(path, SITE_URL).toString();
+}
+
+
+function collapseWhitespace(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Cut at a word boundary where possible and drop trailing punctuation, so a
+ * truncated description never ends mid-word or on a dangling comma.
+ */
+export function truncateText(value: string, max: number): string {
+  const text = collapseWhitespace(value);
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  const trimmed = lastSpace > max * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return trimmed.replace(/[\s,.;:!?-]+$/, "");
+}
+
+/**
+ * Price in the product's OWN currency.
+ *
+ * `useCurrency().formatPrice` converts into whatever currency the visitor has
+ * selected, which is exactly what makes it unusable here: a crawler would then
+ * be shown a number that disagrees with `offers.priceCurrency`. Pricing in
+ * structured data has to be the listing price, always. Locale is pinned to
+ * `en-US` because `Intl.NumberFormat(undefined, ...)` would otherwise vary with
+ * the machine running the build.
+ */
+function formatListingPrice(price: number, currency: string): string {
+  const code = (currency || "NGN").toUpperCase();
+  const noDecimals = NO_DECIMAL_CURRENCIES.indexOf(code) !== -1;
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: code,
+      minimumFractionDigits: noDecimals ? 0 : 2,
+      maximumFractionDigits: noDecimals ? 0 : 2,
+    }).format(price);
+  } catch {
+    // An unknown currency code throws instead of formatting. Falling back to
+    // the raw amount keeps one bad row from failing the whole build.
+    return `${code} ${price}`;
+  }
+}
+
+/** 160-char summary for <meta name="description"> and the og:/twitter: tags. */
+export function buildProductDescription(input: ProductSeoInput): string {
+  const source = input.description ? collapseWhitespace(input.description) : "";
+  const name = input.productName.trim() || "Product";
+  const text =
+    source ||
+    `Buy ${name} for ${formatListingPrice(input.price, input.currency)} on Tradibu. ${FALLBACK_TRAIL}`;
+  return truncateText(text, META_DESCRIPTION_MAX);
+}
+
+/**
+ * schema.org/Product with Offer + AggregateRating.
+ *
+ * `offers` carrying price/priceCurrency/availability is what turns a blue link
+ * into a price in the SERP, and `aggregateRating` is what turns it into stars.
+ * Both are omitted when the underlying data is missing rather than emitted as
+ * nulls - a malformed node loses the whole rich result.
+ */
+export function buildProductJsonLd(input: ProductSeoInput): Record<string, unknown> {
+  const name = collapseWhitespace(input.productName) || "Product";
+  const price = Number.isFinite(input.price) ? input.price : 0;
+  // `description` falls back rather than being omitted: `useSEO` always writes a
+  // top-level description, so leaving the key out here would let the generic one
+  // survive the spread instead of this product-specific one.
+  const description = input.description ? collapseWhitespace(input.description) : `Buy ${name} on Tradibu.`;
+  const brand = input.brand ? collapseWhitespace(String(input.brand)) : "";
+  const rating = typeof input.rating === "number" && Number.isFinite(input.rating) ? input.rating : 0;
+  const reviewCount =
+    typeof input.reviewCount === "number" && Number.isFinite(input.reviewCount) ? input.reviewCount : 0;
+
+  const schema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name,
+    description,
+    sku: input.id,
+    offers: {
+      "@type": "Offer",
+      url: input.url,
+      priceCurrency: (input.currency || "NGN").toUpperCase(),
+      // String with two decimals, and ratingValue a one-decimal string below:
+      // both match what the client has been publishing, so an already-earned
+      // rich result is not invalidated by the format changing.
+      price: price.toFixed(2),
+      availability: `https://schema.org/${input.availability || "InStock"}`,
+      itemCondition: "https://schema.org/NewCondition",
+    },
+  };
+
+  if (input.image) schema.image = [resolveSiteUrl(input.image)];
+  if (brand) schema.brand = { "@type": "Brand", name: brand };
+  if (rating > 0 && reviewCount > 0) {
+    schema.aggregateRating = {
+      "@type": "AggregateRating",
+      ratingValue: rating.toFixed(1),
+      reviewCount,
+    };
+  }
+
+  return schema;
+}
+
+function escapeHtmlText(value: string): string {
+  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function escapeAttribute(value: string): string {
+  return escapeHtmlText(value).replace(/"/g, "&quot;");
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Insert `snippet` immediately before `</head>`.
+ *
+ * Slicing rather than `String.replace` matters: the JSON-LD payload routinely
+ * contains `$&`, `$1` and friends when a product description does, and a string
+ * replacement pattern would silently rewrite them into garbage.
+ */
+function insertBeforeHeadClose(html: string, snippet: string): string {
+  const index = html.lastIndexOf("</head>");
+  if (index === -1) return html;
+  return html.slice(0, index) + snippet + "\n    " + html.slice(index);
+}
+
+function replaceFirst(html: string, pattern: RegExp, factory: () => string): string {
+  if (!pattern.test(html)) return html;
+  // Function replacement: no `$` interpretation in the produced string.
+  return html.replace(pattern, () => factory());
+}
+
+/**
+ * Overwrite an existing <meta> identified by name/property, or append one if
+ * the shell has no such tag at all. Appending keeps this working against an
+ * index.html that later gains or loses individual tags.
+ */
+function setMeta(html: string, attr: "name" | "property", key: string, content: string): string {
+  const tag = `<meta ${attr}="${key}" content="${escapeAttribute(content)}" />`;
+  const pattern = new RegExp(`<meta[^>]*\\b${attr}="${escapeRegExp(key)}"[^>]*>`);
+  if (pattern.test(html)) return replaceFirst(html, pattern, () => tag);
+  return insertBeforeHeadClose(html, tag);
+}
+
+function setCanonical(html: string, href: string): string {
+  const tag = `<link rel="canonical" href="${escapeAttribute(href)}" />`;
+  const pattern = /<link[^>]*\brel="canonical"[^>]*>/;
+  if (pattern.test(html)) return replaceFirst(html, pattern, () => tag);
+  return insertBeforeHeadClose(html, tag);
+}
+
+function toHtmlJsonLd(schema: Record<string, unknown>): string {
+  // Escaping every `<` keeps a product description containing `</script>` from
+  // closing the tag early and turning the remaining JSON into executable
+  // markup. It is still valid JSON, so a parser decodes it back to `<`.
+  const json = JSON.stringify(schema).replace(/</g, "\\u003c");
+  // The id is what lets `useSEO` swap this block on mount instead of adding a
+  // second Product node next to it.
+  return `<script id="${PRODUCT_STRUCTURED_DATA_ID}" type="application/ld+json">${json}</script>`;
+}
+
+/**
+ * Drop any Product node already present in the head.
+ *
+ * Idempotence matters because every product file starts from the same shell,
+ * and because `useSEO` leaves a structured-data script in the DOM that a second
+ * pass must not stack another copy on top of. Non-Product blocks - notably the
+ * homepage's WebSite/Organization graph - are left alone.
+ *
+ * The pattern deliberately tolerates extra attributes, because the block it is
+ * looking for carries `id="product-structured-data"` and `useSEO` creates its
+ * own as `<script id="page-structured-data" type="application/ld+json">`. A
+ * pattern anchored on `<script type=...` would match neither.
+ */
+function stripProductJsonLd(html: string): string {
+  return html.replace(
+    /<script[^>]*\btype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
+    (block: string, body: string) => {
+      try {
+        const parsed = JSON.parse(body) as Record<string, unknown>;
+        return parsed && parsed["@type"] === "Product" ? "" : block;
+      } catch {
+        // Unparseable JSON is not ours to delete; leave it exactly as found.
+        return block;
+      }
+    },
+  );
+}
+
+/**
+ * Rewrite the SPA shell's <head> so a product URL returns product-specific
+ * HTML instead of the byte-identical homepage shell.
+ *
+ * The shell is served unchanged today, which is why `site:tradibu.com/product`
+ * reports zero indexed URLs: title, description, canonical and structured data
+ * are all the homepage's, so from a crawler's first pass every product URL is a
+ * duplicate of `/`.
+ *
+ * Only the <head> is touched. Body content stays inside React, because
+ * pre-seeding `#root` would be replaced on mount and cost the CLS score this
+ * project currently passes.
+ */
+export function injectProductHead(html: string, input: ProductSeoInput): string {
+  const title = buildProductTitle(input.productName);
+  const description = buildProductDescription(input);
+  let out = stripProductJsonLd(html);
+
+  out = replaceFirst(out, /<title[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtmlText(title)}</title>`);
+  out = setMeta(out, "name", "description", description);
+  out = setMeta(out, "property", "og:title", title);
+  out = setMeta(out, "property", "og:description", description);
+  out = setMeta(out, "property", "og:url", input.url);
+  out = setMeta(out, "name", "twitter:title", title);
+  out = setMeta(out, "name", "twitter:description", description);
+
+  if (input.image) {
+    out = setMeta(out, "property", "og:image", input.image);
+    out = setMeta(out, "name", "twitter:image", input.image);
+  }
+
+  out = setCanonical(out, input.url);
+  out = insertBeforeHeadClose(out, toHtmlJsonLd(buildProductJsonLd(input)));
+  return out;
+}
+
+
+

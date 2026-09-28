@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -43,7 +43,10 @@ export default function BuyerWishlist() {
   const [categoryNames, setCategoryNames] = useState<Record<string, string>>({});
   const [isPublic, setIsPublic] = useState(false);
 
-  const fetchWishlist = async () => {
+  // useCallback rather than a plain function: with a plain one the effect below
+  // would depend on a value that is re-created every render, so the linter cannot
+  // tell that the refetch timing is meant to follow `user` only.
+  const fetchWishlist = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase
       .from("wishlists" as any)
@@ -62,9 +65,9 @@ export default function BuyerWishlist() {
       }
     }
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { fetchWishlist(); }, [user]);
+  useEffect(() => { fetchWishlist(); }, [fetchWishlist]);
 
   const removeItem = async (wishlistId: string) => {
     await supabase.from("wishlists" as any).delete().eq("id", wishlistId);

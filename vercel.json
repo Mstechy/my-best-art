@@ -3,6 +3,7 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "devCommand": "npm run dev",
+  "cleanUrls": true,
   "rewrites": [
     { "source": "/sitemap-products.xml", "destination": "/api/sitemap" },
     { "source": "/(.*)", "destination": "/index.html" }

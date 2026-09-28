@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
 import path from "path";
+import { prerenderProductPages } from "./scripts/prerenderProductPages";
 
 // Identify the exact deploy in error reports. VITE_APP_VERSION wins when CI sets
 // it; otherwise the git short SHA does, so every build is distinguishable in
@@ -27,7 +28,7 @@ export default defineConfig({
       overlay: false,
     },
   },
-  plugins: [react()],
+  plugins: [react(), prerenderProductPages()],
   // Inline the deploy identity so src/lib/sentry.ts can name the exact release.
   // Without this define the constant computed above is thrown away, and every
   // production build reports "dev" in error monitoring.
