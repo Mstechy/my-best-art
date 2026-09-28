@@ -1,14 +1,14 @@
 import { supabase } from "@/integrations/supabase/client";
 
 const CARD_SIZE = 900;
-const CARD_QUALITY = 0.86;
+const CARD_QUALITY = 0.78;
 const CARD_MIME_TYPE = "image/webp";
 
 // Grid cards are roughly 180px on a phone and 300px on a desktop, so the 900px
 // derivative was 3-5x larger than the slot it filled (280 KB on average). A 320px
 // variant is the size a phone actually needs and is uploaded alongside the large one.
 const SMALL_CARD_SIZE = 320;
-const SMALL_CARD_QUALITY = 0.8;
+const SMALL_CARD_QUALITY = 0.72;
 
 const BLOCKED_EXTENSIONS = new Set([
   "exe", "bat", "cmd", "sh", "bash", "zsh", "ps1", "vbs", "js", "jse",
@@ -58,25 +58,54 @@ const canvasToBlob = (canvas: HTMLCanvasElement, type: string, quality: number) 
     }, type, quality);
   });
 
+/**
+ * Geometry for the square cover-crop used by every product card derivative.
+ *
+ * The rule that matters: the output is never larger than the source needs, and
+ * an image is never scaled UP. A 800x800 source used to be blown up to the 900px
+ * target and re-encoded at quality 0.86, which produced a 456 KB "optimised"
+ * card from a 108 KB original - over four times the bytes for zero extra detail,
+ * and the single largest file on the homepage.
+ *
+ * The cover-crop shape is unchanged: the output stays square, the image still
+ * fills it, and anything that does not fill it keeps the neutral background.
+ * Only the size shrinks, and only when the source is smaller than the target.
+ */
+export function computeCardDrawBox(naturalWidth: number, naturalHeight: number, size: number) {
+  // A decode can report 0 for a dimension; fall back to a 1px square rather than
+  // dividing by zero and handing the canvas NaN dimensions.
+  const sourceWidth = Math.max(1, naturalWidth || 0);
+  const sourceHeight = Math.max(1, naturalHeight || 0);
+  const longestEdge = Math.max(sourceWidth, sourceHeight);
+  // Cap at the source's own longest edge: a smaller source keeps its own size.
+  const outputSize = Math.max(1, Math.min(size, longestEdge));
+  // Cover-crop: scale so the longest edge fills the output, never above 1:1.
+  const scale = outputSize / longestEdge;
+  const width = Math.max(1, Math.round(sourceWidth * scale));
+  const height = Math.max(1, Math.round(sourceHeight * scale));
+  return {
+    outputSize,
+    width,
+    height,
+    x: Math.round((outputSize - width) / 2),
+    y: Math.round((outputSize - height) / 2),
+  };
+}
+
 export async function createProductCardImage(file: File, size = CARD_SIZE, quality = CARD_QUALITY): Promise<Blob> {
   const image = await loadImage(file);
+  const { outputSize, width, height, x, y } = computeCardDrawBox(image.naturalWidth, image.naturalHeight, size);
   const canvas = document.createElement("canvas");
-  canvas.width = size;
-  canvas.height = size;
+  canvas.width = outputSize;
+  canvas.height = outputSize;
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Image optimization is not supported in this browser");
 
   ctx.fillStyle = "#f7f7f5";
-  ctx.fillRect(0, 0, size, size);
+  ctx.fillRect(0, 0, outputSize, outputSize);
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = "high";
-
-  const scale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
-  const width = Math.round(image.naturalWidth * scale);
-  const height = Math.round(image.naturalHeight * scale);
-  const x = Math.round((size - width) / 2);
-  const y = Math.round((size - height) / 2);
 
   ctx.drawImage(image, x, y, width, height);
   return canvasToBlob(canvas, CARD_MIME_TYPE, quality);
