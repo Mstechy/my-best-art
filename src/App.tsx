@@ -1,5 +1,3 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense } from "react";
@@ -12,7 +10,6 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import RoleRedirect from "@/components/RoleRedirect";
 import PageTransition from "@/components/PageTransition";
 import { useOverlayLockWatchdog } from "@/hooks/useOverlayLockWatchdog";
-import NotificationsHub from "@/components/NotificationsHub";
 import CookieConsent from "@/components/CookieConsent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SiteAnalyticsTracker from "@/components/SiteAnalyticsTracker";
@@ -207,11 +204,26 @@ function AppRoutes() {
   );
 }
 
+// Two complete toast systems are mounted in the shell: the shadcn/radix Toaster
+// and sonner. Neither is visible on the first paint, and between them they drag
+// their portal, animation and state machinery through the critical path. Loading
+// them after the first paint - the same treatment NotificationsHub already gets -
+// takes them out of the parse-and-execute path the first paint waits on.
+// TooltipProvider stays eager: it is a context provider wrapping the whole app,
+// so deferring it would hold back the first render it exists to serve.
+const LazyNotificationsHub = lazy(() => import("@/components/NotificationsHub"));
+const LazyToaster = lazy(() => import("@/components/ui/toaster").then((m) => ({ default: m.Toaster })));
+const LazySonner = lazy(() => import("@/components/ui/sonner").then((m) => ({ default: m.Toaster })));
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
+      <AfterFirstPaint>
+        <Suspense fallback={null}>
+          <LazyToaster />
+          <LazySonner />
+        </Suspense>
+      </AfterFirstPaint>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <AfterFirstPaint>
           <SiteAnalyticsTracker />
@@ -220,7 +232,9 @@ const App = () => (
           <CurrencyProvider>
             <CartProvider>
               <AfterFirstPaint>
-                <NotificationsHub />
+                <Suspense fallback={null}>
+                  <LazyNotificationsHub />
+                </Suspense>
               </AfterFirstPaint>
               <CookieConsent />
               <AppRoutes />
