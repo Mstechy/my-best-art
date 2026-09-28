@@ -240,10 +240,12 @@ function setMeta(html: string, attr: "name" | "property", key: string, content: 
  *
  * The shell preloads the homepage hero image so the LCP element on `/` starts
  * on the first HTML pass. A product page never renders that hero, but the
- * preload scanner fires anyway: on a phone the browser picks the 960w candidate
- * from `imagesrcset`, downloads it at `fetchpriority="high"`, and throws it
- * away - competing with the product photo that is this page's real LCP element.
- * Dropping it is a mobile win first and a desktop win second.
+ * preload scanner fires anyway: the shell ships two of them, keyed on
+ * `media="(max-width: 640px)"` and its complement so exactly one matches the
+ * viewport, and that one downloads a hero at `fetchpriority="high"` only to be
+ * thrown away - competing with the product photo that is this page's real LCP
+ * element. Dropping every one of them is a mobile win first and a desktop win
+ * second; the `/g` flag exists because there is more than one to drop.
  *
  * Product pages must add their own preload back if they ever gain one; this is
  * unconditional by design, because `injectProductHead` always starts from the

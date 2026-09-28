@@ -22,17 +22,34 @@
          the LCP image even started, which is exactly what Lighthouse flagged as
          "the LCP image request is not initiated by the HTML document".
 
-         imagesrcset/imagesizes mirror the <picture> in HeroSlider so the browser
-         picks the same candidate the <img> will ask for: the 960w file on phones,
-         the 1600w one above 640px. If they disagree the preload is discarded as a
-         mismatch and the whole thing is wasted, so the two must stay in step. -->
+         HeroSlider picks its file with <source media="(max-width: 640px)">, which
+         carries no srcset and no sizes: at or below 640 CSS px it always serves
+         the 960x540 file, whatever the device pixel ratio. A single preload
+         declared as imagesrcset="...960w, ...1600w" + imagesizes="100vw" states a
+         DIFFERENT rule - it multiplies the viewport by the device pixel ratio, so
+         on a high-DPR phone it resolved to the 1600w file while the <picture> asked
+         for 960w. Two downloads, neither reused, and the LCP request stayed
+         attributed to the JS bundle instead of to this document.
+
+         Two media-keyed preloads copy the <source> media query verbatim instead,
+         so there is no width/DPR negotiation left that can disagree: exactly one
+         may fire, and it names byte-for-byte the URL the <img> will use. The 1px
+         seam at (640, 641) holds no device, and its worst case is "no preload"
+         rather than the wrong one. -->
     <link
       rel="preload"
       as="image"
       type="image/webp"
+      media="(max-width: 640px)"
+      href="/images/electronics-products-960x540.webp"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      media="(min-width: 641px)"
       href="/images/electronics-products-1600x686.webp"
-      imagesrcset="/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w"
-      imagesizes="100vw"
       fetchpriority="high"
     />
     <!-- Preconnect to Supabase for API data used by the marketplace. The REST

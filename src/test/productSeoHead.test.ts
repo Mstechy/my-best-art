@@ -32,9 +32,16 @@ const SHELL = `<!doctype html>
       rel="preload"
       as="image"
       type="image/webp"
+      media="(max-width: 640px)"
+      href="/images/electronics-products-960x540.webp"
+      fetchpriority="high"
+    />
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      media="(min-width: 641px)"
       href="/images/electronics-products-1600x686.webp"
-      imagesrcset="/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w"
-      imagesizes="100vw"
       fetchpriority="high"
     />
     <meta property="og:title" content="Tradibu - Multi-Vendor Marketplace" />
@@ -190,14 +197,17 @@ describe("injectProductHead", () => {
     expect(html).toContain(`<meta property="og:image" content="${input.image}" />`);
   });
 
-  it("drops the homepage hero image preload the product page never renders", () => {
-    // The preload scanner fires on raw HTML, so on a phone this would fetch the
-    // 960w hero at fetchpriority="high" and discard it - competing with the
-    // product photo that is this page's actual LCP element.
+  it("drops the homepage hero image preloads the product page never renders", () => {
+    // The preload scanner fires on raw HTML, so on a phone one of these two
+    // media-keyed links would fetch the hero at fetchpriority="high" and discard
+    // it - competing with the product photo that is this page's actual LCP
+    // element. The shell ships a pair, so both have to go.
     expect(html).not.toContain('rel="preload"');
     expect(html).not.toContain('as="image"');
     expect(html).not.toContain("electronics-products-960x540.webp");
-    // The comment survives; only the request it describes is dropped.
+    expect(html).not.toContain("electronics-products-1600x686.webp");
+    expect(html).not.toContain('media="(max-width: 640px)"');
+    // The comment survives; only the requests it describes are dropped.
     expect(html).toContain("Home hero LCP preload");
   });
 
