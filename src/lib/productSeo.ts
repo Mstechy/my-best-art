@@ -256,6 +256,39 @@ function stripImagePreloads(html: string): string {
 }
 
 /**
+ * Delimiters around the landing route's `modulepreload` block.
+ *
+ * `scripts/preloadLandingRoute.ts` emits the chunk graph the lazy `LandingPage`
+ * needs so a first visit to `/` starts downloading it while index.js is still on
+ * the wire, instead of one round trip after index.js executes. Those hints are
+ * only correct for `/`: every other route pays for chunks it will never mount.
+ *
+ * The markers exist so the block can be removed as one unit. Matching the
+ * individual `<link>` tags instead would need the hashed filenames, which
+ * `productSeo` has no business knowing about.
+ */
+export const LANDING_PRELOAD_START = "<!--tradibu:landing-preload:start-->";
+export const LANDING_PRELOAD_END = "<!--tradibu:landing-preload:end-->";
+
+/**
+ * Remove the landing-route preload block from the head.
+ *
+ * A product page is the other URL that gets crawled directly, and it renders
+ * `ProductDetailPage`, never `LandingPage`. Leaving the block there would make
+ * every crawler and every shared WhatsApp link download the homepage's route
+ * chunk for nothing - the same class of bug as the hero image preload, and
+ * there is only one `</head>` to find, so indexOf is enough.
+ */
+function stripLandingPreloads(html: string): string {
+  const start = html.indexOf(LANDING_PRELOAD_START);
+  if (start === -1) return html;
+  const end = html.indexOf(LANDING_PRELOAD_END, start);
+  if (end === -1) return html;
+  const rest = html.slice(end + LANDING_PRELOAD_END.length);
+  return html.slice(0, start) + rest.replace(/^\r?\n/, "");
+}
+
+/**
  * Remove a meta identified by name/property if present, appending nothing.
  *
  * Used for tags whose value we can no longer vouch for rather than tags we are
@@ -330,6 +363,7 @@ export function injectProductHead(html: string, input: ProductSeoInput): string 
   const description = buildProductDescription(input);
   let out = stripProductJsonLd(html);
   out = stripImagePreloads(out);
+  out = stripLandingPreloads(out);
 
   out = replaceFirst(out, /<title[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtmlText(title)}</title>`);
   out = setMeta(out, "name", "description", description);

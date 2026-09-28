@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
 import path from "path";
 import { prerenderProductPages } from "./scripts/prerenderProductPages";
+import { preloadLandingRoute } from "./scripts/preloadLandingRoute";
 
 // Identify the exact deploy in error reports. VITE_APP_VERSION wins when CI sets
 // it; otherwise the git short SHA does, so every build is distinguishable in
@@ -28,7 +29,11 @@ export default defineConfig({
       overlay: false,
     },
   },
-  plugins: [react(), prerenderProductPages()],
+  // Order matters: `preloadLandingRoute` rewrites dist/index.html from the
+  // chunk graph, and `prerenderProductPages` reads that same file to seed the
+  // product pages - so the preload block has to be there before it is read,
+  // even though the product pages then strip it again.
+  plugins: [react(), preloadLandingRoute(), prerenderProductPages()],
   // Inline the deploy identity so src/lib/sentry.ts can name the exact release.
   // Without this define the constant computed above is thrown away, and every
   // production build reports "dev" in error monitoring.

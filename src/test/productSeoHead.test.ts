@@ -62,6 +62,11 @@ const SHELL = `<!doctype html>
       content="Buy and sell with confidence on Tradibu."
     />
     <script type="application/ld+json">{"@context":"https://schema.org","@graph":[]}</script>
+    <link rel="modulepreload" crossorigin href="/assets/react-9f8e7d6c.js">
+    <!--tradibu:landing-preload:start-->
+    <link rel="modulepreload" crossorigin href="/assets/LandingPage-a1b2c3d4.js">
+    <link rel="modulepreload" crossorigin href="/assets/MarketplaceNavbar-e5f6a7b8.js">
+    <!--tradibu:landing-preload:end-->
   </head>
   <body>
     <div id="root"></div>
@@ -209,6 +214,27 @@ describe("injectProductHead", () => {
     expect(html).not.toContain('media="(max-width: 640px)"');
     // The comment survives; only the requests it describes are dropped.
     expect(html).toContain("Home hero LCP preload");
+  });
+
+  it("drops the landing route modulepreload block the product page never needs", () => {
+    // scripts/preloadLandingRoute.ts puts the landing route's chunk graph in
+    // the shell so `/` can download it in parallel with index.js. A product
+    // page mounts ProductDetailPage, so those links would be pure waste on
+    // every crawler hit and every shared WhatsApp link - the same defect as
+    // the hero preload above, one file format over.
+    expect(html).not.toContain("tradibu:landing-preload:start");
+    expect(html).not.toContain("tradibu:landing-preload:end");
+    expect(html).not.toContain("LandingPage-a1b2c3d4.js");
+    expect(html).not.toContain("MarketplaceNavbar-e5f6a7b8.js");
+    // Only the marked block goes. Vite's own entry-graph modulepreloads sit
+    // outside the markers and are what every route, including this one, needs
+    // to boot the app at all - stripping those would break the product page
+    // rather than speed it up. Real builds keep 10 of them per product page.
+    expect(html).toContain('<link rel="modulepreload" crossorigin href="/assets/react-9f8e7d6c.js">');
+    expect(count(html, 'rel="modulepreload"')).toBe(1);
+    // Everything else in the head is still intact.
+    expect(html).toContain("</head>");
+    expect(count(html, "</head>")).toBe(1);
   });
 
   it("rewrites the og:image metadata so the preview describes this product", () => {
