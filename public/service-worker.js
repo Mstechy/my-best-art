@@ -1,7 +1,11 @@
 // MarketHub Service Worker v2
 // Advanced caching: Stale-While-Revalidate for API, Cache-First for assets
 
-const CACHE_VERSION = 'v6';
+// v7: first-party /assets and /images are no longer intercepted - they rely on
+// their own long-lived Cache-Control headers, which is faster and keeps the LCP
+// image's initiator in the HTML document. Bumping the version retires the
+// now-unused first-party entries the v6 worker left in the image cache.
+const CACHE_VERSION = 'v7';
 const STATIC_CACHE = `markethub-static-${CACHE_VERSION}`;
 const IMAGE_CACHE = `markethub-images-${CACHE_VERSION}`;
 const API_CACHE = `markethub-api-${CACHE_VERSION}`;
@@ -116,6 +120,24 @@ self.addEventListener('fetch', (event) => {
 
   // Videos: let the browser handle natively (Range requests, large streams — NEVER cache these)
   if (isVideoUrl(url)) return;
+
+  // First-party static assets go straight to the browser's own cache.
+  //
+  // These now carry long-lived Cache-Control headers (see vercel.json): hashed
+  // /assets/* for a year, /images/* for a week. The HTTP cache therefore already
+  // does this job, and does it without a detour. Intercepting them here meant the
+  // worker had to open a cache and look up a key before the request could even
+  // reach the network, and it also made the service worker the recorded initiator
+  // of the LCP image - the report showed "LCP Initiator: service-worker.js" and
+  // "the LCP image request is not initiated by the HTML document", which is the
+  // exact thing a preload in the document is supposed to fix.
+  //
+  // Cross-origin storage images are deliberately NOT bypassed: Supabase serves
+  // those with Cache-Control: no-cache, so the worker cache is the only cache
+  // they get, and it is worth the hop there.
+  if (url.startsWith(self.location.origin) && (url.includes('/assets/') || url.includes('/images/'))) {
+    return;
+  }
 
   // Fonts: cache-first (they rarely change)
   if (isFontUrl(url)) {
