@@ -235,6 +235,36 @@ function setMeta(html: string, attr: "name" | "property", key: string, content: 
   return insertBeforeHeadClose(html, tag);
 }
 
+/**
+ * Drop every `<link ... as="image" ...>` from the head.
+ *
+ * The shell preloads the homepage hero image so the LCP element on `/` starts
+ * on the first HTML pass. A product page never renders that hero, but the
+ * preload scanner fires anyway: on a phone the browser picks the 960w candidate
+ * from `imagesrcset`, downloads it at `fetchpriority="high"`, and throws it
+ * away - competing with the product photo that is this page's real LCP element.
+ * Dropping it is a mobile win first and a desktop win second.
+ *
+ * Product pages must add their own preload back if they ever gain one; this is
+ * unconditional by design, because `injectProductHead` always starts from the
+ * homepage shell.
+ */
+function stripImagePreloads(html: string): string {
+  return html.replace(/<link\b[^>]*\bas="image"[^>]*>\s*/g, "");
+}
+
+/**
+ * Remove a meta identified by name/property if present, appending nothing.
+ *
+ * Used for tags whose value we can no longer vouch for rather than tags we are
+ * replacing. The closing quote in the pattern is what keeps `og:image` from
+ * matching `og:image:width`.
+ */
+function removeMeta(html: string, attr: "name" | "property", key: string): string {
+  const pattern = new RegExp(`<meta[^>]*\\b${attr}="${escapeRegExp(key)}"[^>]*>\\s*`, "g");
+  return html.replace(pattern, "");
+}
+
 function setCanonical(html: string, href: string): string {
   const tag = `<link rel="canonical" href="${escapeAttribute(href)}" />`;
   const pattern = /<link[^>]*\brel="canonical"[^>]*>/;
@@ -297,6 +327,7 @@ export function injectProductHead(html: string, input: ProductSeoInput): string 
   const title = buildProductTitle(input.productName);
   const description = buildProductDescription(input);
   let out = stripProductJsonLd(html);
+  out = stripImagePreloads(out);
 
   out = replaceFirst(out, /<title[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtmlText(title)}</title>`);
   out = setMeta(out, "name", "description", description);
@@ -309,6 +340,16 @@ export function injectProductHead(html: string, input: ProductSeoInput): string 
   if (input.image) {
     out = setMeta(out, "property", "og:image", input.image);
     out = setMeta(out, "name", "twitter:image", input.image);
+    // The shell's og:image metadata describes og-image.jpg, not this product:
+    // `width`/`height` still claim 1200x630 for an arbitrary product photo, and
+    // `alt` still names the brand. A wrong declared ratio makes WhatsApp and
+    // Facebook crop the shared preview to the wrong shape - most link previews
+    // are opened on a phone, so this is the mobile-visible half of the job.
+    // Dropping the dimensions lets the scraper measure the real file instead.
+    out = removeMeta(out, "property", "og:image:width");
+    out = removeMeta(out, "property", "og:image:height");
+    out = setMeta(out, "property", "og:image:alt", title);
+    out = setMeta(out, "name", "twitter:image:alt", title);
   }
 
   out = setCanonical(out, input.url);

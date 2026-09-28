@@ -27,6 +27,16 @@ const SHELL = `<!doctype html>
       content="Buy and sell with confidence on Tradibu, a multi-vendor marketplace."
     />
     <link rel="canonical" href="https://www.tradibu.com/" />
+    <!-- Home hero LCP preload. Present in the shell, wrong on a product page. -->
+    <link
+      rel="preload"
+      as="image"
+      type="image/webp"
+      href="/images/electronics-products-1600x686.webp"
+      imagesrcset="/images/electronics-products-960x540.webp 960w, /images/electronics-products-1600x686.webp 1600w"
+      imagesizes="100vw"
+      fetchpriority="high"
+    />
     <meta property="og:title" content="Tradibu - Multi-Vendor Marketplace" />
     <meta
       property="og:description"
@@ -34,6 +44,10 @@ const SHELL = `<!doctype html>
     />
     <meta property="og:url" content="https://www.tradibu.com/" />
     <meta property="og:image" content="https://www.tradibu.com/og-image.jpg" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Tradibu - Multi-Vendor Marketplace" />
+    <meta name="twitter:image:alt" content="Tradibu - Multi-Vendor Marketplace" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Tradibu - Multi-Vendor Marketplace" />
     <meta
@@ -174,6 +188,31 @@ describe("injectProductHead", () => {
     expect(html).toContain(`<meta property="og:url" content="${input.url}" />`);
     expect(count(html, 'property="og:url"')).toBe(1);
     expect(html).toContain(`<meta property="og:image" content="${input.image}" />`);
+  });
+
+  it("drops the homepage hero image preload the product page never renders", () => {
+    // The preload scanner fires on raw HTML, so on a phone this would fetch the
+    // 960w hero at fetchpriority="high" and discard it - competing with the
+    // product photo that is this page's actual LCP element.
+    expect(html).not.toContain('rel="preload"');
+    expect(html).not.toContain('as="image"');
+    expect(html).not.toContain("electronics-products-960x540.webp");
+    // The comment survives; only the request it describes is dropped.
+    expect(html).toContain("Home hero LCP preload");
+  });
+
+  it("rewrites the og:image metadata so the preview describes this product", () => {
+    // The shell's 1200x630 and brand alt belonged to og-image.jpg. Declaring the
+    // wrong ratio makes WhatsApp/Facebook crop the shared preview badly.
+    expect(html).not.toContain('property="og:image:width"');
+    expect(html).not.toContain('property="og:image:height"');
+    expect(html).toContain(
+      `<meta property="og:image:alt" content="${buildProductTitle(input.productName)}" />`,
+    );
+    expect(html).toContain(
+      `<meta name="twitter:image:alt" content="${buildProductTitle(input.productName)}" />`,
+    );
+    expect(count(html, 'property="og:image"')).toBe(1);
   });
 
   it("keeps the homepage WebSite graph and appends the Product node", () => {
