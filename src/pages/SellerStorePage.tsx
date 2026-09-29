@@ -13,6 +13,8 @@ import ProductImage from "@/components/product/ProductImage";
 import StarRating from "@/components/ui/StarRating";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useSEO } from "@/hooks/useSEO";
+import { buildSellerSeo } from "@/lib/pageSeo";
 
 interface SellerProfile {
   user_id: string;
@@ -53,6 +55,18 @@ export default function SellerStorePage() {
   const [collections, setCollections] = useState<StoreCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+
+  // Declared above the early returns below, because a hook cannot run
+  // conditionally. The name starts as the same "Store" placeholder the heading
+  // falls back to and is replaced the moment the seller row lands - the value
+  // the prerenderer wrote at build time, which is what a crawler reads before
+  // any of this runs.
+  useSEO(
+    buildSellerSeo({
+      id: id || "",
+      storeName: seller?.full_name?.trim() || "Store",
+    }),
+  );
   const { policies, isLoading: policiesLoading, sourceLabel } = useResolvedPolicies(id, null);
 
   useEffect(() => {

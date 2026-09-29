@@ -7,6 +7,8 @@ import { toast } from "sonner";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import SiteFooter from "@/components/SiteFooter";
 import AnimatedSection from "@/components/AnimatedSection";
+import { useSEO } from "@/hooks/useSEO";
+import { CONTACT_PAGE_SEO } from "@/lib/pageSeo";
 
 const contacts = [
   { icon: MessageSquare, label: "Support", email: "support@tradibu.com", desc: "Order help and general questions" },
@@ -19,6 +21,15 @@ export default function ContactPage() {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  // The contact page published no canonical, so the shell's homepage one was
+  // served for it. CONTACT_PAGE_SEO is also what the prerenderer writes, so the
+  // static file and this render agree.
+  useSEO({
+    title: CONTACT_PAGE_SEO.title,
+    description: CONTACT_PAGE_SEO.description,
+    url: "/contact",
+  });
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();

@@ -12,7 +12,13 @@
       *, *::before, *::after { box-sizing: border-box; }
     </style>
     <meta name="google-site-verification" content="89XTJNqWIy_z32sTfKF8xTzfMffRswBFJPceIi4NVFM" />
-    <title>Tradibu | Online Marketplace for Trusted Shopping</title>
+    <!-- The homepage head is what src/lib/pageSeo.ts publishes as HOME_PAGE_SEO,
+         written the way LandingPage renders it after mount rather than the other
+         way round: `buildPageTitle` appends the " | Tradibu" suffix, so a crawler
+         that executes JavaScript and one that does not now read the same words in
+         the same order instead of two orderings of one title.
+         src/test/pageSeoHead.test.ts fails if this drifts from the constant. -->
+    <title>Online Marketplace for Trusted Shopping | Tradibu</title>
     
 <!-- The home hero is the Largest Contentful Paint element, and it is preloaded
          as a STATIC link on purpose. The preload scanner reads raw HTML and only
@@ -87,20 +93,20 @@
     
     <meta
       name="description"
-      content="Buy and sell with confidence on Tradibu, a multi-vendor marketplace with verified sellers, secure payments, and buyer protection."
+      content="Shop on Tradibu, the online marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection."
     />
     <meta name="author" content="Tradibu" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="Tradibu - Multi-Vendor Marketplace" />
+    <meta property="og:title" content="Online Marketplace for Trusted Shopping | Tradibu" />
     <meta
       property="og:description"
-      content="Buy and sell with confidence on Tradibu, a multi-vendor marketplace with verified sellers, secure payments, and buyer protection."
+      content="Shop on Tradibu, the online marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection."
     />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Tradibu - Multi-Vendor Marketplace" />
+    <meta name="twitter:title" content="Online Marketplace for Trusted Shopping | Tradibu" />
     <meta
       name="twitter:description"
-      content="Buy and sell with confidence on Tradibu, a multi-vendor marketplace with verified sellers, secure payments, and buyer protection."
+      content="Shop on Tradibu, the online marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection."
     />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />

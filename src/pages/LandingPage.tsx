@@ -18,6 +18,7 @@ import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useHomepageData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
 import { useSEO } from "@/hooks/useSEO";
+import { HOME_PAGE_SEO } from "@/lib/pageSeo";
 
 export default function LandingPage() {
   const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
@@ -25,9 +26,13 @@ export default function LandingPage() {
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
 
+  // Copy lives in HOME_PAGE_SEO so index.html's static <head> and this render
+  // cannot describe `/` differently. src/test/pageSeoHead.test.ts fails if the
+  // shell drifts from that constant, which is what makes the served page and the
+  // rendered page one document rather than two that happen to agree today.
   useSEO({
-    title: "Online Marketplace for Trusted Shopping",
-    description: "Shop on Tradibu, the online marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection.",
+    title: HOME_PAGE_SEO.title,
+    description: HOME_PAGE_SEO.description,
     url: "/",
   });
 

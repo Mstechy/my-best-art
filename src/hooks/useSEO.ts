@@ -26,6 +26,18 @@ const DEFAULT_IMAGE = "/placeholder.svg";
 /** `id` of the structured-data script `useSEO` itself owns. Exported because the reconciliation tests assert against it. */
 export const PAGE_STRUCTURED_DATA_ID = "page-structured-data";
 
+/**
+ * The path currently being rendered.
+ *
+ * `window.location` rather than `useLocation()` so the hook keeps working
+ * outside a router (the head tests render it bare) and so the value is read at
+ * effect time, after React Router has already pushed the new history entry.
+ */
+function currentPath(): string {
+  if (typeof window === "undefined") return "/";
+  return window.location.pathname || "/";
+}
+
 export function useSEO({
   title,
   description = DEFAULT_DESCRIPTION,
@@ -38,7 +50,16 @@ export function useSEO({
 }: SEOProps = {}) {
   useEffect(() => {
     const fullTitle = buildPageTitle(title);
-    const absoluteUrl = url ? new URL(url, SITE_URL).toString() : SITE_URL;
+    // An omitted `url` used to fall back to SITE_URL - the site ROOT - so any
+    // page that forgot to pass one declared itself a duplicate of the homepage.
+    // That single default is how a site with 27 URLs in its sitemap ended up
+    // with a crawlable surface of one: every route handed Google the same
+    // canonical, and Google believed it.
+    //
+    // Falling back to the path being rendered removes the whole failure mode.
+    // Forgetting `url` now produces a SELF-referential canonical, which is at
+    // worst a no-op and never a false duplicate claim.
+    const absoluteUrl = new URL(url || currentPath(), SITE_URL).toString();
     const absoluteImage = image.startsWith("http") ? image : new URL(image, SITE_URL).toString();
 
     // Update document title

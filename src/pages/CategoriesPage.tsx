@@ -7,6 +7,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { usePopulatedCategories } from "@/hooks/useHomepage";
 import { fetchCollectionsByPlacement, type EnhancedCollection } from "@/lib/collectionResolver";
+import { useSEO } from "@/hooks/useSEO";
+import { CATEGORIES_PAGE_SEO } from "@/lib/pageSeo";
 
 type Category = { id: string; name: string; slug: string; icon: string | null; product_count?: number; };
 
@@ -26,6 +28,15 @@ export default function CategoriesPage() {
   // Departments with stock only. The page body below still lists the full directory.
   const populatedCategories = usePopulatedCategories();
   const navigate = useNavigate();
+
+  // This page published no canonical at all, so it inherited the shell's
+  // homepage one and Google filed the department directory under `/`. The
+  // prerendered file carries the same three values.
+  useSEO({
+    title: CATEGORIES_PAGE_SEO.title,
+    description: CATEGORIES_PAGE_SEO.description,
+    url: "/categories",
+  });
 
   useEffect(() => {
     const load = async () => {

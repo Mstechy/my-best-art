@@ -9,6 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/hooks/useCurrency";
 import { resolveCollectionProducts, trackCollectionView } from "@/lib/collectionResolver";
 import StarRating from "@/components/ui/StarRating";
+import { useSEO } from "@/hooks/useSEO";
+import { buildCollectionSeo } from "@/lib/pageSeo";
 
 type CollectionData = {
   id: string;
@@ -148,15 +150,21 @@ export default function CollectionPage() {
     if (page < totalPages) setPage((p) => p + 1);
   };
 
-  // SEO meta tags
-  useEffect(() => {
-    if (!collection) return;
-    const title = collection.meta_title || `${collection.title} — Tradibu`;
-    const description = collection.meta_description || collection.description || `Browse ${collection.title} collection on Tradibu`;
-    document.title = title;
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc) metaDesc.setAttribute("content", description);
-  }, [collection]);
+  // SEO. Replaces a hand-rolled effect that set `document.title` and patched the
+  // description tag directly: that published `X - Tradibu` with an em-dash while
+  // every other page used `buildPageTitle`'s ` | `, and it declared no canonical
+  // at all, so the shell's homepage canonical was served for every collection.
+  // `buildCollectionSeo` is the same builder the build-time prerenderer calls,
+  // so the static file and this render agree.
+  useSEO(
+    buildCollectionSeo({
+      slug: slug || "",
+      title: collection?.title || "Collection",
+      metaTitle: collection?.meta_title,
+      metaDescription: collection?.meta_description,
+      description: collection?.description,
+    }),
+  );
 
   if (loading) {
     return (

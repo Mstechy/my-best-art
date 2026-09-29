@@ -1,6 +1,7 @@
 /**
- * Product SEO primitives shared by the client-side `useProductSEO` hook and the
- * build-time prerenderer in `scripts/prerenderProductPages.ts`.
+ * Product SEO policy: the title, description and schema.org/Product node that a
+ * product URL must publish. Shared by the client-side `useProductSEO` hook and
+ * the build-time prerenderer in `scripts/prerenderProductPages.ts`.
  *
  * Both must produce byte-identical output. The prerendered <head> is what a
  * crawler reads on its first, HTML-only pass; the hook is what it reads after
@@ -8,10 +9,34 @@
  * structured data that the rendered page then contradicts, which is exactly the
  * kind of mismatch that gets rich results withdrawn.
  *
+ * The actual <head> surgery lives in `./htmlHead`, which this module shares with
+ * `./pageSeo`. Only the decisions live here: what the title should say, which
+ * offer fields a rich result needs.
+ *
  * Kept free of DOM and Node APIs so it type-checks under BOTH tsconfig.app.json
  * (lib: ES2020 + DOM) and tsconfig.node.json (lib: ES2023, strict). That means
  * no `replaceAll` and no `Array.prototype.at` - both are newer than ES2020.
  */
+import {
+  insertBeforeHeadClose,
+  LANDING_PRELOAD_START,
+  LANDING_PRELOAD_END,
+  removeMeta,
+  setCanonical,
+  setMeta,
+  setTitle,
+  stripImagePreloads,
+  stripJsonLdByType,
+  stripLandingPreloads,
+  toHtmlJsonLd,
+} from "./htmlHead";
+
+// Re-exported because they were declared here first and are imported from this
+// path in two places (`scripts/preloadLandingRoute.ts` and the head tests).
+// Moving the definition without keeping the path working would have been a
+// silent, build-time-only break.
+export { LANDING_PRELOAD_START, LANDING_PRELOAD_END };
+
 
 export type ProductAvailability = "InStock" | "OutOfStock";
 
@@ -52,7 +77,7 @@ export const PRODUCT_STRUCTURED_DATA_ID = "product-structured-data";
 const SITE_URL = "https://www.tradibu.com";
 
 /** Meta description cap. Google truncates SERP snippets around here anyway. */
-const META_DESCRIPTION_MAX = 160;
+export const META_DESCRIPTION_MAX = 160;
 
 /** Rendered without decimals, mirroring the NO_DECIMAL set in useCurrency. */
 const NO_DECIMAL_CURRENCIES = ["NGN", "KES", "JPY"];
@@ -192,158 +217,17 @@ export function buildProductJsonLd(input: ProductSeoInput): Record<string, unkno
   return schema;
 }
 
-function escapeHtmlText(value: string): string {
-  return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function escapeAttribute(value: string): string {
-  return escapeHtmlText(value).replace(/"/g, "&quot;");
-}
-
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
 /**
- * Insert `snippet` immediately before `</head>`.
- *
- * Slicing rather than `String.replace` matters: the JSON-LD payload routinely
- * contains `$&`, `$1` and friends when a product description does, and a string
- * replacement pattern would silently rewrite them into garbage.
+ * The head-surgery primitives that used to live here - `escapeHtmlText`,
+ * `escapeAttribute`, `escapeRegExp`, `insertBeforeHeadClose`, `replaceFirst`,
+ * `setMeta`, `stripImagePreloads` - now live in `./htmlHead`, so the page head
+ * writer in `./pageSeo` reuses them instead of re-deriving them. Their doc
+ * comments moved with them, including the reasoning for stripping the hero
+ * preloads.
  */
-function insertBeforeHeadClose(html: string, snippet: string): string {
-  const index = html.lastIndexOf("</head>");
-  if (index === -1) return html;
-  return html.slice(0, index) + snippet + "\n    " + html.slice(index);
-}
 
-function replaceFirst(html: string, pattern: RegExp, factory: () => string): string {
-  if (!pattern.test(html)) return html;
-  // Function replacement: no `$` interpretation in the produced string.
-  return html.replace(pattern, () => factory());
-}
-
-/**
- * Overwrite an existing <meta> identified by name/property, or append one if
- * the shell has no such tag at all. Appending keeps this working against an
- * index.html that later gains or loses individual tags.
- */
-function setMeta(html: string, attr: "name" | "property", key: string, content: string): string {
-  const tag = `<meta ${attr}="${key}" content="${escapeAttribute(content)}" />`;
-  const pattern = new RegExp(`<meta[^>]*\\b${attr}="${escapeRegExp(key)}"[^>]*>`);
-  if (pattern.test(html)) return replaceFirst(html, pattern, () => tag);
-  return insertBeforeHeadClose(html, tag);
-}
-
-/**
- * Drop every `<link ... as="image" ...>` from the head.
- *
- * The shell preloads the homepage hero image so the LCP element on `/` starts
- * on the first HTML pass. A product page never renders that hero, but the
- * preload scanner fires anyway: the shell ships two of them, keyed on
- * `media="(max-width: 640px)"` and its complement so exactly one matches the
- * viewport, and that one downloads a hero at `fetchpriority="high"` only to be
- * thrown away - competing with the product photo that is this page's real LCP
- * element. Dropping every one of them is a mobile win first and a desktop win
- * second; the `/g` flag exists because there is more than one to drop.
- *
- * Product pages must add their own preload back if they ever gain one; this is
- * unconditional by design, because `injectProductHead` always starts from the
- * homepage shell.
- */
-function stripImagePreloads(html: string): string {
-  return html.replace(/<link\b[^>]*\bas="image"[^>]*>\s*/g, "");
-}
-
-/**
- * Delimiters around the landing route's `modulepreload` block.
- *
- * `scripts/preloadLandingRoute.ts` emits the chunk graph the lazy `LandingPage`
- * needs so a first visit to `/` starts downloading it while index.js is still on
- * the wire, instead of one round trip after index.js executes. Those hints are
- * only correct for `/`: every other route pays for chunks it will never mount.
- *
- * The markers exist so the block can be removed as one unit. Matching the
- * individual `<link>` tags instead would need the hashed filenames, which
- * `productSeo` has no business knowing about.
- */
-export const LANDING_PRELOAD_START = "<!--tradibu:landing-preload:start-->";
-export const LANDING_PRELOAD_END = "<!--tradibu:landing-preload:end-->";
-
-/**
- * Remove the landing-route preload block from the head.
- *
- * A product page is the other URL that gets crawled directly, and it renders
- * `ProductDetailPage`, never `LandingPage`. Leaving the block there would make
- * every crawler and every shared WhatsApp link download the homepage's route
- * chunk for nothing - the same class of bug as the hero image preload, and
- * there is only one `</head>` to find, so indexOf is enough.
- */
-function stripLandingPreloads(html: string): string {
-  const start = html.indexOf(LANDING_PRELOAD_START);
-  if (start === -1) return html;
-  const end = html.indexOf(LANDING_PRELOAD_END, start);
-  if (end === -1) return html;
-  const rest = html.slice(end + LANDING_PRELOAD_END.length);
-  return html.slice(0, start) + rest.replace(/^\r?\n/, "");
-}
-
-/**
- * Remove a meta identified by name/property if present, appending nothing.
- *
- * Used for tags whose value we can no longer vouch for rather than tags we are
- * replacing. The closing quote in the pattern is what keeps `og:image` from
- * matching `og:image:width`.
- */
-function removeMeta(html: string, attr: "name" | "property", key: string): string {
-  const pattern = new RegExp(`<meta[^>]*\\b${attr}="${escapeRegExp(key)}"[^>]*>\\s*`, "g");
-  return html.replace(pattern, "");
-}
-
-function setCanonical(html: string, href: string): string {
-  const tag = `<link rel="canonical" href="${escapeAttribute(href)}" />`;
-  const pattern = /<link[^>]*\brel="canonical"[^>]*>/;
-  if (pattern.test(html)) return replaceFirst(html, pattern, () => tag);
-  return insertBeforeHeadClose(html, tag);
-}
-
-function toHtmlJsonLd(schema: Record<string, unknown>): string {
-  // Escaping every `<` keeps a product description containing `</script>` from
-  // closing the tag early and turning the remaining JSON into executable
-  // markup. It is still valid JSON, so a parser decodes it back to `<`.
-  const json = JSON.stringify(schema).replace(/</g, "\\u003c");
-  // The id is what lets `useSEO` swap this block on mount instead of adding a
-  // second Product node next to it.
-  return `<script id="${PRODUCT_STRUCTURED_DATA_ID}" type="application/ld+json">${json}</script>`;
-}
-
-/**
- * Drop any Product node already present in the head.
- *
- * Idempotence matters because every product file starts from the same shell,
- * and because `useSEO` leaves a structured-data script in the DOM that a second
- * pass must not stack another copy on top of. Non-Product blocks - notably the
- * homepage's WebSite/Organization graph - are left alone.
- *
- * The pattern deliberately tolerates extra attributes, because the block it is
- * looking for carries `id="product-structured-data"` and `useSEO` creates its
- * own as `<script id="page-structured-data" type="application/ld+json">`. A
- * pattern anchored on `<script type=...` would match neither.
- */
-function stripProductJsonLd(html: string): string {
-  return html.replace(
-    /<script[^>]*\btype="application\/ld\+json"[^>]*>([\s\S]*?)<\/script>/g,
-    (block: string, body: string) => {
-      try {
-        const parsed = JSON.parse(body) as Record<string, unknown>;
-        return parsed && parsed["@type"] === "Product" ? "" : block;
-      } catch {
-        // Unparseable JSON is not ours to delete; leave it exactly as found.
-        return block;
-      }
-    },
-  );
-}
+// `LANDING_PRELOAD_START` / `LANDING_PRELOAD_END` and `stripLandingPreloads`
+// moved to `./htmlHead` and are re-exported at the top of this file.
 
 /**
  * Rewrite the SPA shell's <head> so a product URL returns product-specific
@@ -361,11 +245,11 @@ function stripProductJsonLd(html: string): string {
 export function injectProductHead(html: string, input: ProductSeoInput): string {
   const title = buildProductTitle(input.productName);
   const description = buildProductDescription(input);
-  let out = stripProductJsonLd(html);
+  let out = stripJsonLdByType(html, "Product");
   out = stripImagePreloads(out);
   out = stripLandingPreloads(out);
 
-  out = replaceFirst(out, /<title[^>]*>[\s\S]*?<\/title>/i, () => `<title>${escapeHtmlText(title)}</title>`);
+  out = setTitle(out, title);
   out = setMeta(out, "name", "description", description);
   out = setMeta(out, "property", "og:title", title);
   out = setMeta(out, "property", "og:description", description);
@@ -389,7 +273,7 @@ export function injectProductHead(html: string, input: ProductSeoInput): string 
   }
 
   out = setCanonical(out, input.url);
-  out = insertBeforeHeadClose(out, toHtmlJsonLd(buildProductJsonLd(input)));
+  out = insertBeforeHeadClose(out, toHtmlJsonLd(buildProductJsonLd(input), PRODUCT_STRUCTURED_DATA_ID));
   return out;
 }
 
