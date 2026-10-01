@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
+import { getHeroImageSources } from "@/lib/heroImages";
 
 interface HeroSliderProps {
   slides: EnhancedCollection[];
@@ -9,37 +10,60 @@ interface HeroSliderProps {
   defaultDuration?: number;
 }
 
-const LEGACY_ELECTRONICS_HERO_URL =
-  "https://bnkyddmmhaaefzfvzpqs.supabase.co/storage/v1/object/public/collection-banners/fbd21376-73f5-40f4-bea7-e2abf0bdb686/1789836120388-93ee0dad-7ae7-4b8f-bd88-aeb316960426.png";
-
-type HeroImageSources = {
-  src: string;
-  mobileSrc?: string;
-  width?: number;
-  height?: number;
-  mobileWidth?: number;
-  mobileHeight?: number;
-};
-
 /**
- * The first production hero was stored as a 1.46 MB PNG. Keep its database
- * record intact until an authenticated admin can replace it, but serve the
- * equivalent responsive WebP assets bundled with the application. New or
- * changed collection URLs automatically use their original source.
+ * One slide's artwork, without the overlay text.
+ *
+ * Exported so the landing page's first paint and `HeroSlider` emit the SAME
+ * `<picture>`: an identical `src` and an identically sized box (the container
+ * owns the aspect ratio), so replacing the placeholder with the slider cannot
+ * shift layout or re-download the file.
  */
-function getHeroImageSources(src: string | null): HeroImageSources {
-  if (src === LEGACY_ELECTRONICS_HERO_URL) {
-    return {
-      src: "/images/electronics-products-1600x686.webp",
-      mobileSrc: "/images/electronics-products-960x540.webp",
-      width: 1600,
-      height: 686,
-      mobileWidth: 960,
-      mobileHeight: 540,
-    };
-  }
-
-  return { src: src ?? "" };
+export function HeroArtwork({
+  imageUrl,
+  alt,
+  priority = false,
+  imgClassName = "h-full w-full object-cover",
+  onLoad,
+  onError,
+}: {
+  imageUrl: string | null;
+  alt: string;
+  priority?: boolean;
+  imgClassName?: string;
+  onLoad?: () => void;
+  onError?: () => void;
+}) {
+  const source = getHeroImageSources(imageUrl);
+  if (!source.src) return null;
+  return (
+    <picture className="block h-full w-full">
+      {/* The mobile source is a different aspect ratio to the desktop one, so it
+          carries its own intrinsic size. Without this the <img> advertised
+          1600x686 while displaying a 960x540 file, which reserves the wrong box
+          before CSS applies. */}
+      {source.mobileSrc && (
+        <source
+          media="(max-width: 640px)"
+          srcSet={source.mobileSrc}
+          width={source.mobileWidth}
+          height={source.mobileHeight}
+          type="image/webp"
+        />
+      )}
+      <img
+        src={source.src}
+        width={source.width}
+        height={source.height}
+        alt={alt}
+        className={imgClassName}
+        loading={priority ? "eager" : "lazy"}
+        {...({ fetchpriority: priority ? "high" : "auto" } as React.HTMLAttributes<HTMLImageElement>)}
+        decoding="async"
+        onLoad={onLoad}
+        onError={onError}
+      />
+    </picture>
+  );
 }
 
 const HeroSlider = memo(function HeroSlider({
@@ -163,35 +187,16 @@ const HeroSlider = memo(function HeroSlider({
             >
               {/* Background image */}
               {imageSource.src && !failedImages.has(index) ? (
-                <picture className="block h-full w-full">
-                  {/* The mobile source is a different aspect ratio to the desktop
-                      one, so it carries its own intrinsic size. Without this the
-                      <img> advertised 1600x686 while displaying a 960x540 file,
-                      which reserves the wrong box before CSS applies. */}
-                  {imageSource.mobileSrc && (
-                    <source
-                      media="(max-width: 640px)"
-                      srcSet={imageSource.mobileSrc}
-                      width={imageSource.mobileWidth}
-                      height={imageSource.mobileHeight}
-                      type="image/webp"
-                    />
-                  )}
-                  <img
-                    src={imageSource.src}
-                    width={imageSource.width}
-                    height={imageSource.height}
-                    alt={imageAlt}
-                    className={`h-full w-full object-cover ${
-                      index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
-                    }`}
-                    loading={index === 0 ? "eager" : "lazy"}
-                    {...({ fetchpriority: index === 0 ? "high" : "auto" } as React.HTMLAttributes<HTMLImageElement>)}
-                    decoding="async"
-                    onLoad={() => handleImageLoad(index)}
-                    onError={() => handleImageError(index)}
-                  />
-                </picture>
+                <HeroArtwork
+                  imageUrl={s.image_url}
+                  alt={imageAlt}
+                  priority={index === 0}
+                  imgClassName={`h-full w-full object-cover ${
+                    index === 0 ? "opacity-100" : "transition-opacity duration-700 " + (loadedImages.has(index) ? "opacity-100" : "opacity-0")
+                  }`}
+                  onLoad={() => handleImageLoad(index)}
+                  onError={() => handleImageError(index)}
+                />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#1C1C1E] to-[#333333]">
                   <div className="px-6 text-center">

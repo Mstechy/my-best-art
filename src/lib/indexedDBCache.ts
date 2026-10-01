@@ -1,4 +1,4 @@
-import Dexie, { type Table } from "dexie";
+import type { Table } from "dexie";
 
 export interface CacheEntry<T> {
   key: string;
@@ -19,23 +19,68 @@ const DEFAULT_TTL_MS = 5 * 60 * 1000;
 /** Periodic cleanup interval: 2 minutes */
 const CLEANUP_INTERVAL_MS = 2 * 60 * 1000;
 
-class MarketHubDB extends Dexie {
-  cache!: Table<CacheEntry<unknown>>;
+/** The subset of the open Dexie instance this module uses. */
+type CacheDatabase = { cache: Table<CacheEntry<unknown>> };
 
-  constructor() {
-    super("MarketHubDB");
-    this.version(2).stores({
-      cache: "key, expiresAt, createdAt",
-    });
+/**
+ * The open database, or `null` until something actually touches the cache.
+ *
+ * Dexie is ~96 kB of source. This module used to `import Dexie from "dexie"` at
+ * the top level, and two modules on the landing route import this one - `useCart`
+ * (through CartProvider in App.tsx) and `useCachedFetch` - so the library was
+ * resolved, downloaded and parsed as part of the initial graph for every
+ * visitor: 31.6 KiB of the 352 KiB the browser had to fetch before it could
+ * paint anything. Nothing on the first paint reads the cache; every caller here
+ * is already an async effect that tolerates a round trip. Importing Dexie on
+ * first use moves it into its own chunk, which is fetched only if the cache is
+ * actually used, and takes it off the critical path.
+ */
+let dbPromise: Promise<CacheDatabase> | null = null;
+
+/**
+ * Opens the database on first call, and returns the same instance afterwards.
+ *
+ * A failed import clears the memo so a later call can retry: a chunk that did
+ * not arrive once (offline, flaky CDN) should not disable the cache for the rest
+ * of the session. Every caller already treats any failure as "no cache".
+ */
+function openDb(): Promise<CacheDatabase> {
+  if (!dbPromise) {
+    dbPromise = import("dexie")
+      .then((mod) => {
+        // The bundler hands back the module namespace for a dynamic import: the
+        // `default` getter is the Dexie class, but fall back to a named `Dexie`
+        // export and then to the module itself so an interop shape change cannot
+        // make the namespace object be used as a superclass.
+        const interop = mod as { default?: unknown; Dexie?: unknown };
+        const Dexie = (interop.default ?? interop.Dexie ?? mod) as typeof import("dexie").default;
+        class MarketHubDB extends Dexie {
+          cache!: Table<CacheEntry<unknown>>;
+
+          constructor() {
+            super("MarketHubDB");
+            this.version(2).stores({
+              cache: "key, expiresAt, createdAt",
+            });
+          }
+        }
+        const db = new MarketHubDB();
+        startCleanupTimer(db);
+        return db;
+      })
+      .catch((error) => {
+        dbPromise = null;
+        throw error;
+      });
   }
+  return dbPromise;
 }
-
-const db = new MarketHubDB();
 
 // ---- Periodic cleanup of expired entries ----
 let cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
-function startCleanupTimer(): void {
+/** Started once, the first time the database is opened. */
+function startCleanupTimer(db: CacheDatabase): void {
   if (cleanupTimer) return;
   cleanupTimer = setInterval(async () => {
     try {
@@ -52,11 +97,10 @@ function startCleanupTimer(): void {
   }, CLEANUP_INTERVAL_MS);
 }
 
-startCleanupTimer();
-
 // ---- LRU eviction when cache is full ----
 async function ensureCapacity(): Promise<void> {
   try {
+    const db = await openDb();
     const count = await db.cache.count();
     if (count < MAX_CACHE_ENTRIES) return;
 
@@ -85,6 +129,7 @@ async function ensureCapacity(): Promise<void> {
  */
 export async function persistentCacheGet<T>(key: string): Promise<T | null> {
   try {
+    const db = await openDb();
     const entry = await db.cache.get(key);
     if (!entry) return null;
 
@@ -112,6 +157,7 @@ export async function persistentCacheSet<T>(
 ): Promise<void> {
   const now = Date.now();
   try {
+    const db = await openDb();
     await ensureCapacity();
     await db.cache.put({
       key,
@@ -130,6 +176,7 @@ export async function persistentCacheSet<T>(
  */
 export async function persistentCacheDelete(key: string): Promise<void> {
   try {
+    const db = await openDb();
     await db.cache.delete(key);
   } catch {
     // Non-critical
@@ -141,6 +188,7 @@ export async function persistentCacheDelete(key: string): Promise<void> {
  */
 export async function persistentCacheClear(): Promise<void> {
   try {
+    const db = await openDb();
     await db.cache.clear();
   } catch {
     // Non-critical
@@ -152,6 +200,7 @@ export async function persistentCacheClear(): Promise<void> {
  */
 export async function persistentCacheHas(key: string): Promise<boolean> {
   try {
+    const db = await openDb();
     const entry = await db.cache.get(key);
     if (!entry) return false;
     if (Date.now() > entry.expiresAt) {
@@ -169,6 +218,7 @@ export async function persistentCacheHas(key: string): Promise<boolean> {
  */
 export async function persistentCacheKeys(): Promise<string[]> {
   try {
+    const db = await openDb();
     const now = Date.now();
     const all = await db.cache.where("expiresAt").above(now).toArray();
     return all.map(entry => entry.key);
@@ -187,6 +237,7 @@ export async function persistentCacheStats(): Promise<{
   estimatedSizeBytes: number;
 }> {
   try {
+    const db = await openDb();
     const now = Date.now();
     const all = await db.cache.toArray();
     const expired = all.filter(e => e.expiresAt <= now);
@@ -215,6 +266,7 @@ export async function persistentCacheStats(): Promise<{
  */
 export async function persistentCacheCleanup(): Promise<number> {
   try {
+    const db = await openDb();
     return await db.cache.where("expiresAt").below(Date.now()).delete();
   } catch {
     return 0;
