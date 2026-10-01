@@ -157,9 +157,13 @@ async function backfillOne(config: ResolvedSupabase, row: PendingRow, apply: boo
       Authorization: `Bearer ${config.key}`,
       "Content-Type": SMALL_CARD_MIME,
       "x-upsert": "true",
-      // Derivative keys embed a timestamp and are never rewritten in place, so
-      // the browser and CDN can hold them indefinitely.
-      "Cache-Control": "31536000",
+      // Must be a real directive: the bare number "31536000" carries no
+      // max-age and is ignored by browsers, leaving the file with no freshness
+      // lifetime so it is refetched on every visit. Supabase stores this header
+      // verbatim (prefixed with "public, "), so `max-age=` is ours to supply.
+      // Not `immutable`, because these keys are rewritten when the recipe
+      // changes and a stale copy must stay revalidatable on reload.
+      "Cache-Control": "max-age=31536000",
     },
     body: new Uint8Array(card),
   });

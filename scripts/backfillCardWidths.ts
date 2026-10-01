@@ -50,6 +50,19 @@ const PAGE_SIZE = 100;
 const CONCURRENCY = 5;
 const BUCKET = "product-images";
 
+/**
+ * Must be a real Cache-Control directive. An earlier revision sent the bare
+ * number "31536000", which is not a directive: browsers ignore it, the file
+ * ends up with no freshness lifetime, and it is re-downloaded on every visit.
+ * Supabase stores this header verbatim (it only prefixes "public, "), so the
+ * `max-age=` is ours to supply. Lighthouse reported these files as cache TTL
+ * "None" and costed 224 KiB of repeat-visit transfer against them.
+ *
+ * Deliberately not `immutable`: these keys ARE rewritten in place when the
+ * derivative recipe changes, so a stale copy must stay revalidatable on reload.
+ */
+const CACHE_CONTROL = "max-age=31536000";
+
 interface ProductImageRow {
   id: string;
   image_url: string | null;
@@ -149,7 +162,7 @@ async function resizeOne(config: ResolvedSupabase, row: ProductImageRow, apply: 
   // reference picks up the smaller file and no row needs touching.
   const upload = await fetch(`${base}/storage/v1/object/${BUCKET}/${cardKey}`, {
     method: "POST",
-    headers: { ...authHeaders, "Content-Type": CARD_MIME, "x-upsert": "true", "Cache-Control": "31536000" },
+    headers: { ...authHeaders, "Content-Type": CARD_MIME, "x-upsert": "true", "Cache-Control": CACHE_CONTROL },
     body: new Uint8Array(resized),
   });
   if (!upload.ok) return fail(`upload failed: HTTP ${upload.status} ${await upload.text()}`);

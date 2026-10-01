@@ -14,6 +14,7 @@
     "backfill:image-dimensions": "node --experimental-strip-types scripts/backfillImageDimensions.ts",
     "backfill:small-cards": "node --experimental-strip-types scripts/backfillSmallCards.ts",
     "backfill:card-widths": "node --experimental-strip-types scripts/backfillCardWidths.ts",
+    "backfill:image-cache": "node --experimental-strip-types scripts/refreshImageCacheControl.ts",
     "seed:masonry-fixtures": "node --experimental-strip-types scripts/seedMasonryFixtures.ts",
     "speed:check": "node scripts/speedCheck.mjs",
     "speed:mobile": "node scripts/speedCheck.mjs --label mobile --slow-4g",
