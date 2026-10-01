@@ -1,0 +1,21 @@
+﻿fix(scripts): break the cursor/query/rows inference cycle
+
+tsc reported three implicit-any errors in the paging loop: query and
+rows resolved to any, which then made mapLimit's T unknown so row was
+no longer assignable to PendingRow.
+
+The cause is a genuine inference cycle rather than three separate
+mistakes. The cursor was declared string | null and read through a
+ternary, so TypeScript had to narrow it. Narrowing inside a loop whose
+break conditions read rows means resolving rows before cursor; rows
+comes from query, and query reads the cursor. TypeScript resolves that
+cycle to any instead of reporting the cycle.
+
+The sibling backfillImageDimensions.ts already avoids it by seeding
+lastId with an all-zero UUID and never narrowing, so the first page
+uses the same id=gt. shape as every later page. This adopts that
+pattern verbatim, which breaks the cycle by construction rather than
+by annotation.
+
+Verified with tsc -p tsconfig.node.json --listFiles: the script is in
+the typecheck graph and typecheck is clean.

@@ -195,12 +195,19 @@ async function main() {
   console.log(apply ? "MODE: --apply (this WILL write)" : "MODE: report only (no writes)");
 
   const outcomes: Outcome[] = [];
-  let cursor: string | null = null;
+
+  // An all-zero UUID sorts before every real row, so the first page uses exactly
+  // the same `id=gt.` shape as every page after it. A nullable cursor would also
+  // work at runtime, but the `cursor ? ... : ""` ternary forces TypeScript to
+  // narrow it, and narrowing inside a loop whose break conditions read `rows`
+  // closes a cycle: rows <- query <- cursor <- control flow <- rows. TypeScript
+  // resolves that cycle to `any`, which then poisons the row type downstream.
+  // A plain string with no narrowing breaks the cycle by construction.
+  let lastId = "00000000-0000-0000-0000-000000000000";
 
   for (;;) {
     const query =
-      `select=id,image_url&card_small_url=is.null&order=id.asc&limit=${PAGE_SIZE}` +
-      (cursor ? `&id=gt.${cursor}` : "");
+      `select=id,image_url&card_small_url=is.null&id=gt.${lastId}&order=id.asc&limit=${PAGE_SIZE}`;
     const rows = await fetchRows<PendingRow>(config, "product_images", query);
     if (rows.length === 0) break;
 
@@ -208,7 +215,7 @@ async function main() {
       outcomes.push(await backfillOne(config, row, apply));
     });
 
-    cursor = rows[rows.length - 1].id;
+    lastId = rows[rows.length - 1].id;
     if (rows.length < PAGE_SIZE) break;
   }
 
