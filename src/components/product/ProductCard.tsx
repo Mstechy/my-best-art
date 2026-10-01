@@ -195,7 +195,12 @@ export function ProductCard({
           )}
         </div>
 
-        <div className="mt-auto pt-3">
+        {/* `pt-2`, not `mt-auto`. `mt-auto` pushed the price to the bottom of the
+            `h-full` column and opened a FLEXIBLE gap between the description and the
+            price that grew on cards with less meta (no rating, no seller chip) - the
+            inconsistent spacing seen between tiles. A fixed gap keeps every card's
+            rhythm identical, which is what product grids on large marketplaces do. */}
+        <div className="pt-2">
           <div className="flex min-h-5 items-baseline gap-1.5">
             <span className="text-sm font-bold text-foreground">{formatPrice(product.price)}</span>
             {compareAtVisible && <span className="text-[10px] text-muted-foreground line-through">{formatPrice(product.compareAtPrice!)}</span>}
