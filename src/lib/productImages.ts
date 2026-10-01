@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { normalizeImageDimensions, type ImageDimensions } from "@/lib/imageDimensions";
 
 const CARD_SIZE = 900;
 const CARD_QUALITY = 0.78;
@@ -92,8 +93,21 @@ export function computeCardDrawBox(naturalWidth: number, naturalHeight: number, 
   };
 }
 
-export async function createProductCardImage(file: File, size = CARD_SIZE, quality = CARD_QUALITY): Promise<Blob> {
-  const image = await loadImage(file);
+export async function createProductCardImage(
+  file: File,
+  size = CARD_SIZE,
+  quality = CARD_QUALITY,
+  /**
+   * An already-decoded bitmap for this file.
+   *
+   * The upload path measures the image and derives two card derivatives from it, and
+   * decoding a 12 MP phone photo three times is real work on a phone. Passing the
+   * first decode in removes two of those decodes without changing anything about
+   * what is produced.
+   */
+  decoded?: HTMLImageElement,
+): Promise<Blob> {
+  const image = decoded ?? (await loadImage(file));
   const { outputSize, width, height, x, y } = computeCardDrawBox(image.naturalWidth, image.naturalHeight, size);
   const canvas = document.createElement("canvas");
   canvas.width = outputSize;
@@ -119,12 +133,52 @@ export function getProductCardImageUrl(originalUrl: string | null | undefined) {
   return query ? `${cardUrl}?${query}` : cardUrl;
 }
 
-export async function uploadProductImagePair(file: File, basePath: string) {
+export interface UploadedProductImage {
+  originalUrl: string;
+  cardUrl: string | null;
+  cardSmallUrl: string | null;
+  /** Intrinsic size of the ORIGINAL upload, or `null` when it could not be decoded. */
+  dimensions: ImageDimensions | null;
+  /** Byte size of the original upload. */
+  bytes: number;
+  /** Lowercase extension actually used for the stored original. */
+  format: string;
+}
+
+/**
+ * Upload one product photo as its derivatives and report what was measured.
+ *
+ * "At upload time" is the only moment the intrinsic size is free: the file is
+ * already in memory and already being decoded for the card derivative, so the
+ * dimensions cost one property read. The alternative - measuring later during the
+ * backfill - means re-downloading every image, which is why the size is captured
+ * here and persisted by the caller.
+ *
+ * This project has no application server: uploads go straight from the seller's
+ * browser to Supabase Storage. So "server-side" measurement is not available and
+ * this is the closest honest equivalent - the measurement happens once, at the
+ * moment of upload, and the result is stored in the database rather than recomputed
+ * per visitor.
+ */
+export async function uploadProductImagePair(file: File, basePath: string): Promise<UploadedProductImage> {
   const timestamp = Date.now();
   const stem = `${timestamp}-${safeFileStem(file.name)}`;
-  const originalPath = `${basePath}/original-${stem}.${extensionFor(file)}`;
+  const format = extensionFor(file);
+  const originalPath = `${basePath}/original-${stem}.${format}`;
   const cardPath = `${basePath}/card-${stem}.webp`;
   const cardSmallPath = `${basePath}/card320-${stem}.webp`;
+
+  // One decode covers the measurement and both derivatives. A failure here is not
+  // fatal: an unmeasurable image is published with a 1:1 reserved box rather than
+  // rejected, because a product photo must not be blocked by a decode quirk.
+  let decoded: HTMLImageElement | undefined;
+  let dimensions: ImageDimensions | null = null;
+  try {
+    decoded = await loadImage(file);
+    dimensions = normalizeImageDimensions(decoded.naturalWidth, decoded.naturalHeight);
+  } catch (error) {
+    console.warn("Could not measure the uploaded image; the card will reserve a 1:1 box.", error);
+  }
 
   const { error: originalError } = await supabase.storage
     .from("product-images")
@@ -133,7 +187,7 @@ export async function uploadProductImagePair(file: File, basePath: string) {
   if (originalError) throw originalError;
 
   try {
-    const cardBlob = await createProductCardImage(file);
+    const cardBlob = await createProductCardImage(file, CARD_SIZE, CARD_QUALITY, decoded);
     await supabase.storage
       .from("product-images")
       .upload(cardPath, cardBlob, { contentType: CARD_MIME_TYPE, upsert: false });
@@ -144,7 +198,7 @@ export async function uploadProductImagePair(file: File, basePath: string) {
   const { data } = supabase.storage.from("product-images").getPublicUrl(originalPath);
   let cardSmallUrl: string | null = null;
   try {
-    const smallBlob = await createProductCardImage(file, SMALL_CARD_SIZE, SMALL_CARD_QUALITY);
+    const smallBlob = await createProductCardImage(file, SMALL_CARD_SIZE, SMALL_CARD_QUALITY, decoded);
     const { error: smallError } = await supabase.storage
       .from("product-images")
       .upload(cardSmallPath, smallBlob, { contentType: CARD_MIME_TYPE, upsert: false });
@@ -161,5 +215,8 @@ export async function uploadProductImagePair(file: File, basePath: string) {
     originalUrl: data.publicUrl,
     cardUrl: getProductCardImageUrl(data.publicUrl),
     cardSmallUrl,
+    dimensions,
+    bytes: file.size,
+    format,
   };
 }

@@ -5,7 +5,21 @@ import { fetchHeroCollections } from "@/lib/collectionResolver";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
 
 // ── Types ────────────────────────────────────────────────────────────────
-export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; product_images: { image_url: string; is_primary: boolean }[] };
+export type ProductImageRow = {
+  image_url: string;
+  is_primary: boolean;
+  /** 320px WebP derivative; NULL for images uploaded before responsive cards. */
+  card_small_url?: string | null;
+  /**
+   * Intrinsic size of the original upload, used to reserve a masonry tile's height
+   * before the file loads. NULL for rows written before the dimensions were
+   * captured, which the card renders as 1:1 rather than as a guess.
+   */
+  image_width?: number | null;
+  image_height?: number | null;
+};
+
+export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; created_at: string; product_images: ProductImageRow[] };
 export type Category = { id: string; name: string; slug: string };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
@@ -123,7 +137,7 @@ export function useProductsByIds(ids: string[]) {
       if (ids.length === 0) return [] as Product[];
       const { data } = await supabase
         .from("products")
-        .select("id,title,price,compare_at_price,currency,seller_id,stock_quantity,average_rating,review_count,ships_to,flash_deal_end_at,product_images(image_url,is_primary)")
+        .select("id,title,price,compare_at_price,currency,seller_id,stock_quantity,average_rating,review_count,ships_to,flash_deal_end_at,created_at,product_images(image_url,is_primary,card_small_url,image_width,image_height)")
         .in("id", ids);
       return (data ?? []) as unknown as Product[];
     },

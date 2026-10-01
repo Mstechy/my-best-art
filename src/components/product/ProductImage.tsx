@@ -38,10 +38,18 @@ export default function ProductImage({
   // A phone only needs the 320px derivative; the 900px asset stays available for wider
   // viewports and high-density screens. srcSet is only emitted when the small file is
   // known to exist, so the browser is never asked for a missing image.
+  //
+  // `sizes` mirrors the column widths of BOTH grids this card is used in: the masonry
+  // home feed (2/3/4/5 columns at 640/1024/1440) and the aligned catalogue grid
+  // (2/3/4/5 at the Tailwind steps). Gaps are about 8-16px, which is well inside the
+  // rounding of vw, so one string is honest for both.
   const responsiveSrc = useMemo(() => {
     if (variant !== "card" && variant !== "thumb") return null;
     if (!cardSmallUrl || !cardSrc || cardSmallUrl === cardSrc) return null;
-    return { srcSet: `${cardSmallUrl} 320w, ${cardSrc} 900w`, sizes: "(min-width: 1280px) 17vw, (min-width: 1024px) 20vw, (min-width: 640px) 30vw, 45vw" };
+    return {
+      srcSet: `${cardSmallUrl} 320w, ${cardSrc} 900w`,
+      sizes: "(min-width: 1440px) 18vw, (min-width: 1024px) 23vw, (min-width: 640px) 30vw, 45vw",
+    };
   }, [cardSmallUrl, cardSrc, variant]);
   const [currentSrc, setCurrentSrc] = useState<string | null>(responsiveSrc?.srcSet ? cardSmallUrl ?? cardSrc : cardSrc);
   const [triedFallback, setTriedFallback] = useState(false);

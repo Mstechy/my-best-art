@@ -17,6 +17,7 @@ import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getPr
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { uploadProductImagePair } from "@/lib/productImages";
+import { checkImageUpload, readImageDimensionsFromFile } from "@/lib/imageDimensions";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import { generateSku } from "@/lib/sku";
@@ -27,6 +28,52 @@ import { useCurrency } from "@/hooks/useCurrency";
 
 import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
 import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
+
+/**
+ * Apply the vendor upload rules to picked files.
+ *
+ * Module scope rather than component scope for two reasons: draft recovery and the
+ * picker must judge a file IDENTICALLY - otherwise the way to publish a 600px photo
+ * would be to save the draft and reopen it - and a module-level function cannot go
+ * stale inside a `useCallback`.
+ *
+ * The rules themselves live in `checkImageUpload`, which is pure and unit-tested.
+ * This function only does the file I/O around them and splits the outcome into
+ * "publish" and "tell the seller why not".
+ */
+async function reviewImageFiles(
+  files: File[],
+  options: { measure?: boolean } = {},
+) {
+  const accepted: File[] = [];
+  const errors: string[] = [];
+  const warnings = new Set<string>();
+
+  for (const file of files) {
+    // Measuring is skipped when the file has already been measured once (a draft
+    // restore): the bytes are unchanged, so the answer is the same, and waiting on a
+    // decode would delay reopening a half-finished listing by a round trip through
+    // the image decoder. A file that cannot be decoded is allowed through either
+    // way - it is published with a 1:1 reserved box rather than refused for a
+    // metadata quirk.
+    const dimensions = options.measure === false
+      ? null
+      : await readImageDimensionsFromFile(file).catch(() => null);
+    const result = checkImageUpload({
+      width: dimensions?.width,
+      height: dimensions?.height,
+      bytes: file.size,
+      type: file.type,
+      name: file.name,
+      maxBytes: MAX_IMAGE_SIZE_BYTES,
+    });
+    if (result.errors.length > 0) errors.push(`${file.name}: ${result.errors.join(" ")}`);
+    else accepted.push(file);
+    result.warnings.forEach((warning) => warnings.add(warning));
+  }
+
+  return { accepted, errors, warnings: [...warnings] };
+}
 
 export default function SellerProducts() {
   const { formatPrice } = useCurrency();
@@ -198,19 +245,34 @@ export default function SellerProducts() {
    */
   const applyRestoredMedia = useCallback((media: RestoredMedia) => {
     if (media.images.length > 0) {
-      setImageItems((prev) => [
-        ...prev,
-        ...media.images.map((file, index) => ({
-          id: `restored-${Date.now()}-${index}`,
-          file,
-          url: URL.createObjectURL(file),
-          name: file.name,
-          isPrimary: prev.length === 0 && index === 0,
-          alt: "",
-          status: "pending" as UploadState,
-          progress: 0,
-        })),
-      ]);
+      // Restored photos are held to the same rules as freshly picked ones. A draft
+      // saved before these rules existed must not become the way around them. The
+      // measurement is skipped: these files were measured when they were first
+      // picked, the bytes have not changed, and a decode here would only delay
+      // reopening a half-finished listing.
+      void reviewImageFiles(media.images, { measure: false }).then(({ accepted, errors }) => {
+        if (errors.length > 0) {
+          toast({
+            title: "Some restored images were skipped",
+            description: errors.slice(0, 3).join(" "),
+            variant: "destructive",
+          });
+        }
+        if (accepted.length === 0) return;
+        setImageItems((prev) => [
+          ...prev,
+          ...accepted.map((file, index) => ({
+            id: `restored-${Date.now()}-${index}`,
+            file,
+            url: URL.createObjectURL(file),
+            name: file.name,
+            isPrimary: prev.length === 0 && index === 0,
+            alt: "",
+            status: "pending" as UploadState,
+            progress: 0,
+          })),
+        ]);
+      });
     }
     if (media.descriptionImages.length > 0) {
       setDescriptionImageItems((prev) => [
@@ -240,7 +302,7 @@ export default function SellerProducts() {
       ]);
     }
     if (media.doc) setDocFile(media.doc);
-  }, []);
+  }, [toast]);
 
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
@@ -285,9 +347,9 @@ export default function SellerProducts() {
     } catch {
       localStorage.removeItem(draftKey);
     }
-    // `toast` is the stable module-level function exported by use-toast.ts, so
-    // listing it here satisfies the lint rule without ever re-running this effect.
-    // `applyRestoredMedia` is a stable useCallback with no dependencies.
+    // Both entries are stable - `toast` is memoised by use-toast and
+    // `applyRestoredMedia` depends only on it - so this effect still runs once per
+    // signed-in seller rather than on every render.
   }, [draftKey, toast, applyRestoredMedia]);
 
   const revokeLocalMediaUrls = () => {
@@ -302,18 +364,34 @@ export default function SellerProducts() {
     });
   };
 
-  const addImageFiles = (files: File[]) => {
+  const addImageFiles = async (files: File[]) => {
     const remaining = MAX_PRODUCT_IMAGES - imageItems.length;
-    const imageFiles = files.filter((file) => ACCEPTED_IMAGE_TYPES.has(file.type) && file.size <= MAX_IMAGE_SIZE_BYTES).slice(0, Math.max(0, remaining));
-    if (imageFiles.length === 0) {
-      toast({ title: "Images not added", description: `Use JPG, PNG, or WebP files up to 10 MB. A product can have up to ${MAX_PRODUCT_IMAGES} images.`, variant: "destructive" });
+    const eligible = files.filter((file) => ACCEPTED_IMAGE_TYPES.has(file.type) && file.size <= MAX_IMAGE_SIZE_BYTES);
+    if (eligible.length === 0) {
+      toast({ title: "Images not added", description: `Use JPG, PNG, or WebP files up to 10 MB and at least 800px on the short side. A product can have up to ${MAX_PRODUCT_IMAGES} images.`, variant: "destructive" });
       return;
     }
-    if (imageFiles.length < files.length) toast({ title: "Some images skipped", description: `Use JPG, PNG, or WebP files up to 10 MB; maximum ${MAX_PRODUCT_IMAGES} images per product.` });
+    if (remaining <= 0) {
+      toast({ title: "Image limit reached", description: `A product can have up to ${MAX_PRODUCT_IMAGES} images. Remove one to add another.`, variant: "destructive" });
+      return;
+    }
+
+    // Measured here rather than at publish time so the seller learns about an
+    // unusable photo while they are still choosing them, not after filling in the
+    // whole form.
+    const { accepted, errors, warnings } = await reviewImageFiles(eligible.slice(0, remaining));
+    if (errors.length > 0) {
+      toast({ title: "Some images skipped", description: errors.slice(0, 3).join(" "), variant: "destructive" });
+    }
+    if (warnings.length > 0) {
+      toast({ title: "Image tip", description: warnings.join(" ") });
+    }
+    if (accepted.length === 0) return;
+
     setImageItems((prev) => {
       const next = [
         ...prev,
-        ...imageFiles.map((file, index): ImageMediaItem => ({
+        ...accepted.map((file, index): ImageMediaItem => ({
           id: `local-image-${Date.now()}-${index}-${file.name}`,
           file,
           url: URL.createObjectURL(file),
@@ -876,7 +954,7 @@ export default function SellerProducts() {
         try {
           updateImageUploadState(item.id, { status: "uploading", progress: 20, error: undefined });
           const visualHash = await createVisualHash(item.file);
-          const { originalUrl, cardSmallUrl } = await uploadProductImagePair(item.file, `${user.id}/${productId}`);
+          const { originalUrl, cardSmallUrl, dimensions, bytes, format } = await uploadProductImagePair(item.file, `${user.id}/${productId}`);
           updateImageUploadState(item.id, { progress: 80 });
           const { data: inserted, error: insertError } = await supabase.from("product_images").insert({
             product_id: productId,
@@ -887,6 +965,13 @@ export default function SellerProducts() {
             alt: item.alt.trim() || null,
             visual_hash: visualHash.hash,
             visual_hash_buckets: visualHash.buckets,
+            // The intrinsic size, so every card can reserve its exact box before the
+            // file loads (the whole point of the waterfall feed's stability). NULL
+            // when the image could not be decoded - the card then reserves 1:1.
+            image_width: dimensions?.width ?? null,
+            image_height: dimensions?.height ?? null,
+            image_bytes: bytes,
+            image_format: format,
           } as never).select("id").single();
           if (insertError) throw insertError;
           galleryImageUrls.set(item.id, originalUrl);

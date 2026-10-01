@@ -43,6 +43,24 @@ type ProductCardProps = {
   addToWishlistLabel?: string;
   removeFromWishlistLabel?: string;
   className?: string;
+  /**
+   * Aspect ratio (width / height) RESERVED by the image box before the file has
+   * loaded, so a masonry tile can claim its exact height up front.
+   *
+   * Defaults to 1, which is exactly what the aligned catalogue grid has always
+   * rendered (`aspect-square`), so the category and search pages are unchanged by
+   * this prop existing. The masonry feed passes the clamped ratio from the stored
+   * image dimensions; an unknown ratio must arrive here as 1 already
+   * (`clampDisplayAspectRatio` guarantees that).
+   */
+  imageAspectRatio?: number;
+  /**
+   * Load the image eagerly at high priority. Set this for the FIRST ROW of the
+   * feed only: those images are inside the largest-contentful-paint area, while
+   * everything below the fold is better off lazy so it cannot compete for
+   * bandwidth with the pixels the shopper is actually waiting for.
+   */
+  priority?: boolean;
 };
 
 const badgeTone = {
@@ -53,6 +71,11 @@ const badgeTone = {
   brand: "bg-brand text-ink",
   success: "bg-success text-success-foreground",
 };
+
+/** Clamp a caller-supplied ratio to something a card can actually reserve. */
+const safeAspectRatio = (ratio: number | undefined): number =>
+  typeof ratio === "number" && Number.isFinite(ratio) && ratio > 0 ? ratio : 1;
+
 
 /**
  * Marketplace card with a stable image area and a bottom-aligned purchase zone.
@@ -73,24 +96,41 @@ export function ProductCard({
   addToCartLabel,
   addToWishlistLabel,
   removeFromWishlistLabel,
+  imageAspectRatio,
+  priority = false,
   className,
 }: ProductCardProps) {
   const { t } = useTranslation();
   const compareAtVisible = product.compareAtPrice && product.compareAtPrice > product.price;
   const unavailable = product.stockQuantity === 0;
   const showPurchaseActions = Boolean(onBuyNow || onAddToCart);
+  // Reserved height of the media box. `aspect-ratio` (not a fixed height) so the
+  // box tracks the column width the masonry layout gives it, and `object-fit:
+  // cover` in the image means an extreme upload loses edges instead of breaking
+  // the layout. Because the box is reserved, this card's height cannot change when
+  // its image loads - which is the entire point of storing the dimensions.
+  const reservedRatio = safeAspectRatio(imageAspectRatio);
 
   return (
-    <BrandCard className={cn("group relative flex h-full flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md", className)}>
-      <Link to={`/product/${product.id}`} onClick={onProductClick} className="block">
-        <div className="relative aspect-square w-full overflow-hidden bg-muted">
-          {product.imageUrl ? (
-            <ProductImage src={product.imageUrl} cardSmallUrl={product.imageSmallUrl} alt={product.title} className="group-hover:scale-105" loading="lazy" />
-          ) : (
-            <div className="flex h-full items-center justify-center text-muted-foreground">
-              <Package className="h-8 w-8" />
-            </div>
-          )}
+    <BrandCard className={cn("group relative flex h-full flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:ring-2 focus-within:ring-primary/60 focus-within:ring-offset-1", className)}>
+      {/* Media. Deliberately NOT wrapped in its own link: the stretched title link
+          below covers the whole card, so the image is part of ONE generously sized
+          target rather than a second one competing for the same tap. */}
+      <div className="relative w-full overflow-hidden bg-muted" style={{ aspectRatio: reservedRatio }}>
+        {product.imageUrl ? (
+          <ProductImage
+            src={product.imageUrl}
+            cardSmallUrl={product.imageSmallUrl}
+            alt={product.title}
+            className="group-hover:scale-105"
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center text-muted-foreground">
+            <Package className="h-8 w-8" />
+          </div>
+        )}
           {product.videoUrl && (
             <video src={product.videoUrl} muted playsInline loop preload="none" className="absolute inset-0 h-full w-full object-cover opacity-0 transition-opacity duration-300 group-hover:opacity-100" onMouseEnter={(event) => { event.currentTarget.play().catch(() => {}); }} onMouseLeave={(event) => { event.currentTarget.pause(); }} />
           )}
@@ -105,13 +145,31 @@ export function ProductCard({
               <Heart className={cn("h-3.5 w-3.5", isWishlisted && "fill-current")} />
             </button>
           )}
+          {/* Out of stock is stated on the media box rather than by greying the
+              card: the card keeps its exact height (the shopper's scroll position
+              and the masonry column balance do not change) and the label sits on
+              the image it refers to. */}
+          {unavailable && (
+            <span className="absolute inset-x-2 bottom-2 z-10 rounded-md bg-foreground/75 px-2 py-1 text-center text-[10px] font-bold uppercase tracking-wide text-background backdrop-blur-sm">
+              {t("product.outOfStock")}
+            </span>
+          )}
         </div>
-      </Link>
 
       <div className="flex flex-1 flex-col p-3">
         <div>
-          <Link to={`/product/${product.id}`} onClick={onProductClick}>
-            <h3 className="min-h-10 line-clamp-2 text-sm font-semibold leading-snug text-foreground hover:underline">{product.title}</h3>
+          {/* One stretched link for the whole card. Tailwind's `after:inset-0`
+              idiom rather than an absolutely positioned sibling: the anchor keeps
+              real, crawlable text (the product title), keeps its accessible name,
+              and stays in the tab order exactly once. Interactive controls
+              (wishlist, buy, cart) sit above it with `z-10`, because a <button>
+              nested inside an <a> is invalid and unreachable by keyboard. */}
+          <Link
+            to={`/product/${product.id}`}
+            onClick={onProductClick}
+            className="block rounded-md outline-none after:absolute after:inset-0 after:z-0 after:rounded-card after:bg-transparent after:content-[''] hover:after:bg-foreground/[0.03] active:after:bg-foreground/[0.07] focus-visible:after:ring-2 focus-visible:after:ring-primary"
+          >
+            <h3 className="min-h-10 line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h3>
           </Link>
           {(product.soldCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -144,7 +202,9 @@ export function ProductCard({
           </div>
           {product.flashDealEndAt && <FlashDealCountdown endAt={product.flashDealEndAt} className="mt-1 text-destructive" />}
           {showPurchaseActions && (
-            <div className="mt-2 flex gap-2">
+            // `relative z-10`: these are the only controls that must win the tap
+            // over the stretched card link.
+            <div className="relative z-10 mt-2 flex gap-2">
               {onBuyNow && <button type="button" onClick={onBuyNow} disabled={unavailable} className="h-8 rounded-full bg-primary px-3 text-[10px] font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{buyNowLabel}</button>}
               {onAddToCart && <button type="button" onClick={onAddToCart} disabled={unavailable} className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background transition-colors hover:bg-foreground/85 disabled:cursor-not-allowed disabled:opacity-50" aria-label={addToCartLabel}>
                 <ShoppingCart className="h-3.5 w-3.5" />

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Package, Zap, Clock, UserPlus, Flame, ArrowRight } from "lucide-react";
@@ -10,6 +10,7 @@ import MarqueeBanner from "@/components/MarqueeBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
+import { MasonryFeedGrid } from "@/components/product/MasonryFeedGrid";
 import HeroSlider from "@/components/HeroSlider";
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -17,8 +18,103 @@ import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useHomepageData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
+import { useCatalogueFeed, FEED_PAGE_SIZE, type CatalogueFeedItem } from "@/hooks/useCatalogueFeed";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
+import { clampDisplayAspectRatio } from "@/lib/imageHeaders";
 import { useSEO } from "@/hooks/useSEO";
 import { HOME_PAGE_SEO } from "@/lib/pageSeo";
+
+/**
+ * The catch-all section - the one section that keeps going.
+ *
+ * The other sections are merchandising rails with a deliberate, bounded item count
+ * (see FEEDS in useHomepage), so they render as a complete set. This one promises
+ * the whole catalogue, which is why it is the section that paginates.
+ */
+const CATCH_ALL_FEED = "new_arrivals";
+
+/**
+ * Cards a merchandising rail shows once its data has resolved (SECTION_LIMIT in
+ * `useHomepage`). The skeleton reserves exactly this many tiles so the section
+ * does not change height when the real rail replaces it.
+ */
+const RAIL_FEED_SIZE = 10;
+
+/** One shape for both sources: the seeded rails and the paginated catch-all. */
+type FeedCard = {
+  id: string;
+  title: string;
+  price: number;
+  compareAtPrice: number | null;
+  stockQuantity: number;
+  averageRating: number;
+  reviewCount: number;
+  soldCount: number;
+  currency: string;
+  sellerId: string;
+  imageUrl: string | null;
+  imageSmallUrl: string | null;
+  imageWidth: number | null;
+  imageHeight: number | null;
+  flashDealEndAt: string | null;
+};
+
+/**
+ * The discount the seller actually set.
+ *
+ * Derived, never invented: a badge appears only when `compare_at_price` is
+ * genuinely above the live price, so the percentage on a card always corresponds to
+ * two real numbers on the product.
+ */
+function discountLabel(price: number, compareAtPrice: number | null) {
+  if (!compareAtPrice || compareAtPrice <= price) return null;
+  return `-${Math.round((1 - price / compareAtPrice) * 100)}%`;
+}
+
+function fromFeedItem(product: FeedItem): FeedCard {
+  const image = product.product_images.find(item => item.is_primary) ?? product.product_images[0];
+  return {
+    id: product.id,
+    title: product.title,
+    price: product.price,
+    compareAtPrice: product.compare_at_price,
+    stockQuantity: product.stock_quantity,
+    averageRating: product.average_rating,
+    reviewCount: product.review_count,
+    soldCount: Number(product.sold_count ?? 0),
+    currency: product.currency,
+    sellerId: product.seller_id,
+    imageUrl: image?.image_url ?? null,
+    imageSmallUrl: image?.card_small_url ?? null,
+    imageWidth: image?.image_width ?? null,
+    imageHeight: image?.image_height ?? null,
+    flashDealEndAt: product.flash_deal_end_at,
+  };
+}
+
+function fromPageItem(product: CatalogueFeedItem): FeedCard {
+  return {
+    id: product.id,
+    title: product.title,
+    price: product.price,
+    compareAtPrice: product.compare_at_price,
+    stockQuantity: product.stock_quantity,
+    averageRating: product.average_rating,
+    reviewCount: product.review_count,
+    // The paginated query cannot price social proof per row (sold counts are
+    // aggregated in the feed RPC), so these tiles state what they know rather than
+    // showing a zero.
+    soldCount: 0,
+    currency: product.currency,
+    sellerId: product.seller_id,
+    imageUrl: product.image_url,
+    imageSmallUrl: product.image_small_url,
+    imageWidth: product.image_width,
+    imageHeight: product.image_height,
+    flashDealEndAt: product.flash_deal_end_at,
+  };
+}
+
 
 export default function LandingPage() {
   const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
@@ -43,27 +139,112 @@ export default function LandingPage() {
   const visibleCategories = useMemo(() => populatedCategories.slice(0, 8), [populatedCategories]);
   const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
 
-  // Map a feed row onto the marketplace card. A discount badge is shown only when the
-  // seller genuinely set a higher compare-at price, and no badge is invented otherwise.
-  const toCardProduct = (product: FeedItem) => {
-    const image = product.product_images.find(item => item.is_primary)?.image_url || product.product_images[0]?.image_url;
-    const discount = product.compare_at_price && product.compare_at_price > product.price
-      ? Math.round((1 - product.price / product.compare_at_price) * 100)
-      : null;
-    return {
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      compareAtPrice: product.compare_at_price,
-      stockQuantity: product.stock_quantity,
-      averageRating: product.average_rating,
-      reviewCount: product.review_count,
-      soldCount: Number(product.sold_count ?? 0),
-      imageUrl: image,
-      flashDealEndAt: product.flash_deal_end_at,
-      badge: discount ? { label: `-${discount}%`, tone: "destructive" as const } : null,
-    };
-  };
+  // ── Home feed: masonry ───────────────────────────────────────────────────
+  // Returning from a product page re-renders the feed from the IndexedDB cache and
+  // puts the shopper back where they were, instead of at the top of a page they had
+  // already read past.
+  useScrollRestoration();
+
+  // A waterfall layout needs each tile's ratio before its image loads, and that
+  // ratio comes from the image row. `clampDisplayAspectRatio` bounds it to
+  // [3:4, 1:1] so one extreme upload cannot claim a whole column, and answers 1 for
+  // a row whose dimensions were never captured - so every legacy listing renders as
+  // the square it always did. See
+  // supabase/migrations/20260930000000_product_image_dimensions.sql.
+  const getAspectRatio = useCallback(
+    (card: FeedCard) => clampDisplayAspectRatio(card.imageWidth, card.imageHeight),
+    [],
+  );
+
+  // Mapped once per feed rather than inline: a new array identity on every render
+  // would make the masonry layout recompute the placement it has already computed.
+  const railCards = useMemo(() => {
+    const byKey = new Map<string, FeedCard[]>();
+    FEEDS.forEach((feed) => byKey.set(feed.key, feeds[feed.key].map(fromFeedItem)));
+    return byKey;
+  }, [feeds]);
+
+  // Products already on the page in another section are never repeated in the
+  // catch-all: the homepage is a stack of distinct stories, not one catalogue
+  // printed five times.
+  const catchAllExcludeIds = useMemo(() => {
+    const shown = new Set<string>(feeds.flash_deals.map((product) => product.id));
+    FEEDS.forEach((feed) => {
+      if (feed.key === CATCH_ALL_FEED) return;
+      feeds[feed.key].forEach((product) => shown.add(product.id));
+    });
+    return [...shown];
+  }, [feeds]);
+
+  // The catch-all continues from the last row the seeded page ended on. That section
+  // is ordered newest-first, which is exactly the order the keyset cursor walks, so
+  // page two is a genuine continuation rather than a re-query from the top.
+  const catchAllStartCursor = useMemo(() => {
+    const seeded = feeds[CATCH_ALL_FEED];
+    const last = seeded[seeded.length - 1];
+    return last ? { createdAt: last.created_at, id: last.id } : null;
+  }, [feeds]);
+
+  const catchAllFeed = useCatalogueFeed({
+    startCursor: catchAllStartCursor,
+    excludeIds: catchAllExcludeIds,
+    // The seed cursor is only known once the homepage data resolves. Starting the
+    // query before that would page from the TOP of the catalogue, and the first
+    // batch would repeat products the rails above have already rendered.
+    enabled: !loading,
+  });
+
+  const catchAllCards = useMemo(() => {
+    const seeded = railCards.get(CATCH_ALL_FEED) ?? [];
+    return [...seeded, ...catchAllFeed.items.map(fromPageItem)];
+  }, [railCards, catchAllFeed.items]);
+
+  const renderFeedCard = useCallback(
+    (card: FeedCard, _index: number, state: { priority: boolean }) => {
+      const seller = sellers.get(card.sellerId);
+      const discount = discountLabel(card.price, card.compareAtPrice);
+      return (
+        <ProductCard
+          product={{
+            id: card.id,
+            title: card.title,
+            price: card.price,
+            compareAtPrice: card.compareAtPrice,
+            stockQuantity: card.stockQuantity,
+            averageRating: card.averageRating,
+            reviewCount: card.reviewCount,
+            soldCount: card.soldCount,
+            imageUrl: card.imageUrl,
+            imageSmallUrl: card.imageSmallUrl,
+            flashDealEndAt: card.flashDealEndAt,
+            badge: discount ? { label: discount, tone: "destructive" as const } : null,
+          }}
+          formatPrice={(amount) => formatPrice(amount, card.currency)}
+          sellerName={seller?.full_name || undefined}
+          sellerVerified={seller?.is_verified}
+          imageAspectRatio={getAspectRatio(card)}
+          priority={state.priority}
+        />
+      );
+    },
+    [formatPrice, getAspectRatio, sellers],
+  );
+
+  const visibleFeeds = useMemo(
+    () =>
+      FEEDS.filter((feed) => {
+        if (loading) return true;
+        // The rails still hide when they have nothing to say - a heading over an
+        // empty rail tells the shopper nothing.
+        if (feed.key !== CATCH_ALL_FEED) return (railCards.get(feed.key)?.length ?? 0) > 0;
+        // The catch-all always renders: it is the section that promises the whole
+        // catalogue, so it is the one place the homepage's real empty state belongs
+        // ("Approved listings will appear here") rather than a silent page with no
+        // product section at all.
+        return true;
+      }),
+    [loading, railCards],
+  );
 
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
     <MarketplaceNavbar categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
@@ -71,6 +252,10 @@ export default function LandingPage() {
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="flex flex-col pb-8">
       {/* Hero area â€” 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
+      {/* Single H1 for the page. Visually hidden so the hero design is untouched,
+          but present for crawlers and screen readers (the hero artwork already
+          states the value proposition visually). */}
+      <h1 className="sr-only">{t("home.pageTitle")}</h1>
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
           <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_220px] gap-4">
@@ -235,37 +420,52 @@ export default function LandingPage() {
         )}
       </Container>
 
-      {/* Product sections - vertical grids stacked down one long page.
-          A section only renders when products genuinely qualify for it: Flash Deals
-          needs a live time-boxed deal, Popular picks needs delivered units, Trending
-          needs real visits in the last 30 days. Discover More is the catch-all, so
-          every approved product in the catalogue is reachable from the homepage -
-          nothing is hidden behind a carousel. */}
+      {/* Product sections - a masonry (waterfall) feed per merchandising story.
+          Only a section that genuinely qualifies renders: Flash Deals needs a live
+          time-boxed deal, Best Sellers needs delivered units, Trending needs real
+          visits in the last 30 days. The last section is the catch-all, so every
+          approved product is reachable from the homepage.
+
+          Placement is shortest-column, so cards of different heights pack without
+          the ragged gaps an aligned grid leaves - and because each tile reserves its
+          image height from the stored dimensions, the page height is already correct
+          on the first paint. Only NEW items are ever placed, so nothing on screen
+          moves when a page arrives. */}
       <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
-        {FEEDS.filter(feed => loading || feeds[feed.key].length > 0).map(feed => (
-          <section key={feed.key} className="mb-12">
-            <SectionHeader title={t(feed.titleKey)} subtitle={t(feed.subtitleKey)} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
-            {loading ? (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                {Array.from({ length: 10 }).map((_, index) => (
-                  <div key={index} className="aspect-[3/4] animate-pulse rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]" />
-                ))}
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                {feeds[feed.key].map(product => (
-                  <ProductCard
-                    key={product.id}
-                    product={toCardProduct(product)}
-                    formatPrice={(amount) => formatPrice(amount, product.currency)}
-                    sellerName={sellers.get(product.seller_id)?.full_name || undefined}
-                    sellerVerified={sellers.get(product.seller_id)?.is_verified}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-        ))}
+        {visibleFeeds.map(feed => {
+          const isCatchAll = feed.key === CATCH_ALL_FEED;
+          const cards = isCatchAll ? catchAllCards : railCards.get(feed.key) ?? [];
+          // The rails are a fixed, complete set once the homepage data resolves; the
+          // catch-all stays on skeletons while EITHER source is still emptying out -
+          // otherwise the catch-all would flash its empty state for the moment
+          // between the homepage data arriving and its own first page landing.
+          const sectionLoading = isCatchAll
+            ? loading || (catchAllFeed.loading && cards.length === 0)
+            : loading;
+          return (
+            <section key={feed.key} className="mb-12">
+              <SectionHeader title={t(feed.titleKey)} subtitle={t(feed.subtitleKey)} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
+              <MasonryFeedGrid
+                label={t(feed.titleKey)}
+                items={cards}
+                getAspectRatio={getAspectRatio}
+                renderItem={renderFeedCard}
+                loading={sectionLoading}
+                skeletonCount={isCatchAll ? FEED_PAGE_SIZE : RAIL_FEED_SIZE}
+                loadingMore={isCatchAll ? catchAllFeed.loadingMore : false}
+                error={isCatchAll ? catchAllFeed.error : undefined}
+                onRetry={isCatchAll ? catchAllFeed.retry : undefined}
+                hasMore={isCatchAll ? catchAllFeed.hasMore : false}
+                onLoadMore={isCatchAll ? catchAllFeed.loadMore : undefined}
+                emptyState={
+                  <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#6E6C64] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#A0A0A0]">
+                    {t(feed.emptyKey)}
+                  </div>
+                }
+              />
+            </section>
+          );
+        })}
       </Container>
     </main>
     <SiteFooter />
