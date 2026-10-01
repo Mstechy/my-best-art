@@ -171,7 +171,7 @@ export default function CollectionPage() {
       <div className="min-h-screen bg-background">
         <MarketplaceNavbar />
         <Container className="py-20 text-center text-muted-foreground">
-          Loading collection…
+          Loading collectionâ€¦
         </Container>
       </div>
     );
@@ -201,7 +201,7 @@ export default function CollectionPage() {
       {/* Breadcrumb */}
       <div className="border-b border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
         <Container className="py-3">
-          <nav className="flex items-center gap-2 text-xs text-[#888880]">
+          <nav className="flex items-center gap-2 text-xs text-[#6E6C64]">
             <Link to="/" className="hover:text-[#111111] dark:hover:text-[#FAF5F2]">Home</Link>
             <span>/</span>
             <span className="text-[#111111] dark:text-[#FAF5F2] font-medium">{collection.title}</span>
@@ -295,7 +295,7 @@ export default function CollectionPage() {
                     </option>
                   ))}
                 </select>
-                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#888880]" />
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6E6C64]" />
               </div>
 
               {/* View mode toggle */}
@@ -305,7 +305,7 @@ export default function CollectionPage() {
                   className={`rounded-l-lg p-2 ${
                     viewMode === "grid"
                       ? "bg-[#111111] text-white dark:bg-[#FAF5F2] dark:text-[#111111]"
-                      : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+                      : "text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
                   }`}
                   aria-label="Grid view"
                 >
@@ -316,7 +316,7 @@ export default function CollectionPage() {
                   className={`rounded-r-lg p-2 ${
                     viewMode === "list"
                       ? "bg-[#111111] text-white dark:bg-[#FAF5F2] dark:text-[#111111]"
-                      : "text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+                      : "text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
                   }`}
                   aria-label="List view"
                 >
@@ -380,7 +380,7 @@ export default function CollectionPage() {
                     </div>
                     <div className="p-3">
                       {product.brand && (
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-[#888880]">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-[#6E6C64]">
                           {product.brand}
                         </p>
                       )}
@@ -398,8 +398,8 @@ export default function CollectionPage() {
                         )}
                       </div>
                       {product.review_count > 0 && (
-                        <p className="mt-1 text-xs text-[#888880]">
-                          ★ {product.average_rating.toFixed(1)} ({product.review_count})
+                        <p className="mt-1 text-xs text-[#6E6C64]">
+                          â˜… {product.average_rating.toFixed(1)} ({product.review_count})
                         </p>
                       )}
                     </div>
@@ -446,7 +446,7 @@ export default function CollectionPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       {product.brand && (
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-[#888880]">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-[#6E6C64]">
                           {product.brand}
                         </p>
                       )}
@@ -462,8 +462,8 @@ export default function CollectionPage() {
                         )}
                       </div>
                       {product.review_count > 0 && (
-                        <p className="text-xs text-[#888880]">
-                          ★ {product.average_rating.toFixed(1)} ({product.review_count})
+                        <p className="text-xs text-[#6E6C64]">
+                          â˜… {product.average_rating.toFixed(1)} ({product.review_count})
                         </p>
                       )}
                     </div>

@@ -93,7 +93,7 @@ export default function RegisterPage() {
           <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
             Create your account.
           </h1>
-          <p className="mt-1.5 text-xs text-[#888880] dark:text-[#A0A0A0]">
+          <p className="mt-1.5 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
             Choose how you'd like to use Tradibu
           </p>
 
@@ -121,13 +121,13 @@ export default function RegisterPage() {
                   <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${
                     isSelected ? "bg-white/15 dark:bg-[#111111]/20" : "bg-[#F2F3F5] dark:bg-[#1A1A1A]"
                   }`}>
-                    <r.icon className={`h-4.5 w-4.5 ${isSelected ? "text-white dark:text-[#111111]" : "text-[#888880] dark:text-[#A0A0A0]"}`} />
+                    <r.icon className={`h-4.5 w-4.5 ${isSelected ? "text-white dark:text-[#111111]" : "text-[#6E6C64] dark:text-[#A0A0A0]"}`} />
                   </div>
                   <div>
                     <p className={`text-xs font-bold ${isSelected ? "text-white dark:text-[#111111]" : "text-[#111111] dark:text-[#FAF5F2]"}`}>
                       {r.label}
                     </p>
-                    <p className={`mt-0.5 text-[10px] leading-tight ${isSelected ? "text-white/70 dark:text-[#111111]/70" : "text-[#888880] dark:text-[#A0A0A0]"}`}>
+                    <p className={`mt-0.5 text-[10px] leading-tight ${isSelected ? "text-white/70 dark:text-[#111111]/70" : "text-[#6E6C64] dark:text-[#A0A0A0]"}`}>
                       {r.sub}
                     </p>
                   </div>
@@ -136,7 +136,7 @@ export default function RegisterPage() {
             })}
           </div>
 
-          {/* Form — slides in after role selected */}
+          {/* Form â€” slides in after role selected */}
           <div
             className={`overflow-hidden transition-all duration-500 ${
               showForm ? "max-h-[600px] opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
@@ -153,7 +153,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => { setSelectedRole(null); setShowForm(false); }}
-                    className="text-[10px] text-[#888880] dark:text-[#A0A0A0] hover:underline"
+                    className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] hover:underline"
                   >
                     Change
                   </button>
@@ -162,7 +162,7 @@ export default function RegisterPage() {
 
               {/* Full Name */}
               <div className="space-y-1.5">
-                <label htmlFor="fullName" className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">
+                <label htmlFor="fullName" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
                   Full Name
                 </label>
                 <input
@@ -180,7 +180,7 @@ export default function RegisterPage() {
 
               {/* Email */}
               <div className="space-y-1.5">
-                <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">
+                <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
                   Email
                 </label>
                 <input
@@ -198,7 +198,7 @@ export default function RegisterPage() {
 
               {/* Password */}
               <div className="space-y-1.5">
-                <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">
+                <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
                   Password
                 </label>
                 <div className="relative">
@@ -216,7 +216,7 @@ export default function RegisterPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#888880] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors p-0.5"
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6E6C64] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors p-0.5"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -235,7 +235,7 @@ export default function RegisterPage() {
                         }`}
                       />
                     ))}
-                    <span className="text-[9px] text-[#888880] dark:text-[#555555] ml-1 w-12 shrink-0">
+                    <span className="text-[9px] text-[#6E6C64] dark:text-[#555555] ml-1 w-12 shrink-0">
                       {password.length >= 10 ? "Strong" : password.length >= 6 ? "Medium" : "Weak"}
                     </span>
                   </div>
@@ -249,7 +249,7 @@ export default function RegisterPage() {
                 className="mt-1 w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Creating account…</>
+                  <><Loader2 className="h-4 w-4 animate-spin" /> Creating accountâ€¦</>
                 ) : (
                   <>
                     Create {selectedRole === "buyer" ? "Buyer" : "Seller"} Account
@@ -263,11 +263,11 @@ export default function RegisterPage() {
           {/* Divider + sign in link */}
           <div className="mt-7 flex items-center gap-3">
             <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
-            <span className="text-[10px] text-[#888880] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
+            <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
             <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
           </div>
 
-          <p className="mt-5 text-center text-xs text-[#888880] dark:text-[#A0A0A0]">
+          <p className="mt-5 text-center text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
             Already have an account?{" "}
             <Link to="/auth/login" className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline">
               Sign in
@@ -277,9 +277,9 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
           By creating an account you agree to our{" "}
-          <Link to="/terms" className="underline hover:text-[#888880]">Terms</Link>
+          <Link to="/terms" className="underline hover:text-[#6E6C64]">Terms</Link>
           {" "}and{" "}
-          <Link to="/privacy" className="underline hover:text-[#888880]">Privacy Policy</Link>
+          <Link to="/privacy" className="underline hover:text-[#6E6C64]">Privacy Policy</Link>
         </p>
       </div>
     </div>

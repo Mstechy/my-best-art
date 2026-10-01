@@ -277,24 +277,24 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 )}
 
                 <div className="relative min-w-0 flex-1">
-                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
+                  <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
                   <Input
                     value={localSearch}
                     onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                     onFocus={() => setSuggestionsOpen(true)}
                     onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
                     placeholder={t("nav.searchPlaceholder")}
-                    className="h-12 border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:text-[#FAF5F2]"
+                    className="h-12 border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:text-[#FAF5F2]"
                   />
-                  <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+                  <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
                   {suggestionsOpen && suggestions.length > 0 && (
                     <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
-                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#888880]">{t("nav.suggestions")}</p>
+                      <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#6E6C64]">{t("nav.suggestions")}</p>
                       {suggestions.map((suggestion, index) => (
                         <button key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222]">
-                          <Search className="h-3.5 w-3.5 text-[#888880]" />
+                          <Search className="h-3.5 w-3.5 text-[#6E6C64]" />
                           <span className="truncate">{suggestion.label}</span>
-                          <span className="ml-auto text-[10px] text-[#888880]">{suggestion.suggestion_type === "category" ? t("nav.suggestionCategory") : t("nav.suggestionProduct")}</span>
+                          <span className="ml-auto text-[10px] text-[#6E6C64]">{suggestion.suggestion_type === "category" ? t("nav.suggestionCategory") : t("nav.suggestionProduct")}</span>
                         </button>
                       ))}
                     </div>
@@ -399,7 +399,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                         to={item.href}
                         className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
                       >
-                        <item.icon className="h-4 w-4 text-[#888880]" />
+                        <item.icon className="h-4 w-4 text-[#6E6C64]" />
                         {item.label}
                       </Link>
                     </SheetClose>
@@ -422,15 +422,15 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               {/* Bottom selectors in sidebar */}
               <div className="border-t border-[#E8E8E8] dark:border-[#222222] pt-4 mt-auto space-y-4">
                 <div className="flex items-center justify-between px-3">
-                  <span className="text-xs text-[#888880] font-medium">{t("nav.switchLanguage")}</span>
+                  <span className="text-xs text-[#6E6C64] font-medium">{t("nav.switchLanguage")}</span>
                   <LanguageSwitcher />
                 </div>
                 <div className="flex items-center justify-between px-3">
-                  <span className="text-xs text-[#888880] font-medium">{t("nav.currency")}</span>
+                  <span className="text-xs text-[#6E6C64] font-medium">{t("nav.currency")}</span>
                   <CurrencySelector />
                 </div>
                 <div className="flex items-center justify-between px-3">
-                  <span className="text-xs text-[#888880] font-medium">{t("nav.theme")}</span>
+                  <span className="text-xs text-[#6E6C64] font-medium">{t("nav.theme")}</span>
                   <ThemeToggle />
                 </div>
               </div>
@@ -443,20 +443,20 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           <>
             <form onSubmit={handleSubmit} className="mt-3 lg:hidden">
               <div className="relative min-w-0 flex-1">
-                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
+                <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
                 <Input
                   value={localSearch}
                   onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                   onFocus={() => setSuggestionsOpen(true)}
                   onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
                   placeholder={t("nav.searchPlaceholderMobile")}
-                  className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-20 text-sm text-[#111111] shadow-none placeholder:text-[#888880] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
+                  className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-20 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
                 />
-                <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-11 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
+                <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-11 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
                 <button type="submit" aria-label={t("nav.search")} className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-[#111111] text-white transition-colors hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-[#E8E8E8]"><ArrowRight className="h-4 w-4" /></button>
                 {suggestionsOpen && suggestions.length > 0 && (
                   <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
-                    <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#888880]">{t("nav.suggestions")}</p>
+                    <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#6E6C64]">{t("nav.suggestions")}</p>
                     {suggestions.map((suggestion, index) => (
                       <button
                         key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`}
@@ -465,9 +465,9 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                         onClick={() => chooseSuggestion(suggestion)}
                         className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
                       >
-                        <Search className="h-3.5 w-3.5 text-[#888880]" />
+                        <Search className="h-3.5 w-3.5 text-[#6E6C64]" />
                         <span className="truncate">{suggestion.label}</span>
-                        <span className="ml-auto text-[10px] text-[#888880]">{suggestion.suggestion_type === "category" ? t("nav.suggestionCategory") : t("nav.suggestionProduct")}</span>
+                        <span className="ml-auto text-[10px] text-[#6E6C64]">{suggestion.suggestion_type === "category" ? t("nav.suggestionCategory") : t("nav.suggestionProduct")}</span>
                       </button>
                     ))}
                   </div>
@@ -486,7 +486,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               <DialogContent className="max-w-md rounded-3xl border-[#E8E8E8] bg-white p-0 shadow-2xl dark:border-[#222222] dark:bg-[#111111]">
                 <DialogHeader className="border-b border-[#E8E8E8] px-5 py-4 dark:border-[#222222]">
                   <DialogTitle className="text-base font-bold text-[#111111] dark:text-[#FAF5F2]">{t("nav.searchByImage")}</DialogTitle>
-                  <DialogDescription className="text-xs text-[#888880] dark:text-[#A0A0A0]">
+                  <DialogDescription className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
                     {t("nav.searchByImageDesc")}
                   </DialogDescription>
                 </DialogHeader>
@@ -500,14 +500,14 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                       <img src={imageSearchPreview} alt="Preview upload" className="max-h-40 rounded-xl object-contain" />
                     ) : (
                       <>
-                        <Camera className="h-10 w-10 text-[#888880]" />
+                        <Camera className="h-10 w-10 text-[#6E6C64]" />
                         <p className="mt-3 text-sm font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("nav.tapToUpload")}</p>
-                        <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">PNG, JPG, WEBP</p>
+                        <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">PNG, JPG, WEBP</p>
                       </>
                     )}
                   </button>
                   {imageSearchLabel && (
-                    <p className="truncate text-xs text-[#888880] dark:text-[#A0A0A0]">
+                    <p className="truncate text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
                       File: {imageSearchLabel}
                     </p>
                   )}

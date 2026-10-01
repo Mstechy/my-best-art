@@ -198,7 +198,7 @@ export default function BuyerOrders() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">My Orders</h1>
-            <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">
+            <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               {orders.length} order{orders.length !== 1 ? "s" : ""} total
             </p>
           </div>
@@ -226,7 +226,7 @@ export default function BuyerOrders() {
                 <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">
                   {pending.length} delivered order{pending.length > 1 ? "s" : ""} awaiting your review
                 </p>
-                <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">Help other buyers by rating the products you received.</p>
+                <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] mt-0.5">Help other buyers by rating the products you received.</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {pending.slice(0, 3).map(p => (
                     <button key={p.item.id}
@@ -236,7 +236,7 @@ export default function BuyerOrders() {
                       <Star className="h-2.5 w-2.5" /> Rate "{p.item.product_title.slice(0, 24)}"
                     </button>
                   ))}
-                  {pending.length > 3 && <span className="text-[10px] text-[#888880] self-center">+{pending.length - 3} more</span>}
+                  {pending.length > 3 && <span className="text-[10px] text-[#6E6C64] self-center">+{pending.length - 3} more</span>}
                 </div>
               </div>
             </div>
@@ -247,7 +247,7 @@ export default function BuyerOrders() {
       {/* Search */}
       <AnimatedSection variant="fade-up" delay={50}>
         <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#888880]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6E6C64]" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
             placeholder="Search by order ID, tracking number, or seller..."
@@ -264,7 +264,7 @@ export default function BuyerOrders() {
               className={`whitespace-nowrap rounded-full px-4 py-2 text-[11px] font-semibold transition-all capitalize ${
                 tab === t
                   ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                  : "text-[#888880] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+                  : "text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
               }`}
             >{t === "all" ? "All Orders" : t}</button>
           ))}
@@ -275,17 +275,17 @@ export default function BuyerOrders() {
       <AnimatedSection variant="fade-up" delay={100}>
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-[#888880]" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#6E6C64]" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] py-16">
             <div className="flex flex-col items-center justify-center text-center gap-3">
               <div className="h-14 w-14 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center">
-                <Package className="h-6 w-6 text-[#888880] dark:text-[#A0A0A0]" />
+                <Package className="h-6 w-6 text-[#6E6C64] dark:text-[#A0A0A0]" />
               </div>
               <div>
                 <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">No orders found</p>
-                <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">
+                <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
                   {orders.length === 0 ? "When you purchase products, your orders will appear here." : "No orders match your filters."}
                 </p>
               </div>
@@ -299,8 +299,8 @@ export default function BuyerOrders() {
         ) : (
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
             {filtered.map(order => {
-              const s = STATUS_STYLE[order.status] ?? { bg: "bg-[#F2F3F5]", text: "text-[#888880]", label: order.status };
-              const meta = STATUS_META[order.status] ?? { icon: Package, iconColor: "text-[#888880]", label: order.status, desc: "" };
+              const s = STATUS_STYLE[order.status] ?? { bg: "bg-[#F2F3F5]", text: "text-[#6E6C64]", label: order.status };
+              const meta = STATUS_META[order.status] ?? { icon: Package, iconColor: "text-[#6E6C64]", label: order.status, desc: "" };
               const StatusIcon = meta.icon;
               // Pick first item image as the card thumbnail
               const thumb = order.items.find(it => it.product_image)?.product_image ?? null;
@@ -313,12 +313,12 @@ export default function BuyerOrders() {
                   {/* Labels */}
                   <div className="flex-1">
                     <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] leading-snug">{meta.label}</p>
-                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-1 leading-relaxed pr-10">{meta.desc}</p>
+                    <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] mt-1 leading-relaxed pr-10">{meta.desc}</p>
                   </div>
 
                   {/* Meta row */}
-                  <p className="text-[9px] font-mono text-[#888880] dark:text-[#555555] mt-2">
-                    #{order.id.slice(0, 8).toUpperCase()} · {new Date(order.created_at).toLocaleDateString()}
+                  <p className="text-[9px] font-mono text-[#6E6C64] dark:text-[#555555] mt-2">
+                    #{order.id.slice(0, 8).toUpperCase()} Â· {new Date(order.created_at).toLocaleDateString()}
                   </p>
 
                   {/* Action buttons + total */}
@@ -341,7 +341,7 @@ export default function BuyerOrders() {
                     {order.status === "shipped" && (
                       <button onClick={() => confirmDelivery(order.id)} disabled={confirmingDeliveryId === order.id}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-600 text-[9px] font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                        <CheckCircle2 className="h-2.5 w-2.5" /> {confirmingDeliveryId === order.id ? "Confirming…" : "Received"}
+                        <CheckCircle2 className="h-2.5 w-2.5" /> {confirmingDeliveryId === order.id ? "Confirmingâ€¦" : "Received"}
                       </button>
                     )}
                     {order.status === "delivered" && order.items.some(it => it.product_id && !reviewedProducts.has(it.product_id)) && (
@@ -357,7 +357,7 @@ export default function BuyerOrders() {
                     </Link>
                   </div>
 
-                  {/* Product thumbnail — bottom-right decoration */}
+                  {/* Product thumbnail â€” bottom-right decoration */}
                   {thumb ? (
                     <img
                       src={thumb}
@@ -381,7 +381,7 @@ export default function BuyerOrders() {
         <DialogContent className="bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Cancel Order</DialogTitle>
-            <DialogDescription className="text-xs text-[#888880] dark:text-[#A0A0A0]">
+            <DialogDescription className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               Cancelling order #{cancelOrder?.id.slice(0, 8)}. Tell us why so we can improve.
             </DialogDescription>
           </DialogHeader>
@@ -392,7 +392,7 @@ export default function BuyerOrders() {
                   className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold transition-colors ${
                     cancelReason === r
                       ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-[#111111] dark:border-[#FAF5F2]"
-                      : "border-[#E8E8E8] dark:border-[#222222] text-[#888880] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#111111]"
+                      : "border-[#E8E8E8] dark:border-[#222222] text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#111111]"
                   }`}>{r}</button>
               ))}
             </div>
@@ -417,7 +417,7 @@ export default function BuyerOrders() {
         <DialogContent className="bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222] rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Review {reviewItem?.item.product_title}</DialogTitle>
-            <DialogDescription className="text-xs text-[#888880] dark:text-[#A0A0A0]">Share your experience. Reviews can only be left once.</DialogDescription>
+            <DialogDescription className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Share your experience. Reviews can only be left once.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-center gap-1">
@@ -432,9 +432,9 @@ export default function BuyerOrders() {
             <Textarea placeholder="What did you think of this product?" value={reviewComment} onChange={e => setReviewComment(e.target.value)} rows={4}
               className="rounded-xl border-[#E8E8E8] dark:border-[#222222] bg-[#FAFAFA] dark:bg-[#111111] text-xs" />
             <div>
-              <label className="text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Add up to 3 photos (optional)</label>
+              <label className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Add up to 3 photos (optional)</label>
               <input type="file" accept="image/*" multiple onChange={e => setReviewPhotos(Array.from(e.target.files || []).slice(0, 3))}
-                className="mt-1 block w-full text-xs text-[#888880] file:mr-3 file:rounded-full file:border-0 file:bg-[#111111] file:dark:bg-[#FAF5F2] file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-white file:dark:text-[#111111] hover:file:opacity-80" />
+                className="mt-1 block w-full text-xs text-[#6E6C64] file:mr-3 file:rounded-full file:border-0 file:bg-[#111111] file:dark:bg-[#FAF5F2] file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-white file:dark:text-[#111111] hover:file:opacity-80" />
               {reviewPhotos.length > 0 && (
                 <div className="mt-2 flex gap-2">
                   {reviewPhotos.map((f, i) => (

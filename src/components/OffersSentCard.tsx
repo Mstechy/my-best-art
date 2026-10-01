@@ -23,12 +23,12 @@ interface Offer {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  pending:   { bg: "bg-[#F6C75D]/15", text: "text-[#5C3A00] dark:text-[#F6C75D]", dot: "bg-[#F6C75D]", label: "⏳ Pending" },
-  countered: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-400", label: "↔ Countered" },
-  accepted:  { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", label: "✓ Accepted" },
-  rejected:  { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", dot: "bg-red-400", label: "✗ Rejected" },
-  expired:   { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#888880] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "⏳ Expired" },
-  cancelled: { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#888880] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "✕ Cancelled" },
+  pending:   { bg: "bg-[#F6C75D]/15", text: "text-[#5C3A00] dark:text-[#F6C75D]", dot: "bg-[#F6C75D]", label: "â³ Pending" },
+  countered: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-400", label: "â†” Countered" },
+  accepted:  { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", label: "âœ“ Accepted" },
+  rejected:  { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", dot: "bg-red-400", label: "âœ— Rejected" },
+  expired:   { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "â³ Expired" },
+  cancelled: { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "âœ• Cancelled" },
 };
 
 export default function OffersSentCard() {
@@ -126,7 +126,7 @@ export default function OffersSentCard() {
           <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">My Offers</p>
         </div>
         <div className="p-5 flex justify-center py-10">
-          <Loader2 className="h-5 w-5 animate-spin text-[#888880]" />
+          <Loader2 className="h-5 w-5 animate-spin text-[#6E6C64]" />
         </div>
       </div>
     );
@@ -138,14 +138,14 @@ export default function OffersSentCard() {
       <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222]">
         <div className="px-5 pt-5 pb-4 border-b border-[#F2F3F5] dark:border-[#222222]">
           <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">My Offers</p>
-          <p className="mt-0.5 text-[10px] text-[#888880] dark:text-[#A0A0A0]">Track offers you've made to sellers</p>
+          <p className="mt-0.5 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Track offers you've made to sellers</p>
         </div>
         <div className="p-5 text-center py-10">
           <div className="h-10 w-10 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center mx-auto mb-2">
-            <DollarSign className="h-4.5 w-4.5 text-[#888880] dark:text-[#A0A0A0]" />
+            <DollarSign className="h-4.5 w-4.5 text-[#6E6C64] dark:text-[#A0A0A0]" />
           </div>
           <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">No offers yet</p>
-          <p className="mt-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">You haven't made any offers yet.</p>
+          <p className="mt-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">You haven't made any offers yet.</p>
         </div>
       </div>
     );
@@ -155,9 +155,9 @@ export default function OffersSentCard() {
     <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222]">
       <div className="px-5 pt-5 pb-4 border-b border-[#F2F3F5] dark:border-[#222222]">
         <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
-          My Offers <span className="ml-1 text-[#888880] dark:text-[#A0A0A0] font-normal">({offers.length})</span>
+          My Offers <span className="ml-1 text-[#6E6C64] dark:text-[#A0A0A0] font-normal">({offers.length})</span>
         </p>
-        <p className="mt-0.5 text-[10px] text-[#888880] dark:text-[#A0A0A0]">Track your active and past offers</p>
+        <p className="mt-0.5 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Track your active and past offers</p>
       </div>
 
       <div className="p-5 space-y-3">
@@ -180,7 +180,7 @@ export default function OffersSentCard() {
                 />
               ) : (
                 <div className="h-14 w-14 rounded-xl bg-[#F2F3F5] dark:bg-[#1A1A1A] flex items-center justify-center shrink-0 border border-[#E8E8E8] dark:border-[#222222]">
-                  <DollarSign className="h-5 w-5 text-[#888880]" />
+                  <DollarSign className="h-5 w-5 text-[#6E6C64]" />
                 </div>
               )}
 
@@ -191,7 +191,7 @@ export default function OffersSentCard() {
                     <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-1">
                       {offer.product_title || "Product"}
                     </p>
-                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">to {offer.seller_name}</p>
+                    <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">to {offer.seller_name}</p>
                   </div>
                   {/* Status badge */}
                   <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${cfg.bg} ${cfg.text}`}>
@@ -202,10 +202,10 @@ export default function OffersSentCard() {
                 {/* Amount + expiry */}
                 <div className="mt-2 flex items-center gap-4 flex-wrap">
                   <span className="flex items-center gap-1 text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">
-                    <DollarSign className="h-3 w-3 text-[#888880]" />
+                    <DollarSign className="h-3 w-3 text-[#6E6C64]" />
                     {formatPrice(offer.amount, offer.currency)}
                   </span>
-                  <span className="flex items-center gap-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">
+                  <span className="flex items-center gap-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">
                     <Clock className="h-3 w-3" />
                     {isExpired ? "Expired" : `Expires in ${formatDistanceToNow(new Date(offer.expires_at))}`}
                   </span>
@@ -213,7 +213,7 @@ export default function OffersSentCard() {
 
                 {/* Note */}
                 {offer.note && (
-                  <p className="mt-1.5 text-[10px] text-[#888880] dark:text-[#A0A0A0] italic line-clamp-2">
+                  <p className="mt-1.5 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] italic line-clamp-2">
                     "{offer.note}"
                   </p>
                 )}

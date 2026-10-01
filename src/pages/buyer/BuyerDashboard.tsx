@@ -187,7 +187,7 @@ export default function BuyerDashboard() {
             <h1 className="text-xl md:text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
               {firstName ? `Welcome back, ${firstName}.` : "Your Purchase Analytics."}
             </h1>
-            <p className="text-[11px] text-[#888880] dark:text-[#A0A0A0]">Everything you need to manage your orders and activity.</p>
+            <p className="text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">Everything you need to manage your orders and activity.</p>
           </div>
           <Link to="/marketplace">
             <button className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[11px] font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
@@ -208,7 +208,7 @@ export default function BuyerDashboard() {
           >
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 flex items-center justify-between">
               <div>
-                <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">{stat.label}</p>
+                <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">{stat.label}</p>
                 <p className="mt-1 text-xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">{stat.value}</p>
               </div>
               <div className={`flex h-9 w-9 items-center justify-center rounded-xl ${stat.iconBg}`}>
@@ -232,7 +232,7 @@ export default function BuyerDashboard() {
                 <div className="flex items-center justify-between mb-4 border-b border-[#F2F3F5] dark:border-[#222222] pb-3">
                   <div>
                     <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Active Shipment Tracking</p>
-                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">Order #{activeTrackingOrder.id.slice(0, 8).toUpperCase()}</p>
+                    <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] mt-0.5">Order #{activeTrackingOrder.id.slice(0, 8).toUpperCase()}</p>
                   </div>
                   <Link to="/buyer/tracking" className="text-[10px] font-bold text-[#3B82F6] hover:underline flex items-center gap-0.5">
                     View tracking <ChevronRight className="h-3 w-3" />
@@ -242,14 +242,14 @@ export default function BuyerDashboard() {
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
                     <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] capitalize">Status: {activeTrackingOrder.status}</p>
-                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">
+                    <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">
                       {activeTrackingOrder.carrier ? `${activeTrackingOrder.carrier} ` : ""}
                       {activeTrackingOrder.tracking_number ? `(${activeTrackingOrder.tracking_number})` : ""}
                     </p>
                   </div>
                   {activeTrackingOrder.estimated_delivery && (
                     <div className="text-right">
-                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880]">Est. Delivery</p>
+                      <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64]">Est. Delivery</p>
                       <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{new Date(activeTrackingOrder.estimated_delivery).toLocaleDateString()}</p>
                     </div>
                   )}
@@ -263,7 +263,7 @@ export default function BuyerDashboard() {
                     return (
                       <div key={step} className="flex-1 space-y-1">
                         <div className={`h-1.5 rounded-full ${active ? "bg-[#3B82F6]" : "bg-[#F2F3F5] dark:bg-[#2A2A2A]"}`} />
-                        <p className={`text-[8px] font-semibold text-center uppercase tracking-wider ${active ? "text-[#3B82F6]" : "text-[#888880]"}`}>{step}</p>
+                        <p className={`text-[8px] font-semibold text-center uppercase tracking-wider ${active ? "text-[#3B82F6]" : "text-[#6E6C64]"}`}>{step}</p>
                       </div>
                     );
                   })}
@@ -285,7 +285,7 @@ export default function BuyerDashboard() {
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-[#111111] dark:text-[#FAF5F2] leading-tight">{action.label}</p>
-                        <p className="text-[8px] text-[#888880] dark:text-[#A0A0A0] leading-tight mt-0.5">{action.desc}</p>
+                        <p className="text-[8px] text-[#6E6C64] dark:text-[#A0A0A0] leading-tight mt-0.5">{action.desc}</p>
                       </div>
                     </div>
                   </Link>
@@ -336,16 +336,16 @@ export default function BuyerDashboard() {
               </div>
 
               {recentOrders.length === 0 ? (
-                <div className="py-6 text-center text-xs text-[#888880]">No purchases logged yet.</div>
+                <div className="py-6 text-center text-xs text-[#6E6C64]">No purchases logged yet.</div>
               ) : (
                 <div className="space-y-2">
                   {recentOrders.map(order => {
-                    const s = statusStyle[order.status] ?? { bg: "bg-[#F2F3F5]", text: "text-[#888880]", label: order.status };
+                    const s = statusStyle[order.status] ?? { bg: "bg-[#F2F3F5]", text: "text-[#6E6C64]", label: order.status };
                     return (
                       <div key={order.id} className="flex items-center justify-between p-2.5 rounded-xl border border-[#F2F3F5] dark:border-[#1E1E1E] bg-[#FAFAFA] dark:bg-[#111111]">
                         <div className="min-w-0">
                           <p className="text-[10px] font-bold text-[#111111] dark:text-[#FAF5F2] font-mono">#{order.id.slice(0, 8).toUpperCase()}</p>
-                          <p className="text-[8px] text-[#888880] truncate">from {order.seller_name}</p>
+                          <p className="text-[8px] text-[#6E6C64] truncate">from {order.seller_name}</p>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
                           <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(order.total_amount)}</span>
@@ -367,13 +367,13 @@ export default function BuyerDashboard() {
           {/* Trust Guarantees */}
           <AnimatedSection variant="fade-up" delay={280}>
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 space-y-3">
-              <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Security & Protections</p>
+              <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Security & Protections</p>
               {[
                 { icon: Shield, label: "Escrow-held checkout protection" },
                 { icon: Star, label: "Independently verified sellers" },
                 { icon: Clock, label: "24/7 direct dispute mediation" }
               ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-2 text-xs text-[#888880] dark:text-[#A0A0A0]">
+                <div key={label} className="flex items-center gap-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
                   <Icon className="h-3.5 w-3.5 text-[#3B82F6] shrink-0" />
                   <span>{label}</span>
                 </div>

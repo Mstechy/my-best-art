@@ -58,14 +58,14 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
             Welcome back.
           </h1>
-          <p className="mt-1.5 text-xs text-[#888880] dark:text-[#A0A0A0]">
+          <p className="mt-1.5 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
             Sign in to your account to continue
           </p>
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-4">
             {/* Email */}
             <div className="space-y-1.5">
-              <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">
+              <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
                 Email
               </label>
               <input
@@ -83,12 +83,12 @@ export default function LoginPage() {
             {/* Password */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">
+                <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
                   Password
                 </label>
                 <Link
                   to="/auth/forgot-password"
-                  className="text-[10px] font-semibold text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+                  className="text-[10px] font-semibold text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
                 >
                   Forgot password?
                 </Link>
@@ -97,7 +97,7 @@ export default function LoginPage() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
+                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -107,7 +107,7 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#888880] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors p-0.5"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6E6C64] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors p-0.5"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -122,7 +122,7 @@ export default function LoginPage() {
               className="mt-2 w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
               {submitting ? (
-                <><Loader2 className="h-4 w-4 animate-spin" /> Signing in…</>
+                <><Loader2 className="h-4 w-4 animate-spin" /> Signing inâ€¦</>
               ) : (
                 <>Sign in <ArrowRight className="h-3.5 w-3.5" /></>
               )}
@@ -132,11 +132,11 @@ export default function LoginPage() {
           {/* Divider */}
           <div className="mt-7 flex items-center gap-3">
             <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
-            <span className="text-[10px] text-[#888880] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
+            <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
             <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
           </div>
 
-          <p className="mt-5 text-center text-xs text-[#888880] dark:text-[#A0A0A0]">
+          <p className="mt-5 text-center text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
             Don't have an account?{" "}
             <Link
               to="/auth/register"
@@ -149,9 +149,9 @@ export default function LoginPage() {
 
         <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
           By signing in you agree to our{" "}
-          <Link to="/terms" className="underline hover:text-[#888880]">Terms</Link>
+          <Link to="/terms" className="underline hover:text-[#6E6C64]">Terms</Link>
           {" "}and{" "}
-          <Link to="/privacy" className="underline hover:text-[#888880]">Privacy Policy</Link>
+          <Link to="/privacy" className="underline hover:text-[#6E6C64]">Privacy Policy</Link>
         </p>
       </div>
     </div>

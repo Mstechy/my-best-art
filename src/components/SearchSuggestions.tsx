@@ -19,7 +19,7 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({ products }) => {
 
   return (
     <div className="mt-6">
-      <h3 className="text-xs font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider mb-2">Suggestions</h3>
+      <h3 className="text-xs font-bold text-[#6E6C64] dark:text-[#A0A0A0] uppercase tracking-wider mb-2">Suggestions</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         {suggestions.map(product => {
           const image = product.product_images?.[0]?.image_url;
@@ -36,7 +36,7 @@ const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({ products }) => {
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{product.title}</div>
-                <div className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">{product.price.toLocaleString()}</div>
+                <div className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{product.price.toLocaleString()}</div>
               </div>
             </Link>
           );

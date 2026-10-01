@@ -37,7 +37,7 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  // Group categories into parent → subcategories structure
+  // Group categories into parent â†’ subcategories structure
   const grouped = (() => {
     const map = new Map<string, { parent: string; label: string; subcategories: { slug: string; label: string }[] }>();
     const categoryBySlug = new Map(categories.map(c => [c.slug, c]));
@@ -128,7 +128,7 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
           <button
             onClick={onClose}
             aria-label={t("nav.close", "Close")}
-            className="rounded-full p-2 text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#2A2A2D] dark:hover:text-[#FAF5F2]"
+            className="rounded-full p-2 text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#2A2A2D] dark:hover:text-[#FAF5F2]"
           >
             <X className="h-5 w-5" />
           </button>
@@ -154,9 +154,9 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
                 >
                   <span>{group.label}</span>
                   {isOpen ? (
-                    <ChevronDown className="h-4 w-4 text-[#888880]" />
+                    <ChevronDown className="h-4 w-4 text-[#6E6C64]" />
                   ) : (
-                    <ChevronRight className="h-4 w-4 text-[#888880]" />
+                    <ChevronRight className="h-4 w-4 text-[#6E6C64]" />
                   )}
                 </button>
 
@@ -168,7 +168,7 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
                     <button
                       key={sub.slug}
                       onClick={() => handleSelect(sub.slug)}
-                      className="flex w-full items-center gap-2 rounded-lg py-2 pl-8 pr-4 text-left text-xs font-normal text-[#888880] transition-colors hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
+                      className="flex w-full items-center gap-2 rounded-lg py-2 pl-8 pr-4 text-left text-xs font-normal text-[#6E6C64] transition-colors hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
                     >
                       <ChevronRight className="h-3 w-3 shrink-0" />
                       {sub.label}
@@ -183,7 +183,7 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
         {/* Footer utilities */}
         <div className="mt-auto border-t border-[#E8E8E8] p-4 dark:border-[#222222]">
           {/* Language / Currency */}
-          <div className="mb-3 flex items-center justify-between text-xs text-[#888880] dark:text-[#A0A0A0]">
+          <div className="mb-3 flex items-center justify-between text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
             <span className="flex items-center gap-1.5">
               <Globe className="h-3.5 w-3.5" />
               {currency.code} ({currency.symbol})

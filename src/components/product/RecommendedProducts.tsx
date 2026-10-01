@@ -75,7 +75,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
   return (
     <section id="recommended" className="mt-10 px-4 md:px-0">
       <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">More in this department</h2>
-      <p className="mb-4 text-xs text-[#888880] dark:text-[#A0A0A0]">Similar active listings to help you compare before you decide.</p>
+      <p className="mb-4 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Similar active listings to help you compare before you decide.</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {items.map(p => {
           const img = p.product_images?.find(i => i.is_primary) || p.product_images?.[0];
@@ -130,7 +130,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                         />
                       ))}
                     </div>
-                    <span className="text-[10px] text-[#888880]">{p.review_count}</span>
+                    <span className="text-[10px] text-[#6E6C64]">{p.review_count}</span>
                   </div>}
                 </Link>
               </div>
@@ -138,7 +138,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
           );
         })}
       </div>
-      {/* Infinite scroll — keeps loading more products so the page never ends (AliExpress behavior) */}
+      {/* Infinite scroll â€” keeps loading more products so the page never ends (AliExpress behavior) */}
       <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} loading={loading} />
     </section>
   );

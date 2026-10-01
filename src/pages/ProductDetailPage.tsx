@@ -340,7 +340,7 @@ export default function ProductDetailPage() {
         await supabase.from("review_photos").insert({ review_id: inserted.id, url: urlData.publicUrl, position: i });
       }
     }
-    toast.success("Review submitted ✓");
+    toast.success("Review submitted âœ“");
     setReviewComment(""); setReviewTitle(""); setReviewRating(5); setReviewPhotoFiles([]);
     setSubmittingReview(false);
     reviewsQuery.refetch();
@@ -420,9 +420,9 @@ export default function ProductDetailPage() {
           </div>
         ) : !product ? (
           <div className="text-center py-20">
-            <Package className="h-16 w-16 mx-auto text-[#888880]/30 mb-4" />
+            <Package className="h-16 w-16 mx-auto text-[#6E6C64]/30 mb-4" />
             <h2 className="text-lg font-bold">Product not found</h2>
-            <p className="text-sm text-[#888880] mt-2">This product may have been removed or is unavailable.</p>
+            <p className="text-sm text-[#6E6C64] mt-2">This product may have been removed or is unavailable.</p>
             <Link to="/marketplace" className="inline-block mt-6 px-6 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold">
               Browse Marketplace
             </Link>
@@ -464,7 +464,7 @@ export default function ProductDetailPage() {
                             <button
                               type="button"
                               onClick={(e) => { e.stopPropagation(); toggleWishlist(product.id); }}
-                              className={`absolute top-3 right-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 shadow-sm backdrop-blur transition-colors ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#888880] dark:text-[#A0A0A0] hover:text-[#E53935]"}`}
+                              className={`absolute top-3 right-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-white/90 dark:bg-[#1E1E1E]/90 shadow-sm backdrop-blur transition-colors ${isWishlisted(product.id) ? "text-[#E53935]" : "text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#E53935]"}`}
                               aria-label={isWishlisted(product.id) ? "Remove from wishlist" : "Add to wishlist"}
                             >
                               <Heart className={`h-4 w-4 ${isWishlisted(product.id) ? "fill-current" : ""}`} />
@@ -486,7 +486,7 @@ export default function ProductDetailPage() {
                     >
                       {item.type === "video" ? (
                         <div className="relative w-full h-full bg-[#F2F3F5] dark:bg-[#202020] flex items-center justify-center">
-                          <Play className="h-4 w-4 text-[#888880]" />
+                          <Play className="h-4 w-4 text-[#6E6C64]" />
                         </div>
                       ) : (
                         <ProductImage src={item.url} alt="Product thumbnail" className="w-full h-full object-cover" loading="lazy" />
@@ -514,12 +514,12 @@ export default function ProductDetailPage() {
 
                 {selectedVariant && (
                   <p className="mt-2 text-xs font-medium text-[#666666] dark:text-[#A0A0A0]" aria-live="polite">
-                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" · ")}
+                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" Â· ")}
                   </p>
                 )}
 
                 {/* Social proof directly under title (AliExpress parity) */}
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#888880]">
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6E6C64]">
                   {seller?.is_verified && (
                     <span className="flex items-center gap-1 font-semibold text-[#16803C] dark:text-[#5EE38B]">
                       <CheckCircle2 className="h-3.5 w-3.5" />
@@ -547,13 +547,13 @@ export default function ProductDetailPage() {
                         <Flame className="h-3 w-3" />
                         Limited Offer
                       </span>
-                      <span className="text-[10px] font-bold text-[#888880]">
+                      <span className="text-[10px] font-bold text-[#6E6C64]">
                         Save {Math.round((1 - product.price / product.compare_at_price) * 100)}%
                       </span>
                     </div>
                     <div className="flex flex-wrap items-baseline gap-2 mt-2">
                       <span className="text-3xl font-black text-white">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
-                      <span className="text-base text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
+                      <span className="text-base text-[#6E6C64] line-through">{formatPrice(product.compare_at_price)}</span>
                       <span className="text-xs font-bold text-[#E53935] bg-[#E53935]/20 px-2 py-0.5 rounded-full">
                         -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
                       </span>
@@ -574,7 +574,7 @@ export default function ProductDetailPage() {
                 <div className="mb-4 flex items-start justify-between gap-3">
                   <div>
                     <h2 className="text-sm font-bold">Choose your options</h2>
-                    <p className="mt-1 text-xs text-[#888880]">Select storage, colour, or another option to see its exact price and availability.</p>
+                    <p className="mt-1 text-xs text-[#6E6C64]">Select storage, colour, or another option to see its exact price and availability.</p>
                   </div>
                   {Object.keys(selectedVariantOptions).length > 0 && (
                     <button type="button" onClick={() => setSelectedVariantOptions({})} className="shrink-0 text-xs font-semibold underline text-[#666666] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]">
@@ -600,7 +600,7 @@ export default function ProductDetailPage() {
               <>
                 {variantSizes.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#888880]">{selectedSize || "Select"}</span></p>
+                    <p className="text-xs font-bold mb-2">Size: <span className="font-normal text-[#6E6C64]">{selectedSize || "Select"}</span></p>
                     <div className="flex flex-wrap gap-2">
                       {variantSizes.map(size => (
                         <button
@@ -619,7 +619,7 @@ export default function ProductDetailPage() {
 
                 {variantColors.length > 0 && (
                   <div>
-                    <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#888880]">{selectedColor || "Select"}</span></p>
+                    <p className="text-xs font-bold mb-2">Color: <span className="font-normal text-[#6E6C64]">{selectedColor || "Select"}</span></p>
                     <div className="flex flex-wrap gap-2">
                       {variantColors.map(color => (
                         <button
@@ -640,7 +640,7 @@ export default function ProductDetailPage() {
 
             <div className="flex items-center gap-4">
               {!hasProductVariants && <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">−</button>
+                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">âˆ’</button>
                 <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
                 <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">+</button>
               </div>}
@@ -682,26 +682,26 @@ export default function ProductDetailPage() {
             )}
 
             <div className="space-y-2">
-              {policiesLoading && <p className="px-1 text-xs text-[#888880]">Loading policy information…</p>}
-              {policiesError && <p className="px-1 text-xs text-[#888880]">Policy information is unavailable.</p>}
+              {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy informationâ€¦</p>}
+              {policiesError && <p className="px-1 text-xs text-[#6E6C64]">Policy information is unavailable.</p>}
               <button type="button" onClick={() => setServiceSheet("shipping")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.shipping ? "hidden" : ""}`}>
                 <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
-                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#888880]">{policies.shipping?.summary}</span></span>
-                <ChevronRight className="h-4 w-4 shrink-0 text-[#888880]" />
+                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#6E6C64]">{policies.shipping?.summary}</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-[#6E6C64]" />
               </button>
-              <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
+              <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
                 <Shield className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Returns & refunds</span><span className="block truncate">{policies.returns?.summary}</span></span>{/*
-                <span>Buyer protection — full refund if not as described</span>
+                <span>Buyer protection â€” full refund if not as described</span>
                 */}<ChevronRight className="h-4 w-4 shrink-0" />
               </button>
-              <button type="button" onClick={() => setServiceSheet("protection")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.protection ? "hidden" : ""}`}>
+              <button type="button" onClick={() => setServiceSheet("protection")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.protection ? "hidden" : ""}`}>
                 <Shield className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Buyer protection</span><span className="block truncate">{policies.protection?.summary}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0" />
               </button>
               {policies.warranty && (
-                <button type="button" onClick={() => setServiceSheet("warranty")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#888880] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
+                <button type="button" onClick={() => setServiceSheet("warranty")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
                   <Info className="h-4 w-4 shrink-0" />
                   <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Warranty</span><span className="block truncate">{policies.warranty.summary}</span></span>
                   <ChevronRight className="h-4 w-4 shrink-0" />
@@ -743,7 +743,7 @@ export default function ProductDetailPage() {
               <SheetTitle>{serviceSheet ? policies[serviceSheet]?.title : ""}</SheetTitle>
               <SheetDescription>{serviceSheet ? policies[serviceSheet]?.detail : ""}</SheetDescription>
             </SheetHeader>
-            {serviceSheet && policies[serviceSheet] && <p className="mt-4 text-xs font-semibold text-[#888880]">{sourceLabel(policies[serviceSheet].source)} · Last updated {policies[serviceSheet].updatedAt ? new Date(policies[serviceSheet].updatedAt).toLocaleDateString() : "not available"}</p>}
+            {serviceSheet && policies[serviceSheet] && <p className="mt-4 text-xs font-semibold text-[#6E6C64]">{sourceLabel(policies[serviceSheet].source)} Â· Last updated {policies[serviceSheet].updatedAt ? new Date(policies[serviceSheet].updatedAt).toLocaleDateString() : "not available"}</p>}
           </SheetContent>
         </Sheet>
 
@@ -779,8 +779,8 @@ export default function ProductDetailPage() {
                 <div className="mt-3 space-y-2">
                   {productDocs.map((document: ProductDoc) => (
                     <a key={document.id} href={document.url} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-3 rounded-lg border border-[#E8E8E8] px-3 py-2 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#333333] dark:hover:bg-[#222222]">
-                      <span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-[#888880]" /><span className="truncate">{document.label || "Product document"}</span></span>
-                      <span className="text-xs text-[#888880]">Open</span>
+                      <span className="flex min-w-0 items-center gap-2"><FileText className="h-4 w-4 shrink-0 text-[#6E6C64]" /><span className="truncate">{document.label || "Product document"}</span></span>
+                      <span className="text-xs text-[#6E6C64]">Open</span>
                     </a>
                   ))}
                 </div>
@@ -789,7 +789,7 @@ export default function ProductDetailPage() {
 
             <div ref={reviewsRef}>
               {reviewsQuery.isLoading && <div className="space-y-3 animate-pulse"><div className="h-5 w-24 rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="h-20 rounded-xl bg-[#F2F3F5] dark:bg-[#202020]" /></div>}
-              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><h2 className="text-base font-bold">Reviews</h2><p className="text-xs text-[#888880]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
+              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><h2 className="text-base font-bold">Reviews</h2><p className="text-xs text-[#6E6C64]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
               {reviews.length > 0 && <ReviewSummary
                 average={product.average_rating}
                 total={product.review_count}
@@ -869,13 +869,13 @@ export default function ProductDetailPage() {
                       className="w-full px-3 py-2 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors resize-none"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="flex items-center gap-2 text-xs text-[#888880] cursor-pointer hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
+                      <label className="flex items-center gap-2 text-xs text-[#6E6C64] cursor-pointer hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
                         <ImagePlus className="h-4 w-4" />
                         Add photos
                         <input type="file" accept="image/*" multiple className="hidden" onChange={e => setReviewPhotoFiles(Array.from(e.target.files || []))} />
                       </label>
                       {reviewPhotoFiles.length > 0 && (
-                        <span className="text-xs text-[#888880]">{reviewPhotoFiles.length} selected</span>
+                        <span className="text-xs text-[#6E6C64]">{reviewPhotoFiles.length} selected</span>
                       )}
                     </div>
                     <button
@@ -911,7 +911,7 @@ export default function ProductDetailPage() {
             aria-label="Visit store"
           >
             <Store className="h-5 w-5" />
-            <span className="text-[9px] font-medium leading-none text-[#888880] dark:text-[#A0A0A0]">Store</span>
+            <span className="text-[9px] font-medium leading-none text-[#6E6C64] dark:text-[#A0A0A0]">Store</span>
           </button>
           <button
             type="button"
@@ -920,7 +920,7 @@ export default function ProductDetailPage() {
             aria-label="Chat with seller"
           >
             <MessageSquare className="h-5 w-5" />
-            <span className="text-[9px] font-medium leading-none text-[#888880] dark:text-[#A0A0A0]">Chat</span>
+            <span className="text-[9px] font-medium leading-none text-[#6E6C64] dark:text-[#A0A0A0]">Chat</span>
           </button>
           <button
             type="button"
@@ -936,7 +936,7 @@ export default function ProductDetailPage() {
                 </span>
               )}
             </span>
-            <span className="text-[9px] font-medium leading-none text-[#888880] dark:text-[#A0A0A0]">Cart</span>
+            <span className="text-[9px] font-medium leading-none text-[#6E6C64] dark:text-[#A0A0A0]">Cart</span>
           </button>
           <button
             type="button"
@@ -966,17 +966,17 @@ export default function ProductDetailPage() {
             <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
             <div className="flex items-center justify-between rounded-2xl bg-[#F2F3F5] px-4 py-3 dark:bg-[#1E1E1E]">
               <div>
-                <p className="text-xs text-[#888880]">{selectedVariant ? "Selected SKU" : "Select every option"}</p>
+                <p className="text-xs text-[#6E6C64]">{selectedVariant ? "Selected SKU" : "Select every option"}</p>
                 <p className="mt-1 text-lg font-black">{selectedVariant ? formatPrice(purchasablePrice) : `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}`}</p>
               </div>
-              <div className="text-right text-xs font-semibold text-[#888880]">
+              <div className="text-right text-xs font-semibold text-[#6E6C64]">
                 {selectedVariant ? `${purchasableStock} available` : ""}
               </div>
             </div>
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm font-semibold">Quantity</span>
               <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
-                <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant}>−</button>
+                <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant}>âˆ’</button>
                 <span className="flex h-10 w-10 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
                 <button type="button" onClick={() => setQuantity((current) => Math.min(purchasableStock, current + 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant || quantity >= purchasableStock}>+</button>
               </div>

@@ -76,7 +76,7 @@ export default function OrderSuccessPage() {
       <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
         <MarketplaceNavbar showSearch={false} />
         <div className="flex items-center justify-center py-32">
-          <Loader2 className="h-6 w-6 animate-spin text-[#888880]" />
+          <Loader2 className="h-6 w-6 animate-spin text-[#6E6C64]" />
         </div>
       </div>
     );
@@ -119,25 +119,25 @@ export default function OrderSuccessPage() {
             </div>
           </div>
           <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Order Placed!</h1>
-          <p className="mt-1.5 text-sm text-[#888880] dark:text-[#A0A0A0]">
+          <p className="mt-1.5 text-sm text-[#6E6C64] dark:text-[#A0A0A0]">
             Thank you for your purchase. Your order is being processed.
           </p>
           <p className="mt-1 text-[10px] font-mono text-[#C0C0B8] dark:text-[#444444]">
-            #{order.id.slice(0, 8).toUpperCase()} · {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            #{order.id.slice(0, 8).toUpperCase()} Â· {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
 
         {/* Tracking number card */}
         {order.tracking_number && (
           <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 mb-4 text-center">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] mb-2">Tracking Number</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] mb-2">Tracking Number</p>
             <div className="flex items-center justify-center gap-3">
               <span className="font-mono text-xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-widest">
                 {order.tracking_number}
               </span>
               <button
                 onClick={() => { navigator.clipboard.writeText(order.tracking_number!); toast.success("Copied!"); }}
-                className="h-7 w-7 flex items-center justify-center rounded-lg border border-[#E8E8E8] dark:border-[#222222] text-[#888880] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                className="h-7 w-7 flex items-center justify-center rounded-lg border border-[#E8E8E8] dark:border-[#222222] text-[#6E6C64] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
               >
                 <Copy className="h-3.5 w-3.5" />
               </button>
@@ -158,8 +158,8 @@ export default function OrderSuccessPage() {
                     <Icon className={`h-3.5 w-3.5 ${done ? "text-emerald-500" : "text-[#C0C0B8] dark:text-[#333333]"}`} />
                   </div>
                   <div className={`flex-1 pb-4 border-b border-[#F2F3F5] dark:border-[#1E1E1E] last:border-0 last:pb-0`}>
-                    <p className={`text-xs font-semibold ${done ? "text-[#111111] dark:text-[#FAF5F2]" : "text-[#888880] dark:text-[#A0A0A0]"}`}>{item.step}</p>
-                    <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">{item.desc}</p>
+                    <p className={`text-xs font-semibold ${done ? "text-[#111111] dark:text-[#FAF5F2]" : "text-[#6E6C64] dark:text-[#A0A0A0]"}`}>{item.step}</p>
+                    <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] mt-0.5">{item.desc}</p>
                   </div>
                 </div>
               );
@@ -182,7 +182,7 @@ export default function OrderSuccessPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.product_title}</p>
-                  <p className="text-[10px] text-[#888880]">Qty: {item.quantity}</p>
+                  <p className="text-[10px] text-[#6E6C64]">Qty: {item.quantity}</p>
                 </div>
                 <span className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(item.unit_price * item.quantity)}</span>
               </div>

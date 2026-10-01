@@ -134,7 +134,7 @@ export default function BuyerTracking() {
       <AnimatedSection variant="fade-up">
         <div>
           <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Delivery Tracking</h1>
-          <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">See seller and carrier delivery updates for your purchases</p>
+          <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">See seller and carrier delivery updates for your purchases</p>
         </div>
       </AnimatedSection>
 
@@ -144,7 +144,7 @@ export default function BuyerTracking() {
           <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Track a Package</p>
           <div className="flex gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#888880]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6E6C64]" />
               <input
                 value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder="Enter tracking number or order ID..."
@@ -163,17 +163,17 @@ export default function BuyerTracking() {
         <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Purchase Tracking</p>
         {loading ? (
           <div className="flex justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-[#888880]" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#6E6C64]" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] py-16">
             <div className="flex flex-col items-center justify-center text-center gap-3">
               <div className="h-14 w-14 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center">
-                <Truck className="h-6 w-6 text-[#888880] dark:text-[#A0A0A0]" />
+                <Truck className="h-6 w-6 text-[#6E6C64] dark:text-[#A0A0A0]" />
               </div>
               <div>
                 <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">No tracked purchases</p>
-                <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">When you place an order, live status updates will appear here.</p>
+                <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">When you place an order, live status updates will appear here.</p>
               </div>
               <Link to="/marketplace">
                 <button className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors">
@@ -190,7 +190,7 @@ export default function BuyerTracking() {
                   status={order.status}
                   packageNumber={order.tracking_number || order.id.slice(0, 16).toUpperCase()}
                   destination={order.carrier || "In Transit"}
-                  date={`Order #${order.id.slice(0, 8).toUpperCase()} · ${new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                  date={`Order #${order.id.slice(0, 8).toUpperCase()} Â· ${new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
                   qrCodeValue={
                     order.tracking_number
                       ? `https://track.my-best-art.com/${order.tracking_number}`
@@ -222,28 +222,28 @@ export default function BuyerTracking() {
                 <Package className="h-4 w-4 text-[#3B82F6]" />
                 Full Shipment Tracking
               </DialogTitle>
-              <DialogDescription className="text-[11px] text-[#888880]">
+              <DialogDescription className="text-[11px] text-[#6E6C64]">
                 Order #{modalOrder.id.slice(0, 8).toUpperCase()}
               </DialogDescription>
             </DialogHeader>
 
-            {/* Carrier & tracking number row — stacks below `sm` so the
+            {/* Carrier & tracking number row â€” stacks below `sm` so the
                 mono tracking number has room instead of being truncated
                 inside a half-width card. */}
             <div className="grid grid-cols-1 gap-3 mt-1 sm:grid-cols-2">
               <div className="rounded-xl bg-[#F8F8F8] dark:bg-[#111111] border border-[#F0F0F0] dark:border-[#222222] p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Truck className="h-3.5 w-3.5 text-[#3B82F6]" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880]">Carrier</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64]">Carrier</p>
                 </div>
                 <p className="text-sm font-semibold text-[#111111] dark:text-[#FAF5F2] capitalize">
-                  {modalOrder.carrier || "—"}
+                  {modalOrder.carrier || "â€”"}
                 </p>
               </div>
               <div className="rounded-xl bg-[#F8F8F8] dark:bg-[#111111] border border-[#F0F0F0] dark:border-[#222222] p-3">
                 <div className="flex items-center gap-1.5 mb-1">
                   <Hash className="h-3.5 w-3.5 text-[#3B82F6]" />
-                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#888880]">Tracking #</p>
+                  <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64]">Tracking #</p>
                 </div>
                 <div className="flex items-center gap-1">
                   {/* `min-w-0`: as a flex child the mono number would
@@ -255,7 +255,7 @@ export default function BuyerTracking() {
                   {modalOrder.tracking_number && (
                     <button
                       onClick={() => { navigator.clipboard.writeText(modalOrder.tracking_number!); sonnerToast("Copied!"); }}
-                      className="shrink-0 text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+                      className="shrink-0 text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
                     >
                       <Copy className="h-3 w-3" />
                     </button>
@@ -281,13 +281,13 @@ export default function BuyerTracking() {
 
             {/* Status timeline */}
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] mb-1">Status Timeline</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] mb-1">Status Timeline</p>
               <OrderTimeline status={modalOrder.status} history={getStatusHistory(modalOrder.status_history)} />
             </div>
 
             {/* Footer CTA */}
             <div className="pt-1 border-t border-[#F0F0F0] dark:border-[#222222]">
-              <p className="text-center text-[11px] text-[#888880] dark:text-[#A0A0A0]">
+              <p className="text-center text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">
                 Carrier scan updates will appear here as they are received.
               </p>
             </div>

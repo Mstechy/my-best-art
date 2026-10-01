@@ -31,7 +31,7 @@ export default function ProductGuarantee() {
       title: "Secure Payment",
       hint: "Escrow protected",
       detail:
-        "Your payment is held in escrow and only released to the seller after you confirm delivery — so your money is always safe.",
+        "Your payment is held in escrow and only released to the seller after you confirm delivery â€” so your money is always safe.",
     },
   ];
 
@@ -42,11 +42,11 @@ export default function ProductGuarantee() {
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FAFAFA] dark:bg-[#111111] overflow-hidden shrink-0 border border-[#E8E8E8] dark:border-[#222222]">
-                <Shield className="h-5 w-5 text-[#888880]" />
+                <Shield className="h-5 w-5 text-[#6E6C64]" />
               </div>
               <div className="min-w-0">
                 <div className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">Tradibu Guarantee</div>
-                <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#888880] flex-wrap">
+                <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#6E6C64] flex-wrap">
                   <span className="flex items-center gap-1">
                     <Truck className="h-3 w-3" /> Free Shipping
                   </span>
@@ -80,7 +80,7 @@ export default function ProductGuarantee() {
                   <div className="flex-1 space-y-1">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5">
                       <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{r.title}</span>
-                      <span className="text-[10px] font-semibold text-[#888880]">{r.hint}</span>
+                      <span className="text-[10px] font-semibold text-[#6E6C64]">{r.hint}</span>
                     </div>
                     <p className="text-[11px] text-[#666666] dark:text-[#A0A0A0] leading-relaxed">
                       {r.detail}

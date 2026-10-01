@@ -97,7 +97,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                 </div>
                 
                 <Link to={`/product/${p.id}`} className="block">
-                  {p.categories?.name && <div className="text-[10px] truncate text-[#888880]">{p.categories.name}</div>}
+                  {p.categories?.name && <div className="text-[10px] truncate text-[#6E6C64]">{p.categories.name}</div>}
                   {p.review_count > 0 && <div className="flex items-center gap-1 pt-1">
                     <div className="flex items-center gap-0.5">
                       {[1, 2, 3, 4, 5].map(s => (
@@ -107,7 +107,7 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                         />
                       ))}
                     </div>
-                    <span className="text-[10px] text-[#888880]">{p.review_count}</span>
+                    <span className="text-[10px] text-[#6E6C64]">{p.review_count}</span>
                   </div>}
                 </Link>
               </div>

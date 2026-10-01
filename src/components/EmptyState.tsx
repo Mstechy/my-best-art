@@ -18,7 +18,7 @@ const iconBgFor = (role: Props["role"]) => {
     case "seller": return "bg-[#F6C75D]/15 text-[#5C3A00] dark:text-[#F6C75D]";
     case "buyer":  return "bg-blue-50 dark:bg-blue-900/20 text-blue-500";
     case "admin":  return "bg-red-50 dark:bg-red-900/20 text-red-500";
-    default:       return "bg-[#F2F3F5] dark:bg-[#1A1A1A] text-[#888880] dark:text-[#A0A0A0]";
+    default:       return "bg-[#F2F3F5] dark:bg-[#1A1A1A] text-[#6E6C64] dark:text-[#A0A0A0]";
   }
 };
 
@@ -30,7 +30,7 @@ export default function EmptyState({ icon: Icon, title, description, ctaLabel, c
       </div>
       <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{title}</p>
       {description && (
-        <p className="mt-1.5 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-xs leading-relaxed">{description}</p>
+        <p className="mt-1.5 text-xs text-[#6E6C64] dark:text-[#A0A0A0] max-w-xs leading-relaxed">{description}</p>
       )}
       {ctaLabel && (
         ctaHref ? (

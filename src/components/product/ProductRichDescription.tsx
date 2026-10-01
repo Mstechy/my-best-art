@@ -21,7 +21,7 @@ export default function ProductRichDescription({
 
   return (
     <section className="w-full max-w-4xl mx-auto">
-      {/* Specifications — AliExpress-style collapsible dropdown */}
+      {/* Specifications â€” AliExpress-style collapsible dropdown */}
       {specsEntries && specsEntries.length > 0 && (
         <div className="mb-8 border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
           <button
@@ -30,7 +30,7 @@ export default function ProductRichDescription({
             className="flex w-full items-center justify-between px-4 py-3 bg-[#FAFAFA] dark:bg-[#1A1A1C] text-left"
           >
             <span className="text-base font-bold text-[#111111] dark:text-[#FAF5F2]">Specifications</span>
-            <ChevronDown className={`h-4 w-4 text-[#888880] transition-transform ${specsOpen ? "rotate-180" : ""}`} />
+            <ChevronDown className={`h-4 w-4 text-[#6E6C64] transition-transform ${specsOpen ? "rotate-180" : ""}`} />
           </button>
           {specsOpen && (
             <div className="border-t border-[#E8E8E8] dark:border-[#222222]">
@@ -41,7 +41,7 @@ export default function ProductRichDescription({
                       key={key}
                       className={idx % 2 === 0 ? "bg-[#F9F9F8] dark:bg-[#1A1A1C]" : "bg-white dark:bg-[#1E1E1E]"}
                     >
-                      <td className="px-4 py-3 text-xs text-[#888880] dark:text-[#A0A0A0] w-2/5 capitalize border-r border-[#E8E8E8] dark:border-[#222222]">
+                      <td className="px-4 py-3 text-xs text-[#6E6C64] dark:text-[#A0A0A0] w-2/5 capitalize border-r border-[#E8E8E8] dark:border-[#222222]">
                         {key.replace(/([A-Z])/g, " $1").trim()}
                       </td>
                       {/* `break-words`: a long unbroken value (serial, URL)

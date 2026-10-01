@@ -38,7 +38,7 @@ interface SavedAddress {
 // (see the matching rule in src/index.css), and `min-w-0` lets it shrink
 // inside narrow grid columns instead of widening the card.
 const inputCls = "w-full min-w-0 h-10 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-base md:text-sm text-[#111111] dark:text-[#FAF5F2] placeholder-[#C0C0B8] dark:placeholder-[#444444] outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors";
-const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0] mb-1";
+const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0] mb-1";
 
 export default function CheckoutPage() {
   const { items, clearCart, syncItems, directCheckoutItem, updateDirectCheckoutItem, clearDirectCheckout } = useCart();
@@ -231,7 +231,7 @@ export default function CheckoutPage() {
             <ShoppingBag className="h-7 w-7 text-[#C0C0B8] dark:text-[#333333]" />
           </div>
           <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Your cart is empty</h2>
-          <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">Add some products before checking out.</p>
+          <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Add some products before checking out.</p>
           <Link to="/marketplace" className="mt-6 inline-flex px-6 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
             Browse Products
           </Link>
@@ -248,7 +248,7 @@ export default function CheckoutPage() {
       <div className="mx-auto max-w-4xl px-4 lg:px-8 pt-8 pb-28 md:pb-8">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-1.5 text-xs text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] mb-6 transition-colors"
+          className="flex items-center gap-1.5 text-xs text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] mb-6 transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" /> Back
         </button>
@@ -275,7 +275,7 @@ export default function CheckoutPage() {
                     <SelectContent className="bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222]">
                       {saved.map(a => (
                         <SelectItem key={a.id} value={a.id} className="text-xs text-[#111111] dark:text-[#FAF5F2]">
-                          {a.label || a.recipient} — {a.line1}, {a.city}{a.is_default ? " (Default)" : ""}
+                          {a.label || a.recipient} â€” {a.line1}, {a.city}{a.is_default ? " (Default)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -322,7 +322,7 @@ export default function CheckoutPage() {
               </div>
 
               <div className="mt-4 space-y-2">
-                <label className="flex items-center gap-2 text-xs cursor-pointer text-[#888880] dark:text-[#A0A0A0]">
+                <label className="flex items-center gap-2 text-xs cursor-pointer text-[#6E6C64] dark:text-[#A0A0A0]">
                   <input type="checkbox" checked={saveAfter} onChange={e => setSaveAfter(e.target.checked)} className="h-3.5 w-3.5 rounded border-[#E8E8E8] dark:border-[#222222] accent-[#111111]" />
                   <BookmarkPlus className="h-3.5 w-3.5" /> Save this address for future orders
                 </label>
@@ -343,7 +343,7 @@ export default function CheckoutPage() {
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-5 sticky top-20">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Order Summary</p>
-                {directCheckoutItem && <span className="rounded-full bg-[#F2F3F5] px-2 py-1 text-[9px] font-bold text-[#888880] dark:bg-[#111111]">Buy now</span>}
+                {directCheckoutItem && <span className="rounded-full bg-[#F2F3F5] px-2 py-1 text-[9px] font-bold text-[#6E6C64] dark:bg-[#111111]">Buy now</span>}
               </div>
 
               {checkoutNotice && (
@@ -365,9 +365,9 @@ export default function CheckoutPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.title}</p>
                       {Object.values(item.variant_attributes ?? {}).length > 0 && (
-                        <p className="text-[10px] text-[#888880] truncate">{Object.values(item.variant_attributes ?? {}).join(" · ")}</p>
+                        <p className="text-[10px] text-[#6E6C64] truncate">{Object.values(item.variant_attributes ?? {}).join(" Â· ")}</p>
                       )}
-                      <p className="text-[10px] text-[#888880]">Qty: {item.quantity}</p>
+                      <p className="text-[10px] text-[#6E6C64]">Qty: {item.quantity}</p>
                     </div>
                     <span className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] shrink-0">{formatPrice(item.price * item.quantity)}</span>
                   </div>
@@ -375,12 +375,12 @@ export default function CheckoutPage() {
               </div>
 
               <div className="border-t border-[#F2F3F5] dark:border-[#1E1E1E] pt-3 space-y-2">
-                <div className="flex justify-between text-xs text-[#888880]">
+                <div className="flex justify-between text-xs text-[#6E6C64]">
                   <span>Subtotal</span><span>{formatPrice(checkoutTotal)}</span>
                 </div>
                 <div className="flex justify-between text-xs">
-                  <span className="text-[#888880]">Shipping</span>
-                  <span className="text-[#888880] dark:text-[#A0A0A0] font-semibold">Calculated at checkout</span>
+                  <span className="text-[#6E6C64]">Shipping</span>
+                  <span className="text-[#6E6C64] dark:text-[#A0A0A0] font-semibold">Calculated at checkout</span>
                 </div>
                 <div className="flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2] pt-2 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
                   <span>Total</span><span>{formatPrice(checkoutTotal)}</span>
@@ -392,10 +392,10 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full mt-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50 hidden md:flex items-center justify-center gap-2"
               >
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
+                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Orderâ€¦</> : "Place Order"}
               </button>
 
-              <p className="text-[10px] text-[#888880] text-center mt-3 flex items-center justify-center gap-1">
+              <p className="text-[10px] text-[#6E6C64] text-center mt-3 flex items-center justify-center gap-1">
                 <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Order protection and secure processing
               </p>
 
@@ -405,7 +405,7 @@ export default function CheckoutPage() {
                   { icon: ShieldCheck, label: "Buyer Protection" },
                   { icon: Package, label: "Seller fulfillment" },
                 ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex flex-col items-center gap-1 rounded-xl border border-[#F2F3F5] dark:border-[#1E1E1E] py-2 text-[9px] text-[#888880] dark:text-[#A0A0A0]">
+                  <div key={label} className="flex flex-col items-center gap-1 rounded-xl border border-[#F2F3F5] dark:border-[#1E1E1E] py-2 text-[9px] text-[#6E6C64] dark:text-[#A0A0A0]">
                     <Icon className="h-3.5 w-3.5 text-[#111111] dark:text-[#FAF5F2]" />{label}
                   </div>
                 ))}
@@ -422,7 +422,7 @@ export default function CheckoutPage() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E8E8E8] bg-white pb-[env(safe-area-inset-bottom,0px)] dark:border-[#222222] dark:bg-[#111111] md:hidden">
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2.5">
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Total</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Total</p>
             <p className="truncate text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(checkoutTotal)}</p>
           </div>
           <button
@@ -430,7 +430,7 @@ export default function CheckoutPage() {
             disabled={loading}
             className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] px-6 py-3 text-sm font-bold text-white dark:text-[#111111] transition-colors hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50"
           >
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Orderâ€¦</> : "Place Order"}
           </button>
         </div>
       </div>

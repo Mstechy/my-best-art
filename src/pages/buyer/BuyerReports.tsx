@@ -35,7 +35,7 @@ const DISPUTE_STATUS: Record<string, { bg: string; text: string; label: string }
   open:          { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", label: "Open" },
   investigating: { bg: "bg-[#F6C75D]/15", text: "text-[#5C3A00] dark:text-[#F6C75D]", label: "Investigating" },
   resolved:      { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", label: "Resolved" },
-  dismissed:     { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#888880] dark:text-[#A0A0A0]", label: "Dismissed" },
+  dismissed:     { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", label: "Dismissed" },
 };
 
 export default function BuyerReports() {
@@ -128,7 +128,7 @@ export default function BuyerReports() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Reports & Disputes</h1>
-            <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">Report sellers and track complaint status</p>
+            <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Report sellers and track complaint status</p>
           </div>
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
@@ -142,7 +142,7 @@ export default function BuyerReports() {
               </DialogHeader>
               <div className="space-y-4 mt-2">
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Order *</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Order *</label>
                   <Select value={selectedOrderId} onValueChange={setSelectedOrderId}>
                     <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs">
                       <SelectValue placeholder="Choose an order" />
@@ -150,7 +150,7 @@ export default function BuyerReports() {
                     <SelectContent>
                       {orders.map(order => (
                         <SelectItem key={order.id} value={order.id} className="text-xs">
-                          #{order.id.slice(0, 8)} · {order.status} · {formatPrice(order.total_amount)}
+                          #{order.id.slice(0, 8)} Â· {order.status} Â· {formatPrice(order.total_amount)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -158,7 +158,7 @@ export default function BuyerReports() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Reason *</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Reason *</label>
                   <Select value={reason} onValueChange={setReason}>
                     <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs">
                       <SelectValue placeholder="Select reason" />
@@ -170,22 +170,22 @@ export default function BuyerReports() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Description</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Description</label>
                   <Textarea value={description} onChange={e => setDescription(e.target.value.slice(0, 1000))} placeholder="Describe the issue in detail..." rows={4}
                     className="rounded-xl border-[#E8E8E8] dark:border-[#222222] bg-[#FAFAFA] dark:bg-[#111111] text-xs" />
-                  <p className="text-right text-[9px] text-[#888880]">{description.length}/1000</p>
+                  <p className="text-right text-[9px] text-[#6E6C64]">{description.length}/1000</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Proof (image or PDF, max 5MB)</label>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Proof (image or PDF, max 5MB)</label>
                   <input type="file" accept="image/*,application/pdf" onChange={e => setProofFile(e.target.files?.[0] ?? null)}
-                    className="block w-full text-xs text-[#888880] file:mr-3 file:rounded-full file:border-0 file:bg-[#111111] file:dark:bg-[#FAF5F2] file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-white file:dark:text-[#111111] hover:file:opacity-80 cursor-pointer" />
-                  {proofFile && <p className="text-[10px] text-[#888880]">{proofFile.name}</p>}
+                    className="block w-full text-xs text-[#6E6C64] file:mr-3 file:rounded-full file:border-0 file:bg-[#111111] file:dark:bg-[#FAF5F2] file:px-3 file:py-1.5 file:text-[10px] file:font-semibold file:text-white file:dark:text-[#111111] hover:file:opacity-80 cursor-pointer" />
+                  {proofFile && <p className="text-[10px] text-[#6E6C64]">{proofFile.name}</p>}
                 </div>
 
                 <button onClick={submitReport} disabled={saving || !reason.trim() || !selectedOrderId}
                   className="w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50">
-                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Submitting…</> : "Submit Report"}
+                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Submittingâ€¦</> : "Submit Report"}
                 </button>
               </div>
             </DialogContent>
@@ -195,7 +195,7 @@ export default function BuyerReports() {
 
       {/* Report type cards */}
       <AnimatedSection variant="fade-up" delay={50}>
-        <p className="text-xs font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider mb-4">What would you like to report?</p>
+        <p className="text-xs font-bold text-[#6E6C64] dark:text-[#A0A0A0] uppercase tracking-wider mb-4">What would you like to report?</p>
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">
           {reportTypes.map((type, i) => (
             <button key={type.title} onClick={() => { setReason(type.title); setDialogOpen(true); }}
@@ -206,7 +206,7 @@ export default function BuyerReports() {
                 <type.icon className={`h-5 w-5 ${type.iconColor}`} />
               </div>
               <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{type.title}</p>
-              <p className="mt-1 text-[10px] text-[#888880] dark:text-[#A0A0A0] leading-relaxed">{type.desc}</p>
+              <p className="mt-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed">{type.desc}</p>
             </button>
           ))}
         </div>
@@ -220,14 +220,14 @@ export default function BuyerReports() {
           </div>
           <div className="p-5">
             {loading ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-[#888880]" /></div>
+              <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-[#6E6C64]" /></div>
             ) : disputes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                 <div className="h-12 w-12 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center">
-                  <Flag className="h-5 w-5 text-[#888880] dark:text-[#A0A0A0]" />
+                  <Flag className="h-5 w-5 text-[#6E6C64] dark:text-[#A0A0A0]" />
                 </div>
                 <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">No reports filed</p>
-                <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] max-w-xs">If you experience any issues with a seller, file a report above.</p>
+                <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] max-w-xs">If you experience any issues with a seller, file a report above.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -239,8 +239,8 @@ export default function BuyerReports() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{d.reason}</p>
-                          {d.description && <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate max-w-xs mt-0.5">{d.description}</p>}
-                          <p className="text-[9px] text-[#888880] dark:text-[#A0A0A0] mt-1">{new Date(d.created_at).toLocaleDateString()}</p>
+                          {d.description && <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] truncate max-w-xs mt-0.5">{d.description}</p>}
+                          <p className="text-[9px] text-[#6E6C64] dark:text-[#A0A0A0] mt-1">{new Date(d.created_at).toLocaleDateString()}</p>
                         </div>
                         <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider shrink-0 ${cfg.bg} ${cfg.text}`}>
                           {cfg.label}
@@ -248,9 +248,9 @@ export default function BuyerReports() {
                       </div>
                       {order && (
                         <a href="/buyer/tracking" className="block rounded-lg bg-[#F2F3F5] dark:bg-[#1A1A1A] px-3 py-2 text-[10px] hover:opacity-80 transition-opacity">
-                          <span className="text-[#888880]">Order </span>
+                          <span className="text-[#6E6C64]">Order </span>
                           <span className="font-mono font-semibold text-[#111111] dark:text-[#FAF5F2]">#{order.id.slice(0, 8)}</span>
-                          <span className="text-[#888880]"> · {order.status} · {formatPrice(order.total_amount)}</span>
+                          <span className="text-[#6E6C64]"> Â· {order.status} Â· {formatPrice(order.total_amount)}</span>
                         </a>
                       )}
                     </div>
@@ -269,8 +269,8 @@ export default function BuyerReports() {
             <Clock className="h-3.5 w-3.5 text-[#F6C75D]" />
           </div>
           <div>
-            <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Reports are reviewed within 24–48 hours</p>
-            <p className="mt-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">Our team investigates every report. Seller accounts may be frozen during investigation.</p>
+            <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Reports are reviewed within 24â€“48 hours</p>
+            <p className="mt-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Our team investigates every report. Seller accounts may be frozen during investigation.</p>
           </div>
         </div>
       </AnimatedSection>

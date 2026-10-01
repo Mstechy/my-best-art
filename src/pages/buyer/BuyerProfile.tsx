@@ -28,7 +28,7 @@ function SectionCard({ icon: Icon, title, children }: { icon: any; title: string
     <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222]">
       <div className="flex items-center gap-2.5 px-5 pt-5 pb-4 border-b border-[#F2F3F5] dark:border-[#222222]">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F2F3F5] dark:bg-[#111111]">
-          <Icon className="h-3.5 w-3.5 text-[#888880] dark:text-[#A0A0A0]" />
+          <Icon className="h-3.5 w-3.5 text-[#6E6C64] dark:text-[#A0A0A0]" />
         </div>
         <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">{title}</p>
       </div>
@@ -40,7 +40,7 @@ function SectionCard({ icon: Icon, title, children }: { icon: any; title: string
 function FieldInput({ label, ...props }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">{label}</label>
+      <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">{label}</label>
       <input
         {...props}
         className={`w-full h-10 px-3.5 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-[#111111] dark:text-[#FAF5F2] text-xs placeholder-[#C0C0B8] dark:placeholder-[#555555] outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${props.className ?? ""}`}
@@ -139,7 +139,7 @@ export default function BuyerProfile() {
     <div className="space-y-5 max-w-2xl">
       <div>
         <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Profile & Settings</h1>
-        <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">Manage your account details and preferences</p>
+        <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Manage your account details and preferences</p>
       </div>
 
       {/* Account */}
@@ -155,7 +155,7 @@ export default function BuyerProfile() {
             </div>
             <div>
               <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Profile photo</p>
-              <label className="mt-1 cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
+              <label className="mt-1 cursor-pointer inline-flex items-center gap-1.5 text-[10px] font-semibold text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
                 Change photo
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && uploadAvatar(e.target.files[0])} />
               </label>
@@ -166,7 +166,7 @@ export default function BuyerProfile() {
           <FieldInput label="Email" value={profile?.email || ""} disabled />
 
           <div className="space-y-1.5">
-            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">Country</label>
+            <label className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Country</label>
             <Select value={country} onValueChange={setCountry}>
               <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs">
                 <SelectValue placeholder="Select country" />
@@ -179,7 +179,7 @@ export default function BuyerProfile() {
 
           <button onClick={saveProfile} disabled={savingProfile}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-semibold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50">
-            {savingProfile ? <><Loader2 className="h-3 w-3 animate-spin" /> Saving…</> : "Save Profile"}
+            {savingProfile ? <><Loader2 className="h-3 w-3 animate-spin" /> Savingâ€¦</> : "Save Profile"}
           </button>
         </div>
       </SectionCard>
@@ -190,7 +190,7 @@ export default function BuyerProfile() {
           <FieldInput label="New Password" type="password" placeholder="Min. 8 characters" value={password} onChange={(e) => setPassword((e.target as HTMLInputElement).value)} />
           <button onClick={changePassword} disabled={savingPassword}
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors disabled:opacity-50">
-            {savingPassword ? <><Loader2 className="h-3 w-3 animate-spin" /> Updating…</> : "Update Password"}
+            {savingPassword ? <><Loader2 className="h-3 w-3 animate-spin" /> Updatingâ€¦</> : "Update Password"}
           </button>
         </div>
       </SectionCard>
@@ -200,7 +200,7 @@ export default function BuyerProfile() {
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-[#F2F3F5] dark:border-[#222222]">
           <div className="flex items-center gap-2.5">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#F2F3F5] dark:bg-[#111111]">
-              <MapPin className="h-3.5 w-3.5 text-[#888880] dark:text-[#A0A0A0]" />
+              <MapPin className="h-3.5 w-3.5 text-[#6E6C64] dark:text-[#A0A0A0]" />
             </div>
             <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">Address Book</p>
           </div>
@@ -213,9 +213,9 @@ export default function BuyerProfile() {
         <div className="p-5 space-y-3">
           {showAddrForm && (
             <div className="rounded-xl border border-[#E8E8E8] dark:border-[#222222] p-4 bg-[#FAFAFA] dark:bg-[#111111] space-y-3">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">New Address</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">New Address</p>
               {[
-                { label: "Label (Home, Office…)", key: "label", placeholder: "e.g. Home" },
+                { label: "Label (Home, Officeâ€¦)", key: "label", placeholder: "e.g. Home" },
                 { label: "Recipient *", key: "recipient", placeholder: "Full name" },
                 { label: "Address line 1 *", key: "line1", placeholder: "Street address" },
                 { label: "Address line 2", key: "line2", placeholder: "Apt, suite, etc." },
@@ -233,7 +233,7 @@ export default function BuyerProfile() {
               <FieldInput label="Phone" placeholder="+1 555 000 0000" value={newAddr.phone || ""} onChange={(e) => setNewAddr({ ...newAddr, phone: (e.target as HTMLInputElement).value })} />
               <label className="flex items-center gap-2 text-xs cursor-pointer">
                 <Checkbox checked={!!newAddr.is_default} onCheckedChange={(v) => setNewAddr({ ...newAddr, is_default: !!v })} />
-                <span className="text-[#888880] dark:text-[#A0A0A0]">Set as default</span>
+                <span className="text-[#6E6C64] dark:text-[#A0A0A0]">Set as default</span>
               </label>
               <button onClick={addAddress}
                 className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[10px] font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
@@ -245,10 +245,10 @@ export default function BuyerProfile() {
           {addresses.length === 0 && !showAddrForm ? (
             <div className="py-10 text-center">
               <div className="h-10 w-10 rounded-xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center mx-auto mb-2">
-                <MapPin className="h-4.5 w-4.5 text-[#888880] dark:text-[#A0A0A0]" />
+                <MapPin className="h-4.5 w-4.5 text-[#6E6C64] dark:text-[#A0A0A0]" />
               </div>
               <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">No addresses yet</p>
-              <p className="mt-1 text-[10px] text-[#888880] dark:text-[#A0A0A0]">Save an address for faster checkout</p>
+              <p className="mt-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Save an address for faster checkout</p>
             </div>
           ) : (
             addresses.map(a => (
@@ -260,14 +260,14 @@ export default function BuyerProfile() {
                       <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-[#F6C75D]/15 text-[9px] font-bold text-[#5C3A00] dark:text-[#F6C75D] uppercase tracking-wider">Default</span>
                     )}
                   </div>
-                  <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">{a.recipient}</p>
-                  <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
-                  <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0]">{a.city}{a.region ? `, ${a.region}` : ""} {a.postal_code} · {a.country}</p>
+                  <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.recipient}</p>
+                  <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
+                  <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.city}{a.region ? `, ${a.region}` : ""} {a.postal_code} Â· {a.country}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {!a.is_default && (
                     <button onClick={() => setDefault(a.id)}
-                      className="text-[10px] font-semibold text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
+                      className="text-[10px] font-semibold text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
                       Set default
                     </button>
                   )}

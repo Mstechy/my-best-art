@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { getProductCardImageUrl } from "@/lib/productImages";
+import { getProductCardImageUrl, CARD_IMAGE_WIDTH, SMALL_CARD_IMAGE_WIDTH } from "@/lib/productImages";
 import ProgressiveImage from "@/components/ui/ProgressiveImage";
 
 interface ProductImageProps {
@@ -47,7 +47,7 @@ export default function ProductImage({
     if (variant !== "card" && variant !== "thumb") return null;
     if (!cardSmallUrl || !cardSrc || cardSmallUrl === cardSrc) return null;
     return {
-      srcSet: `${cardSmallUrl} 320w, ${cardSrc} 900w`,
+      srcSet: `${cardSmallUrl} ${SMALL_CARD_IMAGE_WIDTH}w, ${cardSrc} ${CARD_IMAGE_WIDTH}w`,
       sizes: "(min-width: 1440px) 18vw, (min-width: 1024px) 23vw, (min-width: 640px) 30vw, 45vw",
     };
   }, [cardSmallUrl, cardSrc, variant]);
@@ -76,7 +76,7 @@ export default function ProductImage({
 
   if (!currentSrc) {
     return (
-      <div className={cn("h-full w-full rounded-xl bg-[#F2F3F5] text-[#888880] flex items-center justify-center", className)}>
+      <div className={cn("h-full w-full rounded-xl bg-[#F2F3F5] text-[#6E6C64] flex items-center justify-center", className)}>
         <span className="text-xs uppercase tracking-[0.15em]">No image</span>
       </div>
     );

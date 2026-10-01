@@ -1,15 +1,24 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeImageDimensions, type ImageDimensions } from "@/lib/imageDimensions";
 
-const CARD_SIZE = 900;
-const CARD_QUALITY = 0.78;
+// Grid cards are roughly 180px on a phone and 300px on a desktop. At 3x DPR the
+// largest realistic slot is about 900px, but Lighthouse measured the 900px
+// derivative being fetched as 462 KB - far past what the slot can show - so the
+// large derivative is now 600px, which covers a 200px slot at 3x and matches the
+// 3:4-1:1 recommendation. Existing uploads keep their stored file; only new ones
+// get the smaller derivative.
+const CARD_SIZE = 600;
+const CARD_QUALITY = 0.72;
 const CARD_MIME_TYPE = "image/webp";
-
-// Grid cards are roughly 180px on a phone and 300px on a desktop, so the 900px
-// derivative was 3-5x larger than the slot it filled (280 KB on average). A 320px
-// variant is the size a phone actually needs and is uploaded alongside the large one.
+// A phone slot needs about 320px; this variant is uploaded alongside the large one.
 const SMALL_CARD_SIZE = 320;
 const SMALL_CARD_QUALITY = 0.72;
+
+/** Intrinsic width of the large card derivative, for `srcset` descriptors. */
+export const CARD_IMAGE_WIDTH = CARD_SIZE;
+
+/** Intrinsic width of the small card derivative used on phones. */
+export const SMALL_CARD_IMAGE_WIDTH = SMALL_CARD_SIZE;
 
 const BLOCKED_EXTENSIONS = new Set([
   "exe", "bat", "cmd", "sh", "bash", "zsh", "ps1", "vbs", "js", "jse",

@@ -71,11 +71,11 @@ const InfiniteScrollTrigger = memo(function InfiniteScrollTrigger({
             <div className="h-2 w-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] animate-bounce" style={{ animationDelay: "150ms" }} />
             <div className="h-2 w-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] animate-bounce" style={{ animationDelay: "300ms" }} />
           </div>
-          <span className="text-xs font-semibold text-[#888880]">Loading more products...</span>
+          <span className="text-xs font-semibold text-[#6E6C64]">Loading more products...</span>
         </div>
       ) : hasMore ? (
         children || (
-          <div className="flex items-center gap-2 text-xs text-[#888880]">
+          <div className="flex items-center gap-2 text-xs text-[#6E6C64]">
             <span>Scroll for more</span>
             <svg
               className="h-4 w-4 animate-bounce"
@@ -93,7 +93,7 @@ const InfiniteScrollTrigger = memo(function InfiniteScrollTrigger({
           </div>
         )
       ) : (
-        <p className="text-xs text-[#888880]">You're all caught up! Showing all products.</p>
+        <p className="text-xs text-[#6E6C64]">You're all caught up! Showing all products.</p>
       )}
     </div>
   );

@@ -56,7 +56,7 @@ export default function CartDrawer() {
                 market<span className="text-[#F6C75D]">hub</span>
               </span>
             </span>
-            <span className="text-[10px] font-semibold text-[#888880] shrink-0">{totalItems} item{totalItems !== 1 ? "s" : ""}</span>
+            <span className="text-[10px] font-semibold text-[#6E6C64] shrink-0">{totalItems} item{totalItems !== 1 ? "s" : ""}</span>
           </SheetTitle>
         </SheetHeader>
 
@@ -66,7 +66,7 @@ export default function CartDrawer() {
               <ShoppingBag className="h-7 w-7 text-[#C0C0B8] dark:text-[#333333]" />
             </div>
             <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Your cart is empty</p>
-            <p className="text-xs text-[#888880] dark:text-[#A0A0A0] mt-1">Browse products and add items to get started.</p>
+            <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] mt-1">Browse products and add items to get started.</p>
             <Link to="/marketplace" onClick={() => setIsOpen(false)} className="mt-5 flex items-center gap-1.5 px-6 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">
               Browse Products <ArrowRight className="h-3 w-3" />
             </Link>
@@ -118,9 +118,9 @@ export default function CartDrawer() {
                 <div className="flex-1 min-w-0 flex flex-col">
                   <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 leading-snug">{item.title}</p>
                   {Object.values(item.variant_attributes ?? {}).length > 0 && (
-                    <p className="mt-0.5 text-[10px] text-[#888880] dark:text-[#A0A0A0]">{Object.values(item.variant_attributes ?? {}).join(" · ")}</p>
+                    <p className="mt-0.5 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{Object.values(item.variant_attributes ?? {}).join(" Â· ")}</p>
                   )}
-                  <p className="text-[10px] text-[#888880] dark:text-[#A0A0A0] mt-0.5">{item.seller_name}</p>
+                  <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] mt-0.5">{item.seller_name}</p>
                   <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mt-1">{formatPrice(item.price * item.quantity)}</p>
                   <div className="flex items-center gap-2 mt-auto pt-2">
                     <button
@@ -156,7 +156,7 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="sticky bottom-0 z-10 px-5 py-4 border-t border-[#F2F3F5] dark:border-[#1A1A1A] space-y-3 bg-white dark:bg-[#111111] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#888880] dark:text-[#A0A0A0]">Total</span>
+              <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Total</span>
               <span className="text-xl font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(totalPrice)}</span>
             </div>
             <Link to="/checkout" onClick={() => setIsOpen(false)} className="block w-full py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold text-center hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">

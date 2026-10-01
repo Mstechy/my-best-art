@@ -146,8 +146,24 @@ function killChrome(pid) {
  * Results are read back off a plain global.
  */
 const OBSERVER_SCRIPT = `
-window.__audit = { lcp: 0, lcpEl: '', cls: 0, longTasks: 0, longTaskMs: 0, shifts: [], tasks: [] };
+window.__audit = { lcp: 0, lcpEl: '', cls: 0, longTasks: 0, longTaskMs: 0, shifts: [], tasks: [], forcedReflows: 0 };
 const A = window.__audit;
+// Chrome logs "Forced reflow" as a console warning when a layout property is read
+// after a write invalidated layout. Counting them turns that invisible cost into a
+// number, and it has to be installed before any page script runs to catch load.
+(() => {
+  const count = (args) => {
+    try {
+      if (/Forced reflow|forced recalculation/i.test(Array.from(args).map(String).join(' '))) {
+        A.forcedReflows++;
+      }
+    } catch (e) { /* never break the page */ }
+  };
+  for (const level of ['warn', 'error', 'log']) {
+    const original = console[level];
+    console[level] = (...a) => { count(a); original.apply(console, a); };
+  }
+})();
 const desc = (n) => {
   if (!n || !n.nodeName) return '?';
   let s = n.nodeName.toLowerCase();
@@ -245,6 +261,7 @@ const AUDIT_SNIPPET = `(() => {
   o.domNodes = document.getElementsByTagName('*').length;
   const n = performance.getEntriesByType('navigation')[0];
   o.protocol = n ? n.nextHopProtocol : null;
+  o.forcedReflows = (window.__audit && window.__audit.forcedReflows) || 0;
   return o;
 })()`;
 
@@ -413,6 +430,7 @@ async function audit() {
     console.log(` DOM nodes                  ${Math.round(pick('Nodes') ?? seo.domNodes ?? 0)}`);
     console.log(` Script / Layout / Recalc   ${Math.round((pick('ScriptDuration') ?? 0) * 1000)} / ${Math.round((pick('LayoutDuration') ?? 0) * 1000)} / ${Math.round((pick('RecalcStyleDuration') ?? 0) * 1000)} ms`);
     console.log(` Long tasks                 ${a.longTasks ?? 0} (${tbt} ms total)`);
+    console.log(` Forced reflows detected   ${a.forcedReflows ?? 0}`);
     if (a.lcpEl) console.log(` LCP element                ${a.lcpEl}`);
     if (a.tasks?.length) {
       console.log('\n Long tasks (INP blockers), worst first:');

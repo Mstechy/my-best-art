@@ -19,18 +19,40 @@ export function useScrollRestoration() {
     // shopper somewhere they never were. So the restore waits, frame by frame, until
     // the document is tall enough to honour it, and gives up after ~2s.
     let frame = 0;
+    let observer: ResizeObserver | undefined;
     let attempts = 0;
-    const restore = () => {
+    let settled = false;
+
+    // Reading `scrollHeight` forces a synchronous layout of the whole document.
+    // Polling it once per animation frame for up to 120 frames was a measured
+    // source of forced reflows, so the wait watches document SIZE instead and
+    // reads the height only at the moment it is about to act on it.
+    const tryRestore = () => {
+      if (settled) return;
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
       if (maxScroll >= pos - 2 || attempts >= 120) {
+        settled = true;
+        observer?.disconnect();
         window.scrollTo(0, pos);
-        return;
       }
+    };
+
+    const restore = () => {
+      if (settled) return;
       attempts += 1;
-      frame = requestAnimationFrame(restore);
+      if (typeof ResizeObserver === "function" && !observer) {
+        observer = new ResizeObserver(() => tryRestore());
+        observer.observe(document.documentElement);
+      }
+      tryRestore();
+      if (!settled) frame = requestAnimationFrame(restore);
     };
     frame = requestAnimationFrame(restore);
-    return () => cancelAnimationFrame(frame);
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
   }, []);
 
   const saveScroll = () => {

@@ -45,7 +45,7 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
               <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">tradi</span>
               <span className="font-sans text-xl font-black tracking-tighter text-[#F6C75D]">bu</span>
             </Link>
-            <span className="hidden items-center gap-1 text-[11px] font-medium text-[#888880] sm:flex dark:text-[#A0A0A0]">
+            <span className="hidden items-center gap-1 text-[11px] font-medium text-[#6E6C64] sm:flex dark:text-[#A0A0A0]">
               <MapPin className="h-3 w-3" /> Ship to: All
             </span>
           </div>
@@ -70,14 +70,14 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
         {/* Full search bar with camera icon */}
         <form onSubmit={handleSearch} className="mt-3">
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#888880]" />
+            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("nav.searchPlaceholder")}
               className="h-11 w-full rounded-full border border-[#E8E8E8] bg-[#F7F7F5] pl-10 pr-12 text-sm text-[#111111] outline-none transition-colors focus:border-[#111111] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] dark:focus:border-[#FAF5F2]"
             />
-            <button type="button" aria-label={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
+            <button type="button" aria-label={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
               <Camera className="h-4 w-4" />
             </button>
           </div>

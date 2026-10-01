@@ -66,7 +66,7 @@ export function BottomSheet({ open, onClose, title, children, className }: Botto
           <button
             onClick={onClose}
             aria-label="Close"
-            className="rounded-full p-1.5 text-[#888880] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#2A2A2D] dark:hover:text-[#FAF5F2]"
+            className="rounded-full p-1.5 text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#2A2A2D] dark:hover:text-[#FAF5F2]"
           >
             <X className="h-4 w-4" />
           </button>

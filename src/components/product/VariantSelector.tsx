@@ -41,7 +41,7 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
         return (
           <div key={key}>
             <p className="mb-2 text-xs font-bold capitalize">
-              {key}: <span className="font-normal text-[#888880]">{selectedValue || "Select"}</span>
+              {key}: <span className="font-normal text-[#6E6C64]">{selectedValue || "Select"}</span>
             </p>
             <div className="flex flex-wrap gap-2">
               {values.map((value) => {

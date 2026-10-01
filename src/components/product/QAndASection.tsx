@@ -61,7 +61,7 @@ export default function QAndASection({ productId }: { productId: string }) {
     });
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Question posted — the seller will be notified");
+    toast.success("Question posted â€” the seller will be notified");
     setText(""); setOpen(false); load();
   };
 
@@ -70,7 +70,7 @@ export default function QAndASection({ productId }: { productId: string }) {
       <div className="flex min-h-11 items-center justify-between gap-3">
         <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] flex items-center gap-1.5">
           <MessageCircleQuestion className="h-4.5 w-4.5 text-[#F6C75D]" /> Questions & Answers
-          {questions.length > 0 && <span className="text-xs font-normal text-[#888880] ml-1">({questions.length})</span>}
+          {questions.length > 0 && <span className="text-xs font-normal text-[#6E6C64] ml-1">({questions.length})</span>}
         </h2>
         <button onClick={() => setOpen(true)} className="flex min-h-11 items-center gap-1.5 rounded-full bg-[#111111] px-4 text-xs font-bold text-white transition-colors hover:bg-[#2A2A2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#111111] focus-visible:ring-offset-2 dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-[#EAE0D8] dark:focus-visible:ring-[#FAF5F2]">
           <MessageCircle className="h-3.5 w-3.5" /> Ask a Question
@@ -78,24 +78,24 @@ export default function QAndASection({ productId }: { productId: string }) {
       </div>
 
       {loading ? <div className="mt-3 h-12 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /> : questions.length === 0 ? (
-        <div className="py-2 text-[#888880]">
-          <p className="text-xs">No questions yet — be the first to ask about this product.</p>
+        <div className="py-2 text-[#6E6C64]">
+          <p className="text-xs">No questions yet â€” be the first to ask about this product.</p>
         </div>
       ) : (
         <div className="space-y-4">
           {questions.slice(0, showAllQuestions ? undefined : 2).map(q => (
             <div key={q.id} className="border-b border-[#E8E8E8] pb-4 last:border-0 dark:border-[#222222]">
               <div className="text-xs text-[#111111] dark:text-[#FAF5F2] font-bold whitespace-pre-wrap leading-relaxed">Q: {q.question}</div>
-              <div className="mt-2 text-[10px] font-semibold text-[#888880]">
-                {maskName(q.asker_name)} · {new Date(q.created_at).toLocaleDateString()}
+              <div className="mt-2 text-[10px] font-semibold text-[#6E6C64]">
+                {maskName(q.asker_name)} Â· {new Date(q.created_at).toLocaleDateString()}
               </div>
               {q.answer ? (
                 <div className="mt-4 rounded-xl bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#2A2A2A] p-4">
                   <div className="text-[10px] font-bold text-[#F6C75D] uppercase tracking-wider mb-2">A: Seller Reply</div>
-                  <div className="text-xs text-[#888880] whitespace-pre-wrap leading-relaxed">{q.answer.body}</div>
+                  <div className="text-xs text-[#6E6C64] whitespace-pre-wrap leading-relaxed">{q.answer.body}</div>
                 </div>
               ) : (
-                <span className="mt-4 inline-block rounded-full bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#2A2A2A] text-[#888880] text-[10px] font-semibold px-3 py-1">
+                <span className="mt-4 inline-block rounded-full bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#2A2A2A] text-[#6E6C64] text-[10px] font-semibold px-3 py-1">
                   Awaiting answer
                 </span>
               )}
@@ -121,11 +121,11 @@ export default function QAndASection({ productId }: { productId: string }) {
               rows={4} 
               value={text} 
               onChange={e => setText(e.target.value)} 
-              placeholder="Ask the seller anything about this product…" 
+              placeholder="Ask the seller anything about this productâ€¦" 
               className="w-full mb-4 p-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs text-[#111111] dark:text-[#FAF5F2] outline-none resize-none"
             />
             <button onClick={submit} disabled={submitting} className="w-full flex items-center justify-center gap-1.5 px-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50">
-              {submitting ? "Posting…" : "Post Question"}
+              {submitting ? "Postingâ€¦" : "Post Question"}
             </button>
           </div>
         </DialogContent>

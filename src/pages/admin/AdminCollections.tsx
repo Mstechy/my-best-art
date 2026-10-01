@@ -362,8 +362,8 @@ export default function AdminCollections() {
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    /{collection.slug} · placement: {collection.placement}
-                    {collection.product_count > 0 && ` · ${collection.product_count} products`}
+                    /{collection.slug} Â· placement: {collection.placement}
+                    {collection.product_count > 0 && ` Â· ${collection.product_count} products`}
                   </p>
                 </div>
                 <Badge variant={collection.status === "active" ? "default" : "secondary"}>
@@ -438,7 +438,7 @@ export default function AdminCollections() {
                     className={`rounded-full px-3 py-1 text-xs font-medium border transition ${
                       form.selectedPlacements.includes(p)
                         ? "bg-[#111111] text-white border-[#111111] dark:bg-[#FAF5F2] dark:text-[#111111]"
-                        : "bg-white text-[#888880] border-[#E8E8E8] hover:border-[#111111] dark:bg-[#1A1A1A] dark:border-[#333333]"
+                        : "bg-white text-[#6E6C64] border-[#E8E8E8] hover:border-[#111111] dark:bg-[#1A1A1A] dark:border-[#333333]"
                     }`}>
                     {p.replace(/_/g, " ")}
                   </button>
@@ -547,14 +547,14 @@ export default function AdminCollections() {
 
               {form.hero_enabled && (
                 <div className="grid gap-4 sm:grid-cols-3 pl-7">
-                  <p className="sm:col-span-3 text-xs text-muted-foreground">Hero slides require an uploaded banner and an Active status. “Hero slider” placement is not required.</p>
+                  <p className="sm:col-span-3 text-xs text-muted-foreground">Hero slides require an uploaded banner and an Active status. â€œHero sliderâ€ placement is not required.</p>
                   <label className="grid gap-1.5 text-sm font-medium">
                     Hero Order
                     <Input type="number" value={form.hero_order}
                       onChange={e => updateForm("hero_order", e.target.value)} />
                   </label>
                   <label className="grid gap-1.5 text-sm font-medium">
-                    Overlay Opacity (0–1)
+                    Overlay Opacity (0â€“1)
                     <Input type="number" min="0" max="1" step="0.05" value={form.hero_overlay_opacity}
                       onChange={e => updateForm("hero_overlay_opacity", e.target.value)} />
                   </label>
@@ -629,7 +629,7 @@ export default function AdminCollections() {
             <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={save} disabled={saving || uploadingBanner}>
-                {saving ? "Saving…" : uploadingBanner ? "Uploading banner…" : editing ? "Update collection" : "Save collection"}
+                {saving ? "Savingâ€¦" : uploadingBanner ? "Uploading bannerâ€¦" : editing ? "Update collection" : "Save collection"}
               </Button>
             </div>
           </div>

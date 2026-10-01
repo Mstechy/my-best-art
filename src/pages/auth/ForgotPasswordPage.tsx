@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
         {/* Back link */}
         <Link
           to="/auth/login"
-          className="inline-flex items-center gap-1.5 mb-6 text-xs font-medium text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+          className="inline-flex items-center gap-1.5 mb-6 text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Back to sign in
@@ -72,13 +72,13 @@ export default function ForgotPasswordPage() {
               <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight text-center">
                 Forgot your password?
               </h1>
-              <p className="mt-2 text-xs text-[#888880] dark:text-[#A0A0A0] text-center leading-relaxed">
+              <p className="mt-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0] text-center leading-relaxed">
                 Enter your email address and we'll send you a secure reset link.
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#888880] dark:text-[#A0A0A0]">
+                  <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
                     Email address
                   </label>
                   <input
@@ -99,7 +99,7 @@ export default function ForgotPasswordPage() {
                   className="mt-2 w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   {submitting ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Sending…</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Sendingâ€¦</>
                   ) : (
                     <><Mail className="h-3.5 w-3.5" /> Send Reset Link</>
                   )}
@@ -121,7 +121,7 @@ export default function ForgotPasswordPage() {
                 <h2 className="text-xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
                   Check your inbox
                 </h2>
-                <p className="mt-2 text-xs text-[#888880] dark:text-[#A0A0A0] leading-relaxed px-2">
+                <p className="mt-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed px-2">
                   We sent a reset link to{" "}
                   <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{email}</span>.
                   The link expires in 24 hours.
@@ -138,7 +138,7 @@ export default function ForgotPasswordPage() {
                     <span className="flex-shrink-0 h-5 w-5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[9px] font-bold flex items-center justify-center">
                       {i + 1}
                     </span>
-                    <span className="text-xs text-[#888880] dark:text-[#A0A0A0]">{step}</span>
+                    <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{step}</span>
                   </div>
                 ))}
               </div>
@@ -153,7 +153,7 @@ export default function ForgotPasswordPage() {
               <button
                 type="button"
                 onClick={() => { setSent(false); setEmail(""); }}
-                className="text-[10px] text-[#888880] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline transition-colors mt-1"
+                className="text-[10px] text-[#6E6C64] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline transition-colors mt-1"
               >
                 Didn't receive it? Try a different email
               </button>
@@ -164,10 +164,10 @@ export default function ForgotPasswordPage() {
             <>
               <div className="mt-7 flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
-                <span className="text-[10px] text-[#888880] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
+                <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
                 <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
               </div>
-              <p className="mt-5 text-center text-xs text-[#888880] dark:text-[#A0A0A0]">
+              <p className="mt-5 text-center text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
                 Remember your password?{" "}
                 <Link to="/auth/login" className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline">
                   Sign in
@@ -179,7 +179,7 @@ export default function ForgotPasswordPage() {
 
         <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
           Need help?{" "}
-          <a href="mailto:support@tradibu.com" className="underline hover:text-[#888880]">
+          <a href="mailto:support@tradibu.com" className="underline hover:text-[#6E6C64]">
             Contact support
           </a>
         </p>

@@ -104,7 +104,7 @@ function ModalWrapper({ isOpen, onClose, title, children }: { isOpen: boolean; o
       <div className="relative bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] w-full max-w-sm overflow-hidden shadow-2xl z-10">
         <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#F2F3F5] dark:border-[#222222]">
           <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] uppercase tracking-wider">{title}</h3>
-          <button onClick={onClose} className="text-[#888880] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors" aria-label={t("common.close")}><X className="h-4 w-4" /></button>
+          <button onClick={onClose} className="text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors" aria-label={t("common.close")}><X className="h-4 w-4" /></button>
         </div>
         <div className="p-6">{children}</div>
       </div>
@@ -142,7 +142,7 @@ function MarketplaceProductImpressionCard({
             <ProductImage src={primaryImage} alt={product.title} className="group-hover:scale-105" loading="lazy" />
           ) : (
             <div className="flex h-full items-center justify-center">
-              <Package className="h-6 w-6 text-[#888880]" />
+              <Package className="h-6 w-6 text-[#6E6C64]" />
             </div>
           )}
           {discount ? (
@@ -156,15 +156,15 @@ function MarketplaceProductImpressionCard({
           <div className="mt-2 flex items-center justify-between gap-2">
             <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
             {product.compare_at_price && product.compare_at_price > product.price ? (
-              <span className="text-[10px] text-[#888880] line-through">{formatPrice(product.compare_at_price)}</span>
+              <span className="text-[10px] text-[#6E6C64] line-through">{formatPrice(product.compare_at_price)}</span>
             ) : null}
           </div>
-          <p className="mt-2 text-[10px] text-[#888880] dark:text-[#A0A0A0] truncate">{seller?.full_name || t("marketplace.seller")}</p>
+          <p className="mt-2 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] truncate">{seller?.full_name || t("marketplace.seller")}</p>
           {product.average_rating > 0 && (
             <div className="mt-2 flex items-center gap-1 text-[10px] text-[#111111] dark:text-[#FAF5F2]">
               <Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />
               <span className="font-semibold">{product.average_rating.toFixed(1)}</span>
-              <span className="text-[#888880] dark:text-[#A0A0A0]">({product.review_count})</span>
+              <span className="text-[#6E6C64] dark:text-[#A0A0A0]">({product.review_count})</span>
             </div>
           )}
         </div>
@@ -558,7 +558,7 @@ export default function MarketplacePage() {
           <div className="flex-1 min-w-0">
             <AnimatedSection variant="fade-up">
               {selectedCategoryRecord && (
-                <nav aria-label={t("marketplace.breadcrumbAria") || "Breadcrumb"} className="mb-2 text-xs text-[#888880]">
+                <nav aria-label={t("marketplace.breadcrumbAria") || "Breadcrumb"} className="mb-2 text-xs text-[#6E6C64]">
                   <Link to="/" className="hover:underline">{t("marketplace.breadcrumbHome")}</Link>
                   <span className="mx-2">/</span>
                   <Link to="/categories" className="hover:underline">{t("marketplace.breadcrumbCategories")}</Link>
@@ -569,7 +569,7 @@ export default function MarketplacePage() {
               <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">
                 {selectedCategoryRecord?.name || t("marketplace.title")}
               </h1>
-              <p className="text-[13px] text-[#888880] dark:text-[#A0A0A0] mb-4">
+              <p className="text-[13px] text-[#6E6C64] dark:text-[#A0A0A0] mb-4">
                 {isVisualSearch
                   ? (filtered.length > 0 ? t("marketplace.imageSearchActive") : t("marketplace.imageSearchFallback"))
                   : selectedCategoryRecord
@@ -583,7 +583,7 @@ export default function MarketplacePage() {
                         <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("marketplace.promotion")}</span>
                     <span className="text-[#111111] dark:text-[#FAF5F2]">{promo.label}</span>
                   </div>
-                  <button onClick={clearPromo} aria-label={t("marketplace.clearPromotion")} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#888880] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
+                  <button onClick={clearPromo} aria-label={t("marketplace.clearPromotion")} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
                     <X className="h-4 w-4" />
                   </button>
                 </div>
@@ -627,14 +627,14 @@ export default function MarketplacePage() {
                   </SelectContent>
                 </Select>
                 <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-[#888880] dark:text-[#A0A0A0]" />
-                  <span className="text-xs font-semibold text-[#888880] dark:text-[#A0A0A0]">{t("marketplace.shipsToLabel")}</span>
+                  <Globe className="h-4 w-4 text-[#6E6C64] dark:text-[#A0A0A0]" />
+                  <span className="text-xs font-semibold text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.shipsToLabel")}</span>
                   <button onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
                     className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none">
-                    <span>{shipsTo === "all" ? `${t("marketplace.anywhere")} 🌍` : countryName(shipsTo)}</span>
+                    <span>{shipsTo === "all" ? `${t("marketplace.anywhere")} ðŸŒ` : countryName(shipsTo)}</span>
                   </button>
                 </div>
-                <span className="text-xs text-[#888880] dark:text-[#A0A0A0] ml-auto">
+                <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] ml-auto">
                   {t("marketplace.pricesShownIn")}{" "}
                   <button onClick={() => setIsCurrencyOpen(true)} className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none">
                     {currency.code} ({currency.symbol})
@@ -677,11 +677,11 @@ export default function MarketplacePage() {
                 </div>
               ) : displayedProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center select-none">
-                  <Package className="h-16 w-16 text-[#888880]/30 dark:text-[#A0A0A0]/30 mb-4" />
+                  <Package className="h-16 w-16 text-[#6E6C64]/30 dark:text-[#A0A0A0]/30 mb-4" />
                   <h3 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
                     {search || selectedCategory ? t("marketplace.noProductsMatch") : t("marketplace.noProductsListed")}
                   </h3>
-                  <p className="mt-2 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-sm">
+                  <p className="mt-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0] max-w-sm">
                     {search || selectedCategory ? t("marketplace.tryDifferentSearchTerms") : t("marketplace.productsWillAppear")}
                   </p>
                 </div>
@@ -733,10 +733,10 @@ export default function MarketplacePage() {
           <div className="text-center space-y-4 select-none">
             <div className="mx-auto h-12 w-12 rounded-full bg-[#FAF5F2] dark:bg-[#2A2A2D] flex items-center justify-center text-[#F6C75D]"><Globe className="h-6 w-6" /></div>
             <div className="space-y-1">
-              <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">{t("marketplace.destinationDetected")}</p>
+              <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.destinationDetected")}</p>
               <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{shipsTo === "all" ? t("marketplace.anywhere") : countryName(shipsTo)}</p>
             </div>
-            <p className="text-xs text-[#888880] dark:text-[#A0A0A0] px-2 leading-relaxed">{t("marketplace.changeDeliveryLocation")}</p>
+            <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] px-2 leading-relaxed">{t("marketplace.changeDeliveryLocation")}</p>
             <div className="pt-2 space-y-2">
               <button onClick={() => setIsLocationConfirmScreen(false)} className="w-full bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200">{t("marketplace.yesChangeLocation")}</button>
               <button onClick={() => setIsLocationOpen(false)} className="w-full bg-transparent border border-[#C8C8C0] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200">{t("marketplace.noKeepLocation")}</button>
@@ -745,8 +745,8 @@ export default function MarketplacePage() {
         ) : (
           <div className="space-y-4 select-none">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#888880] dark:text-[#A0A0A0]">{t("marketplace.selectDestination")}</span>
-              <button onClick={() => setIsLocationConfirmScreen(true)} className="text-[10px] font-semibold text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline">← {t("common.back")}</button>
+              <span className="text-xs font-bold text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.selectDestination")}</span>
+              <button onClick={() => setIsLocationConfirmScreen(true)} className="text-[10px] font-semibold text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline">â† {t("common.back")}</button>
             </div>
             <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
               <button onClick={() => { setCountry(null); setIsLocationOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${shipsTo === "all" ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"}`}><span>{t("marketplace.anywhere")}</span>{shipsTo === "all" && <CheckCircle2 className="h-3.5 w-3.5" />}</button>
@@ -762,11 +762,11 @@ export default function MarketplacePage() {
       </ModalWrapper>
       <ModalWrapper isOpen={isCurrencyOpen} onClose={() => setIsCurrencyOpen(false)} title={t("marketplace.preferredCurrency")}>
         <div className="space-y-4 select-none">
-          <p className="text-xs text-[#888880] dark:text-[#A0A0A0]">{t("marketplace.chooseYourPreferredCurrency")}</p>
+          <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.chooseYourPreferredCurrency")}</p>
           <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-1">
             {Object.entries(currencies).map(([code, info]) => {
               const isActive = currency.code === code;
-              const FLAGS: Record<string, string> = { USD: "🇺🇸", GBP: "🇬🇧", EUR: "🇪🇺", CAD: "🇨🇦", AUD: "🇦🇺", NGN: "🇳🇬", ZAR: "🇿🇦", KES: "🇰🇪", GHS: "🇬🇭" };
+              const FLAGS: Record<string, string> = { USD: "ðŸ‡ºðŸ‡¸", GBP: "ðŸ‡¬ðŸ‡§", EUR: "ðŸ‡ªðŸ‡º", CAD: "ðŸ‡¨ðŸ‡¦", AUD: "ðŸ‡¦ðŸ‡º", NGN: "ðŸ‡³ðŸ‡¬", ZAR: "ðŸ‡¿ðŸ‡¦", KES: "ðŸ‡°ðŸ‡ª", GHS: "ðŸ‡¬ðŸ‡­" };
               return (
                 <button key={code} onClick={() => { setCurrencyCode(code); setIsCurrencyOpen(false); }} className={`p-3 rounded-xl border text-left transition-all duration-200 flex flex-col justify-between h-[76px] ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] border-transparent text-white dark:text-[#111111] shadow-md" : "bg-[#FAFAFA] dark:bg-[#151515] border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] hover:border-[#C8C8C0] dark:hover:border-[#333333]"}`}>
                   <div className="flex items-center justify-between w-full"><span className="text-sm">{FLAGS[code] || info.symbol}</span><span className="text-[10px] font-bold tracking-wider opacity-70">{code}</span></div>

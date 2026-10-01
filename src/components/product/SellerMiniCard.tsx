@@ -30,7 +30,7 @@ export default function SellerMiniCard({ sellerId, name, avatarUrl, isVerified, 
               <span className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">{name || "Store Seller"}</span>
               {isVerified && <button type="button" onClick={onVerifiedClick} className="shrink-0 rounded-full text-[#22C55E] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D]" aria-label="Learn about seller verification"><CheckCircle2 className="h-3.5 w-3.5" /></button>}
             </div>
-            <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#888880] flex-wrap">
+            <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#6E6C64] flex-wrap">
               {typeof rating === "number" && rating > 0 && (
                 <span className="flex items-center gap-0.5">
                   <Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />

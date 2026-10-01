@@ -131,7 +131,7 @@ export default function BuyerWishlist() {
             )}
             {outOfStock && (
               <div className="absolute inset-0 bg-white/60 dark:bg-black/60 flex items-center justify-center">
-                <span className="text-[10px] font-bold text-[#888880] dark:text-[#A0A0A0] uppercase tracking-wider">Out of stock</span>
+                <span className="text-[10px] font-bold text-[#6E6C64] dark:text-[#A0A0A0] uppercase tracking-wider">Out of stock</span>
               </div>
             )}
           </div>
@@ -143,7 +143,7 @@ export default function BuyerWishlist() {
           <div className="flex items-center gap-2 mt-1.5">
             <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(item.product.price)}</span>
             {item.product.compare_at_price && item.product.compare_at_price > item.product.price && (
-              <span className="text-[10px] text-[#888880] dark:text-[#A0A0A0] line-through">{formatPrice(item.product.compare_at_price)}</span>
+              <span className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] line-through">{formatPrice(item.product.compare_at_price)}</span>
             )}
           </div>
           <div className="flex gap-2 mt-3">
@@ -167,7 +167,7 @@ export default function BuyerWishlist() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">My Wishlist</h1>
-            <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0]">{items.length} item{items.length !== 1 ? "s" : ""}</p>
+            <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{items.length} item{items.length !== 1 ? "s" : ""}</p>
           </div>
           {items.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
@@ -177,15 +177,15 @@ export default function BuyerWishlist() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">Newest</SelectItem>
-                  <SelectItem value="price_asc">Price: Low → High</SelectItem>
-                  <SelectItem value="price_desc">Price: High → Low</SelectItem>
+                  <SelectItem value="price_asc">Price: Low â†’ High</SelectItem>
+                  <SelectItem value="price_desc">Price: High â†’ Low</SelectItem>
                 </SelectContent>
               </Select>
               <button onClick={() => setGroupByCategory(g => !g)}
                 className={`flex items-center gap-1.5 px-3 py-2 rounded-full border text-[10px] font-bold transition-colors ${
                   groupByCategory
                     ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-[#111111] dark:border-[#FAF5F2]"
-                    : "border-[#E8E8E8] dark:border-[#222222] text-[#888880] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A]"
+                    : "border-[#E8E8E8] dark:border-[#222222] text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A]"
                 }`}>
                 <Layers className="h-3 w-3" /> Group
               </button>
@@ -193,7 +193,7 @@ export default function BuyerWishlist() {
                 className="flex items-center gap-1.5 px-3 py-2 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[10px] font-bold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors">
                 <Share2 className="h-3 w-3" /> Share
               </button>
-              <label className="flex items-center gap-2 text-[10px] font-semibold text-[#888880] dark:text-[#A0A0A0] cursor-pointer">
+              <label className="flex items-center gap-2 text-[10px] font-semibold text-[#6E6C64] dark:text-[#A0A0A0] cursor-pointer">
                 <Switch checked={isPublic} onCheckedChange={togglePublic} /> Public
               </label>
             </div>
@@ -204,17 +204,17 @@ export default function BuyerWishlist() {
       <AnimatedSection variant="fade-up" delay={80}>
         {loading ? (
           <div className="flex justify-center py-16">
-            <Loader2 className="h-5 w-5 animate-spin text-[#888880]" />
+            <Loader2 className="h-5 w-5 animate-spin text-[#6E6C64]" />
           </div>
         ) : items.length === 0 ? (
           <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] py-16">
             <div className="flex flex-col items-center justify-center text-center gap-3">
               <div className="h-14 w-14 rounded-2xl bg-[#F2F3F5] dark:bg-[#111111] flex items-center justify-center">
-                <Heart className="h-6 w-6 text-[#888880] dark:text-[#A0A0A0]" />
+                <Heart className="h-6 w-6 text-[#6E6C64] dark:text-[#A0A0A0]" />
               </div>
               <div>
                 <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Your wishlist is empty</p>
-                <p className="mt-1 text-xs text-[#888880] dark:text-[#A0A0A0] max-w-xs">Browse the marketplace and tap the heart icon to save products you love.</p>
+                <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0] max-w-xs">Browse the marketplace and tap the heart icon to save products you love.</p>
               </div>
               <Link to="/marketplace">
                 <button className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-semibold hover:bg-[#2A2A2A] transition-colors">
@@ -229,7 +229,7 @@ export default function BuyerWishlist() {
               <div key={catId}>
                 <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">
                   {categoryNames[catId] || "Uncategorized"}
-                  <span className="ml-2 text-[#888880] dark:text-[#A0A0A0] font-normal text-xs">({list.length})</span>
+                  <span className="ml-2 text-[#6E6C64] dark:text-[#A0A0A0] font-normal text-xs">({list.length})</span>
                 </h2>
                 <div className="grid gap-4 grid-cols-2 lg:grid-cols-3">{list.map(renderItem)}</div>
               </div>

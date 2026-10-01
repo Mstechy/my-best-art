@@ -94,7 +94,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
 
-      {/* Sidebar — always fixed, never scrolls with page */}
+      {/* Sidebar â€” always fixed, never scrolls with page */}
       <aside
         id="dashboard-sidebar"
         aria-label="Dashboard navigation"
@@ -113,7 +113,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <button
             onClick={() => setSidebarOpen(false)}
             aria-label="Close dashboard navigation"
-            className="lg:hidden text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+            className="lg:hidden text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -140,7 +140,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ${
                   isActive
                     ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                    : "text-[#888880] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+                    : "text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
                 }`}
               >
                 {isActive && (
@@ -172,11 +172,11 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                   <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate leading-tight">
                     {profile?.full_name || "User"}
                   </p>
-                  <p className="text-[9px] text-[#888880] dark:text-[#A0A0A0] truncate leading-tight">
+                  <p className="text-[9px] text-[#6E6C64] dark:text-[#A0A0A0] truncate leading-tight">
                     {profile?.email}
                   </p>
                 </div>
-                <ChevronDown className="h-3 w-3 text-[#888880] shrink-0" />
+                <ChevronDown className="h-3 w-3 text-[#6E6C64] shrink-0" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52 bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222]">
@@ -206,7 +206,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* Main content — offset by sidebar width on desktop */}
+      {/* Main content â€” offset by sidebar width on desktop */}
       <div className="flex flex-1 flex-col min-w-0 lg:pl-60">
         {/* Header */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#E8E8E8] dark:border-[#1A1A1A] bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md px-4 lg:px-6">
@@ -215,7 +215,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             aria-label="Open dashboard navigation"
             aria-controls="dashboard-sidebar"
             aria-expanded={sidebarOpen}
-            className="lg:hidden text-[#888880] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+            className="lg:hidden text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
           >
             <Menu className="h-5 w-5" />
           </button>

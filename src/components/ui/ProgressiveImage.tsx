@@ -155,7 +155,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-[#F2F3F5] dark:bg-[#202020]">
           <svg
-            className="w-8 h-8 text-[#888880]"
+            className="w-8 h-8 text-[#6E6C64]"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

@@ -139,7 +139,7 @@ export default function LandingPage() {
   const visibleCategories = useMemo(() => populatedCategories.slice(0, 8), [populatedCategories]);
   const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
 
-  // ── Home feed: masonry ───────────────────────────────────────────────────
+  // â”€â”€ Home feed: masonry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Returning from a product page re-renders the feed from the IndexedDB cache and
   // puts the shopper back where they were, instead of at the top of a page they had
   // already read past.
@@ -251,7 +251,7 @@ export default function LandingPage() {
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="flex flex-col pb-8">
-      {/* Hero area â€” 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
+      {/* Hero area Ã¢â‚¬â€ 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
       {/* Single H1 for the page. Visually hidden so the hero design is untouched,
           but present for crawlers and screen readers (the hero artwork already
           states the value proposition visually). */}
@@ -311,7 +311,7 @@ export default function LandingPage() {
         </Container>
       </div>
 
-      {/* Flash Deal Rail â€” real countdowns from flash_deal_end_at */}
+      {/* Flash Deal Rail Ã¢â‚¬â€ real countdowns from flash_deal_end_at */}
       {(loading || feeds.flash_deals.length > 0) && (
         // content-visibility lets the browser skip laying out and painting this
         // rail until it nears the viewport, which is where the audit's ~1.1s of
@@ -349,7 +349,7 @@ export default function LandingPage() {
                       <ProductImage src={image} alt={product.title} className="group-hover:scale-105" loading="lazy" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
-                        <Package className="h-8 w-8 text-[#888880]" />
+                        <Package className="h-8 w-8 text-[#6E6C64]" />
                       </div>
                     )}
                     {discount && (
