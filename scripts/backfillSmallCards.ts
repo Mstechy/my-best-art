@@ -39,9 +39,18 @@ import sharp from "sharp";
 
 import { fetchRows, patchRows, readSupabaseConfig, type ResolvedSupabase } from "./supabaseRest.ts";
 
-/** Mirrors SMALL_CARD_SIZE / SMALL_CARD_QUALITY / CARD_MIME_TYPE in src/lib/productImages.ts. */
+/**
+ * Mirrors SMALL_CARD_SIZE / SMALL_CARD_QUALITY / CARD_MIME_TYPE in
+ * src/lib/productImages.ts.
+ *
+ * Watch the quality unit. The browser encodes with `canvas.toBlob`, which takes a
+ * float from 0 to 1, so productImages.ts spells the same 72% quality as `0.72`.
+ * sharp takes an INTEGER from 1 to 100 and rejects 0.72 outright. The two are the
+ * same intent in different units, so the number below is 72 and NOT 0.72 - copy
+ * it as-is, or the encoder throws and the whole backfill reports zero successes.
+ */
 const SMALL_CARD_SIZE = 320;
-const SMALL_CARD_QUALITY = 0.72;
+const SMALL_CARD_QUALITY = 72;
 const SMALL_CARD_MIME = "image/webp";
 
 /** How many rows are read per page. */
