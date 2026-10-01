@@ -13,6 +13,7 @@
     "typecheck:edge": "tsc --noEmit --noImplicitAny --target es2022 --lib es2022,dom,dom.iterable --module esnext --moduleResolution bundler --skipLibCheck supabase/functions/paystack/index.ts supabase/functions/send-offer/index.ts supabase/functions/respond-offer/index.ts supabase/functions/visual-product-search/index.ts",
     "backfill:image-dimensions": "node --experimental-strip-types scripts/backfillImageDimensions.ts",
     "backfill:small-cards": "node --experimental-strip-types scripts/backfillSmallCards.ts",
+    "backfill:card-widths": "node --experimental-strip-types scripts/backfillCardWidths.ts",
     "seed:masonry-fixtures": "node --experimental-strip-types scripts/seedMasonryFixtures.ts",
     "speed:check": "node scripts/speedCheck.mjs",
     "speed:mobile": "node scripts/speedCheck.mjs --label mobile --slow-4g",
