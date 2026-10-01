@@ -48,3 +48,7 @@ build_output.txt
 dev_start.txt
 
 dump_log.txt
+
+# Local TypeScript/debug scratch output - never belongs in the repo
+tsc_*.txt
+migration_list.txt
