@@ -1,5 +1,6 @@
 /**
- * Rewrite the `Cache-Control` header on existing product-image derivatives.
+ * Rewrite the `Cache-Control` header on existing product-image objects -
+ * the originals themselves and their `card-` / `card320-` derivatives.
  *
  * WHY THIS EXISTS
  * ---------------
@@ -15,11 +16,17 @@
  * Verified against the live bucket, versus the runtime upload path which omits
  * the option and therefore inherits Supabase's default:
  *
- *     original-*.jpeg    ->  public, max-age=3600     (1h, correct)
+ *     original-*.jpeg    ->  public, max-age=3600     (1h)
  *     card320-*.webp     ->  public, 31536000         (no directive, ignored)
  *
  * The practical cost was every grid image being re-fetched on every visit.
- * Lighthouse costed it at 224 KiB of repeat-visit transfer.
+ * Lighthouse costed it at 224 KiB of repeat-visit transfer. The first pass
+ * repaired only the derivatives and left `original-*` alone; a later audit then
+ * priced ONE homepage `original-*.jpeg` at 93 KiB of repeat-visit transfer,
+ * because its own header still said 1h. Originals are included from now on:
+ * their keys embed `Date.now()` at write time (`original-<epoch>-<stem>`) and
+ * are never overwritten in place, so a year-long lifetime is correct - and it
+ * stays revalidatable (not `immutable`) in case a key ever is rewritten.
  *
  * WHY NOT JUST RE-RUN THE BACKFILLS
  * ---------------------------------
@@ -51,12 +58,27 @@ import { fetchRows, readSupabaseConfig, type ResolvedSupabase } from "./supabase
 
 /** Must match the values the runtime and the backfills write. */
 const BUCKET = "product-images";
-const MIME = "image/webp";
+
+/**
+ * Content type for the re-upload, derived from the key's own extension.
+ * Derivatives are always WebP, but originals carry whatever the seller
+ * uploaded - re-uploading a `.jpeg` as `image/webp` would silently corrupt the
+ * object's stored MIME type for every future response.
+ */
+function mimeForKey(key: string): string {
+  const ext = key.slice(key.lastIndexOf(".") + 1).toLowerCase();
+  if (ext === "png") return "image/png";
+  if (ext === "webp") return "image/webp";
+  if (ext === "avif") return "image/avif";
+  if (ext === "gif") return "image/gif";
+  return "image/jpeg";
+}
 
 /**
  * A real directive. See the header comment: a bare number is silently ignored.
- * One year is safe here because every grid URL is keyed by the image's own UUID
- * and mtime, so a changed file cannot reuse an old key.
+ * One year is safe here because every key embeds the write-time timestamp (or,
+ * for the older rows, has only ever been written once), so a changed file
+ * cannot reuse an old key.
  */
 const CACHE_CONTROL = "max-age=31536000";
 
@@ -142,7 +164,7 @@ async function refreshOne(config: ResolvedSupabase, key: string, apply: boolean)
   try {
     const upload = await fetch(objectUrl, {
       method: "POST",
-      headers: { ...authHeaders, "Content-Type": MIME, "x-upsert": "true", "Cache-Control": CACHE_CONTROL },
+      headers: { ...authHeaders, "Content-Type": mimeForKey(key), "x-upsert": "true", "Cache-Control": CACHE_CONTROL },
       body: new Uint8Array(bytes),
     });
     if (!upload.ok) {
@@ -184,7 +206,11 @@ async function main() {
 
     const keys = rows.flatMap((row) => {
       const key = row.image_url ? storageKeyFromUrl(row.image_url) : null;
-      return key ? derivativeKeys(key) : [];
+      if (!key || !splitOriginal(key)) return [];
+      // The original itself first (this is the object a fallback or hero slide
+      // actually fetches, and the one the audit priced at 93 KiB), then every
+      // derivative name that can exist beside it.
+      return [key, ...derivativeKeys(key)];
     });
 
     await mapLimit(keys, CONCURRENCY, async (key) => {

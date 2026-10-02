@@ -169,6 +169,21 @@ export interface UploadedProductImage {
  * moment of upload, and the result is stored in the database rather than recomputed
  * per visitor.
  */
+/**
+ * One year, in seconds - the value storage-js wraps as `max-age=<value>`.
+ *
+ * Every key written here embeds `Date.now()` at upload time
+ * (`original-<epoch>-<stem>`, `card-<epoch>-<stem>`, `card320-<epoch>-<stem>`),
+ * so a changed file can never reuse an old key and a cached copy can never go
+ * stale. Supabase's default (`3600`) is what made Lighthouse price a single
+ * homepage `original-*.jpeg` at 93 KiB of repeat-visit transfer. Deliberately
+ * not `immutable`: a year-long, revalidatable copy stays correct even if a key
+ * is ever rewritten in place (the derivative recipe has been re-derived before).
+ *
+ * Must be seconds only - storage-js renders it as `max-age=${value}`.
+ */
+export const IMAGE_CACHE_CONTROL = "31536000";
+
 export async function uploadProductImagePair(file: File, basePath: string): Promise<UploadedProductImage> {
   const timestamp = Date.now();
   const stem = `${timestamp}-${safeFileStem(file.name)}`;
@@ -191,7 +206,7 @@ export async function uploadProductImagePair(file: File, basePath: string): Prom
 
   const { error: originalError } = await supabase.storage
     .from("product-images")
-    .upload(originalPath, file, { contentType: file.type || "image/jpeg", upsert: false });
+    .upload(originalPath, file, { contentType: file.type || "image/jpeg", cacheControl: IMAGE_CACHE_CONTROL, upsert: false });
 
   if (originalError) throw originalError;
 
@@ -199,7 +214,7 @@ export async function uploadProductImagePair(file: File, basePath: string): Prom
     const cardBlob = await createProductCardImage(file, CARD_SIZE, CARD_QUALITY, decoded);
     await supabase.storage
       .from("product-images")
-      .upload(cardPath, cardBlob, { contentType: CARD_MIME_TYPE, upsert: false });
+      .upload(cardPath, cardBlob, { contentType: CARD_MIME_TYPE, cacheControl: IMAGE_CACHE_CONTROL, upsert: false });
   } catch (error) {
     console.warn("Product card image optimization failed; original image will be used.", error);
   }
@@ -210,7 +225,7 @@ export async function uploadProductImagePair(file: File, basePath: string): Prom
     const smallBlob = await createProductCardImage(file, SMALL_CARD_SIZE, SMALL_CARD_QUALITY, decoded);
     const { error: smallError } = await supabase.storage
       .from("product-images")
-      .upload(cardSmallPath, smallBlob, { contentType: CARD_MIME_TYPE, upsert: false });
+      .upload(cardSmallPath, smallBlob, { contentType: CARD_MIME_TYPE, cacheControl: IMAGE_CACHE_CONTROL, upsert: false });
     if (smallError) {
       console.warn("Small card derivative failed; the grid will use the 900px asset.", smallError);
     } else {

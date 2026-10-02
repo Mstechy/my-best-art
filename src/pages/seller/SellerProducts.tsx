@@ -16,7 +16,7 @@ import { COUNTRIES, countryName } from "@/lib/countries";
 import { findCategoryConfig, findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos, getProductTypesForCategory, getRequiredFields, mergeCategoryAttributes } from "@/lib/categoryConfig";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
-import { uploadProductImagePair } from "@/lib/productImages";
+import { uploadProductImagePair, IMAGE_CACHE_CONTROL } from "@/lib/productImages";
 import { checkImageUpload, readImageDimensionsFromFile } from "@/lib/imageDimensions";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
@@ -1008,7 +1008,7 @@ export default function SellerProducts() {
           try {
             const ext = row.imageFile.name.split(".").pop();
             const filePath = `${user.id}/${productId}/variant_${row.key}_${Date.now()}.${ext}`;
-            const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, row.imageFile, { contentType: row.imageFile.type || "image/jpeg", cacheControl: "3600" });
+            const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, row.imageFile, { contentType: row.imageFile.type || "image/jpeg", cacheControl: IMAGE_CACHE_CONTROL });
             if (uploadError) throw uploadError;
             const { data: urlData } = supabase.storage.from("product-images").getPublicUrl(filePath);
             imageUrl = urlData.publicUrl;
@@ -1046,7 +1046,7 @@ export default function SellerProducts() {
           const filePath = `${user.id}/${productId}/desc_${Date.now()}_${i}.${ext}`;
           const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, item.file, {
             contentType: item.file.type || "image/jpeg",
-            cacheControl: "3600",
+            cacheControl: IMAGE_CACHE_CONTROL,
           });
           if (uploadError) throw uploadError;
           updateDescriptionImageState(item.id, { progress: 85 });
@@ -1109,7 +1109,7 @@ export default function SellerProducts() {
           const filePath = `${user.id}/${productId}/video_${Date.now()}_${i}.${ext}`;
           const { error: uploadError } = await supabase.storage.from("product-images").upload(filePath, item.file, {
             contentType: item.file.type || "video/mp4",
-            cacheControl: "3600",
+            cacheControl: IMAGE_CACHE_CONTROL,
           });
           if (uploadError) throw uploadError;
           updateVideoUploadState(item.id, { progress: 85 });
