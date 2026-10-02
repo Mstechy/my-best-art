@@ -3,6 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Preconnect hints FIRST in the head, before any resource the scanner could
+         want: a hint only pays off when the parser can start opening the socket
+         before anything needs it, and these two origins serve everything
+         cross-origin the first screen asks for - the Google Fonts stylesheet (and
+         the woff2 files behind it) and the Supabase API. When they sat further down
+         the head the field audit still found the fonts.googleapis.com connection
+         being created at request time. The Supabase REST calls go out with fetch()
+         in CORS mode, so `crossorigin` is required there or the socket opens
+         anonymously and the API call opens a second one; the fonts stylesheet is a
+         no-cors request and must NOT carry it, while fonts.gstatic.com does because
+         the font files themselves are fetched in CORS mode. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin="anonymous" />
     <!-- Critical shell styles prevent the browser's default body margin from
          showing during the first paint before the Vite stylesheet is ready. -->
     <style>
@@ -28,26 +42,32 @@
          the LCP image even started, which is exactly what Lighthouse flagged as
          "the LCP image request is not initiated by the HTML document".
 
-         HeroSlider picks its file with <source media="(max-width: 640px)">, which
-         carries no srcset and no sizes: at or below 640 CSS px it always serves
-         the 960x540 file, whatever the device pixel ratio. A single preload
-         declared as imagesrcset="...960w, ...1600w" + imagesizes="100vw" states a
-         DIFFERENT rule - it multiplies the viewport by the device pixel ratio, so
-         on a high-DPR phone it resolved to the 1600w file while the <picture> asked
-         for 960w. Two downloads, neither reused, and the LCP request stayed
-         attributed to the JS bundle instead of to this document.
+         Two media-keyed preloads copy the <source> media query verbatim
+         ("(max-width: 640px)" / "(min-width: 641px)"), so exactly one may fire. The
+         1px seam at (640, 641) holds no device, and its worst case is "no preload"
+         rather than the wrong one.
 
-         Two media-keyed preloads copy the <source> media query verbatim instead,
-         so there is no width/DPR negotiation left that can disagree: exactly one
-         may fire, and it names byte-for-byte the URL the <img> will use. The 1px
-         seam at (640, 641) holds no device, and its worst case is "no preload"
-         rather than the wrong one. -->
+         Inside the mobile band, imagesrcset mirrors the <source> srcset BYTE FOR
+         BYTE: density candidates ("...480x270.webp 1x, ...960x540.webp 2x") and no
+         sizes attribute, so both sides run the same selection over the same list
+         and must resolve to the same file - no viewport arithmetic is left that
+         can disagree. This is deliberately NOT width descriptors plus
+         imagesizes="100vw": that rule multiplies the viewport by the device pixel
+         ratio, so on a high-DPR phone it resolved to a different file than the
+         <picture> asked for and produced two downloads neither reused. The href
+         attribute stays as the fallback for UAs without imagesrcset support, where
+         any >=2x device still lands on the same 960x540 file.
+
+         The 480x270 candidate is what a 1x CSS-pixel viewport downloads: the
+         render Lighthouse measured as oversized at 26.6 KB, at about a third of
+         the bytes. -->
     <link
       rel="preload"
       as="image"
       type="image/webp"
       media="(max-width: 640px)"
       href="/images/electronics-products-960x540.webp"
+      imagesrcset="/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x"
       fetchpriority="high"
     />
     <link
@@ -58,16 +78,6 @@
       href="/images/electronics-products-1600x686.webp"
       fetchpriority="high"
     />
-    <!-- Preconnect to Supabase for API data used by the marketplace. The REST
-         calls go out with fetch(), which is a CORS request, so the connection
-         must be opened in CORS mode or it cannot be reused. Without
-         crossorigin the socket is opened anonymously, the API call opens a
-         second one, and the hint is wasted. -->
-    <link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin="anonymous" />
-    
-    <!-- Preconnect to Google Fonts for faster font loading -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!--
       Inter 800 is REQUIRED: the Tradibu design uses font-weight:800 for the
       logo, hero h1, section headings, price and badges. Without it the browser
@@ -87,9 +97,6 @@
       />
     </noscript>
     
-    <!-- DNS prefetch for likely external resources -->
-    <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
-    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     
     <meta
       name="description"

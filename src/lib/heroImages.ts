@@ -20,6 +20,16 @@ export const LEGACY_ELECTRONICS_HERO_URL =
 export type HeroImageSources = {
   src: string;
   mobileSrc?: string;
+  /**
+   * Density candidates for the mobile `<source>`, mirroring byte-for-byte the
+   * `imagesrcset` on the shell's media-keyed preload (see index.html). Both sides
+   * must state the SAME candidate list under the SAME media query: the preload
+   * scanner and the `<picture>` then run the same selection algorithm and always
+   * agree on one file - a phone at 1x CSS pixels gets the small 480x270 render
+   * (about a third of the bytes Lighthouse flagged as oversized), 2x and 3x devices
+   * keep the 960x540 file they get today.
+   */
+  mobileSrcSet?: string;
   width?: number;
   height?: number;
   mobileWidth?: number;
@@ -31,6 +41,7 @@ export function getHeroImageSources(src: string | null): HeroImageSources {
     return {
       src: "/images/electronics-products-1600x686.webp",
       mobileSrc: "/images/electronics-products-960x540.webp",
+      mobileSrcSet: "/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x",
       width: 1600,
       height: 686,
       mobileWidth: 960,

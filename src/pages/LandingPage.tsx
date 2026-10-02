@@ -2,6 +2,7 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Package, Zap, Clock, UserPlus, Flame, ArrowRight } from "lucide-react";
+import AfterFirstPaint from "@/components/AfterFirstPaint";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -247,7 +248,13 @@ export default function LandingPage() {
     [loading, railCards],
   );
 
-  return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-16">
+  // The bottom tab bar is fixed OVER the page and, below md, grows by the iOS
+  // home-indicator inset (`pb-[env(safe-area-inset-bottom)]` on the bar itself).
+  // A flat pb-16 (64px) covered the bar's ~58px of content but not the ~34px
+  // inset too, so on a modern iPhone the footer's last row sat behind the bar's
+  // safe-area padding. The reservation now mirrors the bar exactly: 4rem + inset
+  // below md, where the bar hides, back to the flat 4rem.
+  return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
     <MarketplaceNavbar categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
@@ -452,42 +459,62 @@ export default function LandingPage() {
           image height from the stored dimensions, the page height is already correct
           on the first paint. Only NEW items are ever placed, so nothing on screen
           moves when a page arrives. */}
-      <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
-        {visibleFeeds.map(feed => {
-          const isCatchAll = feed.key === CATCH_ALL_FEED;
-          const cards = isCatchAll ? catchAllCards : railCards.get(feed.key) ?? [];
-          // The rails are a fixed, complete set once the homepage data resolves; the
-          // catch-all stays on skeletons while EITHER source is still emptying out -
-          // otherwise the catch-all would flash its empty state for the moment
-          // between the homepage data arriving and its own first page landing.
-          const sectionLoading = isCatchAll
-            ? loading || (catchAllFeed.loading && cards.length === 0)
-            : loading;
-          return (
-            <section key={feed.key} className="mb-12">
-              <SectionHeader title={t(feed.titleKey)} subtitle={t(feed.subtitleKey)} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
-              <MasonryFeedGrid
-                label={t(feed.titleKey)}
-                items={cards}
-                getAspectRatio={getAspectRatio}
-                renderItem={renderFeedCard}
-                loading={sectionLoading}
-                skeletonCount={isCatchAll ? FEED_PAGE_SIZE : RAIL_FEED_SIZE}
-                loadingMore={isCatchAll ? catchAllFeed.loadingMore : false}
-                error={isCatchAll ? catchAllFeed.error : undefined}
-                onRetry={isCatchAll ? catchAllFeed.retry : undefined}
-                hasMore={isCatchAll ? catchAllFeed.hasMore : false}
-                onLoadMore={isCatchAll ? catchAllFeed.loadMore : undefined}
-                emptyState={
-                  <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#6E6C64] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#A0A0A0]">
-                    {t(feed.emptyKey)}
-                  </div>
-                }
-              />
-            </section>
-          );
-        })}
-      </Container>
+      {/* The below-the-fold rails and the catch-all feed are deferred past the first
+          paint, which is the house `AfterFirstPaint` contract applied to rendering
+          rather than to subscriptions.
+
+          This is web.dev's LCP guidance step 2 - "ensure the LCP element can render
+          as soon as its resource finishes loading" - and the hero IS this page's LCP
+          element. It was waiting on a single React commit that also built every
+          below-the-fold skeleton, so the element render delay was the whole commit,
+          not the image: measured on the Lighthouse mobile profile (390x844 @3x,
+          CPU 4x, Slow 4G) the hero file had arrived and still painted 1.16s after
+          FCP. Restricting the first commit to the above-the-fold shell lets the hero
+          paint IN that commit instead of after it.
+
+          `AfterFirstPaint` renders its children with NO wrapper element, so the
+          Container stays a direct child of `main` and `order-4` keeps its place in
+          the flex ordering. The mount waits for `load` plus two animation frames -
+          deliberately never a timer, which fires on schedule even while the thread
+          is busy - and a client-side navigation afterwards mounts immediately. */}
+      <AfterFirstPaint>
+        <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
+          {visibleFeeds.map(feed => {
+            const isCatchAll = feed.key === CATCH_ALL_FEED;
+            const cards = isCatchAll ? catchAllCards : railCards.get(feed.key) ?? [];
+            // The rails are a fixed, complete set once the homepage data resolves; the
+            // catch-all stays on skeletons while EITHER source is still emptying out -
+            // otherwise the catch-all would flash its empty state for the moment
+            // between the homepage data arriving and its own first page landing.
+            const sectionLoading = isCatchAll
+              ? loading || (catchAllFeed.loading && cards.length === 0)
+              : loading;
+            return (
+              <section key={feed.key} className="mb-12">
+                <SectionHeader title={t(feed.titleKey)} subtitle={t(feed.subtitleKey)} href={feed.href} linkLabel={t("common.viewAll")} className="mb-4" />
+                <MasonryFeedGrid
+                  label={t(feed.titleKey)}
+                  items={cards}
+                  getAspectRatio={getAspectRatio}
+                  renderItem={renderFeedCard}
+                  loading={sectionLoading}
+                  skeletonCount={isCatchAll ? FEED_PAGE_SIZE : RAIL_FEED_SIZE}
+                  loadingMore={isCatchAll ? catchAllFeed.loadingMore : false}
+                  error={isCatchAll ? catchAllFeed.error : undefined}
+                  onRetry={isCatchAll ? catchAllFeed.retry : undefined}
+                  hasMore={isCatchAll ? catchAllFeed.hasMore : false}
+                  onLoadMore={isCatchAll ? catchAllFeed.loadMore : undefined}
+                  emptyState={
+                    <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#6E6C64] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#A0A0A0]">
+                      {t(feed.emptyKey)}
+                    </div>
+                  }
+                />
+              </section>
+            );
+          })}
+        </Container>
+      </AfterFirstPaint>
     </main>
     <SiteFooter />
   </div>;

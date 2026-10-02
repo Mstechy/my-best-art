@@ -61,9 +61,12 @@ export default function CategoriesPage() {
     navigate(`/marketplace${search.trim() ? `?search=${encodeURIComponent(search.trim())}` : ""}`);
   };
 
-  // `pb-16`: BottomTabBar (hâ‰ˆ58) is fixed over the last viewport of every
-  // phone-width page; without this the footer's copyright row sat behind it.
-  return <div className="min-h-screen bg-[#FAFAFA] pb-16 text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
+  // BottomTabBar is fixed over the last viewport of every phone-width page and,
+  // below md, grows by the iOS home-indicator inset; without this the footer's
+  // copyright row sat behind it. 4rem covers the bar's own ~58px content, the
+  // env() adds the inset, and md: restores the flat 4rem the bar no longer needs
+  // (it is md:hidden). Same reservation as the LandingPage root.
+  return <div className="min-h-screen bg-[#FAFAFA] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-16">
     <MarketplaceNavbar showSearch={false} categories={populatedCategories.map((category) => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <main>

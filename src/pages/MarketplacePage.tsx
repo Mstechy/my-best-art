@@ -528,7 +528,7 @@ export default function MarketplacePage() {
   }, [displayedProducts, pageLoading]);
 
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-16">
+    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
       <MarketplaceNavbar
         search={search}
         onSearchChange={setSearch}

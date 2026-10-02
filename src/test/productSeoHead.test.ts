@@ -34,6 +34,7 @@ const SHELL = `<!doctype html>
       type="image/webp"
       media="(max-width: 640px)"
       href="/images/electronics-products-960x540.webp"
+      imagesrcset="/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x"
       fetchpriority="high"
     />
     <link

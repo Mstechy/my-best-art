@@ -44,7 +44,7 @@ export function HeroArtwork({
       {source.mobileSrc && (
         <source
           media="(max-width: 640px)"
-          srcSet={source.mobileSrc}
+          srcSet={source.mobileSrcSet ?? source.mobileSrc}
           width={source.mobileWidth}
           height={source.mobileHeight}
           type="image/webp"
