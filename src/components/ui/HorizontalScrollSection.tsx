@@ -53,11 +53,23 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
   const [autoScrollPaused, setAutoScrollPaused] = useState(false);
   const autoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const checkScrollRef = useRef<number | null>(null);
+
+  // Geometry reads are deferred to the next animation frame. Reading scrollLeft /
+  // scrollWidth / clientWidth synchronously inside the effect that follows a DOM
+  // write (mount, children swap, resize) forces the browser to lay out on the
+  // spot - the pattern Lighthouse reports as "forced reflow". One frame later the
+  // layout already exists to read, and coalescing through a single frame means
+  // any burst of scroll/resize/children events costs one read, not several.
   const checkScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    setCanScrollLeft(el.scrollLeft > 4);
-    setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+    if (checkScrollRef.current !== null) return;
+    checkScrollRef.current = requestAnimationFrame(() => {
+      checkScrollRef.current = null;
+      const el = scrollRef.current;
+      if (!el) return;
+      setCanScrollLeft(el.scrollLeft > 4);
+      setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+    });
   }, []);
 
   useEffect(() => {
@@ -69,6 +81,11 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
     return () => {
       el.removeEventListener("scroll", checkScroll);
       window.removeEventListener("resize", checkScroll);
+      // Never leave a frame pointing at an unmounted section.
+      if (checkScrollRef.current !== null) {
+        cancelAnimationFrame(checkScrollRef.current);
+        checkScrollRef.current = null;
+      }
     };
   }, [checkScroll, children]);
 

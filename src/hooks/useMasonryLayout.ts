@@ -199,7 +199,13 @@ export function useMasonryViewport(containerRef: React.RefObject<HTMLElement | n
       if (cw > 0) setContainerWidth(cw);
     };
 
-    measure();
+    // The FIRST measure is deferred one frame. Synchronously inside this effect
+    // it would read `clientWidth` in the same tick React finished writing DOM
+    // and styles, forcing a layout flush - Chrome attributed forced reflow to
+    // this hook's chunk on the homepage. One frame later the browser has already
+    // laid out, and until then `containerWidth === 0` falls back to the
+    // viewport-derived width, which is what the first paint used anyway.
+    const firstMeasure = requestAnimationFrame(() => measure());
     // Wrapped, not passed directly: `measure` takes an optional width for the
     // ResizeObserver path, which makes it incompatible with the event-listener
     // signature (`Event` is not assignable to `number`).
@@ -225,6 +231,7 @@ export function useMasonryViewport(containerRef: React.RefObject<HTMLElement | n
     return () => {
       window.removeEventListener("resize", onViewportChange);
       window.removeEventListener("orientationchange", onViewportChange);
+      cancelAnimationFrame(firstMeasure);
       observer?.disconnect();
     };
   }, [containerRef]);
