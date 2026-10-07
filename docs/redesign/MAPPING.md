@@ -27,7 +27,7 @@ Target file: `src/pages/LandingPage.tsx` → routed at `/` in `src/App.tsx:131`
 3. **Hero has ONE message and ONE CTA.** Current hero is an auto-rotating carousel of admin collections, which is fine, but the single-focus fallback ("Electronics, sorted by trust." + buyer-protection copy) is stronger than the current generic "campaigns appear here" placeholder.
 4. **Semantic landmarks + ARIA.** `role="search"`, `aria-label` on inputs/buttons, `aria-label="Categories"`, real `<header>/<main>/<nav>/<footer>`. Matches what `BottomTabBar` already does.
 5. **Sticky header intent** ("never scrolls away") is correct for a marketplace.
-6. **Trust framing** ("verified sellers", "buyer protection", "escrow") is a genuine differentiator — this is the right hook, not "cheap prices".
+6. **Trust framing** ("verified sellers", "buyer protection", "secure payments") is a genuine differentiator — this is the right hook, not "cheap prices".
 
 ---
 

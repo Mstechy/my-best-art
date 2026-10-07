@@ -369,7 +369,7 @@ export default function BuyerDashboard() {
             <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 space-y-3">
               <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Security & Protections</p>
               {[
-                { icon: Shield, label: "Escrow-held checkout protection" },
+                { icon: Shield, label: "Secure Paystack checkout protection" },
                 { icon: Star, label: "Independently verified sellers" },
                 { icon: Clock, label: "24/7 direct dispute mediation" }
               ].map(({ icon: Icon, label }) => (

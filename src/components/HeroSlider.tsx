@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
-import { getHeroImageSources } from "@/lib/heroImages";
+import { getHeroImageSources, DEFAULT_HERO_IMAGE_URL } from "@/lib/heroImages";
 
 interface HeroSliderProps {
   slides: EnhancedCollection[];
@@ -147,13 +147,21 @@ const HeroSlider = memo(function HeroSlider({
     }
   };
 
-  if (!slides.length) return null;
-
+  // `len === 0` is the pending state: the hero query has not resolved yet. The
+  // component still renders - see the pending stage inside the slides container -
+  // so the hero <img> enters the DOM in the FIRST React commit and is PATCHED in
+  // place when the slides arrive, rather than the whole slider being mounted
+  // later and repainting an identical box (which resets Largest Contentful Paint
+  // to the moment the query returned, ~1.3s after the bytes were already ready).
+  const pending = len === 0;
   const activeIndex = current < len ? current : 0;
-  const slide = slides[activeIndex];
-  const overlayOpacity = slide.hero_overlay_opacity ?? 0.45;
+  const slide = pending ? null : slides[activeIndex];
+  const overlayOpacity = slide?.hero_overlay_opacity ?? 0.45;
 
   return (
+    // The section stays decorative (aria-hidden) while pending: no slides, nothing
+    // for assistive tech to explore. Dropping the attribute when slides arrive is
+    // an attribute write, never a repaint.
     <section
       className="relative w-full overflow-hidden bg-[#111111]"
       onMouseEnter={() => setIsPaused(true)}
@@ -164,19 +172,64 @@ const HeroSlider = memo(function HeroSlider({
       role="region"
       aria-roledescription="carousel"
       aria-label="Featured collections"
+      aria-hidden={pending || undefined}
     >
       {/* Slides container */}
       <div
         className="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]"
         style={{ backgroundColor: "#1C1C1E" }}
       >
-        {slides.map((s, index) => {
+        {/* Pending stage: the hero query is still in flight, so slide 0 does not
+            exist yet - but the box still paints the default artwork (byte-for-
+            byte the file index.html preloads) behind the default overlay.
+
+            Same key ("lead"), same classes, same HeroArtwork props as slide 0
+            below. When the query resolves, React therefore PATCHES this div in
+            place instead of replacing the subtree: the <picture> and <img> nodes
+            survive with identical src/srcset for the seeded campaign (the legacy
+            banner URL resolves to the same preloaded webp via
+            getHeroImageSources), and an <img> whose attributes never change
+            never repaints - so the Largest Contentful Paint candidate painted at
+            first commit stays the final one. The old shape - a placeholder
+            <div> in LandingPage swapped for this slider - replaced those nodes
+            and repainted the identical box, which is why Lighthouse reported LCP
+            at the QUERY arrival instead of at first paint. */}
+        {/* ONE child slot for both states: the pending stage and the live slides
+            must come from the SAME expression, both as arrays, so React's children
+            normalization sees identical shapes and keys. Two separate slots
+            (`{pending && ...}` beside `{slides.map(...)}`) normalize differently
+            (element vs array), the keys never line up, and React REPLACES the
+            subtree on arrival - a fresh <img> repaints the identical box and
+            resets Largest Contentful Paint to the data. The node-identity contract
+            is pinned by src/test/heroLcpSwap.test.tsx. */}
+        {pending ? [
+          <div
+            key="lead"
+            className="absolute inset-0 transition-opacity duration-500 ease-in-out opacity-100"
+            aria-hidden="true"
+          >
+            <HeroArtwork
+              imageUrl={DEFAULT_HERO_IMAGE_URL}
+              alt=""
+              priority
+              imgClassName="h-full w-full object-cover opacity-100"
+            />
+            <div
+              className="absolute inset-0"
+              style={{
+                background: `linear-gradient(to right, rgba(0,0,0,${overlayOpacity + 0.2}) 0%, rgba(0,0,0,${overlayOpacity}) 50%, rgba(0,0,0,${overlayOpacity * 0.6}) 100%)`,
+              }}
+            />
+          </div>,
+        ] : slides.map((s, index) => {
           const isActive = index === activeIndex;
           const imageAlt = s.title || "Hero banner";
           const imageSource = getHeroImageSources(s.image_url);
+          // Slide 0 shares the pending stage's key so the swap from pending to
+          // live slides reconciles onto the SAME DOM node.
           return (
             <div
-              key={s.id}
+              key={index === 0 ? "lead" : s.id}
               className={`absolute inset-0 transition-opacity duration-500 ease-in-out ${
                 isActive ? "opacity-100" : "opacity-0 pointer-events-none"
               }`}

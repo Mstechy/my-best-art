@@ -1,8 +1,9 @@
 # Tradibu
 
 > Tradibu is a multi-vendor online marketplace. Independent sellers list products,
-> buyers browse by department, and every payment is held in secure escrow until
-> the order is delivered. Prices are shown in Nigerian naira (NGN).
+> buyers browse by department, and every payment is processed securely by
+> Paystack, Nigeria's trusted payment provider. Prices are shown in Nigerian
+> naira (NGN).
 
 ## What Tradibu does
 
@@ -10,7 +11,8 @@
   list in them.
 - Product pages carrying price, stock, seller identity, ratings and the
   destinations an order can ship to.
-- Checkout through secure escrow: funds are released only after delivery.
+- Checkout through Paystack, Nigeria's trusted payment provider, with
+  buyer protection on every order.
 - Buyer protection and an order history for every purchase.
 
 ## Main pages

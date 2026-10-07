@@ -20,7 +20,7 @@ interface SEOProps {
 
 const SITE_NAME = "Tradibu";
 const SITE_URL = "https://www.tradibu.com";
-const DEFAULT_DESCRIPTION = "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using secure escrow payments, buyer protection guarantees, and fast global delivery.";
+const DEFAULT_DESCRIPTION = "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using secure Paystack payments, buyer protection guarantees, and fast global delivery.";
 const DEFAULT_IMAGE = "/placeholder.svg";
 
 /** `id` of the structured-data script `useSEO` itself owns. Exported because the reconciliation tests assert against it. */
@@ -98,7 +98,7 @@ export function useSEO({
 
     // Basic meta tags
     setMeta("description", description);
-    setMeta("keywords", "marketplace, ecommerce, buy online, independent merchants, escrow payments, buyer protection");
+    setMeta("keywords", "marketplace, ecommerce, buy online, independent merchants, Paystack payments, buyer protection");
     setMeta("author", SITE_NAME);
     setMeta("robots", "index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1");
 

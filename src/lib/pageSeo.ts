@@ -224,7 +224,7 @@ export function isHomePath(path: string): boolean {
  * inherit it automatically and cannot drift from the page they alias.
  */
 export function legalFallbackDescription(fallbackTitle: string): string {
-  return `${fallbackTitle} from Tradibu, the marketplace with verified sellers, secure escrow payments, buyer protection and global delivery.`;
+  return `${fallbackTitle} from Tradibu, the marketplace with verified sellers, secure Paystack payments, buyer protection and global delivery.`;
 }
 
 /**
@@ -323,7 +323,7 @@ export function buildSellerSeo(input: { id: string; storeName: string }): PageSe
     title: input.storeName,
     description: buildPageDescription(
       null,
-      `Shop ${input.storeName} on Tradibu - verified seller with buyer protection, secure escrow payments and fast global delivery.`,
+      `Shop ${input.storeName} on Tradibu - verified seller with buyer protection, secure Paystack payments and fast global delivery.`,
     ),
   };
 }

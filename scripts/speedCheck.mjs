@@ -146,7 +146,7 @@ function killChrome(pid) {
  * Results are read back off a plain global.
  */
 const OBSERVER_SCRIPT = `
-window.__audit = { lcp: 0, lcpEl: '', cls: 0, longTasks: 0, longTaskMs: 0, shifts: [], tasks: [], forcedReflows: 0 };
+window.__audit = { lcp: 0, lcpEl: '', lcpHistory: [], cls: 0, longTasks: 0, longTaskMs: 0, shifts: [], tasks: [], forcedReflows: 0 };
 const A = window.__audit;
 // Chrome logs "Forced reflow" as a console warning when a layout property is read
 // after a write invalidated layout. Counting them turns that invisible cost into a
@@ -177,6 +177,14 @@ new PerformanceObserver((l) => {
   for (const e of es) {
     A.lcp = e.startTime;
     A.lcpEl = desc(e.element) + (e.url ? ' <- ' + String(e.url).slice(-40) : '');
+    // Every candidate, not just the winner: entry id is stable per SOURCE
+    // ELEMENT (a repaint of the same node repeats the id, a replacement changes
+    // it), so the history answers "did the LCP element repaint or get replaced?".
+    A.lcpHistory.push({
+      at: Math.round(e.startTime), id: e.id, size: Math.round(e.size),
+      load: Math.round(e.loadTime || 0), el: desc(e.element),
+      url: e.url ? String(e.url).slice(-40) : '',
+    });
   }
 }).observe({ type: 'largest-contentful-paint', buffered: true });
 new PerformanceObserver((l) => {
@@ -432,6 +440,11 @@ async function audit() {
     console.log(` Long tasks                 ${a.longTasks ?? 0} (${tbt} ms total)`);
     console.log(` Forced reflows detected   ${a.forcedReflows ?? 0}`);
     if (a.lcpEl) console.log(` LCP element                ${a.lcpEl}`);
+    if (a.lcpHistory && a.lcpHistory.length > 1) {
+      console.log('\n LCP entry history (same id = same element re-painted; new id = replaced):');
+      a.lcpHistory.forEach((h, i) =>
+        console.log(`   #${i + 1}  ${String(h.at).padStart(5)}ms  id=${h.id || '?'}  size=${h.size}  load=${h.load}ms  ${h.el}${h.url ? ' <- ' + h.url : ''}`));
+    }
     if (a.tasks?.length) {
       console.log('\n Long tasks (INP blockers), worst first:');
       a.tasks.slice().sort((x, y) => y.ms - x.ms).slice(0, 6)

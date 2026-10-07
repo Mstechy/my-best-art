@@ -53,14 +53,15 @@ export function getHeroImageSources(src: string | null): HeroImageSources {
 }
 
 /**
- * The artwork the landing page paints before `hero_collections` resolves.
+ * The artwork `HeroSlider`'s pending stage paints before `hero_collections`
+ * resolves, and the URL the shell already preloads (`index.html`).
  *
- * `HeroSlider` can only mount once the hero query returns, so the largest
- * contentful paint used to queue behind a Supabase round trip: Lighthouse
- * measured the image bytes ready at ~0.66s and still painted at ~3.39s, a 2.72s
- * Render Delay. This is byte-for-byte the URL the shell already preloads
- * (`index.html`), so painting it first costs no extra request and the element
- * that lands is identical to the one the slider renders for the primary
- * campaign.
+ * The slider mounts in the FIRST React commit with `slides=[]` and switches to
+ * the live slides by patching slide 0 in place (same key, same props), so this
+ * file is what the <img> shows from first paint through data arrival WITHOUT a
+ * repaint - which is what keeps Largest Contentful Paint tied to the first
+ * commit instead of to the query. It is byte-for-byte the preloaded file, and
+ * `getHeroImageSources` above resolves the seeded campaign to the same webp, so
+ * painting it first costs no extra request.
  */
 export const DEFAULT_HERO_IMAGE_URL = LEGACY_ELECTRONICS_HERO_URL;

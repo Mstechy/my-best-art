@@ -12,8 +12,7 @@ import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
 import { MasonryFeedGrid } from "@/components/product/MasonryFeedGrid";
-import HeroSlider, { HeroArtwork } from "@/components/HeroSlider";
-import { DEFAULT_HERO_IMAGE_URL } from "@/lib/heroImages";
+import HeroSlider from "@/components/HeroSlider";
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
@@ -276,31 +275,26 @@ export default function LandingPage() {
               />
             </div>
 
-            {/* Center: hero carousel */}
+            {/* Center: hero carousel.
+
+                ONE HeroSlider instance across both states: `slides=[]` while the
+                hero query is in flight (the slider paints its pending stage - the
+                default artwork index.html preloads, in the same box, behind the
+                same default overlay), live slides the moment they arrive.
+
+                The previous shape swapped a placeholder <div> for the slider on
+                data arrival, which REPLACED the <picture>/<img> DOM nodes and
+                repainted the identical box. A same-size repaint is a new Largest
+                Contentful Paint candidate, so LCP tracked the QUERY (~4.6s on the
+                throttled phone) even though the image bytes were ready before
+                first paint. One instance lets React patch slide 0 onto the
+                pending stage in place - same key, same props, same src - so the
+                <img> never repaints and LCP lands with the first commit.
+
+                `heroLoading ||` is checked alongside length so the
+                loaded-but-empty case still falls through to the product hero. */}
             <div className="min-w-0">
-              {heroLoading ? (
-                /* The primary hero image, not a grey pulse. It IS the largest
-                   contentful paint, and the slider cannot mount until the hero
-                   query returns - which is what let Lighthouse measure the file
-                   ready at 0.66s and still painted at 3.39s (2.72s of Render
-                   Delay). This is byte-for-byte the artwork index.html preloads,
-                   in the same box and behind the same default overlay the slider
-                   renders, so the LCP lands at the first React paint and the swap
-                   to live slides neither shifts layout nor re-downloads. */
-                <div
-                  className="relative aspect-[16/9] min-h-[240px] w-full overflow-hidden bg-[#1C1C1E] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]"
-                  aria-hidden="true"
-                >
-                  <HeroArtwork imageUrl={DEFAULT_HERO_IMAGE_URL} alt="" priority />
-                  {/* HeroSlider's default overlay (hero_overlay_opacity ?? 0.45),
-                      painted here too so the image does not brighten when the
-                      slider takes over. */}
-                  <div
-                    className="absolute inset-0"
-                    style={{ background: "linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.27) 100%)" }}
-                  />
-                </div>
-              ) : heroSlides.length > 0 ? (
+              {heroLoading || heroSlides.length > 0 ? (
                 <HeroSlider slides={heroSlides} />
               ) : heroFallback ? (
                 <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[16/9] min-h-[240px] w-full overflow-hidden rounded-2xl bg-[#111111] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]">

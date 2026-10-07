@@ -88,7 +88,7 @@ export default function SellerWallet() {
 
   const walletStats = [
     { label: "Available Balance", value: formatPrice(available), icon: Wallet, gradient: "gradient-seller", desc: "Ready to withdraw" },
-    { label: "Pending", value: formatPrice(pending), icon: Clock, gradient: "gradient-primary", desc: "In escrow until delivered" },
+    { label: "Pending", value: formatPrice(pending), icon: Clock, gradient: "gradient-primary", desc: "Pending order fulfilment" },
     { label: "Total Earned", value: formatPrice(totalEarned), icon: TrendingUp, gradient: "gradient-buyer", desc: "Lifetime earnings" },
   ];
 

@@ -82,7 +82,7 @@ export const META_DESCRIPTION_MAX = 160;
 /** Rendered without decimals, mirroring the NO_DECIMAL set in useCurrency. */
 const NO_DECIMAL_CURRENCIES = ["NGN", "KES", "JPY"];
 
-const FALLBACK_TRAIL = "Secure escrow payments, buyer protection, fast delivery worldwide.";
+const FALLBACK_TRAIL = "Secure Paystack payments, buyer protection, fast delivery worldwide.";
 
 /**
  * Page title shared by `useSEO` and the prerenderer.

@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useCurrency } from "@/hooks/useCurrency";
+import GoogleCustomerReviews from "@/components/GoogleCustomerReviews";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import { CheckCircle2, Package, Truck, ArrowRight, Printer, Copy, ShoppingBag, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface OrderData {
   id: string;
@@ -212,6 +213,9 @@ export default function OrderSuccessPage() {
             </button>
           </Link>
         </div>
+
+        {/* Google Customer Reviews opt-in (renders after the order is known) */}
+        <GoogleCustomerReviews />
       </div>
 
       <style>{`

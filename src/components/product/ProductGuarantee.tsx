@@ -29,9 +29,9 @@ export default function ProductGuarantee() {
     {
       icon: Shield,
       title: "Secure Payment",
-      hint: "Escrow protected",
+      hint: "Powered by Paystack",
       detail:
-        "Your payment is held in escrow and only released to the seller after you confirm delivery â€” so your money is always safe.",
+        "Checkout runs on Paystack, Nigeria's trusted payment provider. Your card details never touch Tradibu's servers, and your money goes straight to the seller once your order is delivered.",
     },
   ];
 

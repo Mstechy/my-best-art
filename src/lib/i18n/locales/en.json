@@ -121,10 +121,10 @@
     "support": "Support",
     "buyerCenter": "Buyer Center",
     "shippingDelivery": "Shipping & Delivery",
-    "paymentEscrow": "Payment Escrow Guard",
+    "paymentPolicy": "Payment Policy",
     "contactSupport": "Contact Support",
     "marketHub": "Tradibu",
-    "description": "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using our secure escrow payments, buyer protection guarantees, and fast global delivery.",
+    "description": "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using secure Paystack payments, buyer protection guarantees, and fast global delivery.",
     "rights": "All rights reserved."
   },
   "common": {

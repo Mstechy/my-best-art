@@ -1,5 +1,7 @@
-import { useState, useMemo } from "react";
-import { CATEGORY_CONFIGS } from "@/lib/categoryConfig";
+import { useState, useMemo, useEffect } from "react";
+
+/** Type-only access to the config module's shape - see the dynamic import below. */
+type CategoryConfigs = typeof import("@/lib/categoryConfig").CATEGORY_CONFIGS;
 
 interface CategorySidebarProps {
   selectedCategory: string | null;
@@ -24,13 +26,37 @@ const TOP_LEVEL_ORDER = [
 
 export default function CategorySidebar({ selectedCategory, onSelect, categories }: CategorySidebarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  // CATEGORY_CONFIGS lives in a 54KB module whose form schemas the listing and
+  // marketplace pages need - but this sidebar only reads it to LABEL and GROUP the
+  // department list. Importing it statically therefore put those ~39KB on the
+  // landing page's first-paint graph: real bytes, parse and eval time ahead of the
+  // LCP commit on a throttled phone. The chunk is fetched right after mount
+  // instead. Visible timing is unchanged: the groups only appear once the async
+  // `categories` prop arrives (a Supabase round trip), which is strictly later
+  // than this already-preloaded-by-then chunk resolves.
+  const [configs, setConfigs] = useState<CategoryConfigs | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    import("@/lib/categoryConfig")
+      .then((module) => {
+        if (alive) setConfigs(module.CATEGORY_CONFIGS);
+      })
+      .catch(() => {
+        // Degrade to the flat list rather than breaking the sidebar.
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   const grouped = useMemo(() => {
+    if (!configs) return [];
     const map = new Map<string, { parent: string; label: string; subcategories: { slug: string; label: string }[] }>();
     const categoryBySlug = new Map(categories.map(c => [c.slug, c]));
 
     TOP_LEVEL_ORDER.forEach(key => {
-      const parent = CATEGORY_CONFIGS[key];
+      const parent = configs[key];
       if (!parent) return;
       const subcategories = parent.productTypes
         .map(pt => ({ slug: pt.subcategory || pt.key, label: pt.label }))
@@ -44,7 +70,7 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
       map.set("more", { parent: "more", label: "More", subcategories: remaining.map(c => ({ slug: c.slug, label: c.name })) });
     }
     return Array.from(map.values());
-  }, [categories]);
+  }, [categories, configs]);
 
   const toggle = (parent: string) => {
     setExpanded(prev => ({ ...prev, [parent]: !prev[parent] }));

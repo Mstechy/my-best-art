@@ -57,12 +57,19 @@ export default defineConfig({
         // Keep only stable, shared runtime dependencies in the initial graph.
         // Recharts, Sentry, and dashboard primitives are route-level code and
         // must remain in their lazy import graph.
+        //
+        // lucide-react is deliberately NOT listed here (it used to be, as
+        // "icons"): forcing every icon the app references into one shared chunk
+        // makes that chunk entry-reachable the moment ANY eagerly-loaded module
+        // imports a single icon - the landing shell imports six, so the icons
+        // every admin, seller and buyer page needs would download and parse
+        // before first paint. Without the rule each icon lands in the graph that
+        // uses it, and dashboard-only icons stay in their lazy routes.
         manualChunks(id) {
           if (!id.includes("node_modules")) return;
           if (id.includes("@supabase")) return "supabase";
           if (id.includes("@tanstack/react-query")) return "react-query";
           if (id.includes("react-router")) return "router";
-          if (id.includes("lucide-react")) return "icons";
           if (id.includes("node_modules\\react") || id.includes("node_modules/react")) return "react";
         },
       },

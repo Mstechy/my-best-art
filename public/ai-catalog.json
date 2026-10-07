@@ -10,12 +10,12 @@
       "identifier": "urn:air:tradibu.com:marketplace:catalog",
       "displayName": "Tradibu Marketplace Catalog",
       "type": "application/ai-catalog+json",
-      "description": "Tradibu is a multi-vendor marketplace where independent sellers list products and buyers pay through secure escrow with buyer protection. Every listing is a browsable department page carrying the product's price in Nigerian naira (NGN), its stock, its seller and its delivery destinations.",
+      "description": "Tradibu is a multi-vendor marketplace where independent sellers list products and buyers pay securely through Paystack with buyer protection. Every listing is a browsable department page carrying the product's price in Nigerian naira (NGN), its stock, its seller and its delivery destinations.",
       "url": "https://www.tradibu.com/ai-catalog.json",
       "representativeQueries": [
         "electronics",
         "phones and accessories",
-        "affordable gadgets with escrow delivery"
+        "affordable gadgets with fast delivery"
       ]
     },
     {
