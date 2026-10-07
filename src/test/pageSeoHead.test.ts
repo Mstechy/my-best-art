@@ -19,6 +19,7 @@ import {
   injectPageHead,
   normalizePath,
 } from "@/lib/pageSeo";
+import { HOME_SHELL_START } from "@/lib/htmlHead";
 import {
   buildPageTitle,
   LANDING_PRELOAD_END,
@@ -402,5 +403,32 @@ describe("the build wiring", () => {
     // in src/test/vercelRouting.test.ts; this is the other half.
     const vercel = JSON.parse(read("vercel.json")) as { cleanUrls?: boolean };
     expect(vercel.cleanUrls).toBe(true);
+  });
+});
+
+describe("the first-paint shell", () => {
+  // The static above-the-fold markup index.html paints before React boots is
+  // homepage-only: on any other route it would flash the landing hero on the
+  // way to the real page. `injectPageHead` strips it with the homepage-only
+  // preloads - the same guard, the same reason.
+  it("ships on / and is stripped from every other route", () => {
+    expect(shell).toContain(HOME_SHELL_START);
+    expect(marketplacePage).not.toContain(HOME_SHELL_START);
+    expect(marketplacePage).not.toContain('id="first-paint-shell"');
+    // The markers sit inside #root, so the strip must leave the mount point
+    // byte-identical to a document that never carried a shell.
+    expect(marketplacePage).toContain('<div id="root"></div>');
+  });
+
+  it("survives injectPageHead for the homepage itself", () => {
+    // The guard exists so that calling this for `/` cannot silently drop the
+    // homepage's static first paint - the exact shape of the earlier preload bug.
+    const home = injectPageHead(builtShell, {
+      url: "/",
+      title: HOME_PAGE_SEO.title,
+      description: HOME_PAGE_SEO.description,
+    });
+    expect(home).toContain(HOME_SHELL_START);
+    expect(home).toContain('id="first-paint-shell"');
   });
 });

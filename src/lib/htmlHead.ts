@@ -160,6 +160,36 @@ export function stripLandingPreloads(html: string): string {
 }
 
 /**
+ * Delimiters around the homepage first-paint shell, inside `<div id="root">`.
+ *
+ * FCP on a throttled phone waited on the whole JS graph because `#root`
+ * shipped empty; index.html now writes the landing page's above-the-fold DOM
+ * (navbar, promo marquee, hero `<picture>`) as static HTML between these
+ * markers so the browser paints before any script runs. React 18's
+ * createRoot().render() calls clearContainer() on its first commit, which
+ * REPLACES the shell atomically with the real LandingPage - no handoff script,
+ * no extra paint - but every other route served from the same document must
+ * not flash the homepage. That is what this strip is for: both head writers
+ * run on prerendered copies of that one document, and the guard script inside
+ * the markers covers non-prerendered paths in the browser.
+ *
+ * Because the markers sit directly inside `#root`, removing the marked block
+ * leaves the opening tag and `</div>` adjacent, so a stripped route ends up
+ * byte-identical to a document that never carried a shell. Idempotent by
+ * construction: the second call finds no start marker and returns the input.
+ */
+export const HOME_SHELL_START = "<!--tradibu:home-shell:start-->";
+export const HOME_SHELL_END = "<!--tradibu:home-shell:end-->";
+
+export function stripHomeShell(html: string): string {
+  const start = html.indexOf(HOME_SHELL_START);
+  if (start === -1) return html;
+  const end = html.indexOf(HOME_SHELL_END, start);
+  if (end === -1) return html;
+  return html.slice(0, start) + html.slice(end + HOME_SHELL_END.length);
+}
+
+/**
  * Drop every JSON-LD block whose `@type` is `type`.
  *
  * Idempotence matters because every prerendered file starts from the same shell,

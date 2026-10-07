@@ -25,6 +25,7 @@ import {
   setCanonical,
   setMeta,
   setTitle,
+  stripHomeShell,
   stripImagePreloads,
   stripJsonLdByType,
   stripLandingPreloads,
@@ -238,9 +239,13 @@ export function buildProductJsonLd(input: ProductSeoInput): Record<string, unkno
  * are all the homepage's, so from a crawler's first pass every product URL is a
  * duplicate of `/`.
  *
- * Only the <head> is touched. Body content stays inside React, because
- * pre-seeding `#root` would be replaced on mount and cost the CLS score this
- * project currently passes.
+ * Only the <head> and the homepage's static first-paint shell are touched.
+ * The shell itself (the markup that paints before React boots) lives inside
+ * `#root` and is stripped here for the same reason the homepage-only preloads
+ * are: a product page never paints it, and leaving it would flash the
+ * homepage's hero on the way to the product. React 18's first commit replaces
+ * the shell with the real app in the same tick on `/`, so nothing needs to
+ * pre-seed a rendered tree.
  */
 export function injectProductHead(html: string, input: ProductSeoInput): string {
   const title = buildProductTitle(input.productName);
@@ -248,6 +253,7 @@ export function injectProductHead(html: string, input: ProductSeoInput): string 
   let out = stripJsonLdByType(html, "Product");
   out = stripImagePreloads(out);
   out = stripLandingPreloads(out);
+  out = stripHomeShell(out);
 
   out = setTitle(out, title);
   out = setMeta(out, "name", "description", description);

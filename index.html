@@ -178,7 +178,121 @@
   </head>
 
   <body>
-    <div id="root"></div>
+    <div id="root"><!--tradibu:home-shell:start-->
+      <!--
+        First-paint shell: the landing page's above-the-fold DOM as static HTML.
+
+        FCP on a throttled phone was ~5.2s because this container stayed empty
+        until the whole JS graph ran. React 18's createRoot().render() calls
+        clearContainer() on its first commit, which REPLACES everything between
+        the two markers with the real LandingPage in the same tick - no handoff
+        script, no second paint. The two trees must therefore match in geometry
+        (navbar height, element order, hero box) or the swap shifts layout;
+        src/test/homeShellLcp.test.ts pins both sides.
+
+        Every non-`/` route is served this same document when no prerendered
+        copy exists, so the guard script at the end drops the shell for those
+        paths; the prerenderers strip it at build time too (stripHomeShell in
+        src/lib/htmlHead.ts). The shell is decorative until React owns the
+        page: aria-hidden on the root, every link and field out of the tab order.
+      -->
+      <div id="first-paint-shell" aria-hidden="true" class="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
+        <!-- MarketplaceNavbar mirror. The heights are load-bearing: mobile row =
+             max(logo 28px, hamburger p-2.5 + h-5 = 40px), plus the `mt-3 lg:hidden`
+             search field (h-11); at lg the desktop form's 48px field + 2px border
+             drives the row. React must swap in at exactly the same height. -->
+        <nav class="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2]">
+          <div class="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">
+            <div class="flex items-center gap-3">
+              <a href="/" aria-label="Tradibu home" class="flex items-baseline shrink-0 select-none" tabindex="-1">
+                <span class="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">tradi</span>
+                <span class="font-sans text-xl font-black tracking-tighter text-[#9E6300] dark:text-[#F6C75D]">bu</span>
+              </a>
+              <div class="hidden lg:flex items-center gap-6 text-[13px] font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 shrink-0">
+                <a href="/marketplace?promo=summer20" class="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors" tabindex="-1">Daily Deals</a>
+                <a href="/marketplace?sort=best_sellers" class="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors" tabindex="-1">Top Sellers</a>
+                <a href="/marketplace?sort=newest" class="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors" tabindex="-1">New Drops</a>
+              </div>
+              <div class="hidden lg:flex flex-1 items-center justify-center px-2">
+                <div class="flex w-full max-w-3xl items-center rounded-full border border-[#E8E8E8] bg-white shadow-[0_10px_30px_rgba(17,17,17,0.05)] transition-shadow focus-within:shadow-[0_12px_36px_rgba(17,17,17,0.09)] dark:border-[#333333] dark:bg-[#1A1A1A]">
+                  <div class="w-44 shrink-0 border-r border-[#E8E8E8] dark:border-[#333333]">
+                    <div class="h-12 w-full"></div>
+                  </div>
+                  <div class="relative min-w-0 flex-1">
+                    <input class="h-12 w-full border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:text-[#FAF5F2]" placeholder="Search products, brands, and categories" tabindex="-1" />
+                  </div>
+                  <div class="m-1.5 h-9 rounded-full bg-[#111111] px-5 dark:bg-[#FAF5F2]"></div>
+                </div>
+              </div>
+              <div class="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">
+                <div class="hidden sm:block"><div class="h-9 w-9 rounded-full" aria-hidden="true"></div></div>
+                <div class="hidden sm:block"><div class="px-2 py-2"><div class="h-4 w-4" aria-hidden="true"></div></div></div>
+                <div class="p-2.5 rounded-full hidden md:inline-flex"><div class="h-5 w-5" aria-hidden="true"></div></div>
+                <div class="p-2.5 rounded-full relative hidden md:inline-flex"><div class="h-5 w-5" aria-hidden="true"></div></div>
+                <div class="p-2.5 rounded-full"><div class="h-5 w-5" aria-hidden="true"></div></div>
+              </div>
+            </div>
+            <div class="mt-3 lg:hidden">
+              <div class="relative min-w-0 flex-1">
+                <input class="h-11 w-full rounded-full border border-[#E8E8E8] bg-white pl-10 pr-20 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]" placeholder="Search products" tabindex="-1" />
+              </div>
+            </div>
+          </div>
+        </nav>
+        <!-- MarqueeBanner mirror: identical track and borders, frozen at offset 0
+             until React installs the animated version (which starts from 0 too). -->
+        <div class="group relative overflow-hidden border-y border-[#E8E8E8] bg-[#F6C75D]" aria-label="Promotions">
+          <div class="flex w-max py-1.5">
+            <div class="flex shrink-0 items-center gap-8 px-4">
+              <a href="/marketplace?promo=summer20" class="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors" tabindex="-1"><span class="h-3 w-3 shrink-0 opacity-90 text-[#111111]" aria-hidden="true"></span><span class="group-hover:underline underline-offset-4">20% Off Summer Sale</span><span aria-hidden="true" class="opacity-40 text-[#111111]/60">•</span></a>
+              <a href="/marketplace?promo=hot50" class="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors" tabindex="-1"><span class="h-3 w-3 shrink-0 opacity-90 text-[#111111]" aria-hidden="true"></span><span class="group-hover:underline underline-offset-4">Hot Deals — Up to 50% Off</span><span aria-hidden="true" class="opacity-40 text-[#111111]/60">•</span></a>
+              <a href="/marketplace?promo=freeship" class="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors" tabindex="-1"><span class="h-3 w-3 shrink-0 opacity-90 text-[#111111]" aria-hidden="true"></span><span class="group-hover:underline underline-offset-4">Free Shipping on Orders $50+</span><span aria-hidden="true" class="opacity-40 text-[#111111]/60">•</span></a>
+              <a href="/marketplace?promo=new" class="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors" tabindex="-1"><span class="h-3 w-3 shrink-0 opacity-90 text-[#111111]" aria-hidden="true"></span><span class="group-hover:underline underline-offset-4">New Arrivals This Week</span><span aria-hidden="true" class="opacity-40 text-[#111111]/60">•</span></a>
+              <a href="/marketplace?promo=bundle15" class="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors" tabindex="-1"><span class="h-3 w-3 shrink-0 opacity-90 text-[#111111]" aria-hidden="true"></span><span class="group-hover:underline underline-offset-4">Bundle &amp; Save 15%</span><span aria-hidden="true" class="opacity-40 text-[#111111]/60">•</span></a>
+              <a href="/marketplace?promo=gifts" class="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors" tabindex="-1"><span class="h-3 w-3 shrink-0 opacity-90 text-[#111111]" aria-hidden="true"></span><span class="group-hover:underline underline-offset-4">Gift Cards Now Available</span><span aria-hidden="true" class="opacity-40 text-[#111111]/60">•</span></a>
+            </div>
+          </div>
+        </div>
+        <!-- BottomTabBar and CartDrawer are position:fixed and PromoBanner paints
+             null on the first commit, so none of them occupy flow here. -->
+        <main class="flex flex-col pb-8">
+          <h1 class="sr-only">Online Marketplace for Trusted Shopping</h1>
+          <div class="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
+              <div class="grid grid-cols-1 lg:grid-cols-[260px_1fr_220px] gap-4">
+                <div class="hidden lg:block"></div>
+                <div class="min-w-0">
+                  <!-- HeroSlider pending stage, mirrored: same section shape, same
+                       slides-container box, and byte-for-byte the <picture> whose
+                       file index.html preloads - so the LCP element exists at first
+                       paint and the React swap repaints the identical box. -->
+                  <section class="relative w-full overflow-hidden bg-[#111111]">
+                    <div class="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]" style="background-color: rgb(28, 28, 30)">
+                      <div class="absolute inset-0 transition-opacity duration-500 ease-in-out opacity-100" aria-hidden="true">
+                        <picture class="block h-full w-full">
+                          <source media="(max-width: 640px)" srcset="/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x" width="960" height="540" type="image/webp" />
+                          <img src="/images/electronics-products-1600x686.webp" width="1600" height="686" alt="" class="h-full w-full object-cover opacity-100" loading="eager" fetchpriority="high" decoding="async" />
+                        </picture>
+                        <div class="absolute inset-0" style="background: linear-gradient(to right, rgba(0,0,0,0.65) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.27) 100%)"></div>
+                      </div>
+                    </div>
+                  </section>
+                </div>
+                <div class="hidden lg:flex flex-col gap-4"></div>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+      <script>
+        (function () {
+          var shell = document.getElementById("first-paint-shell");
+          if (!shell) return;
+          var path = location.pathname;
+          if (path !== "/" && path !== "/index.html") shell.parentNode.removeChild(shell);
+        })();
+      </script>
+    <!--tradibu:home-shell:end--></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -25,7 +25,7 @@
  * BOTH tsconfig.app.json (lib: ES2020 + DOM) and tsconfig.node.json (lib:
  * ES2023, strict). No `replaceAll`, no `Array.prototype.at`.
  */
-import { setCanonical, setMeta, setTitle, stripImagePreloads, stripLandingPreloads } from "./htmlHead";
+import { setCanonical, setMeta, setTitle, stripHomeShell, stripImagePreloads, stripLandingPreloads } from "./htmlHead";
 import { META_DESCRIPTION_MAX, buildPageTitle, resolveSiteUrl, truncateText } from "./productSeo";
 
 /**
@@ -341,11 +341,12 @@ export function buildSellerSeo(input: { id: string; storeName: string }): PageSe
  * would be inventing evidence this function does not have: a department page has
  * no offer, no rating and no dates to declare.
  *
- * The homepage-only hints - the hero image preload and the landing route's
- * modulepreload block - are stripped on every path except `/`, for the reasons
- * documented on `stripImagePreloads` and `stripLandingPreloads`. The guard is
- * here rather than at the call site so that calling this for `/` cannot silently
- * drop the homepage's LCP preload.
+ * The homepage-only hints - the hero image preload, the landing route's
+ * modulepreload block and the first-paint shell in `#root` - are stripped on
+ * every path except `/`, for the reasons documented on `stripImagePreloads`,
+ * `stripLandingPreloads` and `stripHomeShell`. The guard is here rather than
+ * at the call site so that calling this for `/` cannot silently drop the
+ * homepage's LCP preload or its static first paint.
  */
 export function injectPageHead(html: string, input: PageSeoInput): string {
   const title = buildPageTitle(input.title);
@@ -362,6 +363,7 @@ export function injectPageHead(html: string, input: PageSeoInput): string {
   if (!isHomePath(pathname)) {
     out = stripImagePreloads(out);
     out = stripLandingPreloads(out);
+    out = stripHomeShell(out);
   }
 
   out = setTitle(out, title);

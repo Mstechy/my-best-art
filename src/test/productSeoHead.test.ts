@@ -9,6 +9,7 @@ import {
   resolveSiteUrl,
   type ProductSeoInput,
 } from "@/lib/productSeo";
+import { HOME_SHELL_END, HOME_SHELL_START } from "@/lib/htmlHead";
 
 /**
  * Mirrors the real index.html head: multi-line metas, a homepage title, a
@@ -301,6 +302,24 @@ describe("injectProductHead", () => {
     expect(count(twice, '"@type":"Product"')).toBe(1);
     // The homepage WebSite graph survives a second pass.
     expect(twice).toContain('"@graph"');
+  });
+
+  it("strips the homepage first-paint shell, which product pages never paint", () => {
+    // The shell's hero is the landing page's; left in place it would flash on
+    // the way to the product and hand every prerendered product URL the
+    // homepage's LCP element at fetchpriority=high. The markers sit inside
+    // #root, so the strip restores the exact mount point.
+    const withShell = SHELL.replace(
+      '<div id="root"></div>',
+      `<div id="root">${HOME_SHELL_START}<div id="first-paint-shell" class="min-h-screen"></div>${HOME_SHELL_END}</div>`,
+    );
+    const stripped = injectProductHead(withShell, input);
+    expect(stripped).not.toContain(HOME_SHELL_START);
+    expect(stripped).not.toContain("first-paint-shell");
+    expect(stripped).toContain('<div id="root"></div>');
+    // A document that never carried a shell (this file's fixture, and the
+    // product prerenderer's second pass) is untouched by the strip.
+    expect(injectProductHead(SHELL, input)).toContain('<div id="root"></div>');
   });
 });
 
