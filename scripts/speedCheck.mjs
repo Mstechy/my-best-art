@@ -340,7 +340,7 @@ function grade(value, good, poor) {
 let runSeq = 0;
 async function audit() {
   const { child, client } = await launchChrome(9300 + (runSeq++ % 300));
-  const net = { requests: 0, bytes: 0, largest: [] };
+  const net = { requests: 0, bytes: 0, largest: [], waterfall: new Map(), netStart: 0 };
 
   try {
     await client.send('Page.enable');
@@ -385,9 +385,41 @@ async function audit() {
       net.requests++;
       net.bytes += p.response.encodedDataLength || 0;
       net.largest.push({ url: p.response.url.slice(0, 86), size: p.response.encodedDataLength || 0 });
+      const e = net.waterfall.get(p.requestId);
+      if (e) e.size = p.response.encodedDataLength || 0;
     });
 
+    // Optional --waterfall: a per-request start/end timeline, so a slow first
+    // paint can be traced to the exact request that gates it instead of
+    // guessed at from aggregate bytes.
+    client.on('Network.requestWillBeSent', (p) => {
+      if (!net.waterfall.has(p.requestId)) {
+        net.waterfall.set(p.requestId, {
+          url: p.request.url,
+          start: Date.now() - net.netStart,
+          end: null,
+          size: 0,
+          type: p.type,
+          priority: p.initialPriority || '',
+          failed: false,
+        });
+      } else {
+        // Same requestId re-fired = redirect hop; keep the original start.
+        net.waterfall.get(p.requestId).url = p.request.url;
+      }
+    });
+    const markDone = (p, failed) => {
+      const e = net.waterfall.get(p.requestId);
+      if (e) {
+        e.end = Date.now() - net.netStart;
+        e.failed = failed;
+      }
+    };
+    client.on('Network.loadingFinished', (p) => markDone(p, false));
+    client.on('Network.loadingFailed', (p) => markDone(p, true));
+
     const loaded = new Promise((resolve) => client.on('Page.loadEventFired', resolve));
+    net.netStart = Date.now();
     await client.send('Page.navigate', { url: URL_TARGET });
     // A real slow-3G load of a JS-heavy SPA can exceed a minute. Wait long
     // enough that we measure the page, not a half-loaded document.
@@ -459,6 +491,24 @@ async function audit() {
     if (heavy.length) {
       console.log('\n Heaviest responses:');
       heavy.forEach((h) => console.log(`  ${kb(h.size).padStart(9)}  ${h.url}`));
+    }
+    if (has('waterfall')) {
+      const fcp = Math.round(nav.fcp || 0);
+      const wf = [...net.waterfall.values()]
+        .filter((r) => r.start <= fcp + 1500)
+        .sort((x, y) => x.start - y.start);
+      console.log(`\n Waterfall (requests starting by FCP ${fcp}ms + 1.5s):`);
+      console.log('    start      end       ms      KB  priority    type      url');
+      for (const r of wf) {
+        const end = r.end == null ? '    ...' : String(r.end).padStart(8);
+        const dur = r.end == null ? '    ...' : String(r.end - r.start).padStart(8);
+        const size = (r.size / 1024).toFixed(1).padStart(7);
+        const prio = String(r.priority || '-').padEnd(12);
+        const type = String(r.type || '-').padEnd(10);
+        const u = r.url.replace(/^https?:\/\//, '');
+        console.log(`  ${String(r.start).padStart(6)}${end}${dur}${size}  ${prio}${type}${u.slice(0, 84)}${r.failed ? '  [FAILED]' : ''}`);
+      }
+      if (!wf.length) console.log('  (nothing recorded)');
     }
     if (timedOut) {
       console.log('\n *** LOAD EVENT NEVER FIRED within the budget - the metrics below are');

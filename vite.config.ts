@@ -5,6 +5,7 @@ import path from "path";
 import { prerenderProductPages } from "./scripts/prerenderProductPages";
 import { preloadLandingRoute } from "./scripts/preloadLandingRoute";
 import { prerenderPublicPages } from "./scripts/prerenderPublicPages";
+import { inlineEntryCss } from "./scripts/inlineEntryCss";
 
 // Identify the exact deploy in error reports. VITE_APP_VERSION wins when CI sets
 // it; otherwise the git short SHA does, so every build is distinguishable in
@@ -38,7 +39,13 @@ export default defineConfig({
   // registration order, so the page prerenderer reads the same untouched shell
   // the product one did, with the preload block already in place. It writes only
   // the non-product routes; see scripts/prerenderPublicPages.ts.
-  plugins: [react(), preloadLandingRoute(), prerenderProductPages(), prerenderPublicPages()],
+  //
+  // `inlineEntryCss` is a transformIndexHtml hook: it swaps Vite's blocking
+  // entry <link rel=stylesheet> for an inline <style> so first paint depends
+  // only on the HTML document (the shell must paint before React boots, and a
+  // pending stylesheet blocks ALL painting). It runs before the writeBundle
+  // prerenderers read dist/index.html, so every prerendered page inherits it.
+  plugins: [react(), inlineEntryCss(), preloadLandingRoute(), prerenderProductPages(), prerenderPublicPages()],
   // Inline the deploy identity so src/lib/sentry.ts can name the exact release.
   // Without this define the constant computed above is thrown away, and every
   // production build reports "dev" in error monitoring.
