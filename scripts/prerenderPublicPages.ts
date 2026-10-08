@@ -15,6 +15,7 @@ import {
   type PageSeoInput,
 } from "../src/lib/pageSeo";
 import { fetchRows, readSupabaseConfig, resolveSupabase, type ResolvedSupabase } from "./supabaseRest";
+import { injectStaticBody, type StaticBodyLink } from "../src/lib/prerenderBody";
 
 /**
  * Build-time <head> prerender for every public route that is not a product.
@@ -156,14 +157,27 @@ function safeRelativePath(routePath: string): string | null {
 }
 
 /** Write a route's head to both resolutions Vercel can pick for it. */
-async function writeRoute(dist: string, route: StaticRoute, shell: string): Promise<boolean> {
+async function writeRoute(
+  dist: string,
+  route: StaticRoute,
+  shell: string,
+  bodyLinks: StaticBodyLink[],
+): Promise<boolean> {
   const relative = safeRelativePath(route.path);
   if (!relative) {
     console.warn(`[prerender] Skipped unusable route path: ${route.path}`);
     return false;
   }
 
-  const html = injectPageHead(shell, route.seo);
+  // Head surgery first (this strips the first-paint shell down to an empty
+  // `#root`), then the static body: heading, one paragraph of copy and a link
+  // graph - what a crawler reads on its first, HTML-only pass. React clears it
+  // on its first commit, the same mechanism the shell uses on `/`.
+  const html = injectStaticBody(injectPageHead(shell, route.seo), {
+    heading: route.seo.title,
+    description: route.seo.description,
+    links: bodyLinks,
+  });
   const file = path.join(dist, `${relative}.html`);
   const directoryIndex = path.join(dist, relative, "index.html");
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -191,26 +205,37 @@ async function attempt<T>(label: string, work: () => Promise<T>, fallback: T): P
   }
 }
 
-async function departmentRoutes(supabase: ResolvedSupabase): Promise<StaticRoute[]> {
+/** Routes plus the hub-page links that make them discoverable without JavaScript. */
+interface RouteSet {
+  routes: StaticRoute[];
+  links: StaticBodyLink[];
+}
+
+async function departmentRoutes(supabase: ResolvedSupabase): Promise<RouteSet> {
   // Every department, including the ones holding no stock today. An empty
   // department is a thin page, but a department that inherits the homepage's
   // canonical is a page Google will never show at all - and the catalogue is
   // seeded with 26 of them so it can scale.
   const rows = await fetchRows<CategoryRow>(supabase, "categories", "select=slug,name&order=sort_order");
-  return rows
-    .filter((row) => Boolean(row.slug && row.name))
-    .map((row) => ({ path: `/categories/${row.slug}`, seo: buildDepartmentSeo({ slug: row.slug, name: row.name }) }));
+  const usable = rows.filter((row) => Boolean(row.slug && row.name));
+  return {
+    routes: usable.map((row) => ({
+      path: `/categories/${row.slug}`,
+      seo: buildDepartmentSeo({ slug: row.slug, name: row.name }),
+    })),
+    links: usable.map((row) => ({ href: `/categories/${row.slug}`, label: row.name })),
+  };
 }
 
-async function collectionRoutes(supabase: ResolvedSupabase): Promise<StaticRoute[]> {
+async function collectionRoutes(supabase: ResolvedSupabase): Promise<RouteSet> {
   const rows = await fetchRows<CollectionRow>(
     supabase,
     "marketplace_collections",
     "select=slug,title,meta_title,meta_description,description&status=eq.active",
   );
-  return rows
-    .filter((row) => Boolean(row.slug && row.title))
-    .map((row) => ({
+  const usable = rows.filter((row) => Boolean(row.slug && row.title));
+  return {
+    routes: usable.map((row) => ({
       path: `/collections/${row.slug}`,
       seo: buildCollectionSeo({
         slug: row.slug,
@@ -219,7 +244,9 @@ async function collectionRoutes(supabase: ResolvedSupabase): Promise<StaticRoute
         metaDescription: row.meta_description,
         description: row.description,
       }),
-    }));
+    })),
+    links: usable.map((row) => ({ href: `/collections/${row.slug}`, label: row.title })),
+  };
 }
 
 /**
@@ -280,10 +307,14 @@ const SITE_PAGES_QUERY = "select=slug,title,body_markdown";
  * The public half of the site, in one pass.
  *
  * `dist/index.html` is read once and reused: every file written here is that
- * same shell with a different <head>, which is what keeps the SPA's mount
- * behaviour identical on all of them. Head surgery, not rendering - the body
- * stays inside React, because pre-seeding `#root` would be thrown away on mount
- * and cost the CLS score the project currently passes.
+ * same shell with a different <head> plus a static body (heading, paragraph,
+ * link graph - see src/lib/prerenderBody.ts), which is what keeps the SPA's
+ * mount behaviour identical on all of them. The body is pre-seeded ON PURPOSE:
+ * React 18's clearContainer() wipes it in the same commit that inserts the real
+ * page - the same mechanism the first-paint shell uses on `/`. Removed nodes
+ * do not shift, so the swap costs no CLS while crawlers get a link graph they
+ * can follow without executing JavaScript (the mechanism behind "~130 pages
+ * prerendered, 2 indexed": perfect heads over an empty body with no links).
  */
 async function prerender(root: string, mode: string): Promise<void> {
   const dist = path.join(root, "dist");
@@ -307,24 +338,65 @@ async function prerender(root: string, mode: string): Promise<void> {
     );
   }
 
-  const [pages, departments, collections, sellers] = await Promise.all([
+  const [pages, departmentSet, collectionSet, sellers] = await Promise.all([
     supabase
       ? attempt("legal pages", () => fetchRows<SitePageRow>(supabase, "site_pages", SITE_PAGES_QUERY), [])
       : Promise.resolve<SitePageRow[]>([]),
-    supabase ? attempt("departments", () => departmentRoutes(supabase), []) : Promise.resolve<StaticRoute[]>([]),
-    supabase ? attempt("collections", () => collectionRoutes(supabase), []) : Promise.resolve<StaticRoute[]>([]),
+    supabase
+      ? attempt<RouteSet>("departments", () => departmentRoutes(supabase), { routes: [], links: [] })
+      : Promise.resolve<RouteSet>({ routes: [], links: [] }),
+    supabase
+      ? attempt<RouteSet>("collections", () => collectionRoutes(supabase), { routes: [], links: [] })
+      : Promise.resolve<RouteSet>({ routes: [], links: [] }),
     supabase ? attempt("storefronts", () => sellerRoutes(supabase), []) : Promise.resolve<StaticRoute[]>([]),
   ]);
+  const departments = departmentSet.routes;
+  const collections = collectionSet.routes;
 
   const codeAndLegal = [...codeDefinedRoutes(), ...legalRoutes(pages)];
   const routes = dedupeByPath([...codeAndLegal, ...departments, ...collections, ...sellers]);
+
+  // `/categories` is the hub of the database-backed half of the site: its
+  // static body links every department and collection, so a crawler that never
+  // executes JavaScript discovers all ~50 of those URLs in one hop from a page
+  // that is already in sitemap-pages.xml. Everything else gets the core nav
+  // (src/lib/prerenderBody.ts adds it to every document).
+  const bodyLinksByPath = new Map<string, StaticBodyLink[]>([
+    ["/categories", [...departmentSet.links, ...collectionSet.links]],
+  ]);
+
+  // sitemap-categories.xml lives here rather than under public/ because its
+  // contents are database rows: the department and collection URLs that
+  // sitemap-pages.xml's header called un-listable by a static file - a build
+  // step can list them after all. Written unconditionally, empty urlset and
+  // all, so the sitemap index never points at a missing file when Supabase is
+  // unreachable during a build.
+  await attempt(
+    "sitemap-categories.xml",
+    async () => {
+      const today = new Date().toISOString().slice(0, 10);
+      const urls = [...departments, ...collections]
+        .map(
+          (route) =>
+            `  <url><loc>${canonicalUrlFor(route.path).replace(/&/g, "&amp;")}</loc><lastmod>${today}</lastmod>` +
+            `<changefreq>weekly</changefreq><priority>0.7</priority></url>`,
+        )
+        .join("\n");
+      const xml =
+        `<?xml version="1.0" encoding="UTF-8"?>\n` +
+        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
+      await fs.writeFile(path.join(dist, "sitemap-categories.xml"), xml, "utf8");
+    },
+    undefined,
+  );
 
   // One unwritable route must not cost the other forty their <head>, so each is
   // fenced on its own and the run continues. Two writers never interleave on one
   // file, because `dedupeByPath` already saw to that.
   let written = 0;
   for (const route of routes) {
-    if (await attempt(`route ${route.path}`, () => writeRoute(dist, route, shell), false)) written += 1;
+    const bodyLinks = bodyLinksByPath.get(route.path) ?? [];
+    if (await attempt(`route ${route.path}`, () => writeRoute(dist, route, shell, bodyLinks), false)) written += 1;
   }
 
   console.log(

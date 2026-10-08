@@ -7,6 +7,8 @@ import { describe, expect, it } from "vitest";
 
 import { HOME_SHELL_END, HOME_SHELL_START, stripHomeShell } from "@/lib/htmlHead";
 import { DEFAULT_HERO_IMAGE_URL, getHeroImageSources } from "@/lib/heroImages";
+import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
+import { CORE_NAV_LINKS } from "@/lib/prerenderBody";
 
 /**
  * Regression guards for the homepage shell's LCP plumbing - the two ways the
@@ -214,6 +216,49 @@ describe("the first-paint shell", () => {
       expect(shellBody, label).toContain(label);
     }
     expect(shellBody).not.toContain("animate-[marquee");
+  });
+
+  it("paints the default hero copy in the shell, byte-aligned with the slider's pending stage", () => {
+    // Reported defect: first paint showed a bare image and the text popped in
+    // seconds later, when the Home query resolved. The badge/title/description/
+    // CTA are now part of the static shell - and of HeroSlider's pending stage,
+    // which reads the same constants from src/lib/heroDefaults.ts (mirroring
+    // the one hero-enabled database row). Edit the row -> update the constant ->
+    // this test keeps the shell honest against it.
+    expect(shellBody).toContain(`>${DEFAULT_HERO_COPY.badge}</span>`);
+    expect(shellBody).toContain(`>${DEFAULT_HERO_COPY.title}</h2>`);
+    // The description's only escapable character is `&`; its newline is kept
+    // (after normalizing CRLF, the way the HTML parser does) so the shell's
+    // textContent matches React's string exactly.
+    const escapedDescription = DEFAULT_HERO_COPY.description.replace(/&/g, "&amp;");
+    expect(shellBody.replace(/\r\n/g, "\n")).toContain(`>${escapedDescription}</p>`);
+    expect(shellBody).toContain(`>${DEFAULT_HERO_COPY.ctaLabel}</a>`);
+    expect(shellBody).toContain(`href="${DEFAULT_HERO_COPY.ctaLink}"`);
+
+    // Same overlay shape the pending stage emits, in the same order as the
+    // artwork and gradient: artwork -> gradient -> overlay.
+    const artworkAt = shellBody.indexOf("<picture");
+    const gradientAt = shellBody.indexOf('style="background: linear-gradient(');
+    const overlayAt = shellBody.indexOf('<div class="absolute inset-0 flex items-center overflow-hidden">');
+    expect(artworkAt).toBeGreaterThan(-1);
+    expect(gradientAt).toBeGreaterThan(artworkAt);
+    expect(overlayAt).toBeGreaterThan(gradientAt);
+
+    // The CTA is decorative while the shell stands - out of the tab order,
+    // asserted where it is introduced (the global rule below covers the rest).
+    expect(shellBody).toMatch(/<a href="\/collections\/electronics-products"[^>]*tabindex="-1"/);
+  });
+
+  it("links the crawl graph from the static homepage", () => {
+    // Reported defect: Google indexed ~2 of ~130 pages. The static homepage
+    // linked only to marketplace query-string URLs, so a crawler that never
+    // executes JavaScript had no path from / to /categories, the legal pages or
+    // anything deep. shellBody is the marker slice, so anything found here is
+    // inside the shell - wiped by React's first commit like the rest of it.
+    expect(shellBody).toContain('<nav aria-label="Footer"');
+    for (const link of CORE_NAV_LINKS) {
+      expect(shellBody, link.href).toContain(`href="${link.href}"`);
+    }
   });
 
   it("drops itself on any path that is not the homepage", () => {

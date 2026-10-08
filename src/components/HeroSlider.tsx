@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
 import { getHeroImageSources, DEFAULT_HERO_IMAGE_URL } from "@/lib/heroImages";
+import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
 
 interface HeroSliderProps {
   slides: EnhancedCollection[];
@@ -63,6 +64,85 @@ export function HeroArtwork({
         onError={onError}
       />
     </picture>
+  );
+}
+
+/**
+ * One slide's overlay copy: badge, title, description, CTA.
+ *
+ * Shared by the pending stage and the live slides ON PURPOSE. The two states
+ * must emit the exact same element tree - same wrappers, same classes, same
+ * child order - so React patches the nodes painted before the query resolved
+ * instead of replacing them. A replaced <h2>/<p>/<a> repaints the hero box,
+ * which hands Largest Contentful Paint a fresh candidate at data arrival; an
+ * attribute write on the existing nodes does not. The pending stage passes the
+ * build-time defaults (src/lib/heroDefaults.ts, byte-aligned with the
+ * hero-enabled row), the live slides pass the row itself - for the seeded
+ * campaign those are the same strings, so the swap is visually silent and the
+ * user never sees a bare image waiting on the query.
+ */
+function HeroCopy({
+  badge,
+  title,
+  description,
+  destination,
+  ctaLabel,
+}: {
+  badge?: string | null;
+  title: string;
+  description?: string | null;
+  destination: string;
+  ctaLabel: string;
+}) {
+  const ctaClassName =
+    "mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#111111] transition-all hover:bg-[#F6C75D] hover:shadow-lg sm:mt-5 sm:px-6 sm:py-3 sm:text-sm";
+  return (
+    <div className="absolute inset-0 flex items-center overflow-hidden">
+      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-8 md:px-12">
+        <div className="max-w-xl">
+          {badge && (
+            <span className="mb-2 inline-block rounded-full bg-[#F6C75D] px-2.5 py-0.5 text-[10px] font-bold text-[#5C3A00] sm:mb-3 sm:px-3 sm:py-1 sm:text-xs">
+              {badge}
+            </span>
+          )}
+          <h2
+            className="break-words font-black uppercase tracking-tight text-white"
+            style={{
+              fontSize: "clamp(1.375rem, 2.5vw + 1rem, 3.75rem)",
+              lineHeight: 1.08,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {title}
+          </h2>
+          {description && (
+            <p
+              className="mt-2 max-w-md text-xs leading-relaxed text-white/80 sm:mt-3 sm:max-w-lg sm:text-sm md:text-base"
+              style={{
+                display: "-webkit-box",
+                WebkitLineClamp: 3,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {description}
+            </p>
+          )}
+          {/^https?:\/\//i.test(destination) ? (
+            <a href={destination} target="_blank" rel="noreferrer" className={ctaClassName}>
+              {ctaLabel}
+            </a>
+          ) : (
+            <Link to={destination} className={ctaClassName}>
+              {ctaLabel}
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -220,6 +300,16 @@ const HeroSlider = memo(function HeroSlider({
                 background: `linear-gradient(to right, rgba(0,0,0,${overlayOpacity + 0.2}) 0%, rgba(0,0,0,${overlayOpacity}) 50%, rgba(0,0,0,${overlayOpacity * 0.6}) 100%)`,
               }}
             />
+            {/* Copy overlay painted BEFORE the query resolves, from the
+                build-time defaults. Same HeroCopy the live slide uses, so the
+                pending -> live swap patches these text nodes in place. */}
+            <HeroCopy
+              badge={DEFAULT_HERO_COPY.badge}
+              title={DEFAULT_HERO_COPY.title}
+              description={DEFAULT_HERO_COPY.description}
+              destination={DEFAULT_HERO_COPY.ctaLink}
+              ctaLabel={DEFAULT_HERO_COPY.ctaLabel}
+            />
           </div>,
         ] : slides.map((s, index) => {
           const isActive = index === activeIndex;
@@ -269,52 +359,13 @@ const HeroSlider = memo(function HeroSlider({
 
               {/* Content overlay — clamped so text and CTA always fit inside
                   the fixed hero height without growing it */}
-              <div className="absolute inset-0 flex items-center overflow-hidden">
-                <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-8 md:px-12">
-                  <div className="max-w-xl">
-                    {s.hero_badge && (
-                      <span className="mb-2 inline-block rounded-full bg-[#F6C75D] px-2.5 py-0.5 text-[10px] font-bold text-[#5C3A00] sm:mb-3 sm:px-3 sm:py-1 sm:text-xs">
-                        {s.hero_badge}
-                      </span>
-                    )}
-                    <h2
-                      className="break-words font-black uppercase tracking-tight text-white"
-                      style={{
-                        fontSize: "clamp(1.375rem, 2.5vw + 1rem, 3.75rem)",
-                        lineHeight: 1.08,
-                        display: "-webkit-box",
-                        WebkitLineClamp: 2,
-                        WebkitBoxOrient: "vertical",
-                        overflow: "hidden",
-                      }}
-                    >
-                      {s.title}
-                    </h2>
-                    {s.description && (
-                      <p
-                        className="mt-2 max-w-md text-xs leading-relaxed text-white/80 sm:mt-3 sm:max-w-lg sm:text-sm md:text-base"
-                        style={{
-                          display: "-webkit-box",
-                          WebkitLineClamp: 3,
-                          WebkitBoxOrient: "vertical",
-                          overflow: "hidden",
-                        }}
-                      >
-                        {s.description}
-                      </p>
-                    )}
-                    {(() => {
-                      const destination = s.hero_cta_link || `/collections/${s.slug}`;
-                      const className = "mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#111111] transition-all hover:bg-[#F6C75D] hover:shadow-lg sm:mt-5 sm:px-6 sm:py-3 sm:text-sm";
-                      return /^https?:\/\//i.test(destination) ? (
-                        <a href={destination} target="_blank" rel="noreferrer" className={className}>{s.cta_label || "Shop now"}</a>
-                      ) : (
-                        <Link to={destination} className={className}>{s.cta_label || "Shop now"}</Link>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
+              <HeroCopy
+                badge={s.hero_badge}
+                title={s.title}
+                description={s.description}
+                destination={s.hero_cta_link || `/collections/${s.slug}`}
+                ctaLabel={s.cta_label || "Shop now"}
+              />
             </div>
           );
         })}

@@ -12,8 +12,10 @@
   linked, prerendered and reachable, they are just not submitted.
 
   Department (/categories/<slug>) and collection (/collections/<slug>) URLs come
-  from database rows, so a static file cannot list them; they are discovered
-  through /categories and each prerendered page declares its own canonical.
+  from database rows, so this static file cannot list them; the build writes
+  them to sitemap-categories.xml (scripts/prerenderPublicPages.ts), the
+  prerendered /categories hub links every one of them, and each prerendered
+  page declares its own canonical.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://www.tradibu.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>

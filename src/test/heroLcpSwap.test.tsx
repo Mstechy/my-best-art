@@ -28,6 +28,7 @@ import "@/lib/i18n/config";
 
 import LandingPage from "@/pages/LandingPage";
 import { LEGACY_ELECTRONICS_HERO_URL } from "@/lib/heroImages";
+import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
 
 /** Mutable state the mocked hook reads on every render. */
@@ -105,12 +106,20 @@ vi.mock("@/integrations/supabase/client", () => {
   return { supabase: chain };
 });
 
-/** The seeded campaign: the legacy banner URL the shell preloads. */
+/**
+ * The seeded campaign: byte-aligned with the hero-enabled database row and
+ * with src/lib/heroDefaults.ts, so the swap from the pending stage to the live
+ * slide changes no string - the text nodes are patched, never replaced.
+ */
 const campaignSlide = {
   id: "11111111-2222-3333-4444-555555555555",
-  title: "Electronics campaign",
-  slug: "electronics-campaign",
+  title: DEFAULT_HERO_COPY.title,
+  slug: "electronics-products",
   image_url: LEGACY_ELECTRONICS_HERO_URL,
+  hero_badge: DEFAULT_HERO_COPY.badge,
+  hero_cta_link: null,
+  cta_label: DEFAULT_HERO_COPY.ctaLabel,
+  description: DEFAULT_HERO_COPY.description,
 } as unknown as EnhancedCollection;
 
 function tree() {
@@ -182,5 +191,48 @@ describe("hero LCP node stability", () => {
     const live = document.querySelector('section[aria-label="Featured collections"]');
     expect(live).not.toBeNull();
     expect(live?.getAttribute("aria-hidden")).toBeNull();
+  });
+
+  it("paints the default hero copy in the pending stage, before any query resolves", () => {
+    // Reported defect: the hero showed a bare image until the Home query
+    // landed, then the text appeared. Badge, title, description and CTA are
+    // now rendered from src/lib/heroDefaults.ts in the FIRST commit - the same
+    // strings index.html paints statically, so text is on screen from FCP.
+    render(tree());
+    const section = document.querySelector('section[aria-label="Featured collections"]');
+    expect(section).not.toBeNull();
+    expect(section?.textContent).toContain(DEFAULT_HERO_COPY.badge);
+    expect(section?.querySelector("h2")?.textContent).toBe(DEFAULT_HERO_COPY.title);
+    expect(section?.textContent).toContain(DEFAULT_HERO_COPY.description);
+    expect(section?.textContent).toContain(DEFAULT_HERO_COPY.ctaLabel);
+    expect(section?.querySelector('a[href="/collections/electronics-products"]')).not.toBeNull();
+  });
+
+  it("patches the hero copy nodes in place when the campaign arrives", () => {
+    const { rerender } = render(tree());
+    const section = () => document.querySelector('section[aria-label="Featured collections"]');
+    const h2Before = section()?.querySelector("h2");
+    const pBefore = section()?.querySelector("p");
+    const ctaBefore = section()?.querySelector('a[href="/collections/electronics-products"]');
+    expect(h2Before?.textContent).toBe(DEFAULT_HERO_COPY.title);
+    expect(pBefore?.textContent).toBe(DEFAULT_HERO_COPY.description);
+
+    home.heroLoading = false;
+    home.heroSlides = [campaignSlide];
+    rerender(tree());
+
+    // Same NODES, not same-shaped replacements: a replaced text node repaints
+    // the hero box, and that repaint becomes a new LCP candidate at data
+    // arrival - the exact failure mode this whole file guards.
+    const h2After = section()?.querySelector("h2");
+    expect(h2After).not.toBeNull();
+    expect(h2After).toBe(h2Before);
+    expect(section()?.querySelector("p")).toBe(pBefore);
+    expect(section()?.querySelector('a[href="/collections/electronics-products"]')).toBe(ctaBefore);
+    // The seeded slide mirrors the database row, so the copy is unchanged
+    // across the swap: no visual change, no layout shift.
+    expect(h2After?.textContent).toBe(DEFAULT_HERO_COPY.title);
+    expect(section()?.textContent).toContain(DEFAULT_HERO_COPY.badge);
+    expect(section()?.textContent).toContain(DEFAULT_HERO_COPY.ctaLabel);
   });
 });

@@ -1,7 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { loadEnv, type Plugin } from "vite";
-import { injectProductHead, resolveSiteUrl, type ProductSeoInput } from "../src/lib/productSeo";
+import { injectProductHead, resolveSiteUrl, truncateText, type ProductSeoInput } from "../src/lib/productSeo";
+import { injectStaticBody } from "../src/lib/prerenderBody";
 
 /**
  * Build-time <head> prerender for product URLs.
@@ -119,7 +120,14 @@ async function prerender(root: string, mode: string): Promise<void> {
       brand: product.brand,
     };
 
-    const html = injectProductHead(shell, input);
+    // Head first, then the static body (heading + paragraph + core link graph):
+    // on its HTML-only pass a crawler sees a real product page instead of an
+    // empty #root, and links onward to the rest of the site. React clears it on
+    // its first commit - see src/lib/prerenderBody.ts.
+    const html = injectStaticBody(injectProductHead(shell, input), {
+      heading: product.title,
+      description: input.description ? truncateText(input.description, 480) : null,
+    });
     const directory = path.join(outputRoot, product.id);
     await fs.mkdir(directory, { recursive: true });
     // Written both ways round, because the two resolutions Vercel can pick are
