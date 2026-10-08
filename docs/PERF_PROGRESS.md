@@ -21,7 +21,7 @@ npm run build && npm run preview   # then point --url at http://localhost:4173/
 
 Gate sequence for every change (all must pass, in this order):
 1. `npm run typecheck` — 0 diagnostics
-2. `npm test` — 23 files / 182 tests green
+2. `npm test` — 24 files / 192 tests green
 3. `npm run lint` — 0 errors (warnings allowed, currently 29)
 4. `npm run build` — clean
 5. Speed audit with the canonical flags above; paste numbers into §2 of this file
@@ -54,6 +54,8 @@ Each row: the fix → **why it works** → the **guard** that fails if it regres
 | 12 | Transpiled fallbacks shipped to modern browsers | `d5479f2` | Build target `es2022`. | tsconfig/build config |
 | 13 | Layout shift on feed; missing prerendered heads | `3fe7870`, `12bf95b` | Masonry reserves image dimensions; `<head>` prerendered for every public route. | `src/test/masonryFeedGrid.test.tsx`, `masonryLayout.test.ts` — live CLS ≤ 0.005 |
 | 14 | Catch-all cancelled every cache rule | `e024043`, `d5a6144` | Rewrites fixed so cache rules apply; SPA catch-all reachable under cleanUrls. | `src/test/vercelRouting.test.ts` |
+| 15 | Hero showed a bare image first: badge/title/description/CTA existed only in the database row, so the overlay appeared seconds late (at Home-query arrival) and static home HTML carried no hero text | `2c5c768` | `src/lib/heroDefaults.ts` mirrors the one hero-enabled row; a shared `HeroCopy` renders the overlay in BOTH `HeroSlider`'s pending stage (first commit) and the live slides — same key `lead`, same element tree, so React patches the text nodes in place: no repaint, no LCP reset, no shift. `index.html` paints the same strings statically (FCP already shows text). | `src/test/homeShellLcp.test.ts` (shell↔constant byte-parity), `src/test/heroLcpSwap.test.tsx` (pending copy present + h2/p/CTA node identity across data arrival) |
+| 16 | ~130 prerendered pages: perfect `<head>` over an EMPTY `<body>` with zero links; static home linked only marketplace query URLs → a no-JS crawler could not reach one deep URL — "2 pages indexed" | `2c5c768` | `src/lib/prerenderBody.ts` seeds heading + paragraph + `CORE_NAV_LINKS` into every prerendered page (React clears it on first commit — same mechanism as the shell, no CLS); the `/categories` hub links all 26 departments + collections; home shell gains a footer link graph; the build writes `dist/sitemap-categories.xml` (27 URLs), listed in the sitemap index. | `src/test/prerenderBody.test.ts` (injection/escaping/shell no-op/sitemap cross-check), `homeShellLcp.test.ts` → "links the crawl graph", live HTML checks |
 
 **Live verification 2026-10-07 (confirmed on https://www.tradibu.com/):**
 - inlined `<style>` marker present ✓, blocking entry `<link>` absent ✓
@@ -84,12 +86,38 @@ zero. **Everything in §4 is still open — none of it is solved.**
 
 ---
 
+**2026-10-08 audit (post-`2c5c768`, live, slow-4G, 2 runs × 2 passes):**
+
+| Metric | 2026-10-07 | 2026-10-08 | Verdict |
+|---|---|---|---|
+| FCP | 4136–4988 | **3536–3916** | improved (network variance — the change added bytes, no FCP mechanism claimed) |
+| LCP | 6268–6320 | **4300–5520** | improved; hero `<img>` remains the candidate |
+| CLS | 0.0000–0.0002 | **0.0043–0.0095** | GOOD ✓ — delta attributed, see OPEN-5 |
+| TBT | 1080–3572 | 1216–1956 | ~same |
+| TTFB | 983–1739 | 955–1881 | ~same |
+
+CLS attribution (waterfall ↔ shift correlation, run 1): Space Grotesk's woff2
+completes at **5500 ms** → `+0.0041` on the hero text container at **5458 ms**;
+Inter's woff2 at **6561 ms** → `+0.0005` at **6527 ms**; the variable marquee
+offender (0.0002–0.0053) is the same fonts on smaller text. It is the webfont
+swap on `display=swap` fonts that arrive after FCP — the cost of having real
+text in the shell. Tracked as OPEN-5; every pass since the change logs the same
+deterministic +0.0041, so it is a mechanism, not noise.
+
+Content verified live 2026-10-08: static hero copy on `/`; static body + link
+graph on `/categories` (26 department + 1 collection links), `/terms`, product
+and department pages; robots `index, follow`; `sitemap-categories.xml` 200 with
+27 URLs, listed in the sitemap index.
+
+---
+
 ## 3. Change log (append-only — add a row for EVERY perf change)
 
 | Date | Change | FCP before → after | LCP before → after | Verified by |
 |------|--------|--------------------|--------------------|-------------|
 | 2026-10-07 | Inline entry CSS (`5dbc492`) | 6440–7228 → 4136–4988 | 6740–7844 → 6268–6320 | live audit + `inlineEntryCss.test.ts` |
 | 2026-10-07 | Static first-paint shell (`98631a6`) | ~5200 → 1.4–2.2 s (local) | 6200 → =FCP (local) | local audit + `homeShellLcp.test.ts` |
+| 2026-10-08 | Hero copy at first paint + crawlable static body/link graph (`2c5c768`) | 4136–4988 → 3536–3916 (live ×2; improvement is network variance, the change added bytes — no FCP mechanism claimed) | 6268–6320 → 4300–5520 (tracks FCP; LCP still the hero `<img>`) | live audit ×2 (slow-4G) + `homeShellLcp`/`heroLcpSwap`/`prerenderBody` tests |
 
 ---
 
@@ -152,11 +180,26 @@ but HTML has `Cache-Control: max-age=0, must-revalidate` (revalidates every visi
 **Next step:** after OPEN-1, measure raw TTFB from the target market region before
 changing cache headers.
 
+### OPEN-5: CLS 0.0043–0.0095 (GOOD) — webfont swap reflows the new hero copy
+**Evidence (attributed, not guessed):** every pass since `2c5c768` logs
+`+0.0041 on <div.mx-auto.w-full "Electronics products">` at 4.7–5.8 s, and
+run 1's waterfall puts Space Grotesk's woff2 completion at 5500 ms / Inter's at
+6561 ms against shifts at 5458 / 6527 ms — the swap, not the React commit. The
+marquee offender (0.0002–0.0053, variable) is the same fonts on smaller text.
+**Why it appeared now:** before `2c5c768` the shell had no large visible text
+to reflow; the hero copy made the swap measurable.
+**Next step (in order):** (1) self-host Space Grotesk + Inter as preloadable
+woff2 files so the swap lands before FCP on slow-4G; or (2) ship a
+`size-adjust`-matched local fallback `@font-face`. Either touches the
+preconnect pins in `homeShellLcp.test.ts` — update them in the same change.
+**Guard:** `scripts/speedCheck.mjs --slow-4g` layout shifts ≤ 0.001 per pass.
+
 ---
 
-## 5. Housekeeping state (as of 2026-10-07)
+## 5. Housekeeping state (as of 2026-10-08)
 
-- typecheck: 0 diagnostics ✓ | tests: 23 files / 182 tests ✓ | lint: 0 errors,
+- typecheck: 0 diagnostics ✓ | tests: 24 files / 192 tests ✓ | lint: 0 errors,
   29 warnings (all `react-hooks/exhaustive-deps`) | build: clean ✓
-- main in sync with origin/main; last commit `5dbc492`
+- main in sync with origin/main; last code commit `2c5c768` (this ledger update follows it)
+- Live site verified 2026-10-08 against the deployed build: hero copy in static home HTML, static bodies + link graphs on `/categories`, `/terms`, product and department pages, `sitemap-categories.xml` 200 with 27 URLs
 - Live site runs the same build as local `dist/` (inline style marker verified both sides)
