@@ -10,7 +10,7 @@
     "build:dev": "vite build --mode development",
     "typecheck": "tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "typecheck:node": "tsc -p tsconfig.node.json",
-    "typecheck:edge": "tsc --noEmit --noImplicitAny --target es2022 --lib es2022,dom,dom.iterable --module esnext --moduleResolution bundler --skipLibCheck supabase/functions/paystack/index.ts supabase/functions/send-offer/index.ts supabase/functions/respond-offer/index.ts supabase/functions/visual-product-search/index.ts supabase/functions/google-feed/index.ts supabase/functions/google-search-console/index.ts",
+    "typecheck:edge": "tsc --noEmit --noImplicitAny --target es2022 --lib es2022,dom,dom.iterable --module esnext --moduleResolution bundler --allowImportingTsExtensions --skipLibCheck supabase/functions/paystack/index.ts supabase/functions/send-offer/index.ts supabase/functions/respond-offer/index.ts supabase/functions/visual-product-search/index.ts supabase/functions/google-feed/index.ts supabase/functions/google-search-console/index.ts",
     "backfill:image-dimensions": "node --experimental-strip-types scripts/backfillImageDimensions.ts",
     "backfill:small-cards": "node --experimental-strip-types scripts/backfillSmallCards.ts",
     "backfill:card-widths": "node --experimental-strip-types scripts/backfillCardWidths.ts",

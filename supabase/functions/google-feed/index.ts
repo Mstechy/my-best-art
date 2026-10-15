@@ -8,8 +8,7 @@ declare const Deno: {
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-// One implementation of the XML rules, shared with the seller badge and tests.
-// Bundled by the Supabase CLI's esbuild pass, so this relative import is fine.
+// Shared module is inside supabase/functions so the CLI includes it in the bundle.
 import {
   buildFeedItem,
   buildFeedXmlFooter,
@@ -18,7 +17,7 @@ import {
   feedSellerEligible,
   googleFeedIssues,
   type FeedSellerFlags,
-} from "../../../src/lib/googleFeed";
+} from "../_shared/googleFeed.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
