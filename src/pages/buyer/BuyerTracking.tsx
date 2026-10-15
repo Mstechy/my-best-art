@@ -10,10 +10,11 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast as sonnerToast } from "sonner";
+import { buildBuyerOrderTrackingUrl } from "@/lib/orderTracking";
 
 interface Order {
   id: string;
@@ -43,9 +44,17 @@ export default function BuyerTracking() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [modalOrder, setModalOrder] = useState<Order | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const ordersRef = useRef<Order[]>([]);
   ordersRef.current = orders;
+
+  useEffect(() => {
+    const orderId = searchParams.get("order");
+    if (!orderId) return;
+    const order = orders.find((item) => item.id === orderId);
+    if (order) setModalOrder(order);
+  }, [orders, searchParams]);
 
   useEffect(() => {
     if (!user) return;
@@ -191,11 +200,7 @@ export default function BuyerTracking() {
                   packageNumber={order.tracking_number || order.id.slice(0, 16).toUpperCase()}
                   destination={order.carrier || "In Transit"}
                   date={`Order #${order.id.slice(0, 8).toUpperCase()} Â· ${new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
-                  qrCodeValue={
-                    order.tracking_number
-                      ? `https://track.my-best-art.com/${order.tracking_number}`
-                      : `https://my-best-art.com/buyer/orders/${order.id}`
-                  }
+                  qrCodeValue={buildBuyerOrderTrackingUrl(order.id, window.location.origin)}
                   packageImage={
                     order.product_image ? (
                       <img
@@ -214,7 +219,14 @@ export default function BuyerTracking() {
       </AnimatedSection>
 
       {/* Full Tracking Modal */}
-      <Dialog open={!!modalOrder} onOpenChange={open => { if (!open) setModalOrder(null); }}>
+      <Dialog open={!!modalOrder} onOpenChange={open => {
+        if (!open) {
+          setModalOrder(null);
+          const nextParams = new URLSearchParams(searchParams);
+          nextParams.delete("order");
+          setSearchParams(nextParams, { replace: true });
+        }
+      }}>
         {modalOrder && (
           <DialogContent className="max-w-md rounded-2xl">
             <DialogHeader>

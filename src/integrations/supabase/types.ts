@@ -891,12 +891,17 @@ export type Database = {
           currency: string
           description: string | null
           dimensions: string | null
+          gtin: string | null
           id: string
           is_approved: boolean
           key_features: string[] | null
           material: string | null
+          meta_description: string | null
+          low_stock_threshold: number
+          mpn: string | null
           price: number
           review_count: number
+          seo_slug: string | null
           seller_id: string
           shipping_info: string | null
           ships_to: string[]
@@ -923,12 +928,17 @@ export type Database = {
           currency?: string
           description?: string | null
           dimensions?: string | null
+          gtin?: string | null
           id?: string
           is_approved?: boolean
           key_features?: string[] | null
           material?: string | null
+          meta_description?: string | null
+          low_stock_threshold?: number
+          mpn?: string | null
           price?: number
           review_count?: number
+          seo_slug?: string | null
           seller_id: string
           shipping_info?: string | null
           ships_to?: string[]
@@ -955,12 +965,17 @@ export type Database = {
           currency?: string
           description?: string | null
           dimensions?: string | null
+          gtin?: string | null
           id?: string
           is_approved?: boolean
           key_features?: string[] | null
           material?: string | null
+          meta_description?: string | null
+          low_stock_threshold?: number
+          mpn?: string | null
           price?: number
           review_count?: number
+          seo_slug?: string | null
           seller_id?: string
           shipping_info?: string | null
           ships_to?: string[]
@@ -1592,6 +1607,10 @@ export type Database = {
           _status?: Database["public"]["Enums"]["product_status"]
         }
         Returns: undefined
+      }
+      seller_import_product_batch: {
+        Args: { p_products: Json }
+        Returns: { product_id: string; row_number: number }[]
       }
       admin_user_directory: {
         Args: never

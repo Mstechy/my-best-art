@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -11,6 +11,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
+import { useSearchParams } from "react-router-dom";
+import { trackVerifiedPurchase } from "@/lib/marketingAnalytics";
+import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
 
 interface OrderItem {
   id: string;
@@ -56,6 +59,9 @@ const STATUS_META: Record<string, { icon: React.ElementType; iconColor: string; 
 export default function BuyerOrders() {
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const paymentReference = searchParams.get("payment_reference");
+  const pendingPurchaseRef = React.useRef<Parameters<typeof trackVerifiedPurchase>[0] | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -75,10 +81,12 @@ export default function BuyerOrders() {
   const [reviewPhotos, setReviewPhotos] = useState<File[]>([]);
   const [reviewLoading, setReviewLoading] = useState(false);
 
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     if (!user) return;
-    const { data: ordersData } = await supabase
+    let ordersQuery = supabase
       .from("orders").select("*").eq("buyer_id", user.id).order("created_at", { ascending: false });
+    if (paymentReference) ordersQuery = ordersQuery.eq("payment_reference", paymentReference);
+    const { data: ordersData } = await ordersQuery;
     if (!ordersData) { setLoading(false); return; }
 
     const sellerIds = [...new Set(ordersData.map(o => o.seller_id))];
@@ -110,6 +118,31 @@ export default function BuyerOrders() {
       });
     });
 
+    if (paymentReference) {
+      const paidOrders = ordersData.filter(
+        (order) => order.payment_reference === paymentReference && order.payment_status === "paid",
+      );
+      if (paidOrders.length > 0) {
+        const paidOrderIds = new Set(paidOrders.map((order) => order.id));
+        const purchaseItems = (itemsData ?? [])
+          .filter((item) => paidOrderIds.has(item.order_id))
+          .map((item) => ({
+            item_id: item.product_id || item.id,
+            item_name: item.product_id ? productMap[item.product_id]?.title || "Product" : "Product",
+            price: Number(item.unit_price),
+            quantity: item.quantity,
+          }));
+        const purchase = {
+          transaction_id: paymentReference,
+          value: paidOrders.reduce((total, order) => total + Number(order.total_amount), 0),
+          currency: paidOrders[0].currency || "NGN",
+          items: purchaseItems,
+        };
+        pendingPurchaseRef.current = purchase;
+        trackVerifiedPurchase(purchase);
+      }
+    }
+
     setOrders(ordersData.map(o => ({
       id: o.id, status: o.status, total_amount: o.total_amount, currency: o.currency,
       created_at: o.created_at, seller_id: o.seller_id,
@@ -120,7 +153,15 @@ export default function BuyerOrders() {
     const { data: reviews } = await supabase.from("reviews").select("product_id").eq("buyer_id", user.id);
     setReviewedProducts(new Set((reviews || []).map(r => r.product_id)));
     setLoading(false);
-  };
+  }, [user, paymentReference]);
+
+  useEffect(() => {
+    const trackPendingPurchase = () => {
+      if (pendingPurchaseRef.current) trackVerifiedPurchase(pendingPurchaseRef.current);
+    };
+    window.addEventListener(ANALYTICS_CONSENT_CHANGED, trackPendingPurchase);
+    return () => window.removeEventListener(ANALYTICS_CONSENT_CHANGED, trackPendingPurchase);
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -129,7 +170,7 @@ export default function BuyerOrders() {
       .on("postgres_changes", { event: "*", schema: "public", table: "orders", filter: `buyer_id=eq.${user.id}` }, () => fetchOrders())
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user]);
+  }, [user, fetchOrders]);
 
   const submitCancel = async () => {
     if (!cancelOrder || !user) return;

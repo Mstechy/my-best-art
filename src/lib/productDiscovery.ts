@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { hasAnalyticsConsent } from "@/lib/analyticsConsent";
 
 export type DiscoveryEvent = "impression" | "view" | "click" | "wishlist" | "add_to_cart";
 const VISITOR_KEY = "markethub_visitor_id";
@@ -86,7 +87,7 @@ function enqueue(ids: string[], event: DiscoveryEvent, visitorId: string) {
 
 export function trackProductDiscovery(productIds: string | string[], event: DiscoveryEvent) {
   const ids = (Array.isArray(productIds) ? productIds : [productIds]).filter(Boolean).slice(0, 48);
-  if (!ids.length || typeof window === "undefined") return;
+  if (!ids.length || typeof window === "undefined" || !hasAnalyticsConsent()) return;
 
   const visitorId = getVisitorId();
   enqueue(ids, event, visitorId);

@@ -31,6 +31,8 @@ import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import ProductRichDescription from "@/components/product/ProductRichDescription";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
+import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
+import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { trackView } from "@/hooks/useBatchedViewTracking";
 import { useProductSEO } from "@/hooks/useSEO";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
@@ -53,6 +55,7 @@ export default function ProductDetailPage() {
   const [selectedSize, setSelectedSize] = useState<string>("");
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [titleExpanded, setTitleExpanded] = useState(false);
+  const ga4ViewedProductRef = useRef<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -101,6 +104,28 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (product?.id) trackProductDiscovery(product.id, "view");
   }, [product?.id]);
+
+  useEffect(() => {
+    if (!product) return;
+    const trackProductView = () => {
+      if (ga4ViewedProductRef.current === product.id) return;
+      const sent = trackGA4Event("view_item", {
+        currency: product.currency || "NGN",
+        value: product.price,
+        items: [{
+          item_id: product.id,
+          item_name: product.title,
+          price: product.price,
+          quantity: 1,
+          ...(product.brand ? { item_brand: product.brand } : {}),
+        }],
+      });
+      if (sent) ga4ViewedProductRef.current = product.id;
+    };
+    trackProductView();
+    window.addEventListener(ANALYTICS_CONSENT_CHANGED, trackProductView);
+    return () => window.removeEventListener(ANALYTICS_CONSENT_CHANGED, trackProductView);
+  }, [product]);
 
   useEffect(() => {
     if (id) addRecent(id);
@@ -379,6 +404,17 @@ export default function ProductDetailPage() {
       quantity,
     };
     if (action === "cart") {
+      trackGA4Event("add_to_cart", {
+        currency: product.currency || "NGN",
+        value: purchasablePrice * quantity,
+        items: [{
+          item_id: product.id,
+          item_name: product.title,
+          price: purchasablePrice,
+          quantity,
+          ...(product.brand ? { item_brand: product.brand } : {}),
+        }],
+      });
       addItem(item);
       toast.success(`Added ${quantity} item${quantity > 1 ? "s" : ""} to cart`);
       setPurchaseAction(null);

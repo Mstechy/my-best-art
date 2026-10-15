@@ -1,7 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
+import { observeProductImpression } from "@/lib/productImpressionObserver";
 
-const OBSERVER_THRESHOLD = 0.6;
 const VIEWED_SET_KEY = "viewed_product_ids";
 
 function getViewedIds(): Set<string> {
@@ -25,36 +25,31 @@ function markViewed(id: string) {
   }
 }
 
-export function useProductViewTracking(productId: string) {
+export function useProductViewTracking(productId: string, onImpression?: () => void) {
   const nodeRef = useRef<HTMLDivElement | null>(null);
   const trackedRef = useRef(false);
+  const impressionTrackedRef = useRef(false);
+  const onImpressionRef = useRef(onImpression);
+  onImpressionRef.current = onImpression;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const viewed = getViewedIds();
-    if (viewed.has(productId)) {
-      trackedRef.current = true;
-      return;
-    }
+    trackedRef.current = viewed.has(productId);
+    impressionTrackedRef.current = false;
 
     const node = nodeRef.current;
-    if (!node) return;
+    if (!node || (trackedRef.current && !onImpressionRef.current)) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        if (entry && entry.intersectionRatio >= OBSERVER_THRESHOLD && !trackedRef.current) {
-          trackedRef.current = true;
-          trackProductDiscovery(productId, "view");
-          markViewed(productId);
-          observer.disconnect();
-        }
-      },
-      { threshold: OBSERVER_THRESHOLD }
-    );
-
-    observer.observe(node);
-    return () => observer.disconnect();
+    return observeProductImpression(node, () => {
+      impressionTrackedRef.current = true;
+      if (!trackedRef.current) {
+        trackedRef.current = true;
+        trackProductDiscovery(productId, "view");
+        markViewed(productId);
+      }
+      onImpressionRef.current?.();
+    });
   }, [productId]);
 
   const ref = useCallback((el: HTMLDivElement | null) => {

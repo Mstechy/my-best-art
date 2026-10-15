@@ -35,6 +35,7 @@ The dev server runs on http://localhost:8080.
 | `VITE_SUPABASE_ANON` | App boot | Also accepts `VITE_SUPABASE_PUBLISHABLE_KEY` |
 | `VITE_PAYSTACK_PUBLIC_KEY` | Checkout | Publishable key only |
 | `VITE_SENTRY_DSN` | Error reporting | Optional — Sentry stays dormant without it |
+| `VITE_GA4_MEASUREMENT_ID` | GA4 ecommerce analytics | Optional; loads only after visitors accept analytics cookies |
 
 All `VITE_*` values are inlined into the client bundle at build time. **They are public by definition.** Never put a secret here.
 

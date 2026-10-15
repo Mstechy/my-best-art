@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCart } from "@/hooks/useCart";
@@ -13,6 +13,8 @@ import CartDrawer from "@/components/CartDrawer";
 import { Package, ArrowLeft, ShoppingBag, CheckCircle2, Lock, ShieldCheck, BookmarkPlus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { COUNTRIES } from "@/lib/countries";
+import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
+import { trackGA4Event } from "@/lib/marketingAnalytics";
 
 /** Generate a unique idempotency key for safe retries without duplicate orders */
 function generateIdempotencyKey(): string {
@@ -53,7 +55,28 @@ export default function CheckoutPage() {
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
   const checkoutItems = useMemo(() => directCheckoutItem ? [directCheckoutItem] : items, [directCheckoutItem, items]);
   const checkoutTotal = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [checkoutItems]);
+  const checkoutEventSentRef = useRef(false);
 
+  useEffect(() => {
+    if (checkoutItems.length === 0) return;
+    const trackCheckoutStart = () => {
+      if (checkoutEventSentRef.current) return;
+      const sent = trackGA4Event("begin_checkout", {
+        currency: "NGN",
+        value: checkoutTotal,
+        items: checkoutItems.map((item) => ({
+          item_id: item.product_id,
+          item_name: item.title,
+          price: item.price,
+          quantity: item.quantity,
+        })),
+      });
+      if (sent) checkoutEventSentRef.current = true;
+    };
+    trackCheckoutStart();
+    window.addEventListener(ANALYTICS_CONSENT_CHANGED, trackCheckoutStart);
+    return () => window.removeEventListener(ANALYTICS_CONSENT_CHANGED, trackCheckoutStart);
+  }, [checkoutItems, checkoutTotal]);
   const reconcileCheckoutItems = useCallback(async (): Promise<string | null> => {
     const productIds = [...new Set(checkoutItems.map((item) => item.product_id))];
     const variantIds = checkoutItems.flatMap((item) => item.product_variant_id ? [item.product_variant_id] : []);

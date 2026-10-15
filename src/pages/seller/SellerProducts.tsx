@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, AlertCircle, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus } from "lucide-react";
+import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, AlertCircle, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,6 +26,7 @@ import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } f
 import { buildListingReadiness } from "@/lib/listingReadiness";
 import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { useCurrency } from "@/hooks/useCurrency";
+import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
 
 import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
 import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
@@ -81,8 +82,11 @@ export default function SellerProducts() {
   const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
+  const [productCount, setProductCount] = useState(0);
+  const [productPage, setProductPage] = useState(0);
   const [stats, setStats] = useState<Record<string, { views: number; saves: number; orders: number }>>({});
   const [categories, setCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
@@ -91,6 +95,7 @@ export default function SellerProducts() {
   const [bulkPrice, setBulkPrice] = useState("");
   const [bulkStock, setBulkStock] = useState("");
   const [needsAttentionOnly, setNeedsAttentionOnly] = useState(false);
+  const productPageSize = 24;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [listingMinimized, setListingMinimized] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -162,14 +167,22 @@ export default function SellerProducts() {
 
   const fetchProducts = useCallback(async () => {
     if (!user) return;
-    const { data, error } = await supabase
+    setLoading(true);
+    let query = supabase
       .from("products")
-      .select("*, product_images(*)")
+      .select("*, product_images(*)", { count: "exact" })
       .eq("seller_id", user.id)
-      .order("created_at", { ascending: false });
-    if (!error && data) {
-      setProducts((data as unknown as ProductRow[]).map(normalizeProductRow));
+      .order("created_at", { ascending: false })
+      .range(productPage * productPageSize, (productPage + 1) * productPageSize - 1);
+    if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
+    const { data, error, count } = await query;
+    if (error) {
+      toast({ title: "Could not load products", description: error.message, variant: "destructive" });
+      setLoading(false);
+      return;
     }
+    setProductCount(count ?? 0);
+    setProducts((data as unknown as ProductRow[] ?? []).map(normalizeProductRow));
     setLoading(false);
 
     // fetch per-product stats
@@ -187,17 +200,27 @@ export default function SellerProducts() {
       (itemsRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].orders++; });
       setStats(s);
     }
-  }, [user]);
+  }, [user, productPage, productPageSize, search, toast]);
 
   const fetchCategories = useCallback(async () => {
-    const { data } = await supabase.from("categories").select("*").order("sort_order");
-    if (data) setCategories(data as Category[]);
-  }, []);
+    const { data, error } = await supabase.from("categories").select("*").order("sort_order");
+    if (error) {
+      toast({ title: "Could not load product categories", description: error.message, variant: "destructive" });
+    } else {
+      setCategories(data as Category[]);
+    }
+    setCategoriesLoading(false);
+  }, [toast]);
 
   useEffect(() => {
     fetchProducts();
     fetchCategories();
   }, [fetchProducts, fetchCategories]);
+
+  useEffect(() => {
+    if (loading || productPage === 0 || productPage * productPageSize < productCount) return;
+    setProductPage(Math.max(0, Math.ceil(productCount / productPageSize) - 1));
+  }, [loading, productCount, productPage, productPageSize]);
 
   useEffect(() => {
     if (!dialogOpen || editingProduct || !draftKey) return;
@@ -1342,11 +1365,16 @@ export default function SellerProducts() {
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-bold text-foreground">My Products</h1>
-            <p className="mt-1 text-muted-foreground">Manage your product listings ({products.length} total)</p>
+            <p className="mt-1 text-muted-foreground">
+              Manage your product listings ({productCount}{search.trim() ? " matching" : " total"})
+            </p>
           </div>
-          <Button onClick={openNewProduct} className="gap-2 gradient-seller text-primary-foreground shadow-glow-seller">
-            {listingMinimized ? <><Play className="h-4 w-4" /> Continue listing</> : <><Plus className="h-4 w-4" /> Add Product</>}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <SellerProductCsvImporter categories={categories} categoriesLoading={categoriesLoading} onImported={() => { void fetchProducts(); }} />
+            <Button onClick={openNewProduct} className="gap-2 gradient-seller text-primary-foreground shadow-glow-seller">
+              {listingMinimized ? <><Play className="h-4 w-4" /> Continue listing</> : <><Plus className="h-4 w-4" /> Add Product</>}
+            </Button>
+          </div>
           <Dialog open={dialogOpen} onOpenChange={handleListingDialogChange}>
             <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -2111,11 +2139,11 @@ export default function SellerProducts() {
         <div className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-10 h-11" />
+            <Input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(0); }} placeholder="Search products..." className="pl-10 h-11" />
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Button type="button" size="sm" variant={needsAttentionOnly ? "secondary" : "outline"} onClick={() => setNeedsAttentionOnly((value) => !value)}>
-              {needsAttentionOnly ? "Showing listing health issues" : "Show listing health issues"}
+            <Button type="button" size="sm" variant={needsAttentionOnly ? "secondary" : "outline"} onClick={() => { setNeedsAttentionOnly((value) => !value); setProductPage(0); }}>
+              {needsAttentionOnly ? "Showing listing health issues on this page" : "Show listing health issues on this page"}
             </Button>
           </div>
           {selectedProductIds.length > 0 && (
@@ -2282,6 +2310,21 @@ export default function SellerProducts() {
           </div>
         )}
       </AnimatedSection>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {productCount === 0
+            ? "No products"
+            : `Showing ${productPage * productPageSize + 1}-${productPage * productPageSize + products.length} of ${productCount}`}
+        </p>
+        <div className="flex gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={() => setProductPage((value) => Math.max(0, value - 1))} disabled={productPage === 0 || loading}>
+            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+          </Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setProductPage((value) => value + 1)} disabled={(productPage + 1) * productPageSize >= productCount || loading}>
+            Next <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

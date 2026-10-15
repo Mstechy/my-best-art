@@ -145,7 +145,7 @@ Deno.serve(async (req: Request) => {
   const response = await fetch("https://api.paystack.co/transaction/initialize", {
     method: "POST",
     headers: { Authorization: `Bearer ${env("PAYSTACK_SECRET_KEY")}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ email: body.email || auth.user.email, amount, currency: "NGN", reference, callback_url: `${req.headers.get("origin") || "https://your-domain.example"}/buyer/orders`, metadata: { order_ids: ids, user_id: auth.user.id } }),
+    body: JSON.stringify({ email: body.email || auth.user.email, amount, currency: "NGN", reference, callback_url: `https://www.tradibu.com/buyer/orders?payment_reference=${encodeURIComponent(reference)}`, metadata: { order_ids: ids, user_id: auth.user.id } }),
   });
   const initialized = await response.json();
   if (!response.ok || !initialized.status) return json({ error: initialized.message || "Could not initialize payment" }, 502);

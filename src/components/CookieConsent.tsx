@@ -1,14 +1,13 @@
 import { useEffect, useState } from "react";
 import { Cookie, X } from "lucide-react";
 import { Link } from "react-router-dom";
-
-const KEY = "markethub_cookie_consent";
+import { COOKIE_CONSENT_KEY, notifyAnalyticsConsentChanged } from "@/lib/analyticsConsent";
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const choice = localStorage.getItem(KEY);
+    const choice = localStorage.getItem(COOKIE_CONSENT_KEY);
     if (!choice) {
       const t = setTimeout(() => setVisible(true), 600);
       return () => clearTimeout(t);
@@ -16,8 +15,9 @@ export default function CookieConsent() {
   }, []);
 
   const decide = (choice: "accepted" | "declined") => {
-    localStorage.setItem(KEY, choice);
-    localStorage.setItem(`${KEY}_at`, new Date().toISOString());
+    localStorage.setItem(COOKIE_CONSENT_KEY, choice);
+    localStorage.setItem(`${COOKIE_CONSENT_KEY}_at`, new Date().toISOString());
+    notifyAnalyticsConsentChanged();
     setVisible(false);
   };
 
@@ -49,7 +49,7 @@ export default function CookieConsent() {
           <div className="flex-1 min-w-0">
             <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">We use cookies</p>
             <p className="mt-1 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed">
-              Essential cookies keep markethub running. Optional cookies help us improve your experience.{" "}
+              Essential cookies keep Tradibu running. Optional analytics cookies help us understand how the marketplace is used.{" "}
               <Link to="/cookies" className="text-[#111111] dark:text-[#FAF5F2] font-semibold underline underline-offset-2 hover:text-[#F6C75D] transition-colors">
                 Cookie Policy
               </Link>

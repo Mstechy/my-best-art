@@ -31,6 +31,7 @@ import { countActive, defaultFilters, type MarketplaceFiltersState } from "@/com
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
+import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { dedupeProducts, isMarketplaceSort } from "@/lib/marketplaceContracts";
 import { toast } from "sonner";
 
@@ -121,7 +122,21 @@ function MarketplaceProductImpressionCard({
   seller?: { full_name: string | null; is_verified: boolean };
   formatPrice: (amount: number, sourceCurrency?: string) => string;
 }) {
-  const { ref } = useProductViewTracking(product.id);
+  const analyticsItem = {
+    item_id: product.id,
+    item_name: product.title,
+    price: product.price,
+    quantity: 1,
+    ...(product.brand ? { item_brand: product.brand } : {}),
+  };
+  const { ref } = useProductViewTracking(product.id, () => {
+    trackGA4Event("view_item_list", {
+      currency: product.currency || "NGN",
+      item_list_id: "marketplace",
+      item_list_name: "Tradibu marketplace",
+      items: [analyticsItem],
+    });
+  });
   const { t } = useTranslation();
   const primaryImage = product.product_images?.find(item => item.is_primary)?.image_url || product.product_images?.[0]?.image_url;
   const baseDiscount = product.compare_at_price && product.compare_at_price > product.price
@@ -134,7 +149,15 @@ function MarketplaceProductImpressionCard({
     <div ref={ref} className="shrink-0" style={{ width: 180 }}>
       <Link
         to={`/product/${product.id}`}
-        onClick={() => trackProductDiscovery(product.id, "click")}
+        onClick={() => {
+          trackProductDiscovery(product.id, "click");
+          trackGA4Event("select_item", {
+            currency: product.currency || "NGN",
+            item_list_id: "marketplace",
+            item_list_name: "Tradibu marketplace",
+            items: [analyticsItem],
+          });
+        }}
         className="group overflow-hidden rounded-3xl border border-[#E8E8E8] bg-white transition hover:-translate-y-0.5 hover:shadow-lg dark:border-[#222222] dark:bg-[#1E1E1E]"
       >
         <div className="relative aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E]">
@@ -494,6 +517,17 @@ export default function MarketplacePage() {
       return;
     }
     trackProductDiscovery(product.id, "add_to_cart");
+    trackGA4Event("add_to_cart", {
+      currency: product.currency || "NGN",
+      value: product.price,
+      items: [{
+        item_id: product.id,
+        item_name: product.title,
+        price: product.price,
+        quantity: 1,
+        ...(product.brand ? { item_brand: product.brand } : {}),
+      }],
+    });
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
     addItem({
@@ -512,6 +546,18 @@ export default function MarketplacePage() {
     // The discovery-event schema records purchase intent as a click. Its
     // allowed event types deliberately exclude a separate buy_now value.
     trackProductDiscovery(product.id, "click");
+    trackGA4Event("select_item", {
+      currency: product.currency || "NGN",
+      item_list_id: "marketplace",
+      item_list_name: "Tradibu marketplace",
+      items: [{
+        item_id: product.id,
+        item_name: product.title,
+        price: product.price,
+        quantity: 1,
+        ...(product.brand ? { item_brand: product.brand } : {}),
+      }],
+    });
     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
     const seller = sellerProfiles[product.seller_id];
     beginDirectCheckout({
@@ -702,7 +748,32 @@ export default function MarketplacePage() {
                         formatPrice={formatPrice}
                         sellerName={seller?.full_name || t("marketplace.seller")}
                         sellerVerified={seller?.is_verified ?? false}
-                        onProductClick={() => trackProductDiscovery(product.id, "click")}
+                        onProductClick={() => {
+                          trackProductDiscovery(product.id, "click");
+                          trackGA4Event("select_item", {
+                            item_list_id: "marketplace",
+                            item_list_name: "Tradibu marketplace",
+                            items: [{
+                              item_id: product.id,
+                              item_name: product.title,
+                              price: product.price,
+                              quantity: 1,
+                              ...(product.brand ? { item_brand: product.brand } : {}),
+                            }],
+                          });
+                        }}
+                        onProductImpression={() => trackGA4Event("view_item_list", {
+                          currency: product.currency || "NGN",
+                          item_list_id: "marketplace",
+                          item_list_name: "Tradibu marketplace",
+                          items: [{
+                            item_id: product.id,
+                            item_name: product.title,
+                            price: product.price,
+                            quantity: 1,
+                            ...(product.brand ? { item_brand: product.brand } : {}),
+                          }],
+                        })}
                         onBuyNow={() => handleBuyNow(product)}
                         onAddToCart={() => handleAddToCart(product)}
                         showWishlist={!!user}

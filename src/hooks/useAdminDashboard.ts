@@ -44,22 +44,41 @@ export interface AdminOrder {
   seller_name?: string;
 }
 
-export function useAdminProducts() {
+export function useAdminProducts(page: number, pageSize: number, search: string, tab: "all" | "pending" | "approved" | "archived") {
   return useSupabaseQuery(
-    [...supabaseKeys.table("products"), "admin"],
+    [...supabaseKeys.table("products"), "admin", page, pageSize, search, tab],
     async () => {
-      const { data: productsData } = await supabase
+      const start = page * pageSize;
+      let productsQuery = supabase
         .from("products")
-        .select("*, product_images(image_url, is_primary)")
-        .order("created_at", { ascending: false });
+        .select("*, product_images(image_url, is_primary)", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .range(start, start + pageSize - 1);
 
-      if (!productsData) return [];
+      if (search.trim()) productsQuery = productsQuery.ilike("title", `%${search.trim()}%`);
+      if (tab === "pending") productsQuery = productsQuery.eq("status", "active").eq("is_approved", false);
+      if (tab === "approved") productsQuery = productsQuery.eq("is_approved", true);
+      if (tab === "archived") productsQuery = productsQuery.eq("status", "archived");
+
+      const [{ data: productsData, error: productsError, count }, allCount, pendingCount, approvedCount, archivedCount] = await Promise.all([
+        productsQuery,
+        supabase.from("products").select("id", { count: "exact", head: true }),
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active").eq("is_approved", false),
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("is_approved", true),
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "archived"),
+      ]);
+
+      if (productsError) throw productsError;
+      for (const result of [allCount, pendingCount, approvedCount, archivedCount]) {
+        if (result.error) throw result.error;
+      }
+      if (!productsData) return { products: [], total: 0, counts: { all: 0, pending: 0, approved: 0, archived: 0 } };
 
       const sellerIds = [...new Set(productsData.map(p => p.seller_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name, email")
-        .in("user_id", sellerIds);
+      const { data: profiles, error: profileError } = sellerIds.length
+        ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", sellerIds)
+        : { data: [], error: null };
+      if (profileError) throw profileError;
 
       const profileMap = new Map<string, AdminProfile>();
       (profiles ?? []).forEach((p: AdminProfile) => profileMap.set(p.user_id, p));
@@ -83,9 +102,18 @@ export function useAdminProducts() {
         };
       });
 
-      return mapped;
+      return {
+        products: mapped,
+        total: count ?? 0,
+        counts: {
+          all: allCount.count ?? 0,
+          pending: pendingCount.count ?? 0,
+          approved: approvedCount.count ?? 0,
+          archived: archivedCount.count ?? 0,
+        },
+      };
     },
-    { enabled: true, staleTime: 30_000 }
+    { enabled: true, staleTime: 30_000, placeholderData: (previous) => previous }
   );
 }
 

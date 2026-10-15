@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,7 @@ import ProductImage from "@/components/product/ProductImage";
 import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
 import { useAdminProducts } from "@/hooks/useAdminDashboard";
 import { useCurrency } from "@/hooks/useCurrency";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Product {
   id: string;
@@ -38,11 +39,19 @@ export default function AdminProducts() {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
+  const [page, setPage] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const pageSize = 25;
 
-  const productsQuery = useAdminProducts();
-  const products = productsQuery.data ?? [];
+  const productsQuery = useAdminProducts(page, pageSize, search, tab);
+  const products = productsQuery.data?.products ?? [];
+  const counts = productsQuery.data?.counts ?? { all: 0, pending: 0, approved: 0, archived: 0 };
+  const total = productsQuery.data?.total ?? 0;
   const loading = productsQuery.isLoading;
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, tab]);
 
   const approveProduct = async (id: string) => {
      
@@ -68,23 +77,13 @@ export default function AdminProducts() {
     productsQuery.refetch();
   };
 
-  const filtered = useMemo(() => products.filter(p => {
-    const matchesSearch = !search || p.title.toLowerCase().includes(search.toLowerCase()) || p.seller_name?.toLowerCase().includes(search.toLowerCase());
-    const matchesTab =
-      tab === "all" ||
-      (tab === "pending" && p.status === "active" && !p.is_approved) ||
-      (tab === "approved" && p.is_approved) ||
-      (tab === "archived" && p.status === "archived");
-    return matchesSearch && matchesTab;
-  }), [products, search, tab]);
-
-  const pendingCount = products.filter(p => p.status === "active" && !p.is_approved).length;
+  const pendingCount = counts.pending;
 
   const tabs: { label: string; value: Tab; count: number }[] = [
-    { label: "All Products", value: "all", count: products.length },
+    { label: "All Products", value: "all", count: counts.all },
     { label: "Pending Approval", value: "pending", count: pendingCount },
-    { label: "Approved", value: "approved", count: products.filter(p => p.is_approved).length },
-    { label: "Archived", value: "archived", count: products.filter(p => p.status === "archived").length },
+    { label: "Approved", value: "approved", count: counts.approved },
+    { label: "Archived", value: "archived", count: counts.archived },
   ];
 
   return (
@@ -121,7 +120,7 @@ export default function AdminProducts() {
       <AnimatedSection variant="fade-up" delay={50}>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by product name or seller..." className="pl-10 h-11" />
+          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by product name..." className="pl-10 h-11" />
         </div>
       </AnimatedSection>
 
@@ -142,7 +141,7 @@ export default function AdminProducts() {
           <CardContent className="p-0">
             {loading ? (
               <div className="py-12 text-center text-muted-foreground">Loading products...</div>
-            ) : filtered.length === 0 ? (
+            ) : products.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
                   <Package className="h-7 w-7 text-muted-foreground" />
@@ -164,7 +163,7 @@ export default function AdminProducts() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.map(product => (
+                    {products.map(product => (
                       <TableRow key={product.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
@@ -241,6 +240,19 @@ export default function AdminProducts() {
           </CardContent>
         </Card>
       </AnimatedSection>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm text-muted-foreground">
+          {total === 0 ? "No products" : `Showing ${page * pageSize + 1}-${page * pageSize + products.length} of ${total}`}
+        </p>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setPage((value) => Math.max(0, value - 1))} disabled={page === 0 || loading}>
+            <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setPage((value) => value + 1)} disabled={(page + 1) * pageSize >= total || loading}>
+            Next <ChevronRight className="ml-1 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
