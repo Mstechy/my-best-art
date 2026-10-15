@@ -7,3 +7,11 @@ verify_jwt = false
 [functions.paystack]
 # The function authenticates initialize requests itself and verifies Paystack webhook signatures.
 verify_jwt = false
+
+[functions.google-feed]
+# Self-authenticates: pg_cron via x-feed-secret, admin dashboard via user JWT.
+verify_jwt = false
+
+[functions.google-search-console]
+# OAuth callback is public; API actions verify admin roles in the function.
+verify_jwt = false

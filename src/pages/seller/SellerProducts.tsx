@@ -24,6 +24,7 @@ import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
 import { buildListingReadiness } from "@/lib/listingReadiness";
+import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { useCurrency } from "@/hooks/useCurrency";
 
 import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
@@ -77,7 +78,7 @@ async function reviewImageFiles(
 
 export default function SellerProducts() {
   const { formatPrice } = useCurrency();
-  const { user } = useAuth();
+  const { user, profile, role } = useAuth();
   const { toast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [stats, setStats] = useState<Record<string, { views: number; saves: number; orders: number }>>({});
@@ -128,6 +129,8 @@ export default function SellerProducts() {
 
   // Form state â€” specifications
   const [brand, setBrand] = useState("");
+  const [gtin, setGtin] = useState("");
+  const [mpn, setMpn] = useState("");
   const [weight, setWeight] = useState("");
   const [dimensions, setDimensions] = useState("");
   const [material, setMaterial] = useState("");
@@ -198,9 +201,9 @@ export default function SellerProducts() {
 
   useEffect(() => {
     if (!dialogOpen || editingProduct || !draftKey) return;
-    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
+    const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, gtin, mpn, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
     localStorage.setItem(draftKey, JSON.stringify(draft));
-  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
+  }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, gtin, mpn, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
 
   // Persist the attached files alongside the text draft.
   //
@@ -325,7 +328,7 @@ export default function SellerProducts() {
       const draft = JSON.parse(saved) as ProductFormDraft;
       const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
       if (!hasContent) return;
-      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setGtin(draft.gtin || ""); setMpn(draft.mpn || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
       setDialogOpen(true);
       // Restore the files too. The draft is only worth reopening once the
       // blobs are back, so the dialog is opened first and the media applied as
@@ -524,7 +527,7 @@ export default function SellerProducts() {
     setCategoryId(""); setStockQuantity(""); setSku(generateSku()); setImageItems([]); setVideoItems([]);
     setRemovedImageIds([]); setRemovedVideoUrls([]); setDraggedImageId(null); setSavedProductId(null);
     setDocFile(null); setShowSoldCount(true);
-    setBrand(""); setWeight(""); setDimensions(""); setMaterial("");
+    setBrand(""); setGtin(""); setMpn(""); setWeight(""); setDimensions(""); setMaterial("");
     setColor(""); setCondition("new"); setWarrantyPeriod("none"); setShippingInfo("");
     setKeyFeatures([""]); setTagsInput(""); setShipsTo([]); setCategoryAttributes({});
     setProductTypeKey(""); setExistingProductVideos([]); setVariantRows([]); setVariantColorValues(""); setVariantStorageValues(""); setVariantPrimaryOption("storage");
@@ -553,7 +556,7 @@ export default function SellerProducts() {
       if (saved) {
         try {
           const draft = JSON.parse(saved) as ProductFormDraft;
-          setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+          setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setGtin(draft.gtin || ""); setMpn(draft.mpn || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
           toast({
             title: "Unfinished listing restored",
             description: restoredCount > 0
@@ -615,6 +618,8 @@ export default function SellerProducts() {
     setStockQuantity(String(product.stock_quantity));
     setSku(product.sku || "");
     setBrand(product.brand || "");
+    setGtin(product.gtin || "");
+    setMpn(product.mpn || "");
     setWeight(product.weight || "");
     setDimensions(product.dimensions || "");
     setMaterial(product.material || "");
@@ -747,6 +752,11 @@ export default function SellerProducts() {
 
   const handleSave = async () => {
     if (!user) return;
+    if (gtin.trim() && !isValidGtin(gtin)) {
+      toast({ title: "Check the GTIN", description: "Enter a valid 8, 12, 13, or 14-digit GTIN, or leave this optional field blank.", variant: "destructive" });
+      setFormTab("basic");
+      return;
+    }
     if (!title.trim()) {
       toast({ title: "Add a product title", description: "Every listing needs a title before it can be submitted.", variant: "destructive" });
       setFormTab("basic");
@@ -888,12 +898,14 @@ export default function SellerProducts() {
       meta_description: metaDescription.trim() || null,
       low_stock_threshold: parseInt(lowStockThreshold) || 5,
       sku: sku.trim() || null,
-      brand: (attr("brand") || brand).trim() || null,
+      brand: (brand || attr("brand")).trim() || null,
+      gtin: gtin.trim() || null,
+      mpn: mpn.trim() || null,
       weight: (attr("weight") || weight).trim() || null,
       dimensions: (attr("dimensions") || dimensions).trim() || null,
       material: (attr("material") || material).trim() || null,
       color: (attr("color") || color).trim() || null,
-      condition: (attr("condition") || condition).toLowerCase(),
+      condition: condition.toLowerCase(),
       warranty: attr("warranty") || warrantyText,
       warranty_period: warrantyPeriod === "none" ? null : warrantyPeriod,
       // Preserve legacy product shipping text on edits; new listings rely on the
@@ -1307,6 +1319,17 @@ export default function SellerProducts() {
     return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 gap-1 text-xs"><Clock className="h-3 w-3" /> Pending Approval</Badge>;
   };
 
+  const getGoogleIssues = (product: Product) => googleFeedIssues({
+    status: product.status,
+    is_approved: product.is_approved,
+    sellerEligible: role === "seller"
+      ? Boolean(profile?.is_approved) && !profile?.is_banned && !profile?.is_frozen
+      : undefined,
+    price: product.price,
+    imageCount: product.product_images.filter((image) => image.image_url.startsWith("https://")).length,
+    title: product.title,
+  });
+
   const statusColors: Record<string, string> = {
     active: "bg-success/10 text-success border-success/20",
     draft: "bg-muted text-muted-foreground border-border",
@@ -1441,6 +1464,35 @@ export default function SellerProducts() {
                       <SelectContent>{LISTING_CURRENCIES.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
                     </Select>
                     <p className="mt-1 text-xs text-muted-foreground">Enter the real amount you charge in this currency. Buyers see an estimated conversion in their selected currency.</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/20 p-4">
+                    <h3 className="text-sm font-semibold text-foreground">Google product details</h3>
+                    <p className="mt-1 text-xs text-muted-foreground">Optional manufacturer identifiers help Google match your product. Only enter a GTIN printed on the product or its packaging.</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="text-sm font-medium text-foreground">Brand</label>
+                        <Input value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Manufacturer brand" className="mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground">Condition</label>
+                        <Select value={condition} onValueChange={setCondition}>
+                          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="new">New</SelectItem>
+                            <SelectItem value="used">Used</SelectItem>
+                            <SelectItem value="refurbished">Refurbished</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground">GTIN (optional)</label>
+                        <Input inputMode="numeric" value={gtin} onChange={(event) => setGtin(event.target.value.replace(/\s/g, ""))} placeholder="8, 12, 13, or 14 digits" className="mt-1" />
+                      </div>
+                      <div>
+                        <label className="text-sm font-medium text-foreground">Manufacturer part number (optional)</label>
+                        <Input value={mpn} onChange={(event) => setMpn(event.target.value)} placeholder="Manufacturer's MPN" className="mt-1" />
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">URL Slug</label>
@@ -2162,6 +2214,12 @@ export default function SellerProducts() {
                   </div>
                   <CardContent className="p-4">
                     <h3 className="font-display font-semibold text-foreground truncate">{product.title}</h3>
+                    {(() => {
+                      const googleIssues = getGoogleIssues(product);
+                      return googleIssues.length === 0
+                        ? <Badge className="mt-2 bg-success/10 text-success border-success/20">Google status: Included</Badge>
+                        : <Badge variant="outline" className="mt-2 border-amber-500/40 text-amber-700 dark:text-amber-300" title={googleIssues.join("; ")}>Google status: Needs fix — {googleIssues[0]}</Badge>;
+                    })()}
                     <div className="flex items-center gap-2 mt-1">
                       <span className="font-display text-lg font-bold text-foreground">{formatPrice(product.price)}</span>
                       {product.compare_at_price && (

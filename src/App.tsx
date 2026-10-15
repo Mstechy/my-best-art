@@ -47,6 +47,7 @@ const AdminProducts = lazy(() => import("@/pages/admin/AdminProducts"));
 const AdminOrders = lazy(() => import("@/pages/admin/AdminOrders"));
 const AdminPages = lazy(() => import("@/pages/admin/AdminPages"));
 const AdminCollections = lazy(() => import("@/pages/admin/AdminCollections"));
+const AdminGoogleMerchant = lazy(() => import("@/pages/admin/AdminGoogleMerchant"));
 
 // Seller pages (lazy loaded)
 const SellerDashboard = lazy(() => import("@/pages/seller/SellerDashboard"));
@@ -175,6 +176,7 @@ function AppRoutes() {
           <Route path="/admin/ads" element={<AdminRoute><RouteSuspense><AdminAds /></RouteSuspense></AdminRoute>} />
           <Route path="/admin/collections" element={<AdminRoute><RouteSuspense><AdminCollections /></RouteSuspense></AdminRoute>} />
           <Route path="/admin/analytics" element={<AdminRoute><RouteSuspense><AdminAnalytics /></RouteSuspense></AdminRoute>} />
+          <Route path="/admin/google-merchant" element={<AdminRoute><RouteSuspense><AdminGoogleMerchant /></RouteSuspense></AdminRoute>} />
           <Route path="/admin/disputes" element={<AdminRoute><RouteSuspense><AdminDisputes /></RouteSuspense></AdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><RouteSuspense><AdminProducts /></RouteSuspense></AdminRoute>} />
           <Route path="/admin/orders" element={<AdminRoute><RouteSuspense><AdminOrders /></RouteSuspense></AdminRoute>} />

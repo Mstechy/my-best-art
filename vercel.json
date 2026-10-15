@@ -6,6 +6,7 @@
   "cleanUrls": true,
   "rewrites": [
     { "source": "/sitemap-products.xml", "destination": "/api/sitemap" },
+    { "source": "/feeds/google-products.xml", "destination": "https://bnkyddmmhaaefzfvzpqs.supabase.co/storage/v1/object/public/feeds/google-products.xml" },
     { "source": "/(.*)", "destination": "/index" }
   ],
   "headers": [

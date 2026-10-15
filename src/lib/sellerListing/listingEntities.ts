@@ -43,6 +43,8 @@ interface Product {
   stock_quantity: number;
   sku: string | null;
   brand: string | null;
+  gtin: string | null;
+  mpn: string | null;
   weight: string | null;
   dimensions: string | null;
   material: string | null;
@@ -81,6 +83,8 @@ interface ProductRow {
   stock_quantity: number;
   sku: string | null;
   brand: string | null;
+  gtin: string | null;
+  mpn: string | null;
   weight: string | null;
   dimensions: string | null;
   material: string | null;

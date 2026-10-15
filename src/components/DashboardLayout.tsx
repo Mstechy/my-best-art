@@ -8,7 +8,7 @@ import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
   ShoppingBag, Menu, X, LogOut, User, ChevronDown,
   LayoutDashboard, Package, ShoppingCart, BarChart3,
-  Users, Megaphone, AlertTriangle, Wallet, MessageSquare, Store, Truck, Flag, Heart, Star, FileText, Layers3
+  Users, Megaphone, AlertTriangle, Wallet, MessageSquare, Store, Truck, Flag, Heart, Star, FileText, Layers3, ShoppingBasket
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
@@ -28,6 +28,7 @@ const adminNav: NavItem[] = [
   { label: "Ads", href: "/admin/ads", icon: Megaphone },
   { label: "Collections", href: "/admin/collections", icon: Layers3 },
   { label: "Analytics", href: "/admin/analytics", icon: BarChart3 },
+  { label: "Google Merchant", href: "/admin/google-merchant", icon: ShoppingBasket },
   { label: "Disputes", href: "/admin/disputes", icon: AlertTriangle },
   { label: "Site Pages", href: "/admin/pages", icon: FileText },
 ];
