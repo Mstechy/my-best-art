@@ -134,9 +134,11 @@ export function useSEO({
         imagePreloadLink.rel = "preload";
         imagePreloadLink.as = "image";
         imagePreloadLink.fetchPriority = "high";
+        imagePreloadLink.href = absolutePreload;
         document.head.appendChild(imagePreloadLink);
+      } else {
+        imagePreloadLink.href = absolutePreload;
       }
-      imagePreloadLink.href = absolutePreload;
     } else {
       imagePreloadLink?.remove();
     }

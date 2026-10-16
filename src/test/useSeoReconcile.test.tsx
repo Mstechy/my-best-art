@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { injectProductHead, PRODUCT_STRUCTURED_DATA_ID, type ProductSeoInput } from "@/lib/productSeo";
 import { PAGE_STRUCTURED_DATA_ID, useProductSEO, useSEO } from "@/hooks/useSEO";
@@ -74,6 +74,7 @@ function AboutRoute() {
 
 afterEach(() => {
   document.head.innerHTML = "";
+  vi.restoreAllMocks();
 });
 
 describe("useProductSEO against prerendered product HTML", () => {
@@ -104,6 +105,21 @@ describe("useProductSEO against prerendered product HTML", () => {
     expect(document.querySelector("meta[name=description]")?.getAttribute("content")).toBe(
       before.description,
     );
+  });
+
+  it("sets the product image preload URL before appending the link", () => {
+    let hrefAtInsertion: string | null = null;
+    const appendChild = document.head.appendChild.bind(document.head);
+    vi.spyOn(document.head, "appendChild").mockImplementation((node) => {
+      if (node instanceof HTMLLinkElement && node.id === "product-image-preload") {
+        hrefAtInsertion = node.getAttribute("href");
+      }
+      return appendChild(node);
+    });
+
+    render(<ProductRoute />);
+
+    expect(hrefAtInsertion).toBe(input.image);
   });
 
   it("clears the Product node when the SPA navigates to a non-product route", () => {
