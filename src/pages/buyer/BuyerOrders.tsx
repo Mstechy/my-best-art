@@ -382,7 +382,7 @@ export default function BuyerOrders() {
                     {order.status === "shipped" && (
                       <button onClick={() => confirmDelivery(order.id)} disabled={confirmingDeliveryId === order.id}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-600 text-[9px] font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50">
-                        <CheckCircle2 className="h-2.5 w-2.5" /> {confirmingDeliveryId === order.id ? "Confirmingâ€¦" : "Received"}
+                        <CheckCircle2 className="h-2.5 w-2.5" /> {confirmingDeliveryId === order.id ? "Confirming…" : "Received"}
                       </button>
                     )}
                     {order.status === "delivered" && order.items.some(it => it.product_id && !reviewedProducts.has(it.product_id)) && (
@@ -398,7 +398,7 @@ export default function BuyerOrders() {
                     </Link>
                   </div>
 
-                  {/* Product thumbnail â€” bottom-right decoration */}
+                  {/* Product thumbnail — bottom-right decoration */}
                   {thumb ? (
                     <img
                       src={thumb}

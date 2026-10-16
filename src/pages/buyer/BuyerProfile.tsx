@@ -179,7 +179,7 @@ export default function BuyerProfile() {
 
           <button onClick={saveProfile} disabled={savingProfile}
             className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-semibold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50">
-            {savingProfile ? <><Loader2 className="h-3 w-3 animate-spin" /> Savingâ€¦</> : "Save Profile"}
+            {savingProfile ? <><Loader2 className="h-3 w-3 animate-spin" /> Saving…</> : "Save Profile"}
           </button>
         </div>
       </SectionCard>
@@ -190,7 +190,7 @@ export default function BuyerProfile() {
           <FieldInput label="New Password" type="password" placeholder="Min. 8 characters" value={password} onChange={(e) => setPassword((e.target as HTMLInputElement).value)} />
           <button onClick={changePassword} disabled={savingPassword}
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors disabled:opacity-50">
-            {savingPassword ? <><Loader2 className="h-3 w-3 animate-spin" /> Updatingâ€¦</> : "Update Password"}
+            {savingPassword ? <><Loader2 className="h-3 w-3 animate-spin" /> Updating…</> : "Update Password"}
           </button>
         </div>
       </SectionCard>
@@ -215,7 +215,7 @@ export default function BuyerProfile() {
             <div className="rounded-xl border border-[#E8E8E8] dark:border-[#222222] p-4 bg-[#FAFAFA] dark:bg-[#111111] space-y-3">
               <p className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">New Address</p>
               {[
-                { label: "Label (Home, Officeâ€¦)", key: "label", placeholder: "e.g. Home" },
+                { label: "Label (Home, Office…)", key: "label", placeholder: "e.g. Home" },
                 { label: "Recipient *", key: "recipient", placeholder: "Full name" },
                 { label: "Address line 1 *", key: "line1", placeholder: "Street address" },
                 { label: "Address line 2", key: "line2", placeholder: "Apt, suite, etc." },

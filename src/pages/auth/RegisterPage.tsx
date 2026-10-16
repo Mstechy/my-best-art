@@ -3,6 +3,8 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { getPostLoginDestination } from "@/lib/authRedirect";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 import {
   Eye, EyeOff, ArrowRight, ShoppingBag, Loader2,
   ShoppingCart, Store, Check,
@@ -11,6 +13,7 @@ import {
 type Role = "seller" | "buyer";
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const { user, role, signUp } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -39,9 +42,9 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password.trim() || !fullName.trim()) return;
-    if (!selectedRole) { toast.error("Please select an account type"); return; }
+    if (!selectedRole) { toast.error(t("auth.selectAccountType")); return; }
     if (password.length < 6) {
-      toast.error("Password must be at least 6 characters");
+      toast.error(t("auth.passwordMinLength"));
       return;
     }
     setSubmitting(true);
@@ -50,7 +53,7 @@ export default function RegisterPage() {
     if (error) {
       toast.error(error);
     } else {
-      toast.success("Account created! Please check your email to verify.");
+      toast.success(t("auth.accountCreated"));
       navigate("/auth/login");
     }
   };
@@ -58,20 +61,23 @@ export default function RegisterPage() {
   const roleOptions: { id: Role; label: string; sub: string; icon: typeof ShoppingCart }[] = [
     {
       id: "buyer",
-      label: "I want to Buy",
-      sub: "Discover & shop verified products",
+      label: t("auth.buyerOption"),
+      sub: t("auth.buyerDescription"),
       icon: ShoppingCart,
     },
     {
       id: "seller",
-      label: "I want to Sell",
-      sub: "List products & grow your business",
+      label: t("auth.sellerOption"),
+      sub: t("auth.sellerDescription"),
       icon: Store,
     },
   ];
 
   return (
     <div className="relative min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E] flex items-center justify-center p-4 overflow-hidden">
+      <div className="absolute right-4 top-4 z-10 rounded-full bg-white/80 shadow-sm dark:bg-[#1A1A1A]/80">
+        <LanguageSwitcher />
+      </div>
       {/* Decorative background blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -top-32 -right-32 h-[420px] w-[420px] rounded-full bg-[#F6C75D]/10 blur-[120px]" />
@@ -91,10 +97,10 @@ export default function RegisterPage() {
         <div className="bg-white dark:bg-[#1A1A1A] rounded-3xl border border-[#E8E8E8] dark:border-[#222222] shadow-2xl shadow-black/5 dark:shadow-black/40 px-8 py-9">
 
           <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
-            Create your account.
+            {t("auth.createAccountTitle")}
           </h1>
           <p className="mt-1.5 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
-            Choose how you'd like to use Tradibu
+            {t("auth.chooseHowToUse")}
           </p>
 
           {/* Role Selector */}
@@ -136,7 +142,7 @@ export default function RegisterPage() {
             })}
           </div>
 
-          {/* Form â€” slides in after role selected */}
+          {/* Form appears after role selection */}
           <div
             className={`overflow-hidden transition-all duration-500 ${
               showForm ? "max-h-[600px] opacity-100 mt-6" : "max-h-0 opacity-0 mt-0"
@@ -148,14 +154,14 @@ export default function RegisterPage() {
                 <div className="flex items-center gap-2 mb-1">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#F6C75D]/15 text-[10px] font-bold text-[#5C3A00] dark:text-[#F6C75D] uppercase tracking-wider">
                     <span className="h-1.5 w-1.5 rounded-full bg-[#F6C75D] animate-pulse" />
-                    {selectedRole === "buyer" ? "Buyer Account" : "Seller Account"}
+                    {selectedRole === "buyer" ? t("auth.buyerAccount") : t("auth.sellerAccount")}
                   </span>
                   <button
                     type="button"
                     onClick={() => { setSelectedRole(null); setShowForm(false); }}
                     className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] hover:underline"
                   >
-                    Change
+                    {t("auth.change")}
                   </button>
                 </div>
               )}
@@ -163,7 +169,7 @@ export default function RegisterPage() {
               {/* Full Name */}
               <div className="space-y-1.5">
                 <label htmlFor="fullName" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
-                  Full Name
+                  {t("auth.fullName")}
                 </label>
                 <input
                   id="fullName"
@@ -181,12 +187,12 @@ export default function RegisterPage() {
               {/* Email */}
               <div className="space-y-1.5">
                 <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
-                  Email
+                  {t("auth.email")}
                 </label>
                 <input
                   id="email"
                   type="email"
-                  placeholder="you@example.com"
+                  placeholder={t("auth.emailPlaceholder")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -199,13 +205,13 @@ export default function RegisterPage() {
               {/* Password */}
               <div className="space-y-1.5">
                 <label htmlFor="password" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
-                  Password
+                  {t("auth.password")}
                 </label>
                 <div className="relative">
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
-                    placeholder="min. 6 characters"
+                    placeholder={t("auth.minimumCharacters")}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -217,7 +223,7 @@ export default function RegisterPage() {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6E6C64] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors p-0.5"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={showPassword ? t("auth.hidePassword") : t("auth.showPassword")}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </button>
@@ -236,7 +242,7 @@ export default function RegisterPage() {
                       />
                     ))}
                     <span className="text-[9px] text-[#6E6C64] dark:text-[#555555] ml-1 w-12 shrink-0">
-                      {password.length >= 10 ? "Strong" : password.length >= 6 ? "Medium" : "Weak"}
+                      {password.length >= 10 ? t("auth.strong") : password.length >= 6 ? t("auth.medium") : t("auth.weak")}
                     </span>
                   </div>
                 )}
@@ -249,10 +255,10 @@ export default function RegisterPage() {
                 className="mt-1 w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
               >
                 {submitting ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" /> Creating accountâ€¦</>
+                  <><Loader2 className="h-4 w-4 animate-spin" /> {t("auth.creatingAccount")}</>
                 ) : (
                   <>
-                    Create {selectedRole === "buyer" ? "Buyer" : "Seller"} Account
+                    {selectedRole === "buyer" ? t("auth.createBuyerAccount") : t("auth.createSellerAccount")}
                     <ArrowRight className="h-3.5 w-3.5" />
                   </>
                 )}
@@ -263,23 +269,23 @@ export default function RegisterPage() {
           {/* Divider + sign in link */}
           <div className="mt-7 flex items-center gap-3">
             <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
-            <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
+            <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">{t("auth.or")}</span>
             <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
           </div>
 
           <p className="mt-5 text-center text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
-            Already have an account?{" "}
+            {t("auth.alreadyHaveAccount")}{" "}
             <Link to="/auth/login" className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline">
-              Sign in
+              {t("auth.signIn")}
             </Link>
           </p>
         </div>
 
         <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
-          By creating an account you agree to our{" "}
-          <Link to="/terms" className="underline hover:text-[#6E6C64]">Terms</Link>
-          {" "}and{" "}
-          <Link to="/privacy" className="underline hover:text-[#6E6C64]">Privacy Policy</Link>
+          {t("auth.accountAgreement")}{" "}
+          <Link to="/terms" className="underline hover:text-[#6E6C64]">{t("auth.terms")}</Link>
+          {" "}{t("auth.and")}{" "}
+          <Link to="/privacy" className="underline hover:text-[#6E6C64]">{t("auth.privacyPolicy")}</Link>
         </p>
       </div>
     </div>

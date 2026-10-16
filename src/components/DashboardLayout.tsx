@@ -95,7 +95,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E]">
 
-      {/* Sidebar â€” always fixed, never scrolls with page */}
+      {/* Sidebar — always fixed, never scrolls with page */}
       <aside
         id="dashboard-sidebar"
         aria-label="Dashboard navigation"
@@ -207,7 +207,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* Main content â€” offset by sidebar width on desktop */}
+      {/* Main content — offset by sidebar width on desktop */}
       <div className="flex flex-1 flex-col min-w-0 lg:pl-60">
         {/* Header */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#E8E8E8] dark:border-[#1A1A1A] bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md px-4 lg:px-6">

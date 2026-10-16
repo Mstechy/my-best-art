@@ -61,7 +61,7 @@ export default function QAndASection({ productId }: { productId: string }) {
     });
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
-    toast.success("Question posted â€” the seller will be notified");
+    toast.success("Question posted — the seller will be notified");
     setText(""); setOpen(false); load();
   };
 
@@ -79,7 +79,7 @@ export default function QAndASection({ productId }: { productId: string }) {
 
       {loading ? <div className="mt-3 h-12 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /> : questions.length === 0 ? (
         <div className="py-2 text-[#6E6C64]">
-          <p className="text-xs">No questions yet â€” be the first to ask about this product.</p>
+          <p className="text-xs">No questions yet — be the first to ask about this product.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -121,11 +121,11 @@ export default function QAndASection({ productId }: { productId: string }) {
               rows={4} 
               value={text} 
               onChange={e => setText(e.target.value)} 
-              placeholder="Ask the seller anything about this productâ€¦" 
+              placeholder="Ask the seller anything about this product…"
               className="w-full mb-4 p-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-xs text-[#111111] dark:text-[#FAF5F2] outline-none resize-none"
             />
             <button onClick={submit} disabled={submitting} className="w-full flex items-center justify-center gap-1.5 px-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50">
-              {submitting ? "Postingâ€¦" : "Post Question"}
+              {submitting ? "Posting…" : "Post Question"}
             </button>
           </div>
         </DialogContent>

@@ -258,7 +258,7 @@ export default function LandingPage() {
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="flex flex-col pb-8">
-      {/* Hero area Ã¢â‚¬â€ 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
+      {/* Hero area — 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
       {/* Single H1 for the page. Visually hidden so the hero design is untouched,
           but present for crawlers and screen readers (the hero artwork already
           states the value proposition visually). */}
@@ -333,7 +333,7 @@ export default function LandingPage() {
         </Container>
       </div>
 
-      {/* Flash Deal Rail Ã¢â‚¬â€ real countdowns from flash_deal_end_at */}
+      {/* Flash Deal Rail — real countdowns from flash_deal_end_at */}
       {(loading || feeds.flash_deals.length > 0) && (
         // content-visibility lets the browser skip laying out and painting this
         // rail until it nears the viewport, which is where the audit's ~1.1s of

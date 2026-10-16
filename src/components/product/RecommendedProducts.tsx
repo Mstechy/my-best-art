@@ -194,7 +194,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
           );
         })}
       </div>
-      {/* Infinite scroll â€” keeps loading more products so the page never ends (AliExpress behavior) */}
+      {/* Infinite scroll — keeps loading more products so the page never ends (AliExpress behavior) */}
       <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} loading={loading} />
       </section>}
     </div>

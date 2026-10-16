@@ -554,7 +554,7 @@ export default function AdminCollections() {
                       onChange={e => updateForm("hero_order", e.target.value)} />
                   </label>
                   <label className="grid gap-1.5 text-sm font-medium">
-                    Overlay Opacity (0â€“1)
+                    Overlay Opacity (0–1)
                     <Input type="number" min="0" max="1" step="0.05" value={form.hero_overlay_opacity}
                       onChange={e => updateForm("hero_overlay_opacity", e.target.value)} />
                   </label>
@@ -629,7 +629,7 @@ export default function AdminCollections() {
             <div className="flex justify-end gap-2 border-t pt-4">
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
               <Button onClick={save} disabled={saving || uploadingBanner}>
-                {saving ? "Savingâ€¦" : uploadingBanner ? "Uploading bannerâ€¦" : editing ? "Update collection" : "Save collection"}
+                {saving ? "Saving…" : uploadingBanner ? "Uploading banner…" : editing ? "Update collection" : "Save collection"}
               </Button>
             </div>
           </div>

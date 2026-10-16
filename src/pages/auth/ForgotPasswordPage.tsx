@@ -3,8 +3,11 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Mail, ShoppingBag, Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
+import LanguageSwitcher from "@/components/LanguageSwitcher";
 
 export default function ForgotPasswordPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
@@ -25,11 +28,14 @@ export default function ForgotPasswordPage() {
     }
 
     setSent(true);
-    toast.success("Password reset link sent to your email!");
+    toast.success(t("auth.resetLinkSentToast"));
   };
 
   return (
     <div className="relative min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E] flex items-center justify-center p-4 overflow-hidden">
+      <div className="absolute right-4 top-4 z-10 rounded-full bg-white/80 shadow-sm dark:bg-[#1A1A1A]/80">
+        <LanguageSwitcher />
+      </div>
       {/* Decorative background blobs */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -top-40 left-1/2 -translate-x-1/2 h-[380px] w-[380px] rounded-full bg-[#F6C75D]/8 blur-[130px]" />
@@ -43,7 +49,7 @@ export default function ForgotPasswordPage() {
           className="inline-flex items-center gap-1.5 mb-6 text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Back to sign in
+          {t("auth.backToSignIn")}
         </Link>
 
         {/* Logo */}
@@ -70,21 +76,21 @@ export default function ForgotPasswordPage() {
               </div>
 
               <h1 className="text-2xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight text-center">
-                Forgot your password?
+                {t("auth.forgotTitle")}
               </h1>
               <p className="mt-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0] text-center leading-relaxed">
-                Enter your email address and we'll send you a secure reset link.
+                {t("auth.forgotDescription")}
               </p>
 
               <form onSubmit={handleSubmit} className="mt-8 space-y-4">
                 <div className="space-y-1.5">
                   <label htmlFor="email" className="block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">
-                    Email address
+                    {t("auth.emailAddress")}
                   </label>
                   <input
                     id="email"
                     type="email"
-                    placeholder="you@example.com"
+                    placeholder={t("auth.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
@@ -99,9 +105,9 @@ export default function ForgotPasswordPage() {
                   className="mt-2 w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
                 >
                   {submitting ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" /> Sendingâ€¦</>
+                    <><Loader2 className="h-4 w-4 animate-spin" /> {t("auth.sending")}</>
                   ) : (
-                    <><Mail className="h-3.5 w-3.5" /> Send Reset Link</>
+                    <><Mail className="h-3.5 w-3.5" /> {t("auth.sendResetLink")}</>
                   )}
                 </button>
               </form>
@@ -119,20 +125,20 @@ export default function ForgotPasswordPage() {
 
               <div>
                 <h2 className="text-xl font-bold text-[#111111] dark:text-[#FAF5F2] tracking-tight">
-                  Check your inbox
+                  {t("auth.checkInbox")}
                 </h2>
                 <p className="mt-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed px-2">
-                  We sent a reset link to{" "}
+                  {t("auth.resetLinkSent")}{" "}
                   <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{email}</span>.
-                  The link expires in 24 hours.
+                  {t("auth.resetLinkExpiry")}
                 </p>
               </div>
 
               <div className="bg-[#FAFAFA] dark:bg-[#111111] rounded-2xl p-4 text-left space-y-2.5 border border-[#E8E8E8] dark:border-[#222222]">
                 {[
-                  "Open the email from Tradibu",
-                  "Click the secure reset link",
-                  "Choose a new password",
+                  t("auth.resetStepOpenEmail"),
+                  t("auth.resetStepClickLink"),
+                  t("auth.resetStepChoosePassword"),
                 ].map((step, i) => (
                   <div key={i} className="flex items-center gap-3">
                     <span className="flex-shrink-0 h-5 w-5 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-[9px] font-bold flex items-center justify-center">
@@ -147,7 +153,7 @@ export default function ForgotPasswordPage() {
                 to="/auth/login"
                 className="mt-2 w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors duration-200"
               >
-                Back to sign in
+                {t("auth.backToSignIn")}
               </Link>
 
               <button
@@ -155,7 +161,7 @@ export default function ForgotPasswordPage() {
                 onClick={() => { setSent(false); setEmail(""); }}
                 className="text-[10px] text-[#6E6C64] dark:text-[#555555] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline transition-colors mt-1"
               >
-                Didn't receive it? Try a different email
+                {t("auth.tryDifferentEmail")}
               </button>
             </div>
           )}
@@ -164,13 +170,13 @@ export default function ForgotPasswordPage() {
             <>
               <div className="mt-7 flex items-center gap-3">
                 <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
-                <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">or</span>
+                <span className="text-[10px] text-[#6E6C64] dark:text-[#555555] uppercase tracking-wider font-medium">{t("auth.or")}</span>
                 <div className="flex-1 h-px bg-[#E8E8E8] dark:bg-[#222222]" />
               </div>
               <p className="mt-5 text-center text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
-                Remember your password?{" "}
+                {t("auth.rememberPassword")}{" "}
                 <Link to="/auth/login" className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline">
-                  Sign in
+                  {t("auth.signIn")}
                 </Link>
               </p>
             </>
@@ -178,9 +184,9 @@ export default function ForgotPasswordPage() {
         </div>
 
         <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
-          Need help?{" "}
+          {t("auth.needHelp")}{" "}
           <a href="mailto:support@tradibu.com" className="underline hover:text-[#6E6C64]">
-            Contact support
+            {t("auth.contactSupport")}
           </a>
         </p>
       </div>

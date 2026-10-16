@@ -1,28 +1,26 @@
 const TIMEZONE_COUNTRY_MAP: Record<string, string> = {
-  Lagos: "NG",
-  Africa: "NG",
-  New_York: "US",
-  Chicago: "US",
-  Denver: "US",
-  Los_Angeles: "US",
-  America: "US",
-  London: "GB",
-  Europe: "GB",
-  Johannesburg: "ZA",
-  Nairobi: "KE",
-  Accra: "GH",
-  Toronto: "CA",
-  Sydney: "AU",
-  Tokyo: "JP",
-  Berlin: "DE",
-  Paris: "FR",
-  Rome: "IT",
-  Madrid: "ES",
-  Amsterdam: "NL",
-  Dublin: "IE",
-  Delhi: "IN",
-  Sao_Paulo: "BR",
-  Mexico_City: "MX",
+  "Africa/Lagos": "NG",
+  "Africa/Johannesburg": "ZA",
+  "Africa/Nairobi": "KE",
+  "Africa/Accra": "GH",
+  "America/New_York": "US",
+  "America/Chicago": "US",
+  "America/Denver": "US",
+  "America/Los_Angeles": "US",
+  "America/Toronto": "CA",
+  "America/Vancouver": "CA",
+  "America/Sao_Paulo": "BR",
+  "America/Mexico_City": "MX",
+  "Europe/London": "GB",
+  "Europe/Berlin": "DE",
+  "Europe/Paris": "FR",
+  "Europe/Rome": "IT",
+  "Europe/Madrid": "ES",
+  "Europe/Amsterdam": "NL",
+  "Europe/Dublin": "IE",
+  "Asia/Kolkata": "IN",
+  "Asia/Tokyo": "JP",
+  "Australia/Sydney": "AU",
 };
 
 const COUNTRY_TO_CURRENCY: Record<string, string> = {
@@ -55,13 +53,16 @@ export function countryToCurrency(country?: string | null): string | null {
   return COUNTRY_TO_CURRENCY[country.toUpperCase()] || null;
 }
 
+export function countryFromTimeZone(timeZone: string): string | null {
+  return TIMEZONE_COUNTRY_MAP[timeZone] || null;
+}
+
 export function detectCountryFromEnvironment(): string | null {
   if (typeof window === "undefined") return null;
 
   const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
-  for (const [needle, country] of Object.entries(TIMEZONE_COUNTRY_MAP)) {
-    if (timeZone.includes(needle)) return country;
-  }
+  const timeZoneCountry = countryFromTimeZone(timeZone);
+  if (timeZoneCountry) return timeZoneCountry;
 
   const locale = navigator.language || "";
   const match = locale.match(/-([A-Za-z]{2})$/);

@@ -185,7 +185,7 @@ export default function BuyerReports() {
 
                 <button onClick={submitReport} disabled={saving || !reason.trim() || !selectedOrderId}
                   className="w-full h-11 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-xs font-semibold flex items-center justify-center gap-2 hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50">
-                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Submittingâ€¦</> : "Submit Report"}
+                  {saving ? <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Submitting…</> : "Submit Report"}
                 </button>
               </div>
             </DialogContent>
@@ -269,7 +269,7 @@ export default function BuyerReports() {
             <Clock className="h-3.5 w-3.5 text-[#F6C75D]" />
           </div>
           <div>
-            <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Reports are reviewed within 24â€“48 hours</p>
+            <p className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Reports are reviewed within 24–48 hours</p>
             <p className="mt-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Our team investigates every report. Seller accounts may be frozen during investigation.</p>
           </div>
         </div>

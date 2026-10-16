@@ -171,7 +171,7 @@ export default function CollectionPage() {
       <div className="min-h-screen bg-background">
         <MarketplaceNavbar />
         <Container className="py-20 text-center text-muted-foreground">
-          Loading collectionâ€¦
+          Loading collection…
         </Container>
       </div>
     );

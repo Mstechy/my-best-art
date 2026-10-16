@@ -298,7 +298,7 @@ export default function CheckoutPage() {
                     <SelectContent className="bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222]">
                       {saved.map(a => (
                         <SelectItem key={a.id} value={a.id} className="text-xs text-[#111111] dark:text-[#FAF5F2]">
-                          {a.label || a.recipient} â€” {a.line1}, {a.city}{a.is_default ? " (Default)" : ""}
+                          {a.label || a.recipient} — {a.line1}, {a.city}{a.is_default ? " (Default)" : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -415,7 +415,7 @@ export default function CheckoutPage() {
                 disabled={loading}
                 className="w-full mt-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50 hidden md:flex items-center justify-center gap-2"
               >
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Orderâ€¦</> : "Place Order"}
+                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
               </button>
 
               <p className="text-[10px] text-[#6E6C64] text-center mt-3 flex items-center justify-center gap-1">
@@ -453,7 +453,7 @@ export default function CheckoutPage() {
             disabled={loading}
             className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] px-6 py-3 text-sm font-bold text-white dark:text-[#111111] transition-colors hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50"
           >
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Orderâ€¦</> : "Place Order"}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
           </button>
         </div>
       </div>

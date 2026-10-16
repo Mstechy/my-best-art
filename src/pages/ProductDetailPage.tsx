@@ -724,7 +724,7 @@ export default function ProductDetailPage() {
             )}
 
             <div className="space-y-2">
-              {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy informationâ€¦</p>}
+              {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy information…</p>}
               {policiesError && <p className="px-1 text-xs text-[#6E6C64]">Policy information is unavailable.</p>}
               <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
                 <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
@@ -734,7 +734,7 @@ export default function ProductDetailPage() {
               <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
                 <Shield className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Returns & refunds</span><span className="block truncate">{policies.returns?.summary}</span></span>{/*
-                <span>Buyer protection â€” full refund if not as described</span>
+                <span>Buyer protection — full refund if not as described</span>
                 */}<ChevronRight className="h-4 w-4 shrink-0" />
               </button>
               <button type="button" onClick={() => setServiceSheet("protection")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.protection ? "hidden" : ""}`}>

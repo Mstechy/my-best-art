@@ -101,7 +101,7 @@ export default function SellerProducts() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formTab, setFormTab] = useState("basic");
 
-  // Form state â€” basic
+  // Form state — basic
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
@@ -132,7 +132,7 @@ export default function SellerProducts() {
   const [descriptionError, setDescriptionError] = useState("");
   const [altWarning, setAltWarning] = useState(false);
 
-  // Form state â€” specifications
+  // Form state — specifications
   const [brand, setBrand] = useState("");
   const [gtin, setGtin] = useState("");
   const [mpn, setMpn] = useState("");
@@ -1476,7 +1476,7 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
-                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description â€” features, use cases, what's in the box..." className="mt-1" rows={5} />
+                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
                     <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: â€œOriginal iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version.â€</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
@@ -1945,7 +1945,7 @@ export default function SellerProducts() {
                       <ImagePlus className="h-7 w-7 text-muted-foreground" />
                       <div className="text-center">
                         <span className="text-sm font-medium text-foreground">Drop description photos here or browse files</span>
-                        <p className="text-xs text-muted-foreground mt-1">These build a visual story below the written descriptionâ€”use them for size charts, installation steps, packaging, comparison details, or proof of condition. They are optional and do not replace main gallery photos.</p>
+                        <p className="text-xs text-muted-foreground mt-1">These build a visual story below the written description — use them for size charts, installation steps, packaging, comparison details, or proof of condition. They are optional and do not replace main gallery photos.</p>
                       </div>
                       <input type="file" accept="image/*" multiple className="hidden" onChange={(e) => addDescriptionImageFiles(Array.from(e.target.files || []))} />
                     </label>

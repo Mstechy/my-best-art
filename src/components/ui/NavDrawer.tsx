@@ -111,7 +111,7 @@ export function NavDrawer({
             <Home className="h-4 w-4 text-[#6E6C64]" /> Home
           </Link>
 
-          {/* Popular Category â€” expandable */}
+          {/* Popular Category — expandable */}
           <button
             onClick={() => setPopularOpen(v => !v)}
             aria-expanded={popularOpen}

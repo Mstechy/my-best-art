@@ -21,7 +21,7 @@ export default function ProductRichDescription({
 
   return (
     <section className="w-full max-w-4xl mx-auto">
-      {/* Specifications â€” AliExpress-style collapsible dropdown */}
+      {/* Specifications — AliExpress-style collapsible dropdown */}
       {specsEntries && specsEntries.length > 0 && (
         <div className="mb-8 border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
           <button

@@ -239,7 +239,7 @@ export default function BuyerTracking() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* Carrier & tracking number row â€” stacks below `sm` so the
+            {/* Carrier & tracking number row — stacks below `sm` so the
                 mono tracking number has room instead of being truncated
                 inside a half-width card. */}
             <div className="grid grid-cols-1 gap-3 mt-1 sm:grid-cols-2">
@@ -249,7 +249,7 @@ export default function BuyerTracking() {
                   <p className="text-[9px] font-bold uppercase tracking-wider text-[#6E6C64]">Carrier</p>
                 </div>
                 <p className="text-sm font-semibold text-[#111111] dark:text-[#FAF5F2] capitalize">
-                  {modalOrder.carrier || "â€”"}
+                  {modalOrder.carrier || "—"}
                 </p>
               </div>
               <div className="rounded-xl bg-[#F8F8F8] dark:bg-[#111111] border border-[#F0F0F0] dark:border-[#222222] p-3">

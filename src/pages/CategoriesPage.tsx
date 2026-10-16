@@ -77,7 +77,7 @@ export default function CategoriesPage() {
             <div className="min-w-0">
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F6C75D]">Marketplace departments</p>
               <h1 className="mt-3 max-w-2xl text-4xl font-black uppercase tracking-tight md:text-6xl">Find products by department</h1>
-              <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">Start broad, then narrow by the details that matterâ€”brand, size, condition, price, material, compatibility, and delivery destination.</p>
+              <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">Start broad, then narrow by the details that matter — brand, size, condition, price, material, compatibility, and delivery destination.</p>
               <form onSubmit={submitSearch} className="mt-6 flex max-w-xl rounded-xl bg-white p-1.5 shadow-lg">
                 <label className="sr-only" htmlFor="department-search">Search the marketplace</label>
                 <Search className="ml-3 h-5 w-5 shrink-0 self-center text-[#666666]" />
