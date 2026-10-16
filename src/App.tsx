@@ -13,6 +13,7 @@ import { useOverlayLockWatchdog } from "@/hooks/useOverlayLockWatchdog";
 import CookieConsent from "@/components/CookieConsent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SiteAnalyticsTracker from "@/components/SiteAnalyticsTracker";
+import SkipLink from "@/components/SkipLink";
 
 // Public pages - lazy load all for billion-scale bundle splitting
 // Dashboard shell is route-only; loading it with the public app would pull
@@ -227,6 +228,9 @@ const App = () => (
         </Suspense>
       </AfterFirstPaint>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        {/* Rendered before any route so the WCAG 2.4.1 bypass block is the
+             first focusable element on every page of the SPA. */}
+        <SkipLink />
         <AfterFirstPaint>
           <SiteAnalyticsTracker />
         </AfterFirstPaint>

@@ -182,6 +182,13 @@ describe("buildProductJsonLd", () => {
       ratingValue: "4.5",
       reviewCount: 12,
     });
+    expect(schema.breadcrumb).toEqual({
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: "https://www.tradibu.com/" },
+        { "@type": "ListItem", position: 2, name: "Apple iPhone 11 Pro 128/256, Factory Unlocked" },
+      ],
+    });
   });
 
   it("omits rating and brand instead of emitting empty evidence", () => {

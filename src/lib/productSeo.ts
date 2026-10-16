@@ -223,6 +223,21 @@ export function buildProductJsonLd(input: ProductSeoInput): Record<string, unkno
 
   if (input.image) schema.image = [resolveSiteUrl(input.image)];
   if (brand) schema.brand = { "@type": "Brand", name: brand };
+  // Breadcrumb rich results (Google's BreadcrumbList). The product page
+  // deliberately renders no visible breadcrumb trail (see
+  // docs/PRD_MARKETHUB_PRODUCT_PAGE_AND_SELLER_UPLOAD.md - the header search-only
+  // layout is intentional), so this structured node is the channel that tells
+  // search engines where the page sits. Every competitor product page in the
+  // audit carried breadcrumb data; this closes that gap without touching the UI.
+  // Shared with the prerenderer through this builder, so the static HTML and the
+  // post-JS render publish the same node.
+  schema.breadcrumb = {
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Home", item: resolveSiteUrl("/") },
+      { "@type": "ListItem", position: 2, name },
+    ],
+  };
   if (rating > 0 && reviewCount > 0) {
     schema.aggregateRating = {
       "@type": "AggregateRating",

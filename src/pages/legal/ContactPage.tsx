@@ -80,17 +80,17 @@ export default function ContactPage() {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-sm font-medium">Your name</label>
-                <Input value={name} onChange={(e) => setName(e.target.value.slice(0, 80))} className="mt-1 h-11" />
+                <label htmlFor="contact-name" className="text-sm font-medium">Your name</label>
+                <Input id="contact-name" value={name} onChange={(e) => setName(e.target.value.slice(0, 80))} className="mt-1 h-11" autoComplete="name" />
               </div>
               <div>
-                <label className="text-sm font-medium">Email</label>
-                <Input type="email" value={email} onChange={(e) => setEmail(e.target.value.slice(0, 200))} className="mt-1 h-11" />
+                <label htmlFor="contact-email" className="text-sm font-medium">Email</label>
+                <Input id="contact-email" type="email" value={email} onChange={(e) => setEmail(e.target.value.slice(0, 200))} className="mt-1 h-11" autoComplete="email" />
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium">Message</label>
-              <Textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, 2000))} rows={6} className="mt-1" />
+              <label htmlFor="contact-message" className="text-sm font-medium">Message</label>
+              <Textarea id="contact-message" value={message} onChange={(e) => setMessage(e.target.value.slice(0, 2000))} rows={6} className="mt-1" />
               <p className="text-right text-[10px] text-muted-foreground mt-1">{message.length}/2000</p>
             </div>
             <Button type="submit" disabled={submitting} className="gradient-primary text-primary-foreground">
