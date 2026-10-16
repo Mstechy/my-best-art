@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, memo } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 
 interface ProgressiveImageProps {
   src: string;
@@ -83,19 +83,26 @@ const ProgressiveImage = memo(function ProgressiveImage({
     };
   }, [loading, inView, threshold]);
 
-  const handleLoad = () => {
+  const handleLoad = useCallback(() => {
     setLoaded(true);
     setShowPlaceholder(false);
     setError(false);
     onLoad?.();
-  };
+  }, [onLoad]);
 
-  const handleError = () => {
+  const handleError = useCallback(() => {
     // Always set error state so the fallback UI shows if the image truly fails
     setError(true);
     setShowPlaceholder(false);
     onError?.();
-  };
+  }, [onError]);
+
+  useEffect(() => {
+    const image = imgRef.current;
+    if (!image?.complete || loaded || error) return;
+    if (image.naturalWidth > 0) handleLoad();
+    else handleError();
+  }, [error, handleError, handleLoad, inView, loaded, src]);
 
   const shimmerStyle: React.CSSProperties = !loaded && !error
     ? {
