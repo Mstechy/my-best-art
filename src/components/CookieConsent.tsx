@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 import { Cookie, X } from "lucide-react";
 import { Link } from "react-router-dom";
-import { COOKIE_CONSENT_KEY, notifyAnalyticsConsentChanged } from "@/lib/analyticsConsent";
+import { notifyAnalyticsConsentChanged, readAnalyticsConsent, saveAnalyticsConsent } from "@/lib/analyticsConsent";
 
 export default function CookieConsent() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    const choice = localStorage.getItem(COOKIE_CONSENT_KEY);
+    const choice = readAnalyticsConsent();
     if (!choice) {
       const t = setTimeout(() => setVisible(true), 600);
       return () => clearTimeout(t);
@@ -15,8 +15,7 @@ export default function CookieConsent() {
   }, []);
 
   const decide = (choice: "accepted" | "declined") => {
-    localStorage.setItem(COOKIE_CONSENT_KEY, choice);
-    localStorage.setItem(`${COOKIE_CONSENT_KEY}_at`, new Date().toISOString());
+    saveAnalyticsConsent(choice);
     notifyAnalyticsConsentChanged();
     setVisible(false);
   };

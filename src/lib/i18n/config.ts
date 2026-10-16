@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
+import { readMigrated } from "@/lib/legacyBrandStorage";
 import en from "./locales/en.json";
 import fr from "./locales/fr.json";
 
@@ -11,6 +12,13 @@ export const LANGUAGE_NAMES: Record<SupportedLanguage, string> = {
   en: "English",
   fr: "Français",
 };
+
+// One-time rebrand migration: the chosen language used to be cached under the
+// pre-Tradibu key. The detector below only reads the current key, so the value
+// is copied forward (and the legacy entry dropped) before init runs.
+if (typeof window !== "undefined") {
+  readMigrated("tradibu_language", "markethub_language");
+}
 
 i18n
   .use(LanguageDetector)
@@ -25,7 +33,7 @@ i18n
     detection: {
       order: ["localStorage", "navigator"],
       caches: ["localStorage"],
-      lookupLocalStorage: "markethub_language",
+      lookupLocalStorage: "tradibu_language",
     },
     interpolation: {
       escapeValue: false,

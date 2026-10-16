@@ -1,21 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { hasAnalyticsConsent } from "@/lib/analyticsConsent";
-
-const VISITOR_KEY = "tradibu_visitor_id";
-
-function getVisitorId(): string | null {
-  if (typeof window === "undefined") return null;
-  try {
-    let id = localStorage.getItem(VISITOR_KEY);
-    if (!id) {
-      id = crypto.randomUUID();
-      localStorage.setItem(VISITOR_KEY, id);
-    }
-    return id;
-  } catch {
-    return null;
-  }
-}
+import { getVisitorId } from "@/lib/visitorId";
 
 /** Records one anonymous daily visitor and page view for platform analytics. */
 export function trackSiteVisit(): void {

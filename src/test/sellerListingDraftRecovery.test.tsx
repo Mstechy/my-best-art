@@ -24,7 +24,7 @@ import SellerProducts from "@/pages/seller/SellerProducts";
 import type { RestoredMedia } from "@/lib/listingDraftMedia";
 
 const USER_ID = "seller-1";
-const DRAFT_KEY = `markethub:product-listing-draft:${USER_ID}`;
+const DRAFT_KEY = `tradibu:product-listing-draft:${USER_ID}`;
 
 vi.mock("@/integrations/supabase/client", () => {
   /** Chainable stub: every query hangs, so no data-driven re-render happens. */

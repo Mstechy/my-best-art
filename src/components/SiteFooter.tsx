@@ -37,7 +37,7 @@ export default function SiteFooter() {
             </ul>
           </div>
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.marketHub")}</h3>
+            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.brandName")}</h3>
             <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed">
               {t("footer.description")}
             </p>

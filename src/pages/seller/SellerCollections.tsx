@@ -22,7 +22,7 @@ export default function SellerCollections() {
   const [items, setItems] = useState<Collection[]>([]); const [open, setOpen] = useState(false); const [editing, setEditing] = useState<Collection | null>(null);
   const [title, setTitle] = useState(""); const [description, setDescription] = useState(""); const [placement, setPlacement] = useState("featured"); const [status, setStatus] = useState("draft"); const [imageUrl, setImageUrl] = useState("");
   const [query, setQuery] = useState(""); const [results, setResults] = useState<Product[]>([]); const [products, setProducts] = useState<Product[]>([]); const [saving, setSaving] = useState(false); const [uploading, setUploading] = useState(false);
-  const draftKey = user ? `markethub:seller-collection-draft:${user.id}` : "";
+  const draftKey = user ? `tradibu:seller-collection-draft:${user.id}` : "";
   const draft = useMemo<Draft>(() => ({ title, description, placement, status, imageUrl, products }), [title, description, placement, status, imageUrl, products]);
 
   const load = useCallback(async () => { if (!user) return; const { data, error } = await supabase.from("marketplace_collections").select("*").eq("seller_id", user.id).order("sort_order"); if (error) toast({ title: "Could not load collections", description: error.message, variant: "destructive" }); else setItems((data || []) as Collection[]); }, [toast, user]);

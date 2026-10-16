@@ -1,8 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { hasAnalyticsConsent } from "@/lib/analyticsConsent";
+import { getVisitorId } from "@/lib/visitorId";
 
 export type DiscoveryEvent = "impression" | "view" | "click" | "wishlist" | "add_to_cart";
-const VISITOR_KEY = "markethub_visitor_id";
 
 /**
  * Batched product discovery tracking.
@@ -21,12 +21,6 @@ let eventQueue: QueuedEvent[] = [];
 let flushTimer: ReturnType<typeof setTimeout> | null = null;
 const FLUSH_INTERVAL_MS = 30_000; // flush every 30 seconds
 const MAX_BATCH_SIZE = 50;        // or every 50 events
-
-function getVisitorId() {
-  let id = localStorage.getItem(VISITOR_KEY);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(VISITOR_KEY, id); }
-  return id;
-}
 
 async function flushEvents() {
   const batch = eventQueue.slice();

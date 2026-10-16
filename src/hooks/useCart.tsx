@@ -44,14 +44,6 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const ANON_CART_KEY = "anon_cart";
 const DIRECT_CHECKOUT_KEY = "direct_checkout_item";
-const VISITOR_KEY = "markethub_visitor_id";
-
-function getVisitorId(): string {
-  let id = localStorage.getItem(VISITOR_KEY);
-  if (!id) { id = crypto.randomUUID(); localStorage.setItem(VISITOR_KEY, id); }
-  return id;
-}
-
 export function CartProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);

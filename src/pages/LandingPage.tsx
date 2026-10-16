@@ -324,8 +324,8 @@ export default function LandingPage() {
               <Link to="/auth/register" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#F6C75D] to-[#E8A93D] p-4 flex flex-col justify-between text-[#111111] transition hover:shadow-lg">
                 <UserPlus className="h-6 w-6" />
                 <div>
-                  <p className="text-lg font-bold leading-tight">{t("home.joinMarketHub")}</p>
-                  <p className="text-xs text-[#111111]/70 mt-1">{t("home.joinMarketHubDesc")}</p>
+                  <p className="text-lg font-bold leading-tight">{t("home.joinTradibu")}</p>
+                  <p className="text-xs text-[#111111]/70 mt-1">{t("home.joinTradibuDesc")}</p>
                 </div>
               </Link>
             </div>

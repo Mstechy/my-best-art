@@ -156,7 +156,7 @@ export default function SellerProducts() {
 
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
-  const draftKey = user ? `markethub:product-listing-draft:${user.id}` : "";
+  const draftKey = user ? `tradibu:product-listing-draft:${user.id}` : "";
 
   // Auto-generate slug from title until the seller edits it manually
   useEffect(() => {
