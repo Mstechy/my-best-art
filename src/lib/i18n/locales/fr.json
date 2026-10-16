@@ -155,6 +155,17 @@
     "defaultDescription": "Découvrez des produits auprès de vendeurs vérifiés dans le monde entier",
     "categoryDescription": "Explorez {{category}} auprès de vendeurs vérifiés. Filtrez, comparez et continuez à découvrir.",
     "promotion": "Promotion :",
+    "sortOptions": {
+      "bestMatch": "Meilleure correspondance",
+      "newest": "Nouveautés",
+      "rating": "Mieux notés",
+      "bestSellers": "Meilleures ventes",
+      "trending": "Tendances",
+      "recommended": "Recommandés",
+      "discover": "Découvrir",
+      "priceLow": "Prix : croissant",
+      "priceHigh": "Prix : décroissant"
+    },
     "all": "Tout",
     "shipsToLabel": "Livré à",
     "shipsToAnywhere": "Partout",

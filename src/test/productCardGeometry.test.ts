@@ -14,6 +14,7 @@
 import { describe, expect, it } from "vitest";
 
 import { computeCardDrawBox } from "@/lib/productImages";
+import { getProductCardImageUrl } from "@/lib/productImageUrls";
 
 const CARD_SIZE = 900;
 
@@ -24,6 +25,18 @@ describe("computeCardDrawBox", () => {
     expect(box.outputSize).toBe(800);
     expect(box.width).toBe(800);
     expect(box.height).toBe(800);
+  });
+
+  describe("getProductCardImageUrl", () => {
+    it("maps uploaded originals to the matching card derivative and preserves query strings", () => {
+      expect(getProductCardImageUrl("https://cdn.example.com/original-123-photo.jpeg?token=abc"))
+        .toBe("https://cdn.example.com/card-123-photo.webp?token=abc");
+    });
+
+    it("leaves non-upload and already-derived URLs unchanged", () => {
+      expect(getProductCardImageUrl("https://cdn.example.com/photo.jpg")).toBe("https://cdn.example.com/photo.jpg");
+      expect(getProductCardImageUrl("https://cdn.example.com/card-123-photo.webp")).toBe("https://cdn.example.com/card-123-photo.webp");
+    });
   });
 
   it("never produces an output bigger than the source's longest edge", () => {

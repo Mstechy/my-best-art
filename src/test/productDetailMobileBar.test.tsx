@@ -253,4 +253,20 @@ describe("ProductDetailPage mobile bottom chrome", () => {
     expect(within(bar).getByRole("button", { name: "Out of stock" })).toBeDisabled();
     expect(within(bar).getByRole("button", { name: "Buy Now" })).toBeDisabled();
   });
+
+  it("gives each product gallery thumbnail an accessible name and selected state", () => {
+    state.product = {
+      ...baseProduct,
+      product_images: [
+        ...baseProduct.product_images,
+        { id: "img-2", image_url: "https://example.test/p2.jpg", is_primary: false },
+      ],
+    };
+    renderPage();
+
+    const firstImage = screen.getByRole("button", { name: "Show product image 1 of 2: Test Product" });
+    const secondImage = screen.getByRole("button", { name: "Show product image 2 of 2: Test Product" });
+    expect(firstImage).toHaveAttribute("aria-pressed", "true");
+    expect(secondImage).toHaveAttribute("aria-pressed", "false");
+  });
 });

@@ -3,6 +3,7 @@ import path from "node:path";
 import { loadEnv, type Plugin } from "vite";
 import { injectProductHead, resolveSiteUrl, truncateText, type ProductSeoInput } from "../src/lib/productSeo";
 import { injectStaticBody } from "../src/lib/prerenderBody";
+import { getProductCardImageUrl } from "../src/lib/productImageUrls";
 
 /**
  * Build-time <head> prerender for product URLs.
@@ -106,14 +107,17 @@ async function prerender(root: string, mode: string): Promise<void> {
   await fs.rm(outputRoot, { recursive: true, force: true });
 
   for (const product of products) {
+    const image = pickImage(product.product_images);
     const input: ProductSeoInput = {
       id: product.id,
       url: resolveSiteUrl(`/product/${product.id}`),
       productName: product.title,
       price: toNumber(product.price),
       currency: product.currency || "NGN",
-      image: pickImage(product.product_images),
-      description: product.meta_description || product.description,
+      image,
+      imagePreload: image ? getProductCardImageUrl(image) : null,
+      description: product.description,
+      metaDescription: product.meta_description,
       availability: toNumber(product.stock_quantity) > 0 ? "InStock" : "OutOfStock",
       rating: toNumber(product.average_rating),
       reviewCount: toNumber(product.review_count),
@@ -183,4 +187,3 @@ export function prerenderProductPages(): Plugin {
     },
   };
 }
-

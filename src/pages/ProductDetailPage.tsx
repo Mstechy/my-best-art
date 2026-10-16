@@ -202,7 +202,8 @@ export default function ProductDetailPage() {
     price: purchasablePrice,
     currency: product?.currency || "NGN",
     image: seoImage,
-    description: product?.meta_description || product?.description || undefined,
+    description: product?.description || undefined,
+    metaDescription: product?.meta_description,
     id: product?.id || id || "",
     availability: purchasableStock > 0 ? "InStock" : "OutOfStock",
     rating: product?.average_rating,
@@ -516,16 +517,21 @@ export default function ProductDetailPage() {
                 <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
                   {mediaItems.map((item, idx) => (
                     <button
+                      type="button"
                       key={item.id}
                       onClick={() => setSelectedImage(idx)}
                       className={`shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${idx === selectedImage ? "border-[#111111] ring-2 ring-[#111111]/20 dark:border-[#FAF5F2] dark:ring-[#FAF5F2]/20 scale-[1.05]" : "border-transparent hover:border-[#C8C8C0] dark:hover:border-[#444444]"}`}
+                      aria-label={item.type === "video"
+                        ? `Show product video ${idx + 1} of ${mediaItems.length}: ${product.title}`
+                        : `Show product image ${idx + 1} of ${mediaItems.length}: ${product.title}`}
+                      aria-pressed={idx === selectedImage}
                     >
                       {item.type === "video" ? (
                         <div className="relative w-full h-full bg-[#F2F3F5] dark:bg-[#202020] flex items-center justify-center">
                           <Play className="h-4 w-4 text-[#6E6C64]" />
                         </div>
                       ) : (
-                        <ProductImage src={item.url} alt="Product thumbnail" className="w-full h-full object-cover" loading="lazy" />
+                        <ProductImage src={item.url} alt={`${product.title} image ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                       )}
                     </button>
                   ))}
@@ -570,7 +576,7 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   {soldCount > 0 && <span>{soldCount} sold</span>}
-                  {policies.shipping && <span className="truncate">Delivery: {policies.shipping.summary}</span>}
+                  <span className="truncate">Delivery: {policies.shipping?.summary ?? "Confirm delivery cost and timing"}</span>
                   {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
                 </div>
 
@@ -720,9 +726,9 @@ export default function ProductDetailPage() {
             <div className="space-y-2">
               {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy informationâ€¦</p>}
               {policiesError && <p className="px-1 text-xs text-[#6E6C64]">Policy information is unavailable.</p>}
-              <button type="button" onClick={() => setServiceSheet("shipping")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.shipping ? "hidden" : ""}`}>
+              <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
                 <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
-                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#6E6C64]">{policies.shipping?.summary}</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#6E6C64]">{policies.shipping?.summary ?? "Confirm delivery cost and timing"}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-[#6E6C64]" />
               </button>
               <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
@@ -776,8 +782,14 @@ export default function ProductDetailPage() {
         <Sheet open={serviceSheet !== null} onOpenChange={(open) => !open && setServiceSheet(null)}>
           <SheetContent side="bottom" className="rounded-t-2xl">
             <SheetHeader>
-              <SheetTitle>{serviceSheet ? policies[serviceSheet]?.title : ""}</SheetTitle>
-              <SheetDescription>{serviceSheet ? policies[serviceSheet]?.detail : ""}</SheetDescription>
+              <SheetTitle>{serviceSheet ? policies[serviceSheet]?.title ?? (serviceSheet === "shipping" ? "Shipping" : "") : ""}</SheetTitle>
+              <SheetDescription>
+                {serviceSheet
+                  ? policies[serviceSheet]?.detail ?? (serviceSheet === "shipping"
+                    ? "Delivery cost and timing have not been provided for this listing. Contact the seller to confirm them before ordering."
+                    : "")
+                  : ""}
+              </SheetDescription>
             </SheetHeader>
             {serviceSheet && policies[serviceSheet] && <p className="mt-4 text-xs font-semibold text-[#6E6C64]">{sourceLabel(policies[serviceSheet].source)} Â· Last updated {policies[serviceSheet].updatedAt ? new Date(policies[serviceSheet].updatedAt).toLocaleDateString() : "not available"}</p>}
           </SheetContent>

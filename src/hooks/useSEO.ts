@@ -6,11 +6,13 @@ import {
   PRODUCT_STRUCTURED_DATA_ID,
   type ProductSeoInput,
 } from "@/lib/productSeo";
+import { getProductCardImageUrl } from "@/lib/productImageUrls";
 
 interface SEOProps {
   title?: string;
   description?: string;
   image?: string;
+  imagePreload?: string | null;
   url?: string;
   type?: "website" | "product" | "organization";
   publishedTime?: string;
@@ -42,6 +44,7 @@ export function useSEO({
   title,
   description = DEFAULT_DESCRIPTION,
   image = DEFAULT_IMAGE,
+  imagePreload,
   url,
   type = "website",
   publishedTime,
@@ -61,6 +64,9 @@ export function useSEO({
     // worst a no-op and never a false duplicate claim.
     const absoluteUrl = new URL(url || currentPath(), SITE_URL).toString();
     const absoluteImage = image.startsWith("http") ? image : new URL(image, SITE_URL).toString();
+    const absolutePreload = imagePreload
+      ? imagePreload.startsWith("http") ? imagePreload : new URL(imagePreload, SITE_URL).toString()
+      : null;
 
     // Update document title
     document.title = fullTitle;
@@ -119,6 +125,22 @@ export function useSEO({
     // Canonical URL
     setLink("canonical", absoluteUrl);
 
+    const preloadId = "product-image-preload";
+    let imagePreloadLink = document.getElementById(preloadId) as HTMLLinkElement | null;
+    if (type === "product" && absolutePreload) {
+      if (!imagePreloadLink) {
+        imagePreloadLink = document.createElement("link");
+        imagePreloadLink.id = preloadId;
+        imagePreloadLink.rel = "preload";
+        imagePreloadLink.as = "image";
+        imagePreloadLink.fetchPriority = "high";
+        document.head.appendChild(imagePreloadLink);
+      }
+      imagePreloadLink.href = absolutePreload;
+    } else {
+      imagePreloadLink?.remove();
+    }
+
     // Structured data
     // Two scripts are cleared, not one:
     //  - `page-structured-data` is ours from the previous render; removing it
@@ -161,7 +183,7 @@ export function useSEO({
     return () => {
       document.title = SITE_NAME;
     };
-  }, [title, description, image, url, type, publishedTime, modifiedTime, structuredData]);
+  }, [title, description, image, imagePreload, url, type, publishedTime, modifiedTime, structuredData]);
 }
 
 /**
@@ -173,6 +195,7 @@ export function useProductSEO({
   currency = "NGN",
   image,
   description,
+  metaDescription,
   id,
   availability,
   rating,
@@ -184,6 +207,7 @@ export function useProductSEO({
   currency?: string;
   image?: string;
   description?: string;
+  metaDescription?: string | null;
   id: string;
   availability?: "InStock" | "OutOfStock";
   rating?: number;
@@ -201,7 +225,9 @@ export function useProductSEO({
     price,
     currency,
     image,
+    imagePreload: image ? getProductCardImageUrl(image) : null,
     description,
+    metaDescription,
     availability,
     rating,
     reviewCount,
@@ -216,6 +242,7 @@ export function useProductSEO({
     title: productName,
     description: buildProductDescription(seoInput),
     image: image || DEFAULT_IMAGE,
+    imagePreload: seoInput.imagePreload,
     url: `/product/${id}`,
     type: "product",
     structuredData: buildProductJsonLd(seoInput),

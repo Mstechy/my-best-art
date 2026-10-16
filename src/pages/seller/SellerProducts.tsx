@@ -23,7 +23,7 @@ import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
 import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
-import { buildListingReadiness } from "@/lib/listingReadiness";
+import { buildListingQualityWarnings, buildListingReadiness } from "@/lib/listingReadiness";
 import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
@@ -1322,6 +1322,8 @@ export default function SellerProducts() {
     productTypeKey,
     title,
     description,
+    metaDescription,
+    shippingInfo,
     price,
     stockQuantity,
     categoryAttributes,
@@ -1330,6 +1332,20 @@ export default function SellerProducts() {
     variantRows,
   });
   const outstandingRequirements = listingReadiness.filter((item) => !item.complete);
+  const listingQualityWarnings = buildListingQualityWarnings({
+    categoryId,
+    productTypeKey,
+    title,
+    description,
+    metaDescription,
+    shippingInfo,
+    price,
+    stockQuantity,
+    categoryAttributes,
+    requiredSpecificationKeys: [...requiredSpecificationKeys],
+    imageCount: imageItems.length,
+    variantRows,
+  });
   const updateCategoryAttribute = (key: string, value: string) => {
     setCategoryAttributes(prev => ({ ...prev, [key]: value }));
   };
@@ -1531,6 +1547,13 @@ export default function SellerProducts() {
                     <label className="text-sm font-medium text-foreground">Meta Description <span className="text-xs text-muted-foreground font-normal">(optional, max 160 chars)</span></label>
                     <Textarea value={metaDescription} onChange={(e) => setMetaDescription(e.target.value.slice(0, 160))} placeholder="Short search snippet for this product" className="mt-1" rows={2} />
                     <p className="mt-1 text-xs text-muted-foreground">{metaDescription.length}/160</p>
+                    {listingQualityWarnings
+                      .filter((warning) => warning.message.startsWith("Search description"))
+                      .map((warning) => (
+                        <p key={warning.message} className="mt-2 text-xs text-amber-700 dark:text-amber-300" role="status">
+                          {warning.message}
+                        </p>
+                      ))}
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Low Stock Threshold</label>
@@ -2056,6 +2079,16 @@ export default function SellerProducts() {
                         </div>
                       ))}
                     </div>
+                    {listingQualityWarnings.length > 0 && (
+                      <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100" role="status">
+                        <p className="text-xs font-semibold">Review before publishing</p>
+                        <ul className="mt-2 list-disc space-y-1 pl-4 text-xs">
+                          {listingQualityWarnings.map((warning) => (
+                            <li key={warning.message}>{warning.message}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </div>
                   <div className="rounded-lg border border-border bg-muted/30 p-4">
                     <div className="flex items-start justify-between gap-3">

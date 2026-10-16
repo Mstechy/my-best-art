@@ -159,6 +159,17 @@
     "defaultDescription": "Discover products from verified sellers worldwide",
     "categoryDescription": "Explore {{category}} from verified sellers. Filter, compare, and keep discovering.",
     "promotion": "Promotion:",
+    "sortOptions": {
+      "bestMatch": "Best match",
+      "newest": "Newest",
+      "rating": "Highest rated",
+      "bestSellers": "Best sellers",
+      "trending": "Trending",
+      "recommended": "Recommended",
+      "discover": "Discover",
+      "priceLow": "Price: low to high",
+      "priceHigh": "Price: high to low"
+    },
     "all": "All",
     "shipsToLabel": "Ships to",
     "shipsToAnywhere": "Anywhere",

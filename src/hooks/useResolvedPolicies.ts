@@ -15,6 +15,8 @@ export interface ResolvedPolicy {
 
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const number = (value: unknown) => typeof value === "number" && Number.isFinite(value) ? value : null;
+const isPlaceholder = (value: string) =>
+  /^(shipping|shipping information|shipping policy|delivery information)$/i.test(value.replace(/[:.!?]+$/, "").trim());
 
 // Public policy pages are written in markdown; product-page sheets show plain text.
 function markdownToText(value: unknown) {
@@ -34,14 +36,17 @@ function markdownToText(value: unknown) {
     .trim();
 }
 
-const firstLine = (value: string) => value.split("\n").map(line => line.trim()).find(Boolean) || value;
+const firstLine = (value: string) =>
+  value.split("\n").map(line => line.trim()).find(line => Boolean(line) && !isPlaceholder(line.replace(/^[•*-]\s*/, ""))) || value;
 
 function sourceLabel(source: Source) {
   return source === "seller" ? "Set by seller" : source === "platform" ? "Platform policy" : "Set for this product";
 }
 
-function shipping(row: PolicyRow, source: Source): ResolvedPolicy | null {
-  const detail = text(row.shipping_terms) || text(row.shipping_policy);
+export function resolveShippingPolicy(row: PolicyRow, source: Source): ResolvedPolicy | null {
+  const detail = [row.shipping_terms, row.shipping_policy, row.shipping_info]
+    .map(text)
+    .find(value => value && !isPlaceholder(value)) || "";
   const from = text(row.ship_from_location);
   const deliveryMin = number(row.delivery_days_min);
   const deliveryMax = number(row.delivery_days_max);
@@ -102,17 +107,21 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
   const policies = useMemo(() => {
     const store = query.data?.store ?? null;
     const platform = query.data?.platform ?? null;
-    const productRow: PolicyRow = { warranty: product?.warranty, warranty_period: product?.warranty_period };
+    const productRow: PolicyRow = {
+      shipping_info: product?.shipping_info,
+      warranty: product?.warranty,
+      warranty_period: product?.warranty_period,
+    };
     return {
       // The published Shipping and Refund pages are authoritative for marketplace-wide terms.
       // Seller store values remain a compatibility fallback only.
-      shipping: first(shipping(productRow, "product"), platform ? shipping(platform, "platform") : null, store ? shipping(store, "seller") : null),
+      shipping: first(resolveShippingPolicy(productRow, "product"), platform ? resolveShippingPolicy(platform, "platform") : null, store ? resolveShippingPolicy(store, "seller") : null),
       returns: first(platform ? returns(platform, "platform") : null, store ? returns(store, "seller") : null),
       warranty: first(warranty(productRow, "product"), store ? warranty(store, "seller") : null),
       // Buyer-protection steps have no platform-level editor any more; the Refund page already covers them.
       protection: null,
     };
-  }, [product?.warranty, product?.warranty_period, query.data]);
+  }, [product?.shipping_info, product?.warranty, product?.warranty_period, query.data]);
 
   return { ...query, policies, sourceLabel };
 }

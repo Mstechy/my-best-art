@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildListingReadiness, MIN_DESCRIPTION_LENGTH, type ListingReadinessInput } from "@/lib/listingReadiness";
+import { buildListingQualityWarnings, buildListingReadiness, MIN_DESCRIPTION_LENGTH, type ListingReadinessInput } from "@/lib/listingReadiness";
 
 /** A listing that satisfies every requirement, so tests can change one thing at a time. */
 const completeListing = (overrides: Partial<ListingReadinessInput> = {}): ListingReadinessInput => ({
@@ -137,5 +137,48 @@ describe("listing readiness", () => {
       "Required specifications",
       "Main product photo",
     ]);
+  });
+
+  it("flags search snippets that claim a capacity absent from the listing", () => {
+    const warnings = buildListingQualityWarnings(completeListing({
+      title: "Apple iPhone 14 Pro Max (128GB / 256GB).",
+      description: "A phone with 128GB and 256GB options.",
+      metaDescription: "Available in 128GB, 256GB, and 512GB.",
+      variantRows: [
+        { price: "780000", stock: "10", optionName: "storage", optionValue: "128GB" },
+        { price: "850000", stock: "0", optionName: "storage", optionValue: "256GB" },
+      ],
+    }));
+
+    expect(warnings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ message: expect.stringContaining("512GB"), tab: "basic" }),
+      expect.objectContaining({ message: expect.stringContaining("title ending"), tab: "basic" }),
+    ]));
+  });
+
+  it("flags placeholder shipping text and recommends additional product photos", () => {
+    const warnings = buildListingQualityWarnings(completeListing({
+      shippingInfo: "Shipping Information",
+      imageCount: 1,
+    }));
+
+    expect(warnings.map((warning) => warning.tab)).toContain("basic");
+    expect(warnings.map((warning) => warning.tab)).toContain("media");
+    expect(warnings.some((warning) => warning.message.includes("generic shipping"))).toBe(true);
+    expect(warnings.some((warning) => warning.message.includes("more clear product photos"))).toBe(true);
+  });
+
+  it("does not flag a meta-description capacity supported by variant options", () => {
+    const warnings = buildListingQualityWarnings(completeListing({
+      title: "Apple iPhone",
+      description: "Unlocked device.",
+      metaDescription: "Available in 128GB and 256GB.",
+      variantRows: [
+        { price: "1", stock: "1", optionName: "storage", optionValue: "128GB" },
+        { price: "1", stock: "0", optionName: "storage", optionValue: "256GB" },
+      ],
+    }));
+
+    expect(warnings.some((warning) => warning.message.includes("Search description"))).toBe(false);
   });
 });

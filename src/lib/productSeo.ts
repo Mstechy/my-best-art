@@ -18,6 +18,7 @@
  * no `replaceAll` and no `Array.prototype.at` - both are newer than ES2020.
  */
 import {
+  escapeAttribute,
   insertBeforeHeadClose,
   LANDING_PRELOAD_START,
   LANDING_PRELOAD_END,
@@ -31,6 +32,7 @@ import {
   stripLandingPreloads,
   toHtmlJsonLd,
 } from "./htmlHead";
+import { getProductCardImageUrl } from "./productImageUrls";
 
 // Re-exported because they were declared here first and are imported from this
 // path in two places (`scripts/preloadLandingRoute.ts` and the head tests).
@@ -50,7 +52,10 @@ export interface ProductSeoInput {
   price: number;
   currency: string;
   image?: string | null;
+  /** Exact URL used by the first product-gallery image. */
+  imagePreload?: string | null;
   description?: string | null;
+  metaDescription?: string | null;
   availability?: ProductAvailability;
   rating?: number;
   reviewCount?: number;
@@ -158,8 +163,19 @@ function formatListingPrice(price: number, currency: string): string {
 
 /** 160-char summary for <meta name="description"> and the og:/twitter: tags. */
 export function buildProductDescription(input: ProductSeoInput): string {
-  const source = input.description ? collapseWhitespace(input.description) : "";
   const name = input.productName.trim() || "Product";
+  const customMeta = input.metaDescription ? collapseWhitespace(input.metaDescription) : "";
+  const productDescription = input.description ? collapseWhitespace(input.description) : "";
+  const capacities = (value: string) =>
+    [...value.matchAll(/\b(\d+(?:\.\d+)?)\s*(gb|tb)\b/gi)]
+      .map((match) => `${match[1]}${match[2].toLowerCase()}`);
+  const supportedCapacities = new Set([
+    ...capacities(name),
+    ...capacities(productDescription.replace(/<[^>]*>/g, " ")),
+  ]);
+  const customMetaHasUnsupportedCapacity = capacities(customMeta)
+    .some((capacity) => !supportedCapacities.has(capacity));
+  const source = customMeta && !customMetaHasUnsupportedCapacity ? customMeta : productDescription;
   const text =
     source ||
     `Buy ${name} for ${formatListingPrice(input.price, input.currency)} on Tradibu. ${FALLBACK_TRAIL}`;
@@ -279,9 +295,13 @@ export function injectProductHead(html: string, input: ProductSeoInput): string 
   }
 
   out = setCanonical(out, input.url);
+  if (input.imagePreload) {
+    out = insertBeforeHeadClose(
+      out,
+      `<link id="product-image-preload" rel="preload" as="image" href="${escapeAttribute(resolveSiteUrl(input.imagePreload))}" fetchpriority="high" />`,
+    );
+  }
   out = insertBeforeHeadClose(out, toHtmlJsonLd(buildProductJsonLd(input), PRODUCT_STRUCTURED_DATA_ID));
   return out;
 }
-
-
 

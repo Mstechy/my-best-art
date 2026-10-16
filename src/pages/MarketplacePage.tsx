@@ -660,16 +660,16 @@ export default function MarketplacePage() {
                 <Select value={sortBy} onValueChange={(value) => { if (isMarketplaceSort(value)) setSortBy(value); }}>
                   <SelectTrigger className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="relevance">{t("marketplace.sort.bestMatch")}</SelectItem>
-                    <SelectItem value="newest">{t("marketplace.sort.newest")}</SelectItem>
-                    <SelectItem value="rating">{t("marketplace.sort.rating")}</SelectItem>
-                    <SelectItem value="best_sellers">{t("marketplace.sort.bestSellers")}</SelectItem>
-                    <SelectItem value="trending">{t("marketplace.sort.trending")}</SelectItem>
-                    <SelectItem value="recommended">{t("marketplace.sort.recommended")}</SelectItem>
+                    <SelectItem value="relevance">{t("marketplace.sortOptions.bestMatch")}</SelectItem>
+                    <SelectItem value="newest">{t("marketplace.sortOptions.newest")}</SelectItem>
+                    <SelectItem value="rating">{t("marketplace.sortOptions.rating")}</SelectItem>
+                    <SelectItem value="best_sellers">{t("marketplace.sortOptions.bestSellers")}</SelectItem>
+                    <SelectItem value="trending">{t("marketplace.sortOptions.trending")}</SelectItem>
+                    <SelectItem value="recommended">{t("marketplace.sortOptions.recommended")}</SelectItem>
                     <SelectItem value="flash_deals">{t("home.flashDeals")}</SelectItem>
-                    <SelectItem value="random">{t("marketplace.sort.discover")}</SelectItem>
-                    <SelectItem value="price_low">{t("marketplace.sort.priceLow")}</SelectItem>
-                    <SelectItem value="price_high">{t("marketplace.sort.priceHigh")}</SelectItem>
+                    <SelectItem value="random">{t("marketplace.sortOptions.discover")}</SelectItem>
+                    <SelectItem value="price_low">{t("marketplace.sortOptions.priceLow")}</SelectItem>
+                    <SelectItem value="price_high">{t("marketplace.sortOptions.priceHigh")}</SelectItem>
                   </SelectContent>
                 </Select>
                 <div className="flex items-center gap-2">

@@ -140,6 +140,28 @@ describe("buildProductDescription", () => {
     expect(meta).not.toContain("352000.00");
     expect(meta.length).toBeLessThanOrEqual(160);
   });
+
+  it("does not publish unsupported storage capacities from a stale custom search description", () => {
+    const meta = buildProductDescription({
+      ...input,
+      productName: "Apple iPhone 14 Pro Max (128GB / 256GB)",
+      description: "A phone with a 6.7-inch display and A16 processor.",
+      metaDescription: "Available in 128GB, 256GB, and 512GB.",
+    });
+
+    expect(meta).toContain("6.7-inch display");
+    expect(meta).not.toContain("512GB");
+  });
+
+  it("keeps custom search descriptions when their capacity claims match the product", () => {
+    const meta = buildProductDescription({
+      ...input,
+      productName: "Apple iPhone 14 Pro Max (128GB / 256GB)",
+      metaDescription: "Available in 128GB and 256GB. Factory unlocked.",
+    });
+
+    expect(meta).toBe("Available in 128GB and 256GB. Factory unlocked.");
+  });
 });
 
 describe("buildProductJsonLd", () => {
@@ -216,6 +238,17 @@ describe("injectProductHead", () => {
     expect(html).not.toContain('media="(max-width: 640px)"');
     // The comment survives; only the requests it describes are dropped.
     expect(html).toContain("Home hero LCP preload");
+  });
+
+  it("preloads the exact first-gallery image when the product supplies one", () => {
+    const imagePreload = "https://bnkyddmmhaaefzfvzpqs.supabase.co/storage/v1/object/public/product-images/x/card-hero.webp";
+    const preloaded = injectProductHead(SHELL, { ...input, imagePreload });
+
+    expect(preloaded).toContain(
+      `<link id="product-image-preload" rel="preload" as="image" href="${imagePreload}" fetchpriority="high" />`,
+    );
+    expect(preloaded).toContain(`<meta property="og:image" content="${input.image}" />`);
+    expect(count(preloaded, 'id="product-image-preload"')).toBe(1);
   });
 
   it("drops the landing route modulepreload block the product page never needs", () => {
@@ -322,4 +355,3 @@ describe("injectProductHead", () => {
     expect(injectProductHead(SHELL, input)).toContain('<div id="root"></div>');
   });
 });
-

@@ -17,6 +17,10 @@
 export interface ListingVariantRow {
   price: string;
   stock: string;
+  optionName?: string;
+  optionValue?: string;
+  size?: string;
+  color?: string;
 }
 
 export interface ListingReadinessInput {
@@ -24,6 +28,8 @@ export interface ListingReadinessInput {
   productTypeKey: string;
   title: string;
   description: string;
+  metaDescription?: string;
+  shippingInfo?: string;
   /** Base price field. Empty whenever the listing prices itself through variants. */
   price: string;
   stockQuantity: string;
@@ -43,6 +49,68 @@ export interface ListingRequirement {
   /** Tab that fixes this item, so the button can jump straight to it. */
   tab: ListingRequirementTab;
   complete: boolean;
+}
+
+export interface ListingQualityWarning {
+  message: string;
+  tab: ListingRequirementTab;
+}
+
+const capacityClaims = (value: string) =>
+  [...value.matchAll(/\b(\d+(?:\.\d+)?)\s*(gb|tb)\b/gi)]
+    .map((match) => `${match[1]}${match[2].toLowerCase()}`);
+
+const isGenericShippingText = (value: string) =>
+  /^(shipping|shipping information|shipping policy|delivery information)$/i.test(value.trim().replace(/[.!?]+$/, ""));
+
+export function buildListingQualityWarnings(input: ListingReadinessInput): ListingQualityWarning[] {
+  const warnings: ListingQualityWarning[] = [];
+  const title = input.title.trim();
+
+  if (/[.,;:!?)]$/.test(title)) {
+    warnings.push({
+      message: "Check the title ending; remove stray punctuation so the product name reads cleanly.",
+      tab: "basic",
+    });
+  }
+
+  const metaDescription = input.metaDescription?.trim() ?? "";
+  if (metaDescription) {
+    const supportedClaims = new Set([
+      ...capacityClaims(title),
+      ...capacityClaims(input.description),
+      ...input.variantRows.flatMap((row) => [
+        ...capacityClaims(row.optionValue ?? ""),
+        ...capacityClaims(row.size ?? ""),
+        ...capacityClaims(row.color ?? ""),
+      ]),
+      ...Object.values(input.categoryAttributes).flatMap(capacityClaims),
+    ]);
+    const unsupportedClaims = [...new Set(capacityClaims(metaDescription))]
+      .filter((claim) => !supportedClaims.has(claim));
+    if (unsupportedClaims.length > 0) {
+      warnings.push({
+        message: `Search description mentions ${unsupportedClaims.join(", ").toUpperCase()}, which is not listed in the title, description, specifications, or options. Verify it or remove it.`,
+        tab: "basic",
+      });
+    }
+  }
+
+  if (input.shippingInfo && isGenericShippingText(input.shippingInfo)) {
+    warnings.push({
+      message: "Replace the generic shipping label with accurate delivery terms, or leave it blank until you can provide them.",
+      tab: "basic",
+    });
+  }
+
+  if (input.imageCount > 0 && input.imageCount < 3) {
+    warnings.push({
+      message: "Add more clear product photos from different angles to help buyers judge the item.",
+      tab: "media",
+    });
+  }
+
+  return warnings;
 }
 
 /** Minimum description length enforced by handleSave. */

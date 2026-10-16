@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Package, Star, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,6 +28,8 @@ export default function RecommendedProducts({ productId, categoryId }: { product
   const [items, setItems] = useState<RecItem[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [nearViewport, setNearViewport] = useState(false);
+  const recommendationsRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
 
   const loadPage = useCallback(async (offset: number) => {
@@ -40,40 +42,94 @@ export default function RecommendedProducts({ productId, categoryId }: { product
       .order("created_at", { ascending: false })
       .range(offset, offset + PAGE_SIZE - 1);
     if (categoryId) q = q.eq("category_id", categoryId);
-    const { data } = await q;
-    return (data as unknown as RecItem[]) || [];
+    const { data, error } = await q;
+    return { rows: (data as unknown as RecItem[]) || [], error };
   }, [productId, categoryId]);
+
+  useEffect(() => {
+    const target = recommendationsRef.current;
+    if (!target) return;
+    if (!("IntersectionObserver" in window)) {
+      setNearViewport(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        setNearViewport(true);
+        observer.disconnect();
+      },
+      { rootMargin: "400px 0px" },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [loadPage]);
 
   useEffect(() => {
     let cancelled = false;
     setItems([]);
     setHasMore(true);
-    (async () => {
-      const rows = await loadPage(0);
-      if (cancelled) return;
-      setItems(rows);
-      setHasMore(rows.length === PAGE_SIZE);
-    })();
+    setNearViewport(false);
     return () => { cancelled = true; };
   }, [loadPage]);
+
+  useEffect(() => {
+    if (!nearViewport) return;
+    let cancelled = false;
+    setLoading(true);
+    (async () => {
+      try {
+        const { rows, error } = await loadPage(0);
+        if (cancelled) return;
+        if (error) {
+          toast.error("Could not load recommended products.");
+          setHasMore(false);
+        } else {
+          setItems(rows);
+          setHasMore(rows.length === PAGE_SIZE);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Failed to load recommended products:", error);
+          toast.error("Could not load recommended products.");
+          setHasMore(false);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [loadPage, nearViewport]);
 
   const loadMore = useCallback(async () => {
     if (loading || !hasMore) return;
     setLoading(true);
-    const rows = await loadPage(items.length);
-    setItems(prev => {
-      const seen = new Set(prev.map(p => p.id));
-      const fresh = rows.filter(p => !seen.has(p.id));
-      return [...prev, ...fresh];
-    });
-    setHasMore(rows.length === PAGE_SIZE);
-    setLoading(false);
+    try {
+      const { rows, error } = await loadPage(items.length);
+      if (error) {
+        toast.error("Could not load more recommended products.");
+        setHasMore(false);
+        return;
+      }
+      setItems(prev => {
+        const seen = new Set(prev.map(p => p.id));
+        const fresh = rows.filter(p => !seen.has(p.id));
+        return [...prev, ...fresh];
+      });
+      setHasMore(rows.length === PAGE_SIZE);
+    } catch (error) {
+      console.error("Failed to load more recommended products:", error);
+      toast.error("Could not load more recommended products.");
+      setHasMore(false);
+    } finally {
+      setLoading(false);
+    }
   }, [loading, hasMore, items.length, loadPage]);
 
-  if (items.length === 0) return null;
-
   return (
-    <section id="recommended" className="mt-10 px-4 md:px-0">
+    <div ref={recommendationsRef} className="min-h-px">
+      {items.length > 0 && <section id="recommended" className="mt-10 px-4 md:px-0">
       <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">More in this department</h2>
       <p className="mb-4 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Similar active listings to help you compare before you decide.</p>
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -140,6 +196,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
       </div>
       {/* Infinite scroll â€” keeps loading more products so the page never ends (AliExpress behavior) */}
       <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} loading={loading} />
-    </section>
+      </section>}
+    </div>
   );
 }

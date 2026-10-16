@@ -1,5 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 import { normalizeImageDimensions, type ImageDimensions } from "@/lib/imageDimensions";
+import { getProductCardImageUrl } from "@/lib/productImageUrls";
+
+export { getProductCardImageUrl } from "@/lib/productImageUrls";
 
 // Grid cards are roughly 180px on a phone and 300px on a desktop. At 3x DPR the
 // largest realistic slot is about 900px, but Lighthouse measured the 900px
@@ -132,14 +135,6 @@ export async function createProductCardImage(
 
   ctx.drawImage(image, x, y, width, height);
   return canvasToBlob(canvas, CARD_MIME_TYPE, quality);
-}
-
-export function getProductCardImageUrl(originalUrl: string | null | undefined) {
-  if (!originalUrl || !originalUrl.includes("/original-")) return originalUrl ?? null;
-  const [withoutQuery, query] = originalUrl.split("?", 2);
-  const cardUrl = withoutQuery.replace(/\/original-(.+?)(?:\.[^/.]+)?$/i, "/card-$1.webp");
-  if (cardUrl === withoutQuery) return originalUrl;
-  return query ? `${cardUrl}?${query}` : cardUrl;
 }
 
 export interface UploadedProductImage {
