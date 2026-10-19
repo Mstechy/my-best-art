@@ -48,13 +48,20 @@ export function resolveShippingPolicy(row: PolicyRow, source: Source): ResolvedP
     .map(text)
     .find(value => value && !isPlaceholder(value)) || "";
   const from = text(row.ship_from_location);
+  const destinations = Array.isArray(row.ships_to) ? row.ships_to.filter((value): value is string => typeof value === "string" && value.trim().length > 0) : [];
+  const processingMin = number(row.processing_days_min);
+  const processingMax = number(row.processing_days_max);
   const deliveryMin = number(row.delivery_days_min);
   const deliveryMax = number(row.delivery_days_max);
   const cost = number(row.shipping_cost_amount);
   const currency = text(row.shipping_currency);
+  const freeThreshold = number(row.free_shipping_threshold);
   const parts = [
     cost === 0 ? "Free shipping" : cost !== null && currency ? `${currency} ${cost}` : "",
+    cost !== null && cost > 0 && freeThreshold !== null && currency ? `Free over ${currency} ${freeThreshold}` : "",
+    destinations.includes("worldwide") ? "Ships worldwide" : destinations.length > 0 ? `Ships to ${destinations.slice(0, 3).map(value => value.toUpperCase()).join(", ")}${destinations.length > 3 ? " + more" : ""}` : "",
     from ? `Ships from ${from}` : "",
+    processingMin !== null ? `Dispatch ${processingMin}${processingMax !== null ? `-${processingMax}` : ""} days` : "",
     deliveryMin !== null ? `Delivery ${deliveryMin}${deliveryMax !== null ? `–${deliveryMax}` : ""} days` : "",
   ].filter(Boolean);
   if (!detail && parts.length === 0) return null;
@@ -80,7 +87,7 @@ function warranty(row: PolicyRow, source: Source): ResolvedPolicy | null {
 
 function first<T>(...values: (T | null)[]) { return values.find((value): value is T => value !== null) ?? null; }
 
-export function useResolvedPolicies(sellerId: string | undefined, product: { shipping_info: string | null; warranty: string | null; warranty_period: string | null } | null) {
+export function useResolvedPolicies(sellerId: string | undefined, product: { shipping_info: string | null; ships_to: string[] | null; ship_from_location: string | null; processing_days_min: number | null; processing_days_max: number | null; delivery_days_min: number | null; delivery_days_max: number | null; warranty: string | null; warranty_period: string | null } | null) {
   const query = useSupabaseQuery(
     [...supabaseKeys.table("site_pages"), sellerId ?? ""],
     async () => {
@@ -109,6 +116,12 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
     const platform = query.data?.platform ?? null;
     const productRow: PolicyRow = {
       shipping_info: product?.shipping_info,
+      ships_to: product?.ships_to,
+      ship_from_location: product?.ship_from_location,
+      processing_days_min: product?.processing_days_min,
+      processing_days_max: product?.processing_days_max,
+      delivery_days_min: product?.delivery_days_min,
+      delivery_days_max: product?.delivery_days_max,
       warranty: product?.warranty,
       warranty_period: product?.warranty_period,
     };
@@ -121,7 +134,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
       // Buyer-protection steps have no platform-level editor any more; the Refund page already covers them.
       protection: null,
     };
-  }, [product?.shipping_info, product?.warranty, product?.warranty_period, query.data]);
+  }, [product?.shipping_info, product?.ships_to, product?.ship_from_location, product?.processing_days_min, product?.processing_days_max, product?.delivery_days_min, product?.delivery_days_max, product?.warranty, product?.warranty_period, query.data]);
 
   return { ...query, policies, sourceLabel };
 }

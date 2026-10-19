@@ -22,6 +22,12 @@ export interface Product {
   warranty: string | null;
   warranty_period: string | null;
   shipping_info: string | null;
+  ships_to: string[] | null;
+  ship_from_location: string | null;
+  processing_days_min: number | null;
+  processing_days_max: number | null;
+  delivery_days_min: number | null;
+  delivery_days_max: number | null;
   key_features: string[] | null;
   tags: string[] | null;
   average_rating: number;
@@ -79,6 +85,12 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
     price: asNumber(row.price),
     currency: asString(row.currency, "NGN"),
     stock_quantity: asNumber(row.stock_quantity),
+    ships_to: row.ships_to == null ? null : asArray<string>(row.ships_to),
+    ship_from_location: (row.ship_from_location as string | null) ?? null,
+    processing_days_min: typeof row.processing_days_min === "number" ? row.processing_days_min : null,
+    processing_days_max: typeof row.processing_days_max === "number" ? row.processing_days_max : null,
+    delivery_days_min: typeof row.delivery_days_min === "number" ? row.delivery_days_min : null,
+    delivery_days_max: typeof row.delivery_days_max === "number" ? row.delivery_days_max : null,
     average_rating: asNumber(row.average_rating),
     review_count: asNumber(row.review_count),
     key_features: row.key_features == null ? null : asArray<string>(row.key_features),

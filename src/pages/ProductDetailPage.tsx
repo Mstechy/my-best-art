@@ -188,9 +188,24 @@ export default function ProductDetailPage() {
   const purchasableStock = selectedVariant
     ? selectedVariant.stock_quantity
     : hasProductVariants
-      ? Number(hasInStockVariant)
+      ? 0
       : (product?.stock_quantity ?? 0);
   const purchasablePrice = selectedVariant?.price ?? product?.price ?? 0;
+  const canPurchase = Boolean(
+    product &&
+    purchasableStock > 0 &&
+    (hasProductVariants
+      ? Boolean(selectedVariant)
+      : (!variantSizes.length || Boolean(selectedSize)) && (!variantColors.length || Boolean(selectedColor))),
+  );
+  const requiresOptionSelection = hasProductVariants
+    ? !selectedVariant
+    : (variantSizes.length > 0 && !selectedSize) || (variantColors.length > 0 && !selectedColor);
+  const purchaseButtonLabel = !canPurchase && requiresOptionSelection
+    ? "Select options"
+    : purchasableStock === 0
+      ? "Out of stock"
+      : "Add to Cart";
   const startingVariantPrice = useMemo(() => {
     if (!hasProductVariants || !product) return null;
     const priceSource = inStockVariants.length > 0 ? inStockVariants : productVariants;
@@ -205,7 +220,7 @@ export default function ProductDetailPage() {
     description: product?.description || undefined,
     metaDescription: product?.meta_description,
     id: product?.id || id || "",
-    availability: purchasableStock > 0 ? "InStock" : "OutOfStock",
+    availability: (hasProductVariants ? hasInStockVariant : (product?.stock_quantity ?? 0) > 0) ? "InStock" : "OutOfStock",
     rating: product?.average_rating,
     reviewCount: product?.review_count,
     brand: product?.brand,
@@ -366,7 +381,7 @@ export default function ProductDetailPage() {
         await supabase.from("review_photos").insert({ review_id: inserted.id, url: urlData.publicUrl, position: i });
       }
     }
-    toast.success("Review submitted âœ“");
+    toast.success("Review submitted");
     setReviewComment(""); setReviewTitle(""); setReviewRating(5); setReviewPhotoFiles([]);
     setSubmittingReview(false);
     reviewsQuery.refetch();
@@ -556,7 +571,7 @@ export default function ProductDetailPage() {
 
                 {selectedVariant && (
                   <p className="mt-2 text-xs font-medium text-[#666666] dark:text-[#A0A0A0]" aria-live="polite">
-                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" Â· ")}
+                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" / ")}
                   </p>
                 )}
 
@@ -682,27 +697,27 @@ export default function ProductDetailPage() {
 
             <div className="flex items-center gap-4">
               {!hasProductVariants && <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
-                <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">âˆ’</button>
+                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">-</button>
                 <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
                 <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">+</button>
               </div>}
               <button
                 onClick={() => startPurchase("cart")}
-                disabled={!hasProductVariants && purchasableStock === 0}
+                disabled={!canPurchase}
                 className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
               >
-                {!hasProductVariants && purchasableStock === 0 ? "Out of Stock" : "Add to Cart"}
+                {purchaseButtonLabel}
               </button>
               <button
                 onClick={() => startPurchase("buy")}
-                disabled={!hasProductVariants && purchasableStock === 0}
+                disabled={!canPurchase}
                 className="hidden flex-1 rounded-full border border-[#111111] py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:block"
               >
                 Buy Now
               </button>
             </div>
 
-            {user && user.id !== product.seller_id && purchasableStock > 0 && (
+            {user && user.id !== product.seller_id && canPurchase && (
               <button
                 type="button"
                 onClick={() => setOfferOpen(true)}
@@ -724,7 +739,7 @@ export default function ProductDetailPage() {
             )}
 
             <div className="space-y-2">
-              {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy information…</p>}
+              {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy information...</p>}
               {policiesError && <p className="px-1 text-xs text-[#6E6C64]">Policy information is unavailable.</p>}
               <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
                 <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
@@ -734,7 +749,7 @@ export default function ProductDetailPage() {
               <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
                 <Shield className="h-4 w-4 shrink-0" />
                 <span className="min-w-0 flex-1"><span className="block font-semibold text-[#111111] dark:text-[#FAF5F2]">Returns & refunds</span><span className="block truncate">{policies.returns?.summary}</span></span>{/*
-                <span>Buyer protection — full refund if not as described</span>
+                <span>Buyer protection - full refund if not as described</span>
                 */}<ChevronRight className="h-4 w-4 shrink-0" />
               </button>
               <button type="button" onClick={() => setServiceSheet("protection")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.protection ? "hidden" : ""}`}>
@@ -791,7 +806,7 @@ export default function ProductDetailPage() {
                   : ""}
               </SheetDescription>
             </SheetHeader>
-            {serviceSheet && policies[serviceSheet] && <p className="mt-4 text-xs font-semibold text-[#6E6C64]">{sourceLabel(policies[serviceSheet].source)} Â· Last updated {policies[serviceSheet].updatedAt ? new Date(policies[serviceSheet].updatedAt).toLocaleDateString() : "not available"}</p>}
+            {serviceSheet && policies[serviceSheet] && <p className="mt-4 text-xs font-semibold text-[#6E6C64]">{sourceLabel(policies[serviceSheet].source)} / Last updated {policies[serviceSheet].updatedAt ? new Date(policies[serviceSheet].updatedAt).toLocaleDateString() : "not available"}</p>}
           </SheetContent>
         </Sheet>
 
@@ -989,15 +1004,15 @@ export default function ProductDetailPage() {
           <button
             type="button"
             onClick={() => startPurchase("cart")}
-            disabled={!hasProductVariants && purchasableStock === 0}
+            disabled={!canPurchase}
             className="h-11 min-w-0 flex-1 rounded-full border border-[#111111] bg-transparent px-1 text-[13px] font-bold leading-tight text-[#111111] transition-colors hover:bg-brand-tint hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
           >
-            {!hasProductVariants && purchasableStock === 0 ? "Out of stock" : "Add to Cart"}
+            {purchaseButtonLabel}
           </button>
           <button
             type="button"
             onClick={() => startPurchase("buy")}
-            disabled={!hasProductVariants && purchasableStock === 0}
+            disabled={!canPurchase}
             className="h-11 min-w-0 flex-1 rounded-full bg-brand px-1 text-[13px] font-bold leading-tight text-ink transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             Buy Now
@@ -1024,7 +1039,7 @@ export default function ProductDetailPage() {
             <div className="flex items-center justify-between gap-4">
               <span className="text-sm font-semibold">Quantity</span>
               <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
-                <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant}>âˆ’</button>
+                <button type="button" onClick={() => setQuantity((current) => Math.max(1, current - 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant}>-</button>
                 <span className="flex h-10 w-10 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
                 <button type="button" onClick={() => setQuantity((current) => Math.min(purchasableStock, current + 1))} className="flex h-10 w-10 items-center justify-center text-sm font-bold disabled:opacity-40" disabled={!selectedVariant || quantity >= purchasableStock}>+</button>
               </div>
