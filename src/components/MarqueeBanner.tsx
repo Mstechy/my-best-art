@@ -6,17 +6,14 @@ type IconKey = keyof typeof ICONS;
 
 interface MarqueeItem {
   label: string;
-  promo: string;
+  href: string;
   icon: IconKey;
 }
 
 const ITEMS: MarqueeItem[] = [
-  { label: "20% Off Summer Sale", promo: "summer20", icon: "sparkles" },
-  { label: "Hot Deals — Up to 50% Off", promo: "hot50", icon: "flame" },
-  { label: "Free Shipping on Orders $50+", promo: "freeship", icon: "truck" },
-  { label: "New Arrivals This Week", promo: "new", icon: "zap" },
-  { label: "Bundle & Save 15%", promo: "bundle15", icon: "tag" },
-  { label: "Gift Cards Now Available", promo: "gifts", icon: "gift" },
+  { label: "Browse electronics", href: "/categories/electronics", icon: "sparkles" },
+  { label: "New arrivals this week", href: "/marketplace?sort=newest", icon: "zap" },
+  { label: "Review delivery terms", href: "/shipping", icon: "truck" },
 ];
 
 function Track({ items, tabIndex }: { items: MarqueeItem[]; tabIndex?: number }) {
@@ -26,8 +23,8 @@ function Track({ items, tabIndex }: { items: MarqueeItem[]; tabIndex?: number })
         const Icon = ICONS[it.icon];
         return (
           <Link
-            key={`${it.promo}-${i}`}
-            to={`/marketplace?promo=${encodeURIComponent(it.promo)}`}
+            key={`${it.href}-${i}`}
+            to={it.href}
             tabIndex={tabIndex}
             className="group inline-flex items-center gap-2 whitespace-nowrap text-xs font-medium text-[#111111] hover:text-[#111111]/80 transition-colors"
           >

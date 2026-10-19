@@ -14,24 +14,24 @@ export default function ProductGuarantee() {
   const rows: Row[] = [
     {
       icon: Truck,
-      title: "Free Shipping",
-      hint: `Delivery ${range}`,
+      title: "Delivery terms",
+      hint: `Estimate ${range}`,
       detail:
-        "Standard shipping is on us. Your order will be processed within 1-2 business days and delivered in the estimated window.",
+        "Shipping cost and timing depend on the seller, your destination, and the option selected at checkout. Review the listing and checkout estimate before paying.",
     },
     {
       icon: RotateCcw,
-      title: "Return & Refund Policy",
-      hint: "7-day returns",
+      title: "Returns & refunds",
+      hint: "Seller terms apply",
       detail:
-        "If the item isn't as described, request a return within 7 days of delivery for a full refund via Tradibu Buyer Protection.",
+        "Return eligibility, timing, and who pays return shipping are determined by the applicable seller and platform policy shown on the product page.",
     },
     {
       icon: Shield,
       title: "Secure Payment",
       hint: "Powered by Paystack",
       detail:
-        "Checkout runs on Paystack, Nigeria's trusted payment provider. Your card details never touch Tradibu's servers, and your money goes straight to the seller once your order is delivered.",
+        "Checkout runs on Paystack. Your card details never touch Tradibu's servers, and payment is verified before the order is released for fulfilment.",
     },
   ];
 
@@ -45,14 +45,14 @@ export default function ProductGuarantee() {
                 <Shield className="h-5 w-5 text-[#6E6C64]" />
               </div>
               <div className="min-w-0">
-                <div className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">Tradibu Guarantee</div>
+              <div className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] truncate">Order information</div>
                 <div className="mt-1 flex items-center gap-2.5 text-[10px] font-semibold text-[#6E6C64] flex-wrap">
                   <span className="flex items-center gap-1">
-                    <Truck className="h-3 w-3" /> Free Shipping
+                    <Truck className="h-3 w-3" /> Delivery terms
                   </span>
                   <span className="flex items-center gap-1">
                     <span className="w-1 h-1 rounded-full bg-[#D9D9D9] dark:bg-[#333333]"></span>
-                    <RotateCcw className="h-3 w-3" /> 7-day Returns
+                    <RotateCcw className="h-3 w-3" /> Return terms
                   </span>
                 </div>
               </div>
@@ -65,7 +65,7 @@ export default function ProductGuarantee() {
       <DialogContent className="max-w-md bg-white dark:bg-[#111111] border-[#E8E8E8] dark:border-[#222222] rounded-2xl sm:rounded-2xl gap-0 p-0 overflow-hidden">
         <DialogHeader className="p-5 border-b border-[#E8E8E8] dark:border-[#222222]">
           <DialogTitle className="flex items-center gap-2 text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">
-            <Shield className="h-4 w-4 text-[#F6C75D]" /> Tradibu Guarantee
+            <Shield className="h-4 w-4 text-[#F6C75D]" /> Order information
           </DialogTitle>
         </DialogHeader>
         <div className="p-5">

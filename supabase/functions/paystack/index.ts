@@ -29,31 +29,69 @@ const hmac = async (body: string, secret: string) => {
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-512" }, false, ["sign"]);
   return Array.from(new Uint8Array(await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(body)))).map((n) => n.toString(16).padStart(2, "0")).join("");
 };
+const equalSignature = (left: string, right: string) => {
+  const a = left.trim().toLowerCase();
+  const b = right.trim().toLowerCase();
+  if (a.length !== b.length) return false;
+  let difference = 0;
+  for (let index = 0; index < a.length; index += 1) difference |= a.charCodeAt(index) ^ b.charCodeAt(index);
+  return difference === 0;
+};
 
 type PayableOrder = { id: string; buyer_id: string; total_amount: number; currency: string; status: string; payment_status: string };
 
 // createClient is imported from a URL, so every query result comes back as `any` and
 // the callbacks consuming it would otherwise have implicitly-any parameters. Asserting
 // the selected shape once keeps the webhook logic type checked.
-type OrderRow = { id: string; status: string; payment_status: string; reservation_expires_at: string | null };
+type OrderRow = {
+  id: string;
+  buyer_id: string;
+  total_amount: number;
+  currency: string;
+  status: string;
+  payment_status: string;
+  payment_reference: string | null;
+  reservation_expires_at: string | null;
+};
 type IdRow = { id: string };
+type VerifiedTransaction = {
+  status?: boolean;
+  data?: {
+    status?: string;
+    reference?: string;
+    amount?: number | string;
+    currency?: string;
+    metadata?: { order_ids?: unknown; user_id?: unknown } | string | null;
+  };
+};
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   const rawBody = await req.text();
-  let body: { action?: string; orderIds?: string[]; email?: string };
+  let body: { action?: string; event?: string; orderIds?: string[]; email?: string; data?: { reference?: unknown } };
   try { body = JSON.parse(rawBody); } catch { return json({ error: "Invalid JSON" }, 400); }
-  if (body.action === "webhook") {
+  // Paystack sends event payloads without an `action` property. The signature
+  // header is the authoritative webhook indicator; the action branch remains
+  // accepted for backwards-compatible manual tests.
+  const isWebhook = Boolean(req.headers.get("x-paystack-signature")) || body.action === "webhook" || typeof body.event === "string";
+  if (isWebhook) {
     const signature = req.headers.get("x-paystack-signature");
     const secret = env("PAYSTACK_SECRET_KEY");
-    if (!signature || signature !== await hmac(rawBody, secret)) return json({ error: "Invalid signature" }, 401);
+    if (!signature || !equalSignature(signature, await hmac(rawBody, secret))) return json({ error: "Invalid signature" }, 401);
     const event = JSON.parse(rawBody);
     if (event.event !== "charge.success") return json({ received: true });
-    const reference = event.data?.reference;
+    const reference = typeof event.data?.reference === "string" ? event.data.reference : "";
+    if (!reference) return json({ error: "Payment reference missing" }, 400);
     const transaction = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, { headers: { Authorization: `Bearer ${secret}` } });
-    const verified = await transaction.json();
-    if (!transaction.ok || verified.status !== "success") return json({ error: "Payment not verified" }, 400);
-    const ids: string[] = Array.isArray(verified.data?.metadata?.order_ids) ? verified.data.metadata.order_ids : [];
+    const verified = await transaction.json() as VerifiedTransaction;
+    const verifiedData = verified.data;
+    if (!transaction.ok || verified.status !== true || verifiedData?.status !== "success" || verifiedData.reference !== reference) {
+      return json({ error: "Payment not verified" }, 400);
+    }
+    const metadata = verifiedData.metadata && typeof verifiedData.metadata === "object" ? verifiedData.metadata : null;
+    const ids = Array.isArray(metadata?.order_ids)
+      ? [...new Set(metadata.order_ids.filter((id): id is string => typeof id === "string"))]
+      : [];
     if (!ids.length) return json({ error: "Order metadata missing" }, 400);
     const { admin } = clients();
     const paidAt = new Date().toISOString();
@@ -70,13 +108,27 @@ Deno.serve(async (req: Request) => {
     // keeps released stock from being sold twice.
     const { data: rows, error: readError } = await admin
       .from("orders")
-      .select("id, status, payment_status, reservation_expires_at")
+      .select("id, buyer_id, total_amount, currency, status, payment_status, payment_reference, reservation_expires_at")
       .in("id", ids);
     if (readError) return json({ error: "Could not read orders" }, 500);
+    const orderRows = (rows ?? []) as OrderRow[];
+    if (orderRows.length !== ids.length) return json({ error: "Payment orders not found" }, 400);
+
+    const expectedAmount = Math.round(orderRows.reduce((sum, order) => sum + Number(order.total_amount), 0) * 100);
+    const receivedAmount = Math.round(Number(verifiedData.amount));
+    if (!Number.isFinite(receivedAmount) || receivedAmount !== expectedAmount || verifiedData.currency !== "NGN") {
+      console.error("paystack: verified amount or currency does not match orders", JSON.stringify({ ids, reference, expectedAmount, receivedAmount, currency: verifiedData.currency }));
+      return json({ error: "Payment amount or currency does not match the order" }, 400);
+    }
+    if (metadata?.user_id && typeof metadata.user_id === "string" && orderRows.some((order) => order.buyer_id !== metadata.user_id)) {
+      return json({ error: "Payment buyer does not match the orders" }, 400);
+    }
+    if (orderRows.some((order) => order.payment_reference && order.payment_reference !== reference)) {
+      return json({ error: "Payment reference does not match the orders" }, 409);
+    }
 
     const windowOpen = (row: OrderRow) =>
       !row.reservation_expires_at || new Date(row.reservation_expires_at) > new Date(paidAt);
-    const orderRows = (rows ?? []) as OrderRow[];
     const payableIds = orderRows
       .filter((row) => row.status === "pending" && row.payment_status !== "paid" && windowOpen(row))
       .map((row) => row.id);
@@ -85,7 +137,7 @@ Deno.serve(async (req: Request) => {
     if (payableIds.length) {
       const { data: fulfilled, error: fulfilError } = await admin
         .from("orders")
-        .update({ payment_status: "paid", paid_at: paidAt, status: "processing" })
+        .update({ payment_status: "paid", payment_reference: reference, paid_at: paidAt, status: "processing" })
         .in("id", payableIds)
         .eq("status", "pending")
         .neq("payment_status", "paid")
@@ -106,7 +158,7 @@ Deno.serve(async (req: Request) => {
       if (cancelled.length) {
         const { data: flagged, error: flagError } = await admin
           .from("orders")
-          .update({ payment_status: "refund_required" })
+          .update({ payment_status: "refund_required", payment_reference: reference })
           .in("id", cancelled)
           .neq("payment_status", "paid")
           .select("id, status, payment_status, buyer_id, total_amount, currency");
@@ -149,7 +201,12 @@ Deno.serve(async (req: Request) => {
   });
   const initialized = await response.json();
   if (!response.ok || !initialized.status) return json({ error: initialized.message || "Could not initialize payment" }, 502);
-  const { error: updateError } = await admin.from("orders").update({ payment_status: "initialized", payment_reference: reference }).in("id", ids);
+  const { error: updateError } = await admin
+    .from("orders")
+    .update({ payment_status: "initialized", payment_reference: reference })
+    .in("id", ids)
+    .eq("status", "pending")
+    .eq("payment_status", "unpaid");
   if (updateError) return json({ error: "Payment initialized but order update failed" }, 500);
   return json({ authorization_url: initialized.data.authorization_url, reference });
 });

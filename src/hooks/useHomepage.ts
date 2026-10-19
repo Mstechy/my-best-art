@@ -212,6 +212,9 @@ export function useHomepageSnapshotData() {
     categoryImages: categories.data?.imageByCategory ?? {},
     feeds,
     sellers,
+    snapshotError: snapshot.error,
+    retrySnapshot: snapshot.refetch,
+    snapshotFetching: snapshot.isFetching,
     loading: categories.isLoading || snapshot.isLoading,
   };
 }

@@ -236,21 +236,20 @@ export default function CheckoutPage() {
         } as any);
       }
 
-      const orderIds: string[] = [];
-      for (const [sellerId, sellerItems] of Object.entries(sellerGroups)) {
-        const { data: orderId, error } = await supabase.rpc("place_marketplace_order", {
-          p_seller_id: sellerId,
-          p_shipping_address: address,
-          p_items: sellerItems.map(item => ({
+      const { data: orderIds, error: orderError } = await supabase.rpc("place_marketplace_orders", {
+        p_orders: Object.entries(sellerGroups).map(([sellerId, sellerItems]) => ({
+          seller_id: sellerId,
+          items: sellerItems.map(item => ({
             product_id: item.product_id || item.id.split("::")[0],
             product_variant_id: item.product_variant_id || null,
             quantity: item.quantity,
           })),
-          p_idempotency_key: `${idempotencyKey}:${sellerId}`,
-        });
-        if (error) throw error;
-        if (orderId) orderIds.push(orderId);
-      }
+        })),
+        p_shipping_address: address,
+        p_idempotency_key: idempotencyKey,
+      });
+      if (orderError) throw orderError;
+      if (!orderIds?.length) throw new Error("No marketplace orders were created.");
       const { data: authSession } = await supabase.auth.getSession();
       if (!authSession.session?.access_token) throw new Error("Your session expired. Please sign in again.");
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON;

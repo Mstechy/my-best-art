@@ -17,7 +17,7 @@
  * changed key, a changed children slot shape, a changed element type), this
  * fails - and so would LCP, silently, in the field.
  */
-import { render } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -35,7 +35,10 @@ import type { EnhancedCollection } from "@/lib/collectionResolver";
 const home = {
   heroLoading: true,
   heroSlides: [] as EnhancedCollection[],
+  snapshotError: null as Error | null,
 };
+
+const retrySnapshot = vi.fn();
 
 vi.mock("@/hooks/useHomepage", () => ({
   FEEDS: [],
@@ -47,6 +50,8 @@ vi.mock("@/hooks/useHomepage", () => ({
     heroLoading: home.heroLoading,
     feeds: { flash_deals: [], new_arrivals: [] },
     sellers: new Map(),
+    snapshotError: home.snapshotError,
+    retrySnapshot,
     loading: home.heroLoading,
   }),
 }));
@@ -143,11 +148,15 @@ describe("hero LCP node stability", () => {
   beforeEach(() => {
     home.heroLoading = true;
     home.heroSlides = [];
+    home.snapshotError = null;
+    retrySnapshot.mockReset();
   });
 
   afterEach(() => {
     home.heroLoading = true;
     home.heroSlides = [];
+    home.snapshotError = null;
+    retrySnapshot.mockReset();
   });
 
   it("paints the pending stage in the first render", () => {
@@ -234,5 +243,16 @@ describe("hero LCP node stability", () => {
     expect(h2After?.textContent).toBe(DEFAULT_HERO_COPY.title);
     expect(section()?.textContent).toContain(DEFAULT_HERO_COPY.badge);
     expect(section()?.textContent).toContain(DEFAULT_HERO_COPY.ctaLabel);
+  });
+
+  it("shows a retry action when the homepage snapshot fails", () => {
+    home.heroLoading = false;
+    home.snapshotError = new Error("snapshot unavailable");
+
+    render(tree());
+
+    expect(screen.getByRole("alert")).toHaveTextContent("temporarily unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(retrySnapshot).toHaveBeenCalledTimes(1);
   });
 });

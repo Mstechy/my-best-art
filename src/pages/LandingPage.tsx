@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
-import { Package, Zap, Clock, UserPlus, Flame, ArrowRight } from "lucide-react";
+import { Package, Zap, Clock, UserPlus, Flame, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import AfterFirstPaint from "@/components/AfterFirstPaint";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
@@ -118,7 +118,7 @@ function fromPageItem(product: CatalogueFeedItem): FeedCard {
 
 
 export default function LandingPage() {
-  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageSnapshotData();
+  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
@@ -258,6 +258,28 @@ export default function LandingPage() {
     <BottomTabBar />
     <CartDrawer /><PromoBanner /><MarqueeBanner />
     <main className="flex flex-col pb-8">
+      {snapshotError && (
+        <Container className="order-first w-full pt-4">
+          <div role="alert" className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 sm:flex-row sm:items-center sm:justify-between dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="font-semibold">{t("home.snapshotError")}</p>
+                <p className="mt-0.5 text-xs text-amber-800 dark:text-amber-200">{t("home.snapshotErrorDesc")}</p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => void retrySnapshot()}
+              disabled={snapshotFetching}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-300 bg-white px-3 font-semibold text-amber-950 transition hover:bg-amber-100 disabled:cursor-wait disabled:opacity-60 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100 dark:hover:bg-amber-900/50"
+            >
+              <RefreshCw className={`h-4 w-4 ${snapshotFetching ? "animate-spin" : ""}`} aria-hidden="true" />
+              {t("common.retry")}
+            </button>
+          </div>
+        </Container>
+      )}
       {/* Hero area — 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
       {/* Single H1 for the page. Visually hidden so the hero design is untouched,
           but present for crawlers and screen readers (the hero artwork already

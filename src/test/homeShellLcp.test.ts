@@ -206,12 +206,9 @@ describe("the first-paint shell", () => {
     // MarqueeBanner's ITEMS are English literals, mirrored verbatim - and the
     // shell's track is frozen (React installs the animated one, starting at 0).
     for (const label of [
-      "20% Off Summer Sale",
-      "Hot Deals — Up to 50% Off",
-      "Free Shipping on Orders $50+",
-      "New Arrivals This Week",
-      "Bundle &amp; Save 15%",
-      "Gift Cards Now Available",
+      "Browse electronics",
+      "New arrivals this week",
+      "Review delivery terms",
     ]) {
       expect(shellBody, label).toContain(label);
     }

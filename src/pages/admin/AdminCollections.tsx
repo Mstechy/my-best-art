@@ -362,8 +362,8 @@ export default function AdminCollections() {
                     )}
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    /{collection.slug} Â· placement: {collection.placement}
-                    {collection.product_count > 0 && ` Â· ${collection.product_count} products`}
+                    /{collection.slug} | placement: {collection.placement}
+                    {collection.product_count > 0 && ` | ${collection.product_count} products`}
                   </p>
                 </div>
                 <Badge variant={collection.status === "active" ? "default" : "secondary"}>
@@ -547,7 +547,7 @@ export default function AdminCollections() {
 
               {form.hero_enabled && (
                 <div className="grid gap-4 sm:grid-cols-3 pl-7">
-                  <p className="sm:col-span-3 text-xs text-muted-foreground">Hero slides require an uploaded banner and an Active status. â€œHero sliderâ€ placement is not required.</p>
+                  <p className="sm:col-span-3 text-xs text-muted-foreground">Hero slides require an uploaded banner and an Active status. The Hero slider placement is not required.</p>
                   <label className="grid gap-1.5 text-sm font-medium">
                     Hero Order
                     <Input type="number" value={form.hero_order}

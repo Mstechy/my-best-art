@@ -75,7 +75,9 @@
     "sold": "sold",
     "categoriesWillAppear": "Categories will appear when approved products are available.",
     "campaignsAppearHere": "Campaigns appear here when published",
-    "manageHeroSlides": "Manage hero slides in Admin → Collections."
+    "manageHeroSlides": "Manage hero slides in Admin → Collections.",
+    "snapshotError": "Some homepage sections are temporarily unavailable.",
+    "snapshotErrorDesc": "You can still browse the full catalogue below."
   },
   "product": {
     "addToCart": "Add to Cart",
@@ -228,7 +230,7 @@
     "createAccountTitle": "Create your account.",
     "chooseHowToUse": "Choose how you'd like to use Tradibu",
     "buyerOption": "I want to Buy",
-    "buyerDescription": "Discover and shop trusted products",
+     "buyerDescription": "Discover and shop from independent sellers",
     "sellerOption": "I want to Sell",
     "sellerDescription": "List products and grow your business",
     "selectAccountType": "Please select an account type",

@@ -50,7 +50,7 @@ The build-time hero copy said “millions of products from trusted sellers aroun
 
 ### P1 - Encoding defects were visible in several shopping surfaces.
 
-The targeted pass normalized the highest-traffic product, cart, checkout, marketplace, buyer, and seller strings to readable separators, labels, and ASCII-safe controls. This is now materially better, but a repository-wide content sweep should still be kept on the release checklist for older admin and secondary surfaces.
+The targeted pass normalized the highest-traffic product, cart, checkout, marketplace, buyer, seller, collection, offer, order-success, and admin collection strings to readable separators, labels, and ASCII-safe controls. A final deployed-language review is still useful for admin-managed content and translated locales.
 
 ### P1 - Shipping information must become destination-specific.
 
@@ -211,3 +211,14 @@ The next buyer and performance risks are now addressed in code.
 - Reviews are fetched in a bounded first page, seller rating and delivered-sales totals use one server-side aggregate, and the homepage has a hydrated snapshot RPC to avoid the previous feed/product/profile request fan-out.
 
 Apply `20261016000000_homepage_snapshot_rpc.sql` and `20261019003000_seller_marketplace_stats.sql` before deploying the homepage or product-page changes. The remaining release gates are live Supabase migration verification, a real Paystack test transaction, real seller shipping policies, and physical-device checks on the ad landing paths.
+
+## Sixth remaining-gap implementation: atomic multi-seller checkout
+
+Checkout previously called the single-seller order writer once per seller from the browser. If a later seller failed validation, an earlier seller order and its inventory reservation could remain behind. The new `place_marketplace_orders` RPC wraps all seller groups in one transaction and reuses the authoritative single-seller writer for each group.
+
+- A failure for any seller rolls back every order and reservation from that checkout attempt.
+- The browser sends one idempotency key for the batch; the RPC derives stable seller-specific keys for safe retries.
+- Duplicate seller groups are rejected instead of creating ambiguous order batches.
+- Paystack still receives the resulting order ids only after the complete batch succeeds.
+
+Apply `20261019006000_atomic_marketplace_checkout.sql` after the current checkout migrations before testing multi-seller carts in staging.

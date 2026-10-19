@@ -1570,6 +1570,10 @@ export type Database = {
       }
     }
     Functions: {
+      place_marketplace_orders: {
+        Args: { p_idempotency_key?: string | null; p_orders: Json; p_shipping_address: Json }
+        Returns: string[]
+      }
       place_marketplace_order: {
         Args: { p_idempotency_key?: string | null; p_items: Json; p_seller_id: string; p_shipping_address: Json }
         Returns: string

@@ -23,12 +23,12 @@ interface Offer {
 }
 
 const STATUS_CONFIG: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  pending:   { bg: "bg-[#F6C75D]/15", text: "text-[#5C3A00] dark:text-[#F6C75D]", dot: "bg-[#F6C75D]", label: "â³ Pending" },
-  countered: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-400", label: "â†” Countered" },
-  accepted:  { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", label: "âœ“ Accepted" },
-  rejected:  { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", dot: "bg-red-400", label: "âœ— Rejected" },
-  expired:   { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "â³ Expired" },
-  cancelled: { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "âœ• Cancelled" },
+  pending:   { bg: "bg-[#F6C75D]/15", text: "text-[#5C3A00] dark:text-[#F6C75D]", dot: "bg-[#F6C75D]", label: "Pending" },
+  countered: { bg: "bg-purple-50 dark:bg-purple-900/20", text: "text-purple-600 dark:text-purple-400", dot: "bg-purple-400", label: "Countered" },
+  accepted:  { bg: "bg-emerald-50 dark:bg-emerald-900/20", text: "text-emerald-600 dark:text-emerald-400", dot: "bg-emerald-400", label: "Accepted" },
+  rejected:  { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", dot: "bg-red-400", label: "Rejected" },
+  expired:   { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "Expired" },
+  cancelled: { bg: "bg-[#F2F3F5] dark:bg-[#1A1A1A]", text: "text-[#6E6C64] dark:text-[#A0A0A0]", dot: "bg-[#888880]", label: "Cancelled" },
 };
 
 export default function OffersSentCard() {

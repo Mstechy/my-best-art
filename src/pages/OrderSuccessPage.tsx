@@ -124,7 +124,7 @@ export default function OrderSuccessPage() {
             Thank you for your purchase. Your order is being processed.
           </p>
           <p className="mt-1 text-[10px] font-mono text-[#C0C0B8] dark:text-[#444444]">
-            #{order.id.slice(0, 8).toUpperCase()} Â· {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+            #{order.id.slice(0, 8).toUpperCase()} - {new Date(order.created_at).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
           </p>
         </div>
 

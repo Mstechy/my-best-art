@@ -24,7 +24,7 @@
  * what first paint looks like.
  */
 export const DEFAULT_HERO_COPY = {
-  badge: "FREE SHIPPING ON YOUR FIRST ORDER",
+  badge: "SHOP ELECTRONICS ON TRADIBU",
   title: "Electronics products",
   description:
     "Discover products from independent sellers on Tradibu. Start with electronics, then explore more categories as they grow.",

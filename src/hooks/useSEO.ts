@@ -22,7 +22,7 @@ interface SEOProps {
 
 const SITE_NAME = "Tradibu";
 const SITE_URL = "https://www.tradibu.com";
-const DEFAULT_DESCRIPTION = "Connecting buyers with verified independent merchants worldwide. Shop with total peace of mind using secure Paystack payments, buyer protection guarantees, and fast global delivery.";
+const DEFAULT_DESCRIPTION = "Connecting buyers with independent sellers on Tradibu. Shop with secure Paystack payments and clear seller delivery and return terms.";
 const DEFAULT_IMAGE = "/placeholder.svg";
 
 /** `id` of the structured-data script `useSEO` itself owns. Exported because the reconciliation tests assert against it. */

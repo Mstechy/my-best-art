@@ -399,7 +399,7 @@ export default function CollectionPage() {
                       </div>
                       {product.review_count > 0 && (
                         <p className="mt-1 text-xs text-[#6E6C64]">
-                          â˜… {product.average_rating.toFixed(1)} ({product.review_count})
+                          Rating {product.average_rating.toFixed(1)} ({product.review_count})
                         </p>
                       )}
                     </div>
@@ -463,7 +463,7 @@ export default function CollectionPage() {
                       </div>
                       {product.review_count > 0 && (
                         <p className="text-xs text-[#6E6C64]">
-                          â˜… {product.average_rating.toFixed(1)} ({product.review_count})
+                          Rating {product.average_rating.toFixed(1)} ({product.review_count})
                         </p>
                       )}
                     </div>

@@ -2317,7 +2317,7 @@ export default function SellerProducts() {
                   {search ? "No products match your search" : "No products yet"}
                 </h3>
                 <p className="mt-2 text-sm text-muted-foreground max-w-sm">
-                  {search ? "Try a different search term" : "Start listing products to reach buyers worldwide. Products will be reviewed by admin before going live."}
+                  {search ? "Try a different search term" : "Start listing products to reach buyers on Tradibu. Products will be reviewed by admin before going live."}
                 </p>
               </div>
             </CardContent>
