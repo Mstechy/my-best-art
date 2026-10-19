@@ -150,7 +150,7 @@ export default function BuyerReports() {
                     <SelectContent>
                       {orders.map(order => (
                         <SelectItem key={order.id} value={order.id} className="text-xs">
-                          #{order.id.slice(0, 8)} Â· {order.status} Â· {formatPrice(order.total_amount)}
+                          #{order.id.slice(0, 8)} / {order.status} / {formatPrice(order.total_amount)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -250,7 +250,7 @@ export default function BuyerReports() {
                         <a href="/buyer/tracking" className="block rounded-lg bg-[#F2F3F5] dark:bg-[#1A1A1A] px-3 py-2 text-[10px] hover:opacity-80 transition-opacity">
                           <span className="text-[#6E6C64]">Order </span>
                           <span className="font-mono font-semibold text-[#111111] dark:text-[#FAF5F2]">#{order.id.slice(0, 8)}</span>
-                          <span className="text-[#6E6C64]"> Â· {order.status} Â· {formatPrice(order.total_amount)}</span>
+                          <span className="text-[#6E6C64]"> / {order.status} / {formatPrice(order.total_amount)}</span>
                         </a>
                       )}
                     </div>

@@ -118,7 +118,7 @@ export default function CartDrawer() {
                 <div className="flex-1 min-w-0 flex flex-col">
                   <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2 leading-snug">{item.title}</p>
                   {Object.values(item.variant_attributes ?? {}).length > 0 && (
-                    <p className="mt-0.5 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{Object.values(item.variant_attributes ?? {}).join(" Â· ")}</p>
+                    <p className="mt-0.5 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{Object.values(item.variant_attributes ?? {}).join(" / ")}</p>
                   )}
                   <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] mt-0.5">{item.seller_name}</p>
                   <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mt-1">{formatPrice(item.price * item.quantity)}</p>

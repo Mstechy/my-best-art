@@ -817,7 +817,7 @@ export default function MarketplacePage() {
           <div className="space-y-4 select-none">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.selectDestination")}</span>
-              <button onClick={() => setIsLocationConfirmScreen(true)} className="text-[10px] font-semibold text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline">â† {t("common.back")}</button>
+              <button onClick={() => setIsLocationConfirmScreen(true)} className="text-[10px] font-semibold text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline">Back: {t("common.back")}</button>
             </div>
             <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
               <button onClick={() => { setCountry(null); setIsLocationOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${shipsTo === "all" ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"}`}><span>{t("marketplace.anywhere")}</span>{shipsTo === "all" && <CheckCircle2 className="h-3.5 w-3.5" />}</button>

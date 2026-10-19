@@ -20,6 +20,11 @@ interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
 }
 
+interface NavSection {
+  label: string;
+  items: NavItem[];
+}
+
 const adminNav: NavItem[] = [
   { label: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Package },
@@ -33,17 +38,27 @@ const adminNav: NavItem[] = [
   { label: "Site Pages", href: "/admin/pages", icon: FileText },
 ];
 
-const sellerNav: NavItem[] = [
-  { label: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
-  { label: "Products", href: "/seller/products", icon: Package },
-  { label: "Store Profile", href: "/seller/store", icon: Store },
-  { label: "My Collections", href: "/seller/collections", icon: Layers3 },
-  { label: "Orders", href: "/seller/orders", icon: ShoppingCart },
-  { label: "Reviews", href: "/seller/reviews", icon: Star },
-  { label: "Analytics", href: "/seller/analytics", icon: BarChart3 },
-  { label: "Ads", href: "/seller/ads", icon: Megaphone },
-  { label: "Wallet", href: "/seller/wallet", icon: Wallet },
-  { label: "Chat", href: "/seller/chat", icon: MessageSquare },
+const sellerNav: NavSection[] = [
+  { label: "Overview", items: [
+    { label: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
+    { label: "Analytics", href: "/seller/analytics", icon: BarChart3 },
+  ] },
+  { label: "Catalogue", items: [
+    { label: "Products", href: "/seller/products", icon: Package },
+    { label: "My Collections", href: "/seller/collections", icon: Layers3 },
+    { label: "Store Profile", href: "/seller/store", icon: Store },
+  ] },
+  { label: "Sales", items: [
+    { label: "Orders", href: "/seller/orders", icon: ShoppingCart },
+    { label: "Reviews", href: "/seller/reviews", icon: Star },
+  ] },
+  { label: "Finance & Growth", items: [
+    { label: "Wallet", href: "/seller/wallet", icon: Wallet },
+    { label: "Ads", href: "/seller/ads", icon: Megaphone },
+  ] },
+  { label: "Support", items: [
+    { label: "Chat", href: "/seller/chat", icon: MessageSquare },
+  ] },
 ];
 
 const buyerNav: NavItem[] = [
@@ -56,11 +71,11 @@ const buyerNav: NavItem[] = [
   { label: "Reports", href: "/buyer/reports", icon: Flag },
 ];
 
-function getNavItems(role: string | null): NavItem[] {
+function getNavSections(role: string | null): NavSection[] {
   switch (role) {
-    case "admin": return adminNav;
+    case "admin": return [{ label: "Workspace", items: adminNav }];
     case "seller": return sellerNav;
-    case "buyer": return buyerNav;
+    case "buyer": return [{ label: "Account", items: buyerNav }];
     default: return [];
   }
 }
@@ -84,7 +99,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const navItems = getNavItems(role);
+  const navSections = getNavSections(role);
   const unread = useUnreadMessages();
 
   const handleSignOut = async () => {
@@ -130,33 +145,40 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
 
         {/* Nav */}
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            const isChat = item.href.endsWith("/chat");
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={() => setSidebarOpen(false)}
-                className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ${
-                  isActive
-                    ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
-                    : "text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
-                }`}
-              >
-                {isActive && (
-                  <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-[#F6C75D]" />
-                )}
-                <item.icon className="h-3.5 w-3.5 shrink-0" />
-                <span className="flex-1">{item.label}</span>
-                {isChat && unread > 0 && (
-                  <span className="inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                    {unread > 99 ? "99+" : unread}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+          {navSections.map((section) => (
+            <div key={section.label} className="mb-4 last:mb-0">
+              <p className="mb-1 px-3 text-[9px] font-bold uppercase tracking-[0.16em] text-[#A3A09A] dark:text-[#6F6F6F]">
+                {section.label}
+              </p>
+              {section.items.map((item) => {
+                const isActive = location.pathname === item.href;
+                const isChat = item.href.endsWith("/chat");
+                return (
+                  <Link
+                    key={item.href}
+                    to={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ${
+                      isActive
+                        ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
+                        : "text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
+                    }`}
+                  >
+                    {isActive && (
+                      <span className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-r-full bg-[#F6C75D]" />
+                    )}
+                    <item.icon className="h-3.5 w-3.5 shrink-0" />
+                    <span className="flex-1">{item.label}</span>
+                    {isChat && unread > 0 && (
+                      <span className="inline-flex h-4 min-w-[16px] px-1 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* User profile at bottom */}

@@ -262,7 +262,7 @@ export default function BuyerProfile() {
                   </div>
                   <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.recipient}</p>
                   <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.line1}{a.line2 ? `, ${a.line2}` : ""}</p>
-                  <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.city}{a.region ? `, ${a.region}` : ""} {a.postal_code} Â· {a.country}</p>
+                  <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{a.city}{a.region ? `, ${a.region}` : ""} {a.postal_code} / {a.country}</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   {!a.is_default && (

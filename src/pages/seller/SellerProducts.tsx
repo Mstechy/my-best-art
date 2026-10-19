@@ -1477,7 +1477,7 @@ export default function SellerProducts() {
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
                     <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
-                    <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: â€œOriginal iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version.â€</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: "Original iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version."</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
                       {description.length > 0 && description.length < 80 && (
@@ -1641,7 +1641,7 @@ export default function SellerProducts() {
                       </div>
                     </div>
                   </div>
-                  {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's â€œFromâ€ price.</p></div>}
+                  {variantRows.length > 0 && <div className="rounded-lg border border-border bg-muted/20 p-3"><p className="text-sm font-semibold text-foreground">Step 2: Price and stock every exact SKU</p><p className="mt-1 text-xs text-muted-foreground">{variantRows.length} SKU row{variantRows.length === 1 ? "" : "s"}. Price is required for every row - this is how 128GB can cost less than 256GB or 512GB. The lowest price becomes the listing's "From" price.</p></div>}
                   <div className="space-y-3">
                     {variantRows.map((row, index) => (
                       <div key={row.key} className="grid grid-cols-2 gap-2 rounded-lg border border-border p-3 [&>label]:min-w-0 sm:grid-cols-4 xl:grid-cols-7">
@@ -1700,7 +1700,7 @@ export default function SellerProducts() {
                       <div className="rounded-lg border border-border bg-muted/30 p-3">
                         <p className="text-sm font-medium text-foreground">{selectedProductTypeConfig.label} Details</p>
                         <p className="mt-1 text-xs text-muted-foreground">Fields marked * are required before submission. These details help buyers compare products in {selectedCategory?.name || "this category"}.</p>
-                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For Wi-Fi-only devices, choose â€œWi-Fi onlyâ€ and â€œNo SIM or eSIM supportâ€; carrier and account-lock fields are optional. For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
+                        {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For Wi-Fi-only devices, choose "Wi-Fi only" and "No SIM or eSIM support"; carrier and account-lock fields are optional. For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {selectedProductTypeConfig.fields.map((field) => (
@@ -1926,7 +1926,7 @@ export default function SellerProducts() {
                     )}
                     <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs text-muted-foreground">
                       <p className="font-medium text-foreground">Photo quality checklist</p>
-                      <p className="mt-1">Use a clean, well-lit main image that shows the full product. Add close-ups, back/side views, packaging, dimensions, and any flaws. Keep the same framing for colour options and use descriptive alt text, such as â€œNavy backpack, front viewâ€.</p>
+                      <p className="mt-1">Use a clean, well-lit main image that shows the full product. Add close-ups, back/side views, packaging, dimensions, and any flaws. Keep the same framing for colour options and use descriptive alt text, such as "Navy backpack, front view".</p>
                     </div>
                   </div>
                   <div>
@@ -2097,13 +2097,14 @@ export default function SellerProducts() {
                         <h3 className="mt-1 font-display text-lg font-semibold text-foreground">{title || "Product name"}</h3>
                       </div>
                       <div className="text-right">
-                        <p className="font-display text-lg font-bold text-foreground">{price ? formatPrice(Number(price)) : formatPrice(0)}</p>
+                        <p className="font-display text-lg font-bold text-foreground">{hasVariantRows ? (lowestVariantPrice === null ? "Add SKU prices" : `From ${formatPrice(lowestVariantPrice)}`) : price ? formatPrice(Number(price)) : formatPrice(0)}</p>
                         {compareAtPrice && <p className="text-xs text-muted-foreground line-through">{formatPrice(Number(compareAtPrice))}</p>}
                       </div>
                     </div>
                     {description && <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{description}</p>}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge variant="outline">Stock: {stockQuantity || 0}</Badge>
+                      <Badge variant="outline">Stock: {hasVariantRows ? totalVariantStock : stockQuantity || 0}</Badge>
+                      {hasVariantRows && <Badge variant="outline">{variantRows.length} SKU{variantRows.length === 1 ? "" : "s"}</Badge>}
                       {shippingInfo && <Badge variant="outline">Shipping added</Badge>}
                       {tagsInput.split(",").filter(t => t.trim()).slice(0, 3).map(tag => (
                         <Badge key={tag.trim()} variant="secondary">{tag.trim()}</Badge>
@@ -2160,9 +2161,12 @@ export default function SellerProducts() {
                 </div>
               )}
 
-              <Button onClick={handleSave} disabled={saving || outstandingRequirements.length > 0} className="w-full mt-4 gradient-seller text-primary-foreground">
-                {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
-              </Button>
+              <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-4 flex flex-col gap-2 border-t border-border bg-background/95 p-4 backdrop-blur sm:flex-row sm:justify-end">
+                {!editingProduct && <Button type="button" variant="outline" onClick={minimizeNewListing} disabled={saving} className="w-full sm:w-auto">Save draft and exit</Button>}
+                <Button onClick={handleSave} disabled={saving || outstandingRequirements.length > 0} className="w-full gradient-seller text-primary-foreground sm:w-auto">
+                  {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
@@ -2205,7 +2209,7 @@ export default function SellerProducts() {
                 </label>
               </div>
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
-                This changes only the base listing. Variant SKU prices and inventory remain unchanged; edit a productâ€™s Variants tab when each SKU needs a different value.
+                This changes only the base listing. Variant SKU prices and inventory remain unchanged; edit a product's Variants tab when each SKU needs a different value.
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setBulkEditOpen(false)} disabled={bulkSaving}>Cancel</Button>
@@ -2288,7 +2292,7 @@ export default function SellerProducts() {
                       )}
                     </div>
                     {product.brand && (
-                      <p className="text-xs text-muted-foreground mt-1">{product.brand} Â· {product.condition}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{product.brand} / {product.condition}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       <p className="text-xs text-muted-foreground">Stock: {product.stock_quantity}</p>
@@ -2305,7 +2309,7 @@ export default function SellerProducts() {
                     {healthIssues.length > 0 && (
                       <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                         <p className="font-semibold">Listing health: needs attention</p>
-                        <p className="mt-0.5">{healthIssues.slice(0, 2).map((issue) => issue.message).join(" Â· ")}{healthIssues.length > 2 ? ` Â· +${healthIssues.length - 2} more` : ""}</p>
+                        <p className="mt-0.5">{healthIssues.slice(0, 2).map((issue) => issue.message).join(" / ")}{healthIssues.length > 2 ? ` / +${healthIssues.length - 2} more` : ""}</p>
                       </div>
                     )}
                     <div className="mt-3 grid grid-cols-3 gap-1 rounded-lg border border-border/60 bg-muted/30 px-2 py-1.5 text-center">

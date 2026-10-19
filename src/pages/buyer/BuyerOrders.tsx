@@ -359,7 +359,7 @@ export default function BuyerOrders() {
 
                   {/* Meta row */}
                   <p className="text-[9px] font-mono text-[#6E6C64] dark:text-[#555555] mt-2">
-                    #{order.id.slice(0, 8).toUpperCase()} Â· {new Date(order.created_at).toLocaleDateString()}
+                    #{order.id.slice(0, 8).toUpperCase()} / {new Date(order.created_at).toLocaleDateString()}
                   </p>
 
                   {/* Action buttons + total */}

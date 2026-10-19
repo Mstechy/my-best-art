@@ -27,7 +27,7 @@ export const DEFAULT_HERO_COPY = {
   badge: "FREE SHIPPING ON YOUR FIRST ORDER",
   title: "Electronics products",
   description:
-    "Discover millions of products from trusted sellers around the world. Shop electronics, fashion, home & garden, beauty, sports, accessories, and more.\nall at great prices.",
+    "Discover products from independent sellers on Tradibu. Start with electronics, then explore more categories as they grow.",
   ctaLabel: "Shop collection",
   /** `hero_cta_link` is null on the row, so the live slide computes `/collections/${slug}`. */
   ctaLink: "/collections/electronics-products",

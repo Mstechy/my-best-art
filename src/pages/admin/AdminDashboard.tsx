@@ -109,6 +109,7 @@ export default function AdminDashboard() {
     { label: "Total Revenue", value: formatPrice(stats.revenue), icon: DollarSign, cardClass: "stat-card" },
     { label: "Pending Products", value: String(stats.pendingProducts), icon: Clock, cardClass: stats.pendingProducts > 0 ? "stat-card stat-card-destructive" : "stat-card" },
     { label: "Active Sellers", value: String(stats.sellers), icon: Store, cardClass: "stat-card stat-card-seller" },
+    { label: "Pending Sellers", value: String(stats.pendingSellers), icon: Clock, cardClass: stats.pendingSellers > 0 ? "stat-card stat-card-destructive" : "stat-card" },
     { label: "Total Buyers", value: String(stats.buyers), icon: Users, cardClass: "stat-card stat-card-buyer" },
     { label: "Total Users", value: String(stats.totalUsers), icon: Users, cardClass: "stat-card" },
     { label: "Total Orders", value: String(stats.orders), icon: ShoppingCart, cardClass: "stat-card" },
@@ -118,7 +119,7 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: "Approve Products", icon: CheckCircle2, href: "/admin/products", gradient: "gradient-seller", desc: `${stats.pendingProducts} pending` },
     { label: "View All Orders", icon: ShoppingCart, href: "/admin/orders", gradient: "gradient-primary", desc: "Monitor transactions" },
-    { label: "Manage Sellers", icon: Users, href: "/admin/sellers", gradient: "gradient-buyer", desc: "View & moderate" },
+    { label: "Manage Sellers", icon: Users, href: "/admin/sellers", gradient: "gradient-buyer", desc: `${stats.pendingSellers} pending review` },
     { label: "View Disputes", icon: AlertTriangle, href: "/admin/disputes", gradient: "gradient-admin", desc: "Resolve issues" },
     { label: "Manage Ads", icon: Megaphone, href: "/admin/ads", gradient: "gradient-primary", desc: "Platform revenue" },
     { label: "Analytics", icon: BarChart3, href: "/admin/analytics", gradient: "gradient-buyer", desc: "Full insights" },
@@ -227,12 +228,12 @@ export default function AdminDashboard() {
               ) : (
                 <div className="space-y-3">
                   {recentOrders.map(order => (
-                    <div key={order.id} className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-                      <div>
+                    <div key={order.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+                      <div className="min-w-0">
                         <p className="font-medium text-sm text-foreground">#{order.id.slice(0, 8)}</p>
-                        <p className="text-xs text-muted-foreground">{order.buyer_name} → {order.seller_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">{order.buyer_name} / {order.seller_name}</p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                         <span className="font-semibold text-sm text-foreground">{formatPrice(Number(order.total_amount))}</span>
                         <Badge className={`${statusColors[order.status] || ""} capitalize text-xs`}>{order.status}</Badge>
                       </div>

@@ -199,7 +199,7 @@ export default function BuyerTracking() {
                   status={order.status}
                   packageNumber={order.tracking_number || order.id.slice(0, 16).toUpperCase()}
                   destination={order.carrier || "In Transit"}
-                  date={`Order #${order.id.slice(0, 8).toUpperCase()} Â· ${new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
+                  date={`Order #${order.id.slice(0, 8).toUpperCase()} / ${new Date(order.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`}
                   qrCodeValue={buildBuyerOrderTrackingUrl(order.id, window.location.origin)}
                   packageImage={
                     order.product_image ? (

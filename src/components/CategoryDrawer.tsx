@@ -37,7 +37,7 @@ export default function CategoryDrawer({ open, onClose, categories, onSelectCate
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const panelRef = useRef<HTMLDivElement | null>(null);
 
-  // Group categories into parent â†’ subcategories structure
+  // Group categories into parent / subcategories structure
   const grouped = (() => {
     const map = new Map<string, { parent: string; label: string; subcategories: { slug: string; label: string }[] }>();
     const categoryBySlug = new Map(categories.map(c => [c.slug, c]));

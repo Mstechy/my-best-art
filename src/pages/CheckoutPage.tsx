@@ -388,7 +388,7 @@ export default function CheckoutPage() {
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] truncate">{item.title}</p>
                       {Object.values(item.variant_attributes ?? {}).length > 0 && (
-                        <p className="text-[10px] text-[#6E6C64] truncate">{Object.values(item.variant_attributes ?? {}).join(" Â· ")}</p>
+                        <p className="text-[10px] text-[#6E6C64] truncate">{Object.values(item.variant_attributes ?? {}).join(" / ")}</p>
                       )}
                       <p className="text-[10px] text-[#6E6C64]">Qty: {item.quantity}</p>
                     </div>

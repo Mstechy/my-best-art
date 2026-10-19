@@ -87,7 +87,7 @@ export default function QAndASection({ productId }: { productId: string }) {
             <div key={q.id} className="border-b border-[#E8E8E8] pb-4 last:border-0 dark:border-[#222222]">
               <div className="text-xs text-[#111111] dark:text-[#FAF5F2] font-bold whitespace-pre-wrap leading-relaxed">Q: {q.question}</div>
               <div className="mt-2 text-[10px] font-semibold text-[#6E6C64]">
-                {maskName(q.asker_name)} Â· {new Date(q.created_at).toLocaleDateString()}
+                {maskName(q.asker_name)} / {new Date(q.created_at).toLocaleDateString()}
               </div>
               {q.answer ? (
                 <div className="mt-4 rounded-xl bg-[#FAFAFA] dark:bg-[#111111] border border-[#E8E8E8] dark:border-[#2A2A2A] p-4">

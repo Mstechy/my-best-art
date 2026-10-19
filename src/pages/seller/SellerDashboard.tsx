@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store, AlertTriangle } from "lucide-react";
+import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store, AlertTriangle, CheckCircle2, Star, Boxes } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OffersReceivedCard from "@/components/OffersReceivedCard";
 import { Link } from "react-router-dom";
@@ -22,6 +22,24 @@ export default function SellerDashboard() {
   const { products, stats, loading: dashboardLoading, recentOrders, weekly } = useSellerDashboard(user?.id);
 
   const pendingOrdersCount = useMemo(() => (recentOrders || []).filter((o) => o.status === "pending" || o.status === "processing").length, [recentOrders]);
+  const activeProductCount = useMemo(() => products.filter((product) => product.status === "active").length, [products]);
+  const inventoryUnits = useMemo(() => products.reduce((total, product) => total + Math.max(0, Number(product.stock_quantity) || 0), 0), [products]);
+  const ratedProducts = useMemo(() => products.filter((product) => Number(product.review_count) > 0), [products]);
+  const averageRating = useMemo(() => {
+    if (!ratedProducts.length) return null;
+    return ratedProducts.reduce((total, product) => total + Number(product.average_rating || 0), 0) / ratedProducts.length;
+  }, [ratedProducts]);
+  const orderPipeline = useMemo(() => [
+    { label: "To process", value: recentOrders.filter((order) => order.status === "pending"), className: "bg-yellow-500" },
+    { label: "Processing", value: recentOrders.filter((order) => order.status === "processing"), className: "bg-blue-500" },
+    { label: "Shipped", value: recentOrders.filter((order) => order.status === "shipped"), className: "bg-violet-500" },
+    { label: "Delivered", value: recentOrders.filter((order) => order.status === "delivered"), className: "bg-emerald-500" },
+  ], [recentOrders]);
+  const attentionItems = useMemo(() => [
+    stats.pendingApproval > 0 ? { label: `${stats.pendingApproval} product${stats.pendingApproval > 1 ? "s" : ""} awaiting approval`, href: "/seller/products", icon: Clock } : null,
+    stats.outOfStock > 0 ? { label: `${stats.outOfStock} product${stats.outOfStock > 1 ? "s are" : " is"} out of stock`, href: "/seller/products", icon: AlertTriangle } : null,
+    pendingOrdersCount > 0 ? { label: `${pendingOrdersCount} order${pendingOrdersCount > 1 ? "s need" : " needs"} your attention`, href: "/seller/orders", icon: ShoppingCart } : null,
+  ].filter(Boolean) as Array<{ label: string; href: string; icon: typeof Clock }>, [pendingOrdersCount, stats.outOfStock, stats.pendingApproval]);
 
   useEffect(() => {
     if (!user) return;
@@ -109,9 +127,11 @@ export default function SellerDashboard() {
 
   const statCards = [
     { label: "Total Revenue", value: formatPrice(stats.totalRevenue || 0), icon: DollarSign, cardClass: "stat-card stat-card-seller" },
-    { label: "Active Products", value: String(products.length), icon: Package, cardClass: "stat-card" },
+    { label: "Live Products", value: String(activeProductCount), icon: Package, cardClass: "stat-card" },
+    { label: "Units in Stock", value: inventoryUnits.toLocaleString(), icon: Boxes, cardClass: "stat-card" },
     { label: "Pending Approval", value: String(stats.pendingApproval || 0), icon: Clock, cardClass: (stats.pendingApproval || 0) > 0 ? "stat-card stat-card-destructive" : "stat-card" },
-    { label: "Pending Orders", value: String(pendingOrdersCount), icon: ShoppingCart, cardClass: "stat-card stat-card-buyer" },
+    { label: "Pending Orders", value: String(pendingOrdersCount), icon: ShoppingCart, cardClass: pendingOrdersCount > 0 ? "stat-card stat-card-buyer" : "stat-card" },
+    { label: "Store Rating", value: averageRating === null ? "New" : `${averageRating.toFixed(1)} / 5`, icon: Star, cardClass: "stat-card" },
   ];
 
   const quickActions = [
@@ -126,7 +146,7 @@ export default function SellerDashboard() {
     return (
       <div className="space-y-8">
         <div className="rounded-xl border border-border/60 bg-muted/20 p-4 text-sm text-muted-foreground">
-          Checking approval…
+          Checking approval...
         </div>
       </div>
     );
@@ -170,7 +190,7 @@ export default function SellerDashboard() {
               <div>
                 <p className="font-medium text-foreground text-sm">Inventory needs attention</p>
                 <p className="text-xs text-muted-foreground">
-                  {stats.outOfStock > 0 ? `${stats.outOfStock} out of stock` : ""}{stats.outOfStock > 0 && stats.lowStock > 0 ? " · " : ""}{stats.lowStock > 0 ? `${stats.lowStock} low in stock` : ""}.
+                  {stats.outOfStock > 0 ? `${stats.outOfStock} out of stock` : ""}{stats.outOfStock > 0 && stats.lowStock > 0 ? " / " : ""}{stats.lowStock > 0 ? `${stats.lowStock} low in stock` : ""}.
                 </p>
               </div>
             </div>
@@ -179,7 +199,7 @@ export default function SellerDashboard() {
         </AnimatedSection>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {statCards.map((stat, i) => (
           <AnimatedSection key={stat.label} variant="fade-up" delay={i * 80}>
             <div className={stat.cardClass}>
@@ -195,11 +215,73 @@ export default function SellerDashboard() {
         ))}
       </div>
 
+      <div className="grid gap-6 lg:grid-cols-5">
+        <AnimatedSection variant="fade-up" delay={120} className="lg:col-span-3">
+          <Card className="h-full border-border/60">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+              <div>
+                <CardTitle className="font-display">Store health</CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Keep the next important seller task visible.</p>
+              </div>
+              {attentionItems.length === 0 ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <AlertTriangle className="h-5 w-5 text-amber-600" />}
+            </CardHeader>
+            <CardContent>
+              {attentionItems.length === 0 ? (
+                <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                  <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Everything looks up to date</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Your listings and recent orders have no urgent actions.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attentionItems.map((item) => (
+                    <Link key={item.label} to={item.href} className="flex items-center gap-3 rounded-xl border border-border/60 p-3 transition-colors hover:bg-muted/40">
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300">
+                        <item.icon className="h-4 w-4" />
+                      </div>
+                      <span className="flex-1 text-sm font-medium text-foreground">{item.label}</span>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </AnimatedSection>
+
+        <AnimatedSection variant="fade-up" delay={150} className="lg:col-span-2">
+          <Card className="h-full border-border/60">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="font-display">Recent order pipeline</CardTitle>
+                  <p className="mt-1 text-xs text-muted-foreground">Based on your latest orders</p>
+                </div>
+                <Link to="/seller/orders" className="text-xs font-medium text-muted-foreground hover:text-foreground">View all</Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {orderPipeline.map((stage) => (
+                  <div key={stage.label} className="flex items-center gap-3">
+                    <span className={`h-2.5 w-2.5 rounded-full ${stage.className}`} />
+                    <span className="flex-1 text-sm text-muted-foreground">{stage.label}</span>
+                    <span className="text-sm font-semibold text-foreground">{stage.value.length}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </AnimatedSection>
+      </div>
+
       <AnimatedSection variant="fade-up" delay={150}>
         <Card className="border-border/60">
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
-              <CardTitle className="font-display">Revenue · last 7 days</CardTitle>
+              <CardTitle className="font-display">Revenue - last 7 days</CardTitle>
               <p className="text-xs text-muted-foreground mt-1">From delivered orders</p>
             </div>
             <BarChart3 className="h-5 w-5 text-muted-foreground" />
@@ -232,12 +314,12 @@ export default function SellerDashboard() {
               ) : (
                 <div className="space-y-3">
                   {recentOrders.map(order => (
-                    <div key={order.id} className="flex items-center justify-between rounded-lg border border-border/60 p-3">
-                      <div>
+                    <div key={order.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-border/60 p-3">
+                      <div className="min-w-0">
                         <p className="font-medium text-sm text-foreground">#{order.id.slice(0, 8)}</p>
-                        <p className="text-xs text-muted-foreground">from {order.buyer_name}</p>
+                        <p className="truncate text-xs text-muted-foreground">from {order.buyer_name}</p>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-2 sm:gap-3">
                         <span className="font-semibold text-sm text-foreground">{formatPrice(Number(order.total_amount))}</span>
                         <Badge className={`${statusColors[order.status] || ""} capitalize text-xs`}>{order.status}</Badge>
                       </div>

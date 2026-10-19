@@ -76,6 +76,16 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
     setExpanded(prev => ({ ...prev, [parent]: !prev[parent] }));
   };
 
+  const selectedCategorySlug = categories.find((category) => category.id === selectedCategory || category.slug === selectedCategory)?.slug ?? null;
+
+  useEffect(() => {
+    if (!selectedCategorySlug) return;
+    const matchingGroup = grouped.find((group) => group.subcategories.some((subcategory) => subcategory.slug === selectedCategorySlug));
+    if (matchingGroup && !expanded[matchingGroup.parent]) {
+      setExpanded((current) => ({ ...current, [matchingGroup.parent]: true }));
+    }
+  }, [expanded, grouped, selectedCategorySlug]);
+
   return (
     <aside className="w-full shrink-0 lg:w-64 xl:w-72">
       <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden">
@@ -101,7 +111,7 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
                   <span className="text-[#6E6C64] dark:text-[#A0A0A0]">{isOpen ? "−" : "+"}</span>
                 </button>
                 {isOpen && group.subcategories.map(sub => {
-                  const isActive = selectedCategory === sub.slug;
+                  const isActive = selectedCategorySlug === sub.slug;
                   return (
                     <button
                       key={sub.slug}
