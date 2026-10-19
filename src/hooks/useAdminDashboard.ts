@@ -21,6 +21,10 @@ export interface AdminProduct {
   seller_name?: string;
   seller_email?: string;
   primary_image?: string;
+  moderation_reason?: string | null;
+  moderation_next_action?: string | null;
+  moderation_owner_id?: string | null;
+  moderation_updated_at?: string | null;
 }
 
 export interface AdminSeller {
@@ -99,6 +103,10 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
           seller_name: profile?.full_name || undefined,
           seller_email: profile?.email || undefined,
           primary_image: primary?.image_url,
+          moderation_reason: (p as any).moderation_reason ?? null,
+          moderation_next_action: (p as any).moderation_next_action ?? null,
+          moderation_owner_id: (p as any).moderation_owner_id ?? null,
+          moderation_updated_at: (p as any).moderation_updated_at ?? null,
         };
       });
 

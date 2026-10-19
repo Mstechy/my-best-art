@@ -154,3 +154,39 @@ Tradibu
 ## Ship call
 
 Do not rewrite the whole interface. Tradibu already has a real marketplace architecture and stronger operational foundations than a typical generated storefront. Ship the targeted fixes, complete the deployed safety pass, make seller delivery terms concrete, and clean the remaining encoding defects before spending heavily on acquisition or opening every seeded department.
+
+## First remaining-gap implementation: moderation queue
+
+The seller moderation gap is now addressed at the data and interface layers.
+
+- Product moderation now stores a reason, next action, responsible owner, and moderation timestamp in Supabase.
+- Admin product review can request changes with an actionable reason instead of silently hiding a listing.
+- Seller Dashboard now shows a review queue with status, waiting age, owner, reason, and next action.
+- Seller product cards repeat the requested change so the seller does not need to hunt through another screen.
+- Editing a listing clears the old request metadata and starts a fresh review state.
+
+This is intentionally product-focused first. The unified admin operations queue for seller applications, disputes, refunds, and payout risks remains the next dashboard gap rather than being represented by invented placeholder data.
+
+## Second remaining-gap implementation: server-side listing drafts
+
+Seller listing drafts now have a cloud backup path in addition to the existing localStorage and IndexedDB recovery.
+
+- Text, options, specifications, settings, and the current workflow tab are saved to a seller-owned Supabase draft row.
+- A seller can recover that work from another browser or device after signing in.
+- Local IndexedDB media recovery remains in place for the original device.
+- Cloud recovery clearly tells the seller that photos must be selected again on a device where they are not available.
+- Discarding or successfully submitting a listing clears both local and cloud draft state.
+
+This keeps the first cross-device version safe and small. Uploading unfinished media to cloud storage is a separate step because it needs storage cleanup, file ownership rules, size limits, and abandoned-upload retention policy.
+
+## Third remaining-gap implementation: admin operations queue
+
+The admin dashboard now has one oldest-first operations queue built from live records rather than aggregate counters.
+
+- Pending products show why they need review, who owns the next step, how long they have waited, and the action to take.
+- Pending seller applications link directly to seller review.
+- Open and investigating disputes appear in the same queue.
+- Empty state confirms when there is no unresolved seller, product, or dispute work.
+- Items remain responsive on narrow screens and link to the existing specialist pages for the actual action.
+
+Wallet balances are not presented as payout-risk tasks yet because the current schema has wallet balances and transactions but no explicit withdrawal-request state. That should be added as a separate finance workflow rather than inferred from balance totals.

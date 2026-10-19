@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from "@/components/ui/table";
 import { Search, Package, CheckCircle2, XCircle, Clock, Pencil, Trash2, Plus } from "lucide-react";
@@ -29,6 +30,10 @@ interface Product {
   seller_name?: string;
   seller_email?: string;
   primary_image?: string;
+  moderation_reason?: string | null;
+  moderation_next_action?: string | null;
+  moderation_owner_id?: string | null;
+  moderation_updated_at?: string | null;
 }
 
 type Tab = "all" | "pending" | "approved" | "archived";
@@ -41,6 +46,9 @@ export default function AdminProducts() {
   const [tab, setTab] = useState<Tab>("all");
   const [page, setPage] = useState(0);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [rejectTarget, setRejectTarget] = useState<Product | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejectNextAction, setRejectNextAction] = useState("Update the listing and submit it again for review.");
   const pageSize = 25;
 
   const productsQuery = useAdminProducts(page, pageSize, search, tab);
@@ -55,17 +63,17 @@ export default function AdminProducts() {
 
   const approveProduct = async (id: string) => {
      
-    const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: true, _status: "active" });
+    const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: true, _status: "active", _moderation_reason: null, _moderation_next_action: null, _moderation_owner_id: null });
     if (error) { logError(error, "admin_product_approval"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
     toast({ title: "Product approved", description: "Product is now visible on the marketplace." });
     productsQuery.refetch();
   };
 
-  const rejectProduct = async (id: string) => {
+  const rejectProduct = async (id: string, reason: string, nextAction: string) => {
      
-    const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: false, _status: "draft" });
+    const { error } = await (supabase as any).rpc("admin_set_product_approval", { _product_id: id, _is_approved: false, _status: "draft", _moderation_reason: reason, _moderation_next_action: nextAction, _moderation_owner_id: null });
     if (error) { logError(error, "admin_product_rejection"); toast({ title: "Error", description: getUserFacingErrorMessage(error, "save"), variant: "destructive" }); return; }
-    toast({ title: "Product hidden", description: "Product is no longer visible on the marketplace." });
+    toast({ title: "Changes requested", description: "The seller can now see why the listing was hidden and what to do next." });
     productsQuery.refetch();
   };
 
@@ -208,8 +216,13 @@ export default function AdminProducts() {
                                 <CheckCircle2 className="h-3 w-3" /> Approve
                               </Button>
                             )}
+                            {product.status === "active" && !product.is_approved && (
+                              <Button size="sm" variant="outline" onClick={() => { setRejectTarget(product); setRejectReason(product.moderation_reason || ""); setRejectNextAction(product.moderation_next_action || "Update the listing and submit it again for review."); }} className="gap-1 text-destructive hover:text-destructive">
+                                <XCircle className="h-3 w-3" /> Request changes
+                              </Button>
+                            )}
                             {product.is_approved && (
-                              <Button size="sm" variant="outline" onClick={() => rejectProduct(product.id)} className="gap-1">
+                              <Button size="sm" variant="outline" onClick={() => { setRejectTarget(product); setRejectReason(product.moderation_reason || ""); setRejectNextAction(product.moderation_next_action || "Update the listing and submit it again for review."); }} className="gap-1">
                                 <XCircle className="h-3 w-3" /> Hide
                               </Button>
                             )}
@@ -277,6 +290,43 @@ export default function AdminProducts() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!rejectTarget} onOpenChange={(open) => { if (!open) { setRejectTarget(null); setRejectReason(""); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Request changes before approval?</AlertDialogTitle>
+            <AlertDialogDescription>
+              The seller will see this reason and the next action in their dashboard. Be specific and actionable.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-3 py-2">
+            <label className="grid gap-1.5 text-sm font-medium">
+              Reason
+              <Textarea value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} placeholder="Example: Add clear photos of the product label and confirm the storage size." rows={4} />
+            </label>
+            <label className="grid gap-1.5 text-sm font-medium">
+              Next action for seller
+              <Input value={rejectNextAction} onChange={(event) => setRejectNextAction(event.target.value)} />
+            </label>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!rejectReason.trim() || !rejectTarget}
+              onClick={async () => {
+                if (!rejectTarget || !rejectReason.trim()) return;
+                const target = rejectTarget;
+                setRejectTarget(null);
+                await rejectProduct(target.id, rejectReason.trim(), rejectNextAction.trim() || "Update the listing and submit it again for review.");
+                setRejectReason("");
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Request changes
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

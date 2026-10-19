@@ -2,7 +2,7 @@ import { lazy, Suspense, useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store, AlertTriangle, CheckCircle2, Star, Boxes } from "lucide-react";
+import { DollarSign, Package, ShoppingCart, Plus, Megaphone, Wallet, ArrowRight, BarChart3, Clock, Store, AlertTriangle, CheckCircle2, Star, Boxes, ClipboardCheck } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OffersReceivedCard from "@/components/OffersReceivedCard";
 import { Link } from "react-router-dom";
@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useSellerDashboard } from "@/hooks/useSellerDashboard";
 import { useCurrency } from "@/hooks/useCurrency";
+import { buildProductModerationQueue, formatModerationAge } from "@/lib/moderationQueue";
 
 const SellerRevenueChart = lazy(() => import("@/components/seller/SellerRevenueChart"));
 
@@ -35,6 +36,7 @@ export default function SellerDashboard() {
     { label: "Shipped", value: recentOrders.filter((order) => order.status === "shipped"), className: "bg-violet-500" },
     { label: "Delivered", value: recentOrders.filter((order) => order.status === "delivered"), className: "bg-emerald-500" },
   ], [recentOrders]);
+  const moderationQueue = useMemo(() => buildProductModerationQueue(products), [products]);
   const attentionItems = useMemo(() => [
     stats.pendingApproval > 0 ? { label: `${stats.pendingApproval} product${stats.pendingApproval > 1 ? "s" : ""} awaiting approval`, href: "/seller/products", icon: Clock } : null,
     stats.outOfStock > 0 ? { label: `${stats.outOfStock} product${stats.outOfStock > 1 ? "s are" : " is"} out of stock`, href: "/seller/products", icon: AlertTriangle } : null,
@@ -179,6 +181,50 @@ export default function SellerDashboard() {
               <p className="text-xs text-muted-foreground">Products will be visible on the marketplace once approved</p>
             </div>
           </div>
+        </AnimatedSection>
+      )}
+
+      {moderationQueue.length > 0 && (
+        <AnimatedSection variant="fade-up" delay={40}>
+          <Card className="border-border/60">
+            <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 font-display">
+                  <ClipboardCheck className="h-5 w-5 text-primary" />
+                  Listing review queue
+                </CardTitle>
+                <p className="mt-1 text-xs text-muted-foreground">Every item shows who must act and what happens next.</p>
+              </div>
+              <Link to="/seller/products" className="shrink-0 text-xs font-medium text-muted-foreground hover:text-foreground">Manage listings</Link>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {moderationQueue.slice(0, 4).map((item) => (
+                <div key={item.id} className="rounded-xl border border-border/60 p-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                        <Badge className={item.state === "changes_requested" ? "border-destructive/20 bg-destructive/10 text-destructive" : "border-yellow-500/20 bg-yellow-500/10 text-yellow-700 dark:text-yellow-300"}>
+                          {item.state === "changes_requested" ? "Changes requested" : "Waiting for review"}
+                        </Badge>
+                        <span>{formatModerationAge(item.waitingSince)}</span>
+                        <span>Owner: {item.ownerLabel}</span>
+                      </div>
+                    </div>
+                    <Link to="/seller/products" className="shrink-0">
+                      <Button size="sm" variant="outline" className="gap-1">
+                        {item.state === "changes_requested" ? "Update listing" : "View listing"}
+                        <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </Link>
+                  </div>
+                  <p className="mt-2 text-xs text-muted-foreground"><span className="font-medium text-foreground">Why:</span> {item.reason}</p>
+                  <p className="mt-1 text-xs text-muted-foreground"><span className="font-medium text-foreground">Next:</span> {item.nextAction}</p>
+                </div>
+              ))}
+              {moderationQueue.length > 4 && <p className="text-center text-xs text-muted-foreground">+{moderationQueue.length - 4} more listings in review</p>}
+            </CardContent>
+          </Card>
         </AnimatedSection>
       )}
 

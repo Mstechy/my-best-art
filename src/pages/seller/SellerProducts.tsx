@@ -30,6 +30,8 @@ import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImport
 
 import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
 import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
+import { formatModerationAge } from "@/lib/moderationQueue";
+import { clearListingCloudDraft, loadListingCloudDraft, saveListingCloudDraft } from "@/lib/listingCloudDraft";
 
 /**
  * Apply the vendor upload rules to picked files.
@@ -157,6 +159,8 @@ export default function SellerProducts() {
   const [saving, setSaving] = useState(false);
   const [savedProductId, setSavedProductId] = useState<string | null>(null);
   const draftKey = user ? `tradibu:product-listing-draft:${user.id}` : "";
+  const sellerId = user?.id;
+  const [cloudDraftStatus, setCloudDraftStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
 
   // Auto-generate slug from title until the seller edits it manually
   useEffect(() => {
@@ -227,6 +231,27 @@ export default function SellerProducts() {
     const draft: ProductFormDraft = { title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, gtin, mpn, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold };
     localStorage.setItem(draftKey, JSON.stringify(draft));
   }, [dialogOpen, editingProduct, draftKey, title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, gtin, mpn, weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput, shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues, variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
+
+  const draftPayload = useMemo<ProductFormDraft>(() => ({
+    title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, gtin, mpn,
+    weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput,
+    shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues,
+    variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold,
+  }), [title, description, price, compareAtPrice, currency, categoryId, stockQuantity, sku, brand, gtin, mpn,
+    weight, dimensions, material, color, condition, warrantyPeriod, shippingInfo, keyFeatures, tagsInput,
+    shipsTo, categoryAttributes, productTypeKey, variantRows, variantColorValues, variantStorageValues,
+    variantPrimaryOption, showSoldCount, formTab, seoSlug, metaDescription, lowStockThreshold]);
+
+  useEffect(() => {
+    if (!dialogOpen || editingProduct || !sellerId) return;
+    setCloudDraftStatus("saving");
+    const timer = window.setTimeout(() => {
+      void saveListingCloudDraft(sellerId, draftPayload)
+        .then(() => setCloudDraftStatus("saved"))
+        .catch(() => setCloudDraftStatus("error"));
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  }, [dialogOpen, editingProduct, sellerId, draftPayload]);
 
   // Persist the attached files alongside the text draft.
   //
@@ -330,6 +355,24 @@ export default function SellerProducts() {
     if (media.doc) setDocFile(media.doc);
   }, [toast]);
 
+  const applyDraftValues = useCallback((draft: ProductFormDraft) => {
+    setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || "");
+    setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN");
+    setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || "");
+    setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setGtin(draft.gtin || "");
+    setMpn(draft.mpn || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || "");
+    setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new");
+    setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || "");
+    setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]);
+    setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []);
+    setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || "");
+    setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || "");
+    setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage");
+    setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic");
+    setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || "");
+    setLowStockThreshold(draft.lowStockThreshold || "5");
+  }, []);
+
   // When a seller returns from another tab or route, reopen the unfinished
   // listing automatically. They should never need to press Add Product again
   // just to recover work already entered.
@@ -346,12 +389,27 @@ export default function SellerProducts() {
     const { dialogOpen: isDialogOpen, editingProduct: productBeingEdited } = recoveryStateRef.current;
     if (!draftKey || isDialogOpen || productBeingEdited) return;
     const saved = localStorage.getItem(draftKey);
+    if (!saved && sellerId) {
+      void loadListingCloudDraft(sellerId).then((cloudDraft) => {
+        if (!cloudDraft || recoveryStateRef.current.dialogOpen || recoveryStateRef.current.editingProduct) return;
+        const draft = cloudDraft.payload;
+        const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
+        if (!hasContent) return;
+        applyDraftValues(draft);
+        setDialogOpen(true);
+        setCloudDraftStatus("saved");
+        toast({ title: "Cloud draft restored", description: "Your text, settings, and workflow position were recovered. Photos from the original device are not available here yet." });
+      }).catch(() => {
+        // A missing migration or an offline session should never block local use.
+      });
+      return;
+    }
     if (!saved) return;
     try {
       const draft = JSON.parse(saved) as ProductFormDraft;
       const hasContent = Boolean(draft.title || draft.description || draft.price || draft.categoryId || draft.productTypeKey);
       if (!hasContent) return;
-      setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setGtin(draft.gtin || ""); setMpn(draft.mpn || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+      applyDraftValues(draft);
       setDialogOpen(true);
       // Restore the files too. The draft is only worth reopening once the
       // blobs are back, so the dialog is opened first and the media applied as
@@ -376,7 +434,7 @@ export default function SellerProducts() {
     // Both entries are stable - `toast` is memoised by use-toast and
     // `applyRestoredMedia` depends only on it - so this effect still runs once per
     // signed-in seller rather than on every render.
-  }, [draftKey, toast, applyRestoredMedia]);
+  }, [draftKey, toast, applyRestoredMedia, applyDraftValues, sellerId]);
 
   const revokeLocalMediaUrls = () => {
     imageItems.forEach((item) => {
@@ -579,7 +637,7 @@ export default function SellerProducts() {
       if (saved) {
         try {
           const draft = JSON.parse(saved) as ProductFormDraft;
-          setTitle(draft.title || ""); setDescription(draft.description || ""); setPrice(draft.price || ""); setCompareAtPrice(draft.compareAtPrice || ""); setCurrency(draft.currency || "NGN"); setCategoryId(draft.categoryId || ""); setStockQuantity(draft.stockQuantity || ""); setSku(draft.sku || generateSku()); setBrand(draft.brand || ""); setGtin(draft.gtin || ""); setMpn(draft.mpn || ""); setWeight(draft.weight || ""); setDimensions(draft.dimensions || ""); setMaterial(draft.material || ""); setColor(draft.color || ""); setCondition(draft.condition || "new"); setWarrantyPeriod(draft.warrantyPeriod || "none"); setShippingInfo(draft.shippingInfo || ""); setKeyFeatures(draft.keyFeatures?.length ? draft.keyFeatures : [""]); setTagsInput(draft.tagsInput || ""); setShipsTo(draft.shipsTo || []); setCategoryAttributes(draft.categoryAttributes || {}); setProductTypeKey(draft.productTypeKey || ""); setVariantRows(draft.variantRows || []); setVariantColorValues(draft.variantColorValues || ""); setVariantStorageValues(draft.variantStorageValues || ""); setVariantPrimaryOption(draft.variantPrimaryOption || "storage"); setShowSoldCount(draft.showSoldCount ?? true); setFormTab(draft.formTab || "basic"); setSeoSlug(draft.seoSlug || ""); setMetaDescription(draft.metaDescription || ""); setLowStockThreshold(draft.lowStockThreshold || "5");
+          applyDraftValues(draft);
           toast({
             title: "Unfinished listing restored",
             description: restoredCount > 0
@@ -591,6 +649,13 @@ export default function SellerProducts() {
         }
       } else if (restoredCount > 0) {
         toast({ title: "Unfinished photos restored", description: `${restoredCount} file${restoredCount === 1 ? "" : "s"} from your last session were recovered.` });
+      } else if (user) {
+        void loadListingCloudDraft(user.id).then((cloudDraft) => {
+          if (!cloudDraft) return;
+          applyDraftValues(cloudDraft.payload);
+          setCloudDraftStatus("saved");
+          toast({ title: "Cloud draft restored", description: "Your text and settings were recovered. Please select photos on this device before submitting." });
+        }).catch(() => undefined);
       }
     });
     setDialogOpen(true);
@@ -623,6 +688,7 @@ export default function SellerProducts() {
       // or the next "Add Product" would resurrect the discarded images.
       void clearDraftMedia(draftKey);
     }
+    if (user) void clearListingCloudDraft(user.id).catch(() => undefined);
     resetForm();
     setDialogOpen(false);
     setListingMinimized(false);
@@ -938,6 +1004,12 @@ export default function SellerProducts() {
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
       show_sold_count: showSoldCount,
+      // Editing a listing is the seller's response to a moderation request.
+      // Clear the old request so the next review starts with fresh metadata.
+      moderation_reason: null,
+      moderation_next_action: null,
+      moderation_owner_id: null,
+      moderation_updated_at: new Date().toISOString(),
       ...flashDealFields,
       variants: { ...mergeCategoryAttributes(editingProduct?.variants, {
         categoryGroup: selectedConfig.title,
@@ -1209,6 +1281,7 @@ export default function SellerProducts() {
       // photos into a fresh draft.
       void clearDraftMedia(draftKey);
     }
+    if (user) void clearListingCloudDraft(user.id).catch(() => undefined);
     resetForm();
     setDialogOpen(false);
     setListingMinimized(false);
@@ -1399,7 +1472,7 @@ export default function SellerProducts() {
                   {!editingProduct && <Button type="button" variant="outline" size="sm" className="shrink-0 gap-1.5" onClick={minimizeNewListing}><Minus className="h-3.5 w-3.5" /> Minimize</Button>}
                 </div>
                 {!editingProduct && (
-                  <div className="mt-1 flex items-center justify-between gap-3"><DialogDescription className="flex-1 text-left text-sm text-muted-foreground">Your progress is saved automatically, photos included. Minimize or close this page and your details and images will be waiting when you come back on this device.</DialogDescription><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
+                  <div className="mt-1 flex items-start justify-between gap-3"><div className="flex-1"><DialogDescription className="text-left text-sm text-muted-foreground">Your progress is saved automatically. Text, settings, and workflow position are backed up across devices; photos remain available on this device until upload.</DialogDescription><p className="mt-1 text-[11px] text-muted-foreground">Cloud backup: {cloudDraftStatus === "saved" ? "Saved" : cloudDraftStatus === "saving" ? "Saving..." : cloudDraftStatus === "error" ? "Offline; local draft still safe" : "Ready"}</p></div><Button type="button" variant="ghost" size="sm" className="shrink-0 text-xs text-muted-foreground" onClick={discardNewDraft}>Discard draft</Button></div>
                 )}
                 {editingProduct && (
                   // Radix requires every DialogContent to have a Description.
@@ -2306,6 +2379,18 @@ export default function SellerProducts() {
                             : `${product.ships_to.length} countries`}
                       </Badge>
                     </div>
+                    {product.moderation_reason && !product.is_approved && (
+                      <div className="mt-2 rounded-md border border-destructive/20 bg-destructive/5 px-2.5 py-2 text-xs text-foreground">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="font-semibold text-destructive">Changes requested</p>
+                          <span className="text-muted-foreground">
+                            {formatModerationAge(product.moderation_updated_at || product.updated_at || product.created_at)}
+                          </span>
+                        </div>
+                        <p className="mt-1">{product.moderation_reason}</p>
+                        <p className="mt-1 font-medium">Next: {product.moderation_next_action || "Update the listing and submit it again for review."}</p>
+                      </div>
+                    )}
                     {healthIssues.length > 0 && (
                       <div className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
                         <p className="font-semibold">Listing health: needs attention</p>

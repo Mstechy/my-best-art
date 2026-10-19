@@ -13,6 +13,10 @@ export interface SellerProduct {
   created_at: string;
   stock_quantity: number;
   low_stock_threshold: number | null;
+  moderation_reason: string | null;
+  moderation_next_action: string | null;
+  moderation_owner_id: string | null;
+  moderation_updated_at: string | null;
 }
 
 export interface RecentOrder {
@@ -40,7 +44,7 @@ export function useSellerProducts(sellerId: string | undefined) {
       if (!sellerId) return [];
       const { data } = await supabase
         .from("products")
-        .select("id,title,price,status,is_approved,average_rating,review_count,created_at,stock_quantity,low_stock_threshold")
+        .select("id,title,price,status,is_approved,average_rating,review_count,created_at,updated_at,stock_quantity,low_stock_threshold,moderation_reason,moderation_next_action,moderation_owner_id,moderation_updated_at")
         .eq("seller_id", sellerId)
         .order("created_at", { ascending: false });
       return (data ?? []) as unknown as SellerProduct[];

@@ -66,6 +66,11 @@ interface Product {
   low_stock_threshold: number | null;
   description_images: { url: string; alt: string | null; order: number }[] | null;
   created_at: string;
+  updated_at?: string | null;
+  moderation_reason?: string | null;
+  moderation_next_action?: string | null;
+  moderation_owner_id?: string | null;
+  moderation_updated_at?: string | null;
   product_images: ProductImage[];
 }
 
@@ -106,6 +111,11 @@ interface ProductRow {
   low_stock_threshold: number | null;
   description_images: { url: string; alt: string | null; order: number }[] | null;
   created_at: string;
+  updated_at?: string | null;
+  moderation_reason?: string | null;
+  moderation_next_action?: string | null;
+  moderation_owner_id?: string | null;
+  moderation_updated_at?: string | null;
   product_images: ProductImage[] | null;
 }
 

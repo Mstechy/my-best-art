@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
+import AdminOperationsQueue from "@/components/admin/AdminOperationsQueue";
 
 interface SystemAlert {
   id: string;
@@ -266,6 +267,10 @@ export default function AdminDashboard() {
           </Card>
         </AnimatedSection>
       </div>
+
+      <AnimatedSection variant="fade-up" delay={350}>
+        <AdminOperationsQueue />
+      </AnimatedSection>
     </div>
   );
 }
