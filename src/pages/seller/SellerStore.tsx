@@ -18,6 +18,10 @@ export default function SellerStore() {
   const [returnPolicy, setReturnPolicy] = useState("");
   const [shippingPolicy, setShippingPolicy] = useState("");
   const [paymentPolicy, setPaymentPolicy] = useState("");
+  const [shippingCost, setShippingCost] = useState("");
+  const [shippingCurrency, setShippingCurrency] = useState("NGN");
+  const [freeShippingThreshold, setFreeShippingThreshold] = useState("");
+  const [shipsTo, setShipsTo] = useState("worldwide");
   const [shipFromLocation, setShipFromLocation] = useState("");
   const [deliveryDaysMin, setDeliveryDaysMin] = useState("");
   const [deliveryDaysMax, setDeliveryDaysMax] = useState("");
@@ -43,6 +47,10 @@ export default function SellerStore() {
         setReturnPolicy(d.return_policy || "");
         setShippingPolicy(d.shipping_policy || "");
         setPaymentPolicy(d.payment_policy || "");
+        setShippingCost(d.shipping_cost_amount?.toString() || "");
+        setShippingCurrency(d.shipping_currency || "NGN");
+        setFreeShippingThreshold(d.free_shipping_threshold?.toString() || "");
+        setShipsTo(Array.isArray(d.ships_to) && d.ships_to.length > 0 ? d.ships_to.join(", ") : "worldwide");
         setShipFromLocation(d.ship_from_location || "");
         setDeliveryDaysMin(d.delivery_days_min?.toString() || "");
         setDeliveryDaysMax(d.delivery_days_max?.toString() || "");
@@ -75,6 +83,12 @@ export default function SellerStore() {
       return_policy: returnPolicy || null,
       shipping_policy: shippingPolicy || null,
       payment_policy: paymentPolicy || null,
+      shipping_cost_amount: shippingCost ? Number(shippingCost) : null,
+      shipping_currency: shippingCurrency.trim().toUpperCase() || null,
+      free_shipping_threshold: freeShippingThreshold ? Number(freeShippingThreshold) : null,
+      ships_to: shipsTo.trim()
+        ? shipsTo.split(",").map((value: string) => value.trim().toLowerCase()).filter(Boolean)
+        : ["worldwide"],
       ship_from_location: shipFromLocation.trim() || null,
       delivery_days_min: deliveryDaysMin ? Number(deliveryDaysMin) : null,
       delivery_days_max: deliveryDaysMax ? Number(deliveryDaysMax) : null,
@@ -126,9 +140,39 @@ export default function SellerStore() {
 
       <Card>
         <CardHeader><CardTitle className="font-display">Marketplace policies</CardTitle></CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">Shipping, delivery estimates, returns, refunds, buyer protection, and payment terms are set by the Tradibu admin and appear automatically on your product pages.</p>
-          <p className="mt-2 text-xs text-muted-foreground">You only need to keep your product-specific information accurate, such as condition, warranty duration, stock, and shipping availability.</p>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">Set the delivery details buyers will see and use at checkout. Tradibu uses the platform policy only when a seller value is not provided.</p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <Label htmlFor="shipping-cost">Shipping fee</Label>
+              <Input id="shipping-cost" type="number" min="0" step="0.01" value={shippingCost} onChange={(e) => setShippingCost(e.target.value)} placeholder="e.g. 2500" />
+              <p className="mt-1 text-xs text-muted-foreground">Use 0 for free shipping.</p>
+            </div>
+            <div>
+              <Label htmlFor="shipping-currency">Currency</Label>
+              <Input id="shipping-currency" maxLength={3} value={shippingCurrency} onChange={(e) => setShippingCurrency(e.target.value.toUpperCase())} placeholder="NGN" />
+            </div>
+            <div>
+              <Label htmlFor="free-shipping-threshold">Free shipping over</Label>
+              <Input id="free-shipping-threshold" type="number" min="0" step="0.01" value={freeShippingThreshold} onChange={(e) => setFreeShippingThreshold(e.target.value)} placeholder="Optional" />
+            </div>
+            <div>
+              <Label htmlFor="ships-to">Delivery countries</Label>
+              <Input id="ships-to" value={shipsTo} onChange={(e) => setShipsTo(e.target.value)} placeholder="worldwide or NG, GH" />
+              <p className="mt-1 text-xs text-muted-foreground">Use ISO country codes separated by commas.</p>
+            </div>
+            <div>
+              <Label htmlFor="ship-from">Ships from</Label>
+              <Input id="ship-from" value={shipFromLocation} onChange={(e) => setShipFromLocation(e.target.value)} placeholder="Lagos, Nigeria" />
+            </div>
+            <div>
+              <Label>Delivery window (days)</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Input type="number" min="0" value={deliveryDaysMin} onChange={(e) => setDeliveryDaysMin(e.target.value)} placeholder="Min" aria-label="Minimum delivery days" />
+                <Input type="number" min="0" value={deliveryDaysMax} onChange={(e) => setDeliveryDaysMax(e.target.value)} placeholder="Max" aria-label="Maximum delivery days" />
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -190,3 +190,11 @@ The admin dashboard now has one oldest-first operations queue built from live re
 - Items remain responsive on narrow screens and link to the existing specialist pages for the actual action.
 
 Wallet balances are not presented as payout-risk tasks yet because the current schema has wallet balances and transactions but no explicit withdrawal-request state. That should be added as a separate finance workflow rather than inferred from balance totals.
+
+## Fourth remaining-gap implementation: authoritative shipping quotes
+
+Checkout now requests a server-side quote for each seller after the buyer selects a delivery country. The quote uses trusted product/variant prices, product and store delivery regions, seller/platform shipping fees, free-shipping thresholds, and processing/delivery windows. Checkout shows the quoted shipping amount and estimated delivery range, and keeps payment disabled when the destination or shipping fee cannot be verified.
+
+The order writer recalculates the same quote inside the transaction and stores `shipping_amount` plus the delivery date range on the order. Paystack already initializes from `orders.total_amount`, so payment now uses the server-authoritative product subtotal plus shipping rather than the former product-only total.
+
+Seller Store now exposes the minimum operational inputs needed for a trustworthy quote: fee, currency, free-shipping threshold, ISO destination codes, origin, and delivery window. Apply `20261019002000_authoritative_shipping_quotes.sql` before testing checkout in Supabase. A seller or platform policy with no shipping fee intentionally blocks payment with an actionable message instead of silently charging an incomplete amount.

@@ -92,7 +92,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
     [...supabaseKeys.table("site_pages"), sellerId ?? ""],
     async () => {
       const [storeResult, pagesResult] = await Promise.all([
-        sellerId ? supabase.from("seller_stores").select("shipping_policy, return_policy, updated_at, shipping_cost_amount, shipping_currency, free_shipping_threshold, ship_from_location, processing_days_min, processing_days_max, delivery_days_min, delivery_days_max, return_accepted, return_window_days, return_conditions, return_shipping_payer, warranty_duration, warranty_terms").eq("seller_id", sellerId).maybeSingle() : Promise.resolve({ data: null, error: null }),
+        sellerId ? supabase.from("seller_stores").select("shipping_policy, return_policy, ships_to, updated_at, shipping_cost_amount, shipping_currency, free_shipping_threshold, ship_from_location, processing_days_min, processing_days_max, delivery_days_min, delivery_days_max, return_accepted, return_window_days, return_conditions, return_shipping_payer, warranty_duration, warranty_terms").eq("seller_id", sellerId).maybeSingle() : Promise.resolve({ data: null, error: null }),
         (supabase as any).from("site_pages").select("slug, body_markdown, updated_at").in("slug", ["shipping", "refund"]),
       ]);
       if (storeResult.error) throw storeResult.error;
@@ -126,9 +126,10 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
       warranty_period: product?.warranty_period,
     };
     return {
-      // The published Shipping and Refund pages are authoritative for marketplace-wide terms.
-      // Seller store values remain a compatibility fallback only.
-      shipping: first(resolveShippingPolicy(productRow, "product"), platform ? resolveShippingPolicy(platform, "platform") : null, store ? resolveShippingPolicy(store, "seller") : null),
+      // Checkout uses the seller quote, so show the seller's fee and delivery
+      // window first when it is configured. Product-specific details and the
+      // platform page remain fallbacks for listings without seller overrides.
+      shipping: first(store ? resolveShippingPolicy(store, "seller") : null, resolveShippingPolicy(productRow, "product"), platform ? resolveShippingPolicy(platform, "platform") : null),
       returns: first(platform ? returns(platform, "platform") : null, store ? returns(store, "seller") : null),
       warranty: first(warranty(productRow, "product"), store ? warranty(store, "seller") : null),
       // Buyer-protection steps have no platform-level editor any more; the Refund page already covers them.

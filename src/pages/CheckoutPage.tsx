@@ -35,6 +35,16 @@ interface SavedAddress {
   is_default: boolean;
 }
 
+interface ShippingQuote {
+  sellerId: string;
+  shipping_amount: number;
+  currency: string;
+  shipping_known: boolean;
+  delivery_min_date: string | null;
+  delivery_max_date: string | null;
+  message: string | null;
+}
+
 // Shared input style. `text-base md:text-sm` keeps the control at 16px on
 // phones so iOS Safari does not zoom the page when the field is focused
 // (see the matching rule in src/index.css), and `min-w-0` lets it shrink
@@ -55,6 +65,20 @@ export default function CheckoutPage() {
   const [checkoutNotice, setCheckoutNotice] = useState<string | null>(null);
   const checkoutItems = useMemo(() => directCheckoutItem ? [directCheckoutItem] : items, [directCheckoutItem, items]);
   const checkoutTotal = useMemo(() => checkoutItems.reduce((sum, item) => sum + item.price * item.quantity, 0), [checkoutItems]);
+  const sellerGroups = useMemo(() => {
+    const groups: Record<string, typeof checkoutItems> = {};
+    checkoutItems.forEach(item => {
+      if (!groups[item.seller_id]) groups[item.seller_id] = [];
+      groups[item.seller_id].push(item);
+    });
+    return groups;
+  }, [checkoutItems]);
+  const [shippingQuotes, setShippingQuotes] = useState<ShippingQuote[]>([]);
+  const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
+  const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
+  const shippingTotal = useMemo(() => shippingQuotes.reduce((sum, quote) => sum + quote.shipping_amount, 0), [shippingQuotes]);
+  const checkoutGrandTotal = checkoutTotal + shippingTotal;
+  const shippingQuoteReady = Boolean(address.country) && !shippingQuoteLoading && !shippingQuoteError && shippingQuotes.length === Object.keys(sellerGroups).length;
   const checkoutEventSentRef = useRef(false);
 
   useEffect(() => {
@@ -77,6 +101,47 @@ export default function CheckoutPage() {
     window.addEventListener(ANALYTICS_CONSENT_CHANGED, trackCheckoutStart);
     return () => window.removeEventListener(ANALYTICS_CONSENT_CHANGED, trackCheckoutStart);
   }, [checkoutItems, checkoutTotal]);
+
+  const fetchShippingQuotes = useCallback(async (): Promise<ShippingQuote[]> => {
+    if (!address.country || Object.keys(sellerGroups).length === 0) return [];
+    const quotes = await Promise.all(Object.entries(sellerGroups).map(async ([sellerId, sellerItems]) => {
+      const { data, error } = await (supabase as any).rpc("quote_marketplace_shipping", {
+        p_seller_id: sellerId,
+        p_destination: address.country,
+        p_items: sellerItems.map(item => ({
+          product_id: item.product_id || item.id.split("::")[0],
+          product_variant_id: item.product_variant_id || null,
+          quantity: item.quantity,
+        })),
+      });
+      if (error) throw error;
+      const row = (Array.isArray(data) ? data[0] : data) as ShippingQuote | null;
+      if (!row || !row.shipping_known) throw new Error(row?.message || "Shipping fee is not configured for this seller.");
+      return { ...row, sellerId, shipping_amount: Number(row.shipping_amount) || 0 };
+    }));
+    return quotes;
+  }, [address.country, sellerGroups]);
+
+  useEffect(() => {
+    let active = true;
+    if (!address.country || Object.keys(sellerGroups).length === 0) {
+      setShippingQuotes([]);
+      setShippingQuoteError(null);
+      setShippingQuoteLoading(false);
+      return () => { active = false; };
+    }
+    setShippingQuoteLoading(true);
+    setShippingQuoteError(null);
+    fetchShippingQuotes()
+      .then((quotes) => { if (active) setShippingQuotes(quotes); })
+      .catch((error: unknown) => {
+        if (!active) return;
+        setShippingQuotes([]);
+        setShippingQuoteError(getUserFacingErrorMessage(error, "Shipping is not available for this destination."));
+      })
+      .finally(() => { if (active) setShippingQuoteLoading(false); });
+    return () => { active = false; };
+  }, [address.country, fetchShippingQuotes, sellerGroups]);
   const reconcileCheckoutItems = useCallback(async (): Promise<string | null> => {
     const productIds = [...new Set(checkoutItems.map((item) => item.product_id))];
     const variantIds = checkoutItems.flatMap((item) => item.product_variant_id ? [item.product_variant_id] : []);
@@ -158,6 +223,11 @@ export default function CheckoutPage() {
         return;
       }
 
+      const freshQuotes = await fetchShippingQuotes();
+      if (freshQuotes.length !== Object.keys(sellerGroups).length) {
+        throw new Error("Shipping could not be calculated for every seller. Please review the delivery country.");
+      }
+
       if (saveAfter) {
         await supabase.from("addresses" as any).insert({
           user_id: user.id, label: addressLabel || null, recipient: address.name, phone: address.phone || null,
@@ -165,12 +235,6 @@ export default function CheckoutPage() {
           postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
         } as any);
       }
-
-      const sellerGroups: Record<string, typeof checkoutItems> = {};
-      checkoutItems.forEach(item => {
-        if (!sellerGroups[item.seller_id]) sellerGroups[item.seller_id] = [];
-        sellerGroups[item.seller_id].push(item);
-      });
 
       const orderIds: string[] = [];
       for (const [sellerId, sellerItems] of Object.entries(sellerGroups)) {
@@ -215,7 +279,7 @@ export default function CheckoutPage() {
       else clearCart();
       toast.success("Order created. Complete payment securely with Paystack.");
       window.location.assign(payment.authorization_url);
-    }, [user, address, saveAfter, addressLabel, saved.length, checkoutItems, directCheckoutItem, reconcileCheckoutItems, clearCart, clearDirectCheckout, navigate]),
+    }, [user, address, saveAfter, addressLabel, saved.length, directCheckoutItem, sellerGroups, fetchShippingQuotes, reconcileCheckoutItems, clearCart, clearDirectCheckout, navigate]),
     useCallback(() => "place-order", []),
   );
 
@@ -403,16 +467,26 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between text-xs">
                   <span className="text-[#6E6C64]">Shipping</span>
-                  <span className="text-[#6E6C64] dark:text-[#A0A0A0] font-semibold">Calculated at checkout</span>
+                  <span className="text-right text-[#6E6C64] dark:text-[#A0A0A0] font-semibold">
+                    {shippingQuoteLoading ? "Calculating…" : shippingQuoteError ? "Unavailable" : address.country ? formatPrice(shippingTotal) : "Select a country"}
+                  </span>
                 </div>
+                {shippingQuoteReady && (() => {
+                  const dates = shippingQuotes.flatMap((quote) => [quote.delivery_min_date, quote.delivery_max_date].filter((date): date is string => Boolean(date)));
+                  if (dates.length < 2) return null;
+                  const min = new Date(dates.sort()[0]);
+                  const max = new Date(dates.sort().at(-1) as string);
+                  return <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Estimated delivery: {min.toLocaleDateString()} – {max.toLocaleDateString()}</p>;
+                })()}
+                {shippingQuoteError && <p role="alert" className="text-[10px] leading-relaxed text-red-600 dark:text-red-400">{shippingQuoteError}</p>}
                 <div className="flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2] pt-2 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
-                  <span>Total</span><span>{formatPrice(checkoutTotal)}</span>
+                  <span>Total</span><span>{formatPrice(checkoutGrandTotal)}</span>
                 </div>
               </div>
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading}
+                disabled={loading || !shippingQuoteReady}
                 className="w-full mt-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50 hidden md:flex items-center justify-center gap-2"
               >
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
@@ -446,11 +520,11 @@ export default function CheckoutPage() {
         <div className="mx-auto flex max-w-4xl items-center gap-3 px-4 py-2.5">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0]">Total</p>
-            <p className="truncate text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(checkoutTotal)}</p>
+            <p className="truncate text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(checkoutGrandTotal)}</p>
           </div>
           <button
             onClick={handlePlaceOrder}
-            disabled={loading}
+            disabled={loading || !shippingQuoteReady}
             className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] px-6 py-3 text-sm font-bold text-white dark:text-[#111111] transition-colors hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50"
           >
             {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
