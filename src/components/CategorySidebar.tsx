@@ -6,7 +6,7 @@ type CategoryConfigs = typeof import("@/lib/categoryConfig").CATEGORY_CONFIGS;
 interface CategorySidebarProps {
   selectedCategory: string | null;
   onSelect: (categorySlug: string | null) => void;
-  categories: { id: string; name: string; slug: string }[];
+  categories: { id: string; name: string; slug: string; parent_id?: string | null }[];
 }
 
 const TOP_LEVEL_ORDER = [
@@ -51,6 +51,20 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
   }, []);
 
   const grouped = useMemo(() => {
+    const parentRows = categories.filter((category) => !category.parent_id);
+    const hasDatabaseTree = categories.some((category) => Boolean(category.parent_id)) && parentRows.length > 0;
+    if (hasDatabaseTree) {
+      const categoryMap = new Map(categories.map((category) => [category.id, category]));
+      const groups = parentRows.flatMap((parent) => {
+        const children = categories.filter((category) => category.parent_id === parent.id);
+        const entries = children.length > 0 ? children : [parent];
+        return entries.length > 0 ? [{ parent: parent.id, label: parent.name, subcategories: entries.map((category) => ({ slug: category.slug, label: category.name })) }] : [];
+      });
+      const groupedSlugs = new Set(groups.flatMap((group) => group.subcategories.map((subcategory) => subcategory.slug)));
+      const remaining = categories.filter((category) => !groupedSlugs.has(category.slug) && !categoryMap.has(category.parent_id || ""));
+      if (remaining.length) groups.push({ parent: "more", label: "More", subcategories: remaining.map((category) => ({ slug: category.slug, label: category.name })) });
+      return groups;
+    }
     if (!configs) return [];
     const map = new Map<string, { parent: string; label: string; subcategories: { slug: string; label: string }[] }>();
     const categoryBySlug = new Map(categories.map(c => [c.slug, c]));

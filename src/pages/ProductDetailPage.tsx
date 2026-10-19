@@ -36,13 +36,14 @@ import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { trackView } from "@/hooks/useBatchedViewTracking";
 import { useProductSEO } from "@/hooks/useSEO";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
+import { countryName } from "@/lib/countries";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { addItem, beginDirectCheckout, totalItems, setIsOpen: setCartOpen } = useCart();
   const { user, role } = useAuth();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, country: preferredCountry } = useCurrency();
   const chatPath = role === "seller" || role === "admin" ? "/seller/chat" : "/buyer/chat";
 
   const { isWishlisted, toggleWishlist } = useWishlist();
@@ -76,7 +77,7 @@ export default function ProductDetailPage() {
     keywords: keywordsQuery,
     sellerFollowerCount: sellerFollowerQuery,
     sellerAvgRating,
-    sellerTotalSold: sellerTotalSoldQuery,
+    sellerTotalSold,
     loading,
   } = useProductDetailData(id);
 
@@ -88,7 +89,6 @@ export default function ProductDetailPage() {
   const reviews = useMemo(() => reviewsQuery.data ?? [], [reviewsQuery.data]);
   const keywords = keywordsQuery.data ?? [];
   const sellerFollowers = sellerFollowerQuery.data ?? 0;
-  const sellerTotalSold = sellerTotalSoldQuery.data ?? 0;
   const reviewStarCounts = useMemo(() => reviews.reduce<Record<number, number>>((counts, review) => {
     counts[review.rating] = (counts[review.rating] ?? 0) + 1;
     return counts;
@@ -206,6 +206,7 @@ export default function ProductDetailPage() {
     : purchasableStock === 0
       ? "Out of stock"
       : "Add to Cart";
+  const deliveryDestination = preferredCountry ? countryName(preferredCountry) : null;
   const startingVariantPrice = useMemo(() => {
     if (!hasProductVariants || !product) return null;
     const priceSource = inStockVariants.length > 0 ? inStockVariants : productVariants;
@@ -595,7 +596,7 @@ export default function ProductDetailPage() {
                   {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
                 </div>
 
-                {/* Compatible price block (no quantity selector here - moved to variant section) */}
+                {/* The quantity control stays in the main buy box for every SKU type. */}
                 {/* Promo pricing banner (MarketHub-adapted) */}
                 {product.compare_at_price && product.compare_at_price > product.price ? (
                   <div className="mt-4 rounded-2xl bg-[#1A1A1A] dark:bg-[#252525] text-white px-4 py-3">
@@ -696,11 +697,11 @@ export default function ProductDetailPage() {
             )}
 
             <div className="flex items-center gap-4">
-              {!hasProductVariants && <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]">
-                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">-</button>
-                <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]">{quantity}</span>
-                <button onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]">+</button>
-              </div>}
+              <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]" aria-label="Quantity">
+                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!canPurchase || quantity <= 1} aria-label="Decrease quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">−</button>
+                <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]" aria-live="polite">{quantity}</span>
+                <button type="button" onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} disabled={!canPurchase || quantity >= purchasableStock} aria-label="Increase quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">+</button>
+              </div>
               <button
                 onClick={() => startPurchase("cart")}
                 disabled={!canPurchase}
@@ -743,7 +744,7 @@ export default function ProductDetailPage() {
               {policiesError && <p className="px-1 text-xs text-[#6E6C64]">Policy information is unavailable.</p>}
               <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
                 <Truck className="h-4 w-4 shrink-0 text-[#666666] dark:text-[#A0A0A0]" />
-                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping</span><span className="block truncate text-xs text-[#6E6C64]">{policies.shipping?.summary ?? "Confirm delivery cost and timing"}</span></span>
+                <span className="min-w-0 flex-1"><span className="block text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">Shipping{deliveryDestination ? ` to ${deliveryDestination}` : ""}</span><span className="block truncate text-xs text-[#6E6C64]">{policies.shipping?.summary ?? "Choose a destination at checkout to confirm delivery cost and timing"}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-[#6E6C64]" />
               </button>
               <button type="button" onClick={() => setServiceSheet("returns")} className={`flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left text-xs text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${!policies.returns ? "hidden" : ""}`}>
@@ -771,6 +772,7 @@ export default function ProductDetailPage() {
                 sellerId={seller.user_id}
                 name={seller.full_name || "Seller"}
                 isVerified={seller.is_verified}
+                reviewCount={product.review_count}
                 avatarUrl={null}
                 followers={sellerFollowers}
                 rating={sellerAvgRating}

@@ -198,3 +198,16 @@ Checkout now requests a server-side quote for each seller after the buyer select
 The order writer recalculates the same quote inside the transaction and stores `shipping_amount` plus the delivery date range on the order. Paystack already initializes from `orders.total_amount`, so payment now uses the server-authoritative product subtotal plus shipping rather than the former product-only total.
 
 Seller Store now exposes the minimum operational inputs needed for a trustworthy quote: fee, currency, free-shipping threshold, ISO destination codes, origin, and delivery window. Apply `20261019002000_authoritative_shipping_quotes.sql` before testing checkout in Supabase. A seller or platform policy with no shipping fee intentionally blocks payment with an actionable message instead of silently charging an incomplete amount.
+
+## Fifth remaining-gap implementation: paid-traffic readiness pass
+
+The next buyer and performance risks are now addressed in code.
+
+- Variant products keep a quantity control in the desktop buy box, with stock-aware increment/decrement buttons and accessible labels.
+- Product pages show the selected delivery destination, seller delivery terms, buyer-protection/refund terms, and a clear new-seller/no-review state.
+- Homepage promotional tiles only render when the corresponding inventory story exists; launch copy no longer promises millions of products, universal verification, or global fast delivery.
+- The hero carousel now has a visible pause/play control in addition to pointer hover pause.
+- Category navigation can use the database `parent_id` tree when populated categories provide one, while retaining the current fallback for legacy rows.
+- Reviews are fetched in a bounded first page, seller rating and delivered-sales totals use one server-side aggregate, and the homepage has a hydrated snapshot RPC to avoid the previous feed/product/profile request fan-out.
+
+Apply `20261016000000_homepage_snapshot_rpc.sql` and `20261019003000_seller_marketplace_stats.sql` before deploying the homepage or product-page changes. The remaining release gates are live Supabase migration verification, a real Paystack test transaction, real seller shipping policies, and physical-device checks on the ad landing paths.

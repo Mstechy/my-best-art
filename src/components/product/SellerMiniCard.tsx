@@ -9,11 +9,12 @@ interface Props {
   rating?: number;
   soldCount?: number;
   followers?: number;
+  reviewCount?: number;
   chatHref?: string;
   onVerifiedClick?: () => void;
 }
 
-export default function SellerMiniCard({ sellerId, name, avatarUrl, isVerified, rating, soldCount, followers, chatHref, onVerifiedClick }: Props) {
+export default function SellerMiniCard({ sellerId, name, avatarUrl, isVerified, rating, soldCount, followers, reviewCount, chatHref, onVerifiedClick }: Props) {
   return (
     <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm">
       <div className="flex items-center justify-between gap-3">
@@ -49,6 +50,7 @@ export default function SellerMiniCard({ sellerId, name, avatarUrl, isVerified, 
                   {followers} followers
                 </span>
               )}
+              {(!reviewCount || reviewCount === 0) && <span className="text-[#8A6A00] dark:text-[#F6C75D]">New seller · No reviews yet</span>}
             </div>
           </div>
         </div>

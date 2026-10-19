@@ -72,7 +72,7 @@ interface Product {
   relevance?: number;
 }
 
-interface Category { id: string; name: string; slug: string; icon: string; }
+interface Category { id: string; name: string; slug: string; icon: string; parent_id?: string | null; }
 interface CatalogueCursor { relevance: number; createdAt: string; id: string; }
 const CATALOGUE_PAGE_SIZE = 24;
 
@@ -275,7 +275,7 @@ export default function MarketplacePage() {
   };
 
   const fetchData = async () => {
-    const { data: categoriesData } = await supabase.from("categories").select("*").order("sort_order");
+    const { data: categoriesData } = await (supabase as any).from("categories").select("id,name,slug,icon,parent_id,sort_order").order("sort_order");
     if (categoriesData) setCategories(categoriesData);
     setCategoriesLoading(false);
   };
@@ -597,7 +597,7 @@ export default function MarketplacePage() {
                   setSelectedCategory(match?.id || null);
                   setFilters(f => ({ ...f, categoryAttributes: {} }));
                 }}
-                categories={populatedCategories.map(cat => ({ id: cat.id, name: cat.name, slug: cat.slug }))}
+                categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parent_id }))}
               />
             </div>
           </div>

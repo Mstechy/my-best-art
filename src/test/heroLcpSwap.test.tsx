@@ -39,7 +39,7 @@ const home = {
 
 vi.mock("@/hooks/useHomepage", () => ({
   FEEDS: [],
-  useHomepageData: () => ({
+  useHomepageSnapshotData: () => ({
     categories: [],
     counts: {},
     categoryImages: {},

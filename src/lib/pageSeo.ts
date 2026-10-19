@@ -56,11 +56,11 @@ export const HOME_PAGE_SEO = {
  */
 export const MARKETPLACE_SEO = {
   title: "Marketplace",
-  description: "Discover products from verified sellers worldwide",
+  description: "Discover products from independent sellers on Tradibu",
 };
 
 export const CATEGORY_DESCRIPTION_TEMPLATE =
-  "Explore {{category}} from verified sellers. Filter, compare, and keep discovering.";
+  "Explore {{category}} products from independent sellers. Filter, compare, and keep discovering.";
 
 /** i18next's default `{{var}}` interpolation, reproduced so the build matches. */
 function interpolateTemplate(template: string, vars: Record<string, string>): string {
@@ -106,7 +106,7 @@ export interface StaticPageSeo {
 export const CATEGORIES_PAGE_SEO = {
   title: "Find products by department",
   description:
-    "Browse every marketplace department from verified sellers. Filter by brand, size, condition, price and delivery destination.",
+    "Browse Tradibu departments and available products from independent sellers. Filter by brand, size, condition, price and delivery destination.",
 };
 
 /** Copy for `/contact`, matching the page's own H1 and subtitle. */
@@ -224,7 +224,7 @@ export function isHomePath(path: string): boolean {
  * inherit it automatically and cannot drift from the page they alias.
  */
 export function legalFallbackDescription(fallbackTitle: string): string {
-  return `${fallbackTitle} from Tradibu, the marketplace with verified sellers, secure Paystack payments, buyer protection and global delivery.`;
+  return `${fallbackTitle} from Tradibu, the marketplace for independent sellers with secure Paystack payments and clear delivery policies.`;
 }
 
 /**
@@ -303,7 +303,7 @@ export function buildCollectionSeo(input: {
     title,
     description: buildPageDescription(
       input.metaDescription || input.description,
-      `Browse the ${input.title} collection on Tradibu - curated products from verified sellers with secure payments and buyer protection.`,
+      `Browse the ${input.title} collection on Tradibu - curated products from independent sellers with secure payments and clear delivery policies.`,
     ),
   };
 }
@@ -323,7 +323,7 @@ export function buildSellerSeo(input: { id: string; storeName: string }): PageSe
     title: input.storeName,
     description: buildPageDescription(
       null,
-      `Shop ${input.storeName} on Tradibu - verified seller with buyer protection, secure Paystack payments and fast global delivery.`,
+      `Shop ${input.storeName} on Tradibu - an independent seller on Tradibu with secure Paystack payments and store delivery policies.`,
     ),
   };
 }

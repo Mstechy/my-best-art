@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
 import { getHeroImageSources, DEFAULT_HERO_IMAGE_URL } from "@/lib/heroImages";
 import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
@@ -153,6 +153,7 @@ const HeroSlider = memo(function HeroSlider({
 }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
+  const [isManuallyPaused, setIsManuallyPaused] = useState(false);
   const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
   const [failedImages, setFailedImages] = useState<Set<number>>(new Set());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -193,7 +194,7 @@ const HeroSlider = memo(function HeroSlider({
 
   // Auto-rotate
   useEffect(() => {
-    if (!autoRotate || !hasMultiple || isPaused) {
+    if (!autoRotate || !hasMultiple || isPaused || isManuallyPaused) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
@@ -204,7 +205,7 @@ const HeroSlider = memo(function HeroSlider({
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [autoRotate, hasMultiple, isPaused, current, slides, defaultDuration, next]);
+  }, [autoRotate, hasMultiple, isPaused, isManuallyPaused, current, slides, defaultDuration, next]);
 
   // A collection can be edited while the Home page is open. Keep the active
   // index valid so the hero never renders an undefined slide.
@@ -406,6 +407,17 @@ const HeroSlider = memo(function HeroSlider({
             />
           ))}
         </div>
+      )}
+      {hasMultiple && (
+        <button
+          type="button"
+          onClick={() => setIsManuallyPaused((paused) => !paused)}
+          aria-pressed={isManuallyPaused}
+          aria-label={isManuallyPaused ? "Play slideshow" : "Pause slideshow"}
+          className="absolute bottom-4 right-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/45 text-white backdrop-blur-sm transition hover:bg-black/65 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D]"
+        >
+          {isManuallyPaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+        </button>
       )}
     </section>
   );

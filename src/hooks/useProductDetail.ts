@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
 
@@ -60,6 +59,7 @@ export interface ReviewData {
   pinned: boolean;
 }
 export interface KeywordItem { keyword: string; count: number; }
+export interface SellerMarketplaceStats { avg_rating: number; total_reviews: number; total_sold: number; }
 
 /**
  * Coerce a raw Supabase products row into the Product shape.
@@ -256,10 +256,11 @@ export function useProductReviews(productId: string | undefined) {
       if (!productId) return [] as ReviewData[];
       const { data } = await supabase
         .from("reviews")
-        .select("*")
+        .select("id,buyer_id,rating,title,comment,created_at,is_verified_purchase")
         .eq("product_id", productId)
         .eq("is_approved", true)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .range(0, 49);
       if (!data) return [];
 
       const list = data as unknown as { id: string; buyer_id: string; rating: number; title: string | null; comment: string | null; created_at: string; is_verified_purchase: boolean; subrating_communication: number | null; subrating_description: number | null; subrating_shipping: number | null }[];
@@ -347,26 +348,15 @@ export function useProductDetailData(productId: string | undefined) {
   const docs = useProductDocs(productId);
   const variants = useProductVariants(productId);
   const sellerFollowerCount = useSellerFollowerCount(sellerId);
-  const sellerProducts = useSellerProducts(sellerId);
+  const sellerStats = useSellerMarketplaceStats(sellerId);
   const reviews = useProductReviews(productId);
   const keywords = useProductKeywords(productId);
 
-  // Aggregate seller stats
-  const sellerProductIds = useMemo(
-    () => (sellerProducts.data ?? []).map(p => p.id),
-    [sellerProducts.data],
-  );
-  const sellerTotalSold = useSellerTotalSold(sellerProductIds);
-  const sellerAvgRating = useMemo(() => {
-    const prods = sellerProducts.data ?? [];
-    const totalReviews = prods.reduce((s, p) => s + (p.review_count || 0), 0);
-    const weighted = prods.reduce((s, p) => s + (p.average_rating || 0) * (p.review_count || 0), 0);
-    return totalReviews > 0 ? weighted / totalReviews : 0;
-  }, [sellerProducts.data]);
+  const sellerAvgRating = sellerStats.data?.avg_rating ?? 0;
 
   const loading = product.isLoading || seller.isLoading || category.isLoading ||
     soldCount.isLoading || docs.isLoading || variants.isLoading ||
-    sellerFollowerCount.isLoading || sellerProducts.isLoading || reviews.isLoading || keywords.isLoading;
+    sellerFollowerCount.isLoading || sellerStats.isLoading || reviews.isLoading || keywords.isLoading;
 
   return {
     product,
@@ -379,7 +369,22 @@ export function useProductDetailData(productId: string | undefined) {
     keywords,
     sellerFollowerCount,
     sellerAvgRating,
-    sellerTotalSold,
+    sellerTotalSold: sellerStats.data?.total_sold ?? 0,
     loading,
   };
+}
+
+/** Fetch seller trust totals from one server-side aggregate instead of loading every product and delivered order item into the browser. */
+export function useSellerMarketplaceStats(sellerId: string | undefined) {
+  return useSupabaseQuery(
+    [...supabaseKeys.rpc("seller_marketplace_stats"), sellerId ?? ""],
+    async () => {
+      if (!sellerId) return { avg_rating: 0, total_reviews: 0, total_sold: 0 } as SellerMarketplaceStats;
+      const { data, error } = await (supabase as any).rpc("seller_marketplace_stats", { p_seller_id: sellerId });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return { avg_rating: Number(row?.avg_rating ?? 0), total_reviews: Number(row?.total_reviews ?? 0), total_sold: Number(row?.total_sold ?? 0) } as SellerMarketplaceStats;
+    },
+    { enabled: !!sellerId, staleTime: 3 * 60 * 1000 },
+  );
 }

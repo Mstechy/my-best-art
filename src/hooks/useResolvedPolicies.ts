@@ -85,6 +85,12 @@ function warranty(row: PolicyRow, source: Source): ResolvedPolicy | null {
   return { title: "Warranty", summary: duration || terms, detail: terms || duration, source, updatedAt: text(row.updated_at) || null };
 }
 
+function protection(row: PolicyRow, source: Source): ResolvedPolicy | null {
+  const detail = text(row.protection_terms) || text(row.return_conditions);
+  if (!detail) return null;
+  return { title: "Buyer protection", summary: "Review protection and refund terms", detail, source, updatedAt: text(row.updated_at) || null };
+}
+
 function first<T>(...values: (T | null)[]) { return values.find((value): value is T => value !== null) ?? null; }
 
 export function useResolvedPolicies(sellerId: string | undefined, product: { shipping_info: string | null; ships_to: string[] | null; ship_from_location: string | null; processing_days_min: number | null; processing_days_max: number | null; delivery_days_min: number | null; delivery_days_max: number | null; warranty: string | null; warranty_period: string | null } | null) {
@@ -104,6 +110,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
       const platform: PolicyRow | null = shippingPage || refundPage ? {
         shipping_terms: markdownToText(shippingPage?.body_markdown),
         return_conditions: markdownToText(refundPage?.body_markdown),
+        protection_terms: markdownToText(refundPage?.body_markdown),
         updated_at: shippingPage?.updated_at ?? refundPage?.updated_at ?? null,
       } : null;
       return { store: storeResult.data as PolicyRow | null, platform };
@@ -133,7 +140,7 @@ export function useResolvedPolicies(sellerId: string | undefined, product: { shi
       returns: first(platform ? returns(platform, "platform") : null, store ? returns(store, "seller") : null),
       warranty: first(warranty(productRow, "product"), store ? warranty(store, "seller") : null),
       // Buyer-protection steps have no platform-level editor any more; the Refund page already covers them.
-      protection: null,
+      protection: platform ? protection(platform, "platform") : null,
     };
   }, [product?.shipping_info, product?.ships_to, product?.ship_from_location, product?.processing_days_min, product?.processing_days_max, product?.delivery_days_min, product?.delivery_days_max, product?.warranty, product?.warranty_period, query.data]);
 

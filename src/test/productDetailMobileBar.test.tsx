@@ -50,7 +50,7 @@ vi.mock("@/hooks/useProductDetail", () => ({
     keywords: { data: [] },
     sellerFollowerCount: { data: 0 },
     sellerAvgRating: null,
-    sellerTotalSold: { data: 0 },
+    sellerTotalSold: 0,
     loading: false,
   }),
   useCanReview: () => ({ data: { canReview: false, alreadyReviewed: false } }),

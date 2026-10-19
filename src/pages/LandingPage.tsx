@@ -18,7 +18,7 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useHomepageData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
+import { useHomepageSnapshotData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
 import { useCatalogueFeed, FEED_PAGE_SIZE, type CatalogueFeedItem } from "@/hooks/useCatalogueFeed";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { clampDisplayAspectRatio } from "@/lib/imageHeaders";
@@ -118,7 +118,7 @@ function fromPageItem(product: CatalogueFeedItem): FeedCard {
 
 
 export default function LandingPage() {
-  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageData();
+  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
@@ -271,7 +271,7 @@ export default function LandingPage() {
               <CategorySidebar
                 selectedCategory={null}
                 onSelect={(slug) => { navigate(slug ? `/categories/${slug}` : "/marketplace"); }}
-                categories={populatedCategories.map(category => ({ id: category.id, name: category.name, slug: category.slug }))}
+                categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parent_id }))}
               />
             </div>
 
@@ -307,13 +307,15 @@ export default function LandingPage() {
 
             {/* Right: promo tiles (hidden on mobile) */}
             <div className="hidden lg:flex flex-col gap-4">
-              <Link to="/marketplace?promo=hot50" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#E53935] to-[#C62828] p-4 flex flex-col justify-between text-white transition hover:shadow-lg">
-                <Zap className="h-6 w-6" />
-                <div>
-                  <p className="text-lg font-bold leading-tight">{t("home.hotDeals")}</p>
-                  <p className="text-xs text-white/80 mt-1">{t("home.hotDealsDesc")}</p>
-                </div>
-              </Link>
+              {feeds.flash_deals.length > 0 && (
+                <Link to="/marketplace?promo=hot50" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#E53935] to-[#C62828] p-4 flex flex-col justify-between text-white transition hover:shadow-lg">
+                  <Zap className="h-6 w-6" />
+                  <div>
+                    <p className="text-lg font-bold leading-tight">{t("home.hotDeals")}</p>
+                    <p className="text-xs text-white/80 mt-1">{t("home.hotDealsDesc")}</p>
+                  </div>
+                </Link>
+              )}
               <Link to="/marketplace?sort=newest" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#111111] to-[#333333] dark:from-[#FAF5F2] dark:to-[#EAE0D8] p-4 flex flex-col justify-between text-white dark:text-[#111111] transition hover:shadow-lg">
                 <Clock className="h-6 w-6" />
                 <div>
