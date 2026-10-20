@@ -330,7 +330,7 @@ export default function LandingPage() {
             {/* Right: promo tiles (hidden on mobile) */}
             <div className="hidden lg:flex flex-col gap-4">
               {feeds.flash_deals.length > 0 && (
-                <Link to="/marketplace?promo=hot50" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#E53935] to-[#C62828] p-4 flex flex-col justify-between text-white transition hover:shadow-lg">
+                <Link to="/marketplace?sort=flash_deals" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#E53935] to-[#C62828] p-4 flex flex-col justify-between text-white transition hover:shadow-lg">
                   <Zap className="h-6 w-6" />
                   <div>
                     <p className="text-lg font-bold leading-tight">{t("home.hotDeals")}</p>
@@ -358,26 +358,13 @@ export default function LandingPage() {
       </div>
 
       {/* Flash Deal Rail — real countdowns from flash_deal_end_at */}
-      {(loading || feeds.flash_deals.length > 0) && (
+      {feeds.flash_deals.length > 0 && (
         // content-visibility lets the browser skip laying out and painting this
         // rail until it nears the viewport, which is where the audit's ~1.1s of
         // Style & Layout was going. The intrinsic size keeps the scrollbar from
         // jumping while the real height is still unknown.
         <Container className="w-full order-2 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_600px]">
           <SectionHeader title={t("home.flashDeals")} subtitle={<span className="inline-flex items-center gap-2"><Flame className="h-4 w-4 text-destructive" />{t("home.limitedTime")}</span>} href="/marketplace?sort=flash_deals" linkLabel={t("common.viewAll")} className="mb-5" />
-          {loading ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-              {Array.from({ length: 5 }).map((_, index) => (
-                <div key={index} className="animate-pulse overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#222222] dark:bg-[#1A1A1A]">
-                  <div className="aspect-square bg-[#F2F3F5] dark:bg-[#202020]" />
-                  <div className="space-y-2 p-3">
-                    <div className="h-4 w-3/4 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
-                    <div className="h-4 w-1/2 rounded bg-[#F2F3F5] dark:bg-[#202020]" />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {feeds.flash_deals.slice(0, 5).map(product => {
               const image = product.product_images.find(i => i.is_primary)?.image_url || product.product_images[0]?.image_url;
@@ -420,7 +407,6 @@ export default function LandingPage() {
               );
             })}
           </div>
-          )}
 
         </Container>
       )}

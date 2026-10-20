@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, CheckCircle2, Package, Flame, Heart, X, Sparkles, Globe, Star } from "lucide-react";
+import { ShoppingCart, CheckCircle2, Package, Flame, Heart, X, Globe, Star } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
@@ -36,12 +36,6 @@ import { dedupeProducts, isMarketplaceSort } from "@/lib/marketplaceContracts";
 import { toast } from "sonner";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
-
-const PROMOS: Record<string, { label: string; filter: (p: Product) => boolean }> = {
-  summer20: { label: "20% Off Summer Sale", filter: (p) => !!p.compare_at_price && p.compare_at_price > p.price },
-  hot50: { label: "Hot Deals - Up to 50% Off", filter: (p) => !!p.compare_at_price && (1 - p.price / p.compare_at_price) >= 0.2 },
-  new: { label: "New Arrivals", filter: (p) => Date.now() - new Date(p.created_at).getTime() < 1000 * 60 * 60 * 24 * 14 },
-};
 
 interface Product {
   id: string;
@@ -199,13 +193,11 @@ function MarketplaceProductImpressionCard({
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug: categoryRouteSlug } = useParams<{ slug?: string }>();
-  const promoKey = searchParams.get("promo");
   const categoryParam = categoryRouteSlug ?? searchParams.get("category");
   const searchParam = searchParams.get("search");
   const visualParam = searchParams.get("visual");
   const visualHashParam = searchParams.get("visualHash");
   const sortParam = searchParams.get("sort");
-  const promo = promoKey ? PROMOS[promoKey] : null;
   const isVisualSearch = visualParam === "1";
 
   const [products, setProducts] = useState<Product[]>([]);
@@ -267,12 +259,6 @@ export default function MarketplacePage() {
     if (sortBy !== "relevance") next.set("sort", sortBy); else next.delete("sort");
     if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
   }, [search, selectedCategory, categories, searchParams, setSearchParams, categoryRouteSlug, sortBy]);
-
-  const clearPromo = () => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("promo");
-    setSearchParams(next, { replace: true });
-  };
 
   const fetchData = async () => {
     const { data: categoriesData } = await (supabase as any).from("categories").select("id,name,slug,icon,parent_id,sort_order").order("sort_order");
@@ -437,10 +423,7 @@ export default function MarketplacePage() {
     return (categoryAttributes[key] || fallback[key] || "").trim();
   };
 
-  const filtered = useMemo(() => products.filter(p => {
-    const matchesPromo = !promo || promo.filter(p);
-    return matchesPromo;
-  }), [products, promo]);
+  const filtered = useMemo(() => products, [products]);
 
   const visualFallbackProducts = useMemo(() => {
     if (!isVisualSearch || filtered.length > 0) return [];
@@ -622,18 +605,6 @@ export default function MarketplacePage() {
                     ? t("marketplace.categoryDescription", { category: selectedCategoryRecord.name })
                     : t("marketplace.defaultDescription")}
               </p>
-              {promo && (
-                <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-[#E8E8E8] dark:border-[#222222] bg-[#F8F3F0] dark:bg-[#1C1C1E] px-4 py-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Sparkles className="h-4 w-4 text-[#111111] dark:text-[#FAF5F2] shrink-0" />
-                        <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("marketplace.promotion")}</span>
-                    <span className="text-[#111111] dark:text-[#FAF5F2]">{promo.label}</span>
-                  </div>
-                  <button onClick={clearPromo} aria-label={t("marketplace.clearPromotion")} className="inline-flex h-9 w-9 items-center justify-center rounded-md text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#E8E8E8] dark:hover:bg-[#2A2A2D] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors">
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              )}
             </AnimatedSection>
             <AnimatedSection variant="fade-up" delay={50}>
               <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">

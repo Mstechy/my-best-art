@@ -222,3 +222,15 @@ Checkout previously called the single-seller order writer once per seller from t
 - Paystack still receives the resulting order ids only after the complete batch succeeds.
 
 Apply `20261019006000_atomic_marketplace_checkout.sql` after the current checkout migrations before testing multi-seller carts in staging.
+
+## Seventh remaining-gap implementation: truthful Flash Deals
+
+The Flash Deal surface had two confirmed sources of misleading content: the homepage rendered the section while its feed was still loading, and the homepage/search SQL treated any seller compare-at discount as a Flash Deal. Static campaign query links (`summer20` and `hot50`) also created promotion-like routes without a published campaign record.
+
+The fix keeps ordinary compare-at pricing visible as a normal product discount, but requires a Flash Deal to be explicitly scheduled and active:
+
+- `flash_deal_status = 'active'`
+- the current time is between `flash_deal_start_at` and `flash_deal_end_at`
+- the product is active and approved
+
+The homepage rail and hot-deal tile now render only when the real feed contains items. The marketplace Flash Deals sort uses the same server-side eligibility rule, and the old fake campaign routes were removed. The migration is `20261020000000_flash_deals_require_explicit_schedule.sql`; apply it after the earlier homepage and search migrations before production verification. Until it is applied, the deployed database can still serve the legacy compare-at fallback.

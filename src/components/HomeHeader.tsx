@@ -12,7 +12,7 @@ interface HomeHeaderProps {
 }
 
 const SHORTCUTS = [
-  { icon: Flame, label: "Deals", href: "/marketplace?promo=summer20" },
+  { icon: Flame, label: "Deals", href: "/marketplace?sort=flash_deals" },
   { icon: LayoutGrid, label: "Categories", href: "/categories" },
   { icon: Tag, label: "Promotions", href: "/marketplace?sort=best_sellers" },
   { icon: Zap, label: "New Drops", href: "/marketplace?sort=newest" },

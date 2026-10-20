@@ -16,7 +16,7 @@ export default function SiteFooter() {
               <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.allProducts")}</Link></li>
               <li><Link to="/categories" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.categories")}</Link></li>
               <li><Link to="/marketplace?sort=best_sellers" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.topSellers")}</Link></li>
-              <li><Link to="/marketplace?promo=summer20" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.dealsDiscounts")}</Link></li>
+              <li><Link to="/marketplace?sort=flash_deals" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.dealsDiscounts")}</Link></li>
             </ul>
           </div>
           <div>

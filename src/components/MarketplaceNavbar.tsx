@@ -243,7 +243,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
           {/* Horizontal nav links */}
           <div className="hidden lg:flex items-center gap-6 text-[13px] font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 shrink-0">
-            <Link to="/marketplace?promo=summer20" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.dailyDeals")}</Link>
+            <Link to="/marketplace?sort=flash_deals" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.dailyDeals")}</Link>
             <Link to="/marketplace?sort=best_sellers" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.topSellers")}</Link>
             <Link to="/marketplace?sort=newest" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.newDrops")}</Link>
           </div>
