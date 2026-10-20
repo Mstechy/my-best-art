@@ -780,7 +780,10 @@ const PRODUCT_TYPES_BY_CATEGORY: Record<string, string[]> = {
   computers: ["laptops", "networking", "computer-parts"],
   gaming: ["gaming-consoles"],
   "home-appliances": ["home-appliances"],
-  "phones-accessories": ["mobile-phones", "phones", "tablets", "smart-watches", "audio", "electronics-accessories"],
+  // `phones` is retained in the config for existing saved listings, but new
+  // listings must use the canonical `mobile-phones` type so search, filters,
+  // analytics, and moderation share one phone identity.
+  "phones-accessories": ["mobile-phones", "tablets", "smart-watches", "audio", "electronics-accessories"],
   clothing: ["t-shirts", "mens-clothing", "womens-clothing", "kids-clothing", "underwear", "sportswear", "traditional-wear"],
   bags: ["bags", "wallets"],
   glasses: ["glasses", "sunglasses"],

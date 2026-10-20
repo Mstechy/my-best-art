@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,10 +29,18 @@ import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
 
-import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
+import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, deriveVariantAttributes, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
 import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
 import { formatModerationAge } from "@/lib/moderationQueue";
 import { clearListingCloudDraft, loadListingCloudDraft, saveListingCloudDraft } from "@/lib/listingCloudDraft";
+
+const LISTING_STEPS = [
+  { value: "basic", label: "Basics", nextLabel: "Options" },
+  { value: "variants", label: "Options", nextLabel: "Details" },
+  { value: "specs", label: "Details", nextLabel: "Photos" },
+  { value: "media", label: "Photos", nextLabel: "Review" },
+  { value: "preview", label: "Review", nextLabel: "Submit" },
+] as const;
 
 /**
  * Apply the vendor upload rules to picked files.
@@ -918,8 +927,9 @@ export default function SellerProducts() {
     // written back unchanged, so editing an older listing never wipes it.
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
+    const derivedPhoneAttributes = isPhoneListing ? deriveVariantAttributes(variantRows) : {};
     const cleanCategoryAttributes = Object.fromEntries(
-      Object.entries(categoryAttributes)
+      Object.entries({ ...categoryAttributes, ...derivedPhoneAttributes })
         .map(([key, value]) => [key, value.trim()])
         .filter(([, value]) => value)
     );
@@ -929,6 +939,27 @@ export default function SellerProducts() {
     const selectedCategory = categories.find(c => c.id === categoryId);
     const selectedConfig = findCategoryConfig(selectedCategory);
     const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
+
+    // If a phone uses SKU-level storage or colour, every SKU must carry that
+    // value. Otherwise buyers can select a row whose displayed specification
+    // does not match the actual inventory.
+    if (isPhoneListing && variantRows.length > 0) {
+      const hasStorageVariants = variantRows.some((row) => row.optionName.trim().toLowerCase() === "storage");
+      const hasColourVariants = variantRows.some((row) => row.color.trim());
+      const incompleteStorage = hasStorageVariants && variantRows.some((row) => (
+        row.optionName.trim().toLowerCase() !== "storage" || !row.optionValue.trim()
+      ));
+      const incompleteColour = hasColourVariants && variantRows.some((row) => !row.color.trim());
+      if (incompleteStorage || incompleteColour) {
+        toast({
+          title: "Complete phone options",
+          description: "Every phone SKU must use the same storage option structure and include a colour when colour variants are used.",
+          variant: "destructive",
+        });
+        setFormTab("variants");
+        return;
+      }
+    }
     // The old "at least 3 specifications" gate was an arbitrary count that sat in
     // front of the real one and hard-blocked publishing with a toast, even for a
     // product type that only defines two fields. The required-field check below
@@ -1026,7 +1057,9 @@ export default function SellerProducts() {
       const { error } = await supabase.from("products").update(productData as never).eq("id", productId);
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
     } else {
-      const { data, error } = await supabase.from("products").insert({ ...productData, status: "active" } as never).select("id").single();
+      // New listings stay private drafts until variants and media finish. This
+      // prevents a partial upload from becoming an active moderation item.
+      const { data, error } = await supabase.from("products").insert({ ...productData, status: "draft" } as never).select("id").single();
       if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); setSaving(false); return; }
       productId = (data as { id: string }).id;
       setSavedProductId((data as { id: string }).id);
@@ -1128,9 +1161,25 @@ export default function SellerProducts() {
         }
         variantRowsWithImages.push({ ...row, imageUrl });
       }
-      const { error: removeVariantsError } = await supabase.from("product_variants").delete().eq("product_id", productId);
-      const { error: addVariantsError } = variantRows.length ? await supabase.from("product_variants").insert(variantRowsWithImages.map((row, sort_order) => ({ product_id: productId, option_values: { ...(row.size.trim() ? { size: row.size.trim() } : {}), ...(row.color.trim() ? { color: row.color.trim() } : {}), ...((row.optionName || "").trim() && (row.optionValue || "").trim() ? { [(row.optionName || "").trim().toLowerCase().replace(/\s+/g, "_")]: (row.optionValue || "").trim() } : {}) }, sku: row.sku.trim() || null, price: row.price ? Number(row.price) : null, stock_quantity: Number(row.stock), image_url: row.imageUrl || null, sort_order }))) : { error: null };
-      if (removeVariantsError || addVariantsError) { toast({ title: "Could not save variants", description: removeVariantsError?.message || addVariantsError?.message, variant: "destructive" }); setSaving(false); return; }
+      const variantPayload = variantRowsWithImages.map((row, sort_order) => ({
+        option_values: {
+          ...(row.size.trim() ? { size: row.size.trim() } : {}),
+          ...(row.color.trim() ? { color: row.color.trim() } : {}),
+          ...((row.optionName || "").trim() && (row.optionValue || "").trim()
+            ? { [(row.optionName || "").trim().toLowerCase().replace(/\s+/g, "_")]: (row.optionValue || "").trim() }
+            : {}),
+        },
+        sku: row.sku.trim() || null,
+        price: row.price ? Number(row.price) : null,
+        stock_quantity: Number(row.stock),
+        image_url: row.imageUrl || null,
+        sort_order,
+      }));
+      const { error: variantsError } = await (supabase as any).rpc("replace_product_variants", {
+        p_product_id: productId,
+        p_variants: variantPayload,
+      });
+      if (variantsError) { toast({ title: "Could not save variants", description: variantsError.message, variant: "destructive" }); setSaving(false); return; }
     }
 
     // Upload description photos and save as JSONB in products.description_images
@@ -1270,6 +1319,31 @@ export default function SellerProducts() {
       return;
     }
 
+    if (isPhoneListing && (condition === "used" || condition === "refurbished")) {
+      const evidenceFields = ["carrierStatus", "activationLockStatus"]
+        .filter((key) => !cleanCategoryAttributes[key]?.trim());
+      if (evidenceFields.length > 0 || imageItems.length < 3) {
+        toast({
+          title: "Add used-phone evidence",
+          description: `${evidenceFields.length > 0 ? "State the carrier/network lock and account-lock status. " : ""}${imageItems.length < 3 ? "Add at least three photos showing the device, screen, and condition." : ""}`,
+          variant: "destructive",
+        });
+        setFormTab(evidenceFields.length > 0 ? "specs" : "media");
+        return;
+      }
+    }
+
+    // A new product becomes active only after all required media and variant
+    // writes have completed. Approval still controls public visibility.
+    if (!editingProduct && productId) {
+      const { error: activateError } = await supabase.from("products").update({ status: "active" } as never).eq("id", productId);
+      if (activateError) {
+        setSaving(false);
+        toast({ title: "Could not submit listing", description: activateError.message, variant: "destructive" });
+        return;
+      }
+    }
+
     toast({
       title: editingProduct ? "Product updated" : "Product submitted for approval",
       description: editingProduct ? undefined : "Your product will be visible on the marketplace once approved by admin.",
@@ -1287,6 +1361,67 @@ export default function SellerProducts() {
     setListingMinimized(false);
     setSaving(false);
     fetchProducts();
+  };
+
+  const handleNextStep = () => {
+    const stepIndex = LISTING_STEPS.findIndex((step) => step.value === formTab);
+    if (stepIndex < 0 || stepIndex >= LISTING_STEPS.length - 1) return;
+
+    if (formTab === "basic") {
+      if (!categoryId || !productTypeKey || !title.trim()) {
+        toast({ title: "Complete the product identity", description: "Choose a category, product type, and title before moving on.", variant: "destructive" });
+        return;
+      }
+      if (description.trim().length < 80) {
+        setDescriptionError("Description must be at least 80 characters.");
+        toast({ title: "Add product details", description: "Write at least 80 characters so buyers understand the product.", variant: "destructive" });
+        return;
+      }
+      if (variantRows.length === 0 && (!Number.isFinite(Number(price)) || Number(price) <= 0)) {
+        toast({ title: "Add a valid price", description: "Use a base price now, or continue to Options and create SKU prices.", variant: "destructive" });
+        return;
+      }
+    }
+
+    if (formTab === "variants" && variantRows.length > 0) {
+      const invalid = variantRows.some((row) => (
+        (!row.size.trim() && !row.color.trim() && !row.optionValue.trim())
+        || Boolean(row.optionName.trim()) !== Boolean(row.optionValue.trim())
+        || !Number.isFinite(Number(row.price)) || Number(row.price) <= 0
+        || !Number.isInteger(Number(row.stock)) || Number(row.stock) < 0
+      ));
+      if (invalid) {
+        toast({ title: "Complete the SKU rows", description: "Every option needs a value, price above zero, and whole-number stock before continuing.", variant: "destructive" });
+        return;
+      }
+    }
+
+    if (formTab === "specs") {
+      const effective = { ...categoryAttributes, ...phoneOptionAttributes };
+      const missing = [...requiredSpecificationKeys].filter((key) => !effective[key]?.trim());
+      if (missing.length > 0) {
+        toast({ title: "Complete the required details", description: "Finish the fields marked * before adding photos.", variant: "destructive" });
+        return;
+      }
+    }
+
+    if (formTab === "media" && imageItems.length === 0) {
+      toast({ title: "Add a main product photo", description: "At least one clear product image is required before review.", variant: "destructive" });
+      return;
+    }
+
+    setFormTab(LISTING_STEPS[stepIndex + 1].value);
+  };
+
+  const handleTabChange = (value: string) => {
+    const targetIndex = LISTING_STEPS.findIndex((step) => step.value === value);
+    const currentIndex = LISTING_STEPS.findIndex((step) => step.value === formTab);
+    if (targetIndex < 0 || currentIndex < 0) return;
+    if (targetIndex <= currentIndex) {
+      setFormTab(value);
+      return;
+    }
+    if (targetIndex === currentIndex + 1) handleNextStep();
   };
 
   const toggleStatus = async (product: Product) => {
@@ -1380,6 +1515,14 @@ export default function SellerProducts() {
   const isPhoneListing = selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones";
   const primaryVariationDetails = variationTypeDetails(variantPrimaryOption);
   const hasVariantRows = variantRows.length > 0;
+  const phoneOptionAttributes = useMemo(
+    () => isPhoneListing ? deriveVariantAttributes(variantRows) : {},
+    [isPhoneListing, variantRows],
+  );
+  const effectiveCategoryAttributes = useMemo(
+    () => ({ ...categoryAttributes, ...phoneOptionAttributes }),
+    [categoryAttributes, phoneOptionAttributes],
+  );
   const showLegacySizeColumn = variantRows.some((row) => Boolean(row.size.trim()));
   const showColourColumn = variantRows.some((row) => Boolean(row.color.trim())) || Boolean(variantColorValues.trim());
   const variantRowsWithPrices = variantRows.filter((row) => Number.isFinite(Number(row.price)) && Number(row.price) > 0);
@@ -1399,12 +1542,13 @@ export default function SellerProducts() {
     shippingInfo,
     price,
     stockQuantity,
-    categoryAttributes,
+    categoryAttributes: effectiveCategoryAttributes,
     requiredSpecificationKeys: [...requiredSpecificationKeys],
     imageCount: imageItems.length,
     variantRows,
   });
   const outstandingRequirements = listingReadiness.filter((item) => !item.complete);
+  const currentStepIndex = Math.max(0, LISTING_STEPS.findIndex((step) => step.value === formTab));
   const listingQualityWarnings = buildListingQualityWarnings({
     categoryId,
     productTypeKey,
@@ -1414,7 +1558,7 @@ export default function SellerProducts() {
     shippingInfo,
     price,
     stockQuantity,
-    categoryAttributes,
+    categoryAttributes: effectiveCategoryAttributes,
     requiredSpecificationKeys: [...requiredSpecificationKeys],
     imageCount: imageItems.length,
     variantRows,
@@ -1482,7 +1626,7 @@ export default function SellerProducts() {
                 )}
               </DialogHeader>
 
-              <Tabs value={formTab} onValueChange={setFormTab} className="mt-4">
+              <Tabs value={formTab} onValueChange={handleTabChange} className="mt-4">
                 <div className="mb-3 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
                   <span className="font-semibold text-foreground">Simple listing path:</span> 1. Describe the product &rarr; 2. Add options and exact SKU prices &rarr; 3. Fill the requested details &rarr; 4. Add photos &rarr; 5. Review and publish. Fields marked <span className="font-semibold text-foreground">*</span> are required.
                 </div>
@@ -1889,6 +2033,22 @@ export default function SellerProducts() {
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">Leave empty to ship worldwide.</p>
                   </div>
+                  <div className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                    <p className="font-semibold">Shipping preview</p>
+                    <p className="mt-1 text-xs leading-relaxed">
+                      Checkout uses your seller shipping policy for the fee and delivery estimate. This listing controls the countries it can ship to; it does not accept a made-up delivery promise.
+                    </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                      <span>Destinations: {shipsTo.length === 0 ? "Worldwide" : `${shipsTo.length} selected`}</span>
+                      <Link
+                        to="/seller/store"
+                        onClick={() => setDialogOpen(false)}
+                        className="font-semibold underline underline-offset-2 hover:no-underline"
+                      >
+                        Configure store shipping policy
+                      </Link>
+                    </div>
+                  </div>
                   {/* Key features are no longer collected in the form. The seller can
                       put the same highlights in the description above, which is
                       always required and always rendered on the product page.
@@ -2235,10 +2395,21 @@ export default function SellerProducts() {
               )}
 
               <div className="sticky bottom-0 z-10 -mx-6 -mb-6 mt-4 flex flex-col gap-2 border-t border-border bg-background/95 p-4 backdrop-blur sm:flex-row sm:justify-end">
+                {currentStepIndex > 0 && (
+                  <Button type="button" variant="outline" onClick={() => setFormTab(LISTING_STEPS[currentStepIndex - 1].value)} disabled={saving} className="w-full sm:w-auto">
+                    Back
+                  </Button>
+                )}
                 {!editingProduct && <Button type="button" variant="outline" onClick={minimizeNewListing} disabled={saving} className="w-full sm:w-auto">Save draft and exit</Button>}
-                <Button onClick={handleSave} disabled={saving || outstandingRequirements.length > 0} className="w-full gradient-seller text-primary-foreground sm:w-auto">
-                  {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
-                </Button>
+                {formTab === "preview" ? (
+                  <Button onClick={handleSave} disabled={saving || outstandingRequirements.length > 0} className="w-full gradient-seller text-primary-foreground sm:w-auto">
+                    {saving ? "Saving..." : editingProduct ? "Update Product" : "Submit for Approval"}
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={handleNextStep} disabled={saving} className="w-full gradient-seller text-primary-foreground sm:w-auto">
+                    Next: {LISTING_STEPS[currentStepIndex]?.nextLabel}
+                  </Button>
+                )}
               </div>
             </DialogContent>
           </Dialog>

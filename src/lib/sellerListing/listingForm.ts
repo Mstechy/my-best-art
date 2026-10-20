@@ -76,6 +76,24 @@ function optionColorVariantKey(color: string, optionName: string, optionValue: s
   return `${color.trim().toLowerCase()}|${optionName.trim().toLowerCase()}|${optionValue.trim().toLowerCase()}`;
 }
 
+/** Values entered in the SKU matrix are authoritative for variant-backed attributes. */
+function uniqueValues(values: string[]): string[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function deriveVariantAttributes(rows: readonly VariantDraft[]): { storage?: string; color?: string } {
+  const storage = uniqueValues(
+    rows
+      .filter((row) => row.optionName.trim().toLowerCase() === "storage")
+      .map((row) => row.optionValue),
+  );
+  const colors = uniqueValues(rows.map((row) => row.color));
+  return {
+    ...(storage.length > 0 ? { storage: storage.join(", ") } : {}),
+    ...(colors.length > 0 ? { color: colors.join(", ") } : {}),
+  };
+}
+
 export type { UploadState, ImageMediaItem, DescriptionImageItem, VideoMediaItem, VariantDraft, ProductFormDraft };
 export {
   MAX_PRODUCT_IMAGES,
@@ -89,4 +107,5 @@ export {
   splitVariantValues,
   variantValueKey,
   optionColorVariantKey,
+  deriveVariantAttributes,
 };
