@@ -33,6 +33,7 @@ function sortOldestFirst(items: QueueItem[]) {
 export default function AdminOperationsQueue() {
   const [items, setItems] = useState<QueueItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -45,6 +46,11 @@ export default function AdminOperationsQueue() {
       ]);
 
       if (cancelled) return;
+      if (productsResult.error || sellersResult.error || disputesResult.error) {
+        setError("Some operations could not be loaded. The empty state is not a confirmation that all work is clear.");
+        setLoading(false);
+        return;
+      }
       const queue: QueueItem[] = [];
       (productsResult.data ?? []).forEach((product: any) => {
         const changesRequested = Boolean(product.moderation_reason?.trim());
@@ -71,7 +77,12 @@ export default function AdminOperationsQueue() {
         <Clock className="h-5 w-5 text-muted-foreground" />
       </CardHeader>
       <CardContent>
-        {loading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading operations...</div> : items.length === 0 ? (
+        {loading ? <div className="py-8 text-center text-sm text-muted-foreground">Loading operations...</div> : error ? (
+          <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-4" role="alert">
+            <p className="text-sm text-muted-foreground">{error}</p>
+            <Button type="button" variant="outline" size="sm" className="mt-3" onClick={() => window.location.reload()}>Try again</Button>
+          </div>
+        ) : items.length === 0 ? (
           <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4"><CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-600" /><p className="text-sm text-muted-foreground">No unresolved seller, product, or dispute work right now.</p></div>
         ) : <div className="space-y-3">{items.map((item) => { const meta = kindMeta[item.kind]; const Icon = meta.icon; return (
           <div key={item.id} className="rounded-xl border border-border/60 p-3"><div className="flex items-start justify-between gap-3"><div className="flex min-w-0 items-start gap-3"><div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted"><Icon className="h-4 w-4 text-muted-foreground" /></div><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-foreground">{item.title}</p><Badge className={meta.className}>{meta.label}</Badge></div><p className="mt-1 text-xs text-muted-foreground"><span className="font-medium text-foreground">Why:</span> {item.reason}</p><p className="mt-1 text-xs text-muted-foreground"><span className="font-medium text-foreground">Next:</span> {item.nextAction}</p><p className="mt-1 text-[11px] text-muted-foreground">Owner: {item.owner} / {formatModerationAge(item.createdAt)}</p></div></div><Link to={item.href} className="shrink-0"><Button size="sm" variant="outline" className="gap-1">Open <ArrowRight className="h-3.5 w-3.5" /></Button></Link></div></div>

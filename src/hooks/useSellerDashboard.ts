@@ -42,11 +42,12 @@ export function useSellerProducts(sellerId: string | undefined) {
     [...supabaseKeys.table("products"), sellerId ?? ""],
     async () => {
       if (!sellerId) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("products")
         .select("id,title,price,status,is_approved,average_rating,review_count,created_at,updated_at,stock_quantity,low_stock_threshold,moderation_reason,moderation_next_action,moderation_owner_id,moderation_updated_at")
         .eq("seller_id", sellerId)
         .order("created_at", { ascending: false });
+      if (error) throw error;
       return (data ?? []) as unknown as SellerProduct[];
     },
     { enabled: !!sellerId, staleTime: 2 * 60 * 1000 },
@@ -58,11 +59,12 @@ export function usePendingApprovalCount(sellerId: string | undefined) {
     [...supabaseKeys.table("products"), "pending", sellerId ?? ""],
     async () => {
       if (!sellerId) return 0;
-      const { count } = await supabase
+      const { count, error } = await supabase
         .from("products")
         .select("id", { count: "exact", head: true })
         .eq("seller_id", sellerId)
         .eq("is_approved", false);
+      if (error) throw error;
       return count ?? 0;
     },
     { enabled: !!sellerId, staleTime: 2 * 60 * 1000 },
@@ -74,18 +76,19 @@ export function useSellerRecentOrders(userId: string | undefined) {
     [...supabaseKeys.table("orders"), userId ?? ""],
     async () => {
       if (!userId) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .select("id,status,total_amount,created_at,buyer_id")
         .eq("seller_id", userId)
         .order("created_at", { ascending: false })
         .limit(20);
-      if (!data) return [];
+      if (error) throw error;
       const rows = data as unknown as Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string }>;
       const buyerIds = [...new Set(rows.map((row) => row.buyer_id).filter(Boolean))];
-      const { data: buyers } = buyerIds.length
+      const { data: buyers, error: buyersError } = buyerIds.length
         ? await supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds)
-        : { data: [] as Array<{ user_id: string; full_name: string | null }> };
+        : { data: [] as Array<{ user_id: string; full_name: string | null }>, error: null };
+      if (buyersError) throw buyersError;
       const buyerNames = new Map((buyers ?? []).map((buyer) => [buyer.user_id, buyer.full_name]));
       return rows.map((row) => ({
         id: row.id,
@@ -105,11 +108,12 @@ export function useSellerRevenue(userId: string | undefined) {
     [...supabaseKeys.table("orders"), "revenue", userId ?? ""],
     async () => {
       if (!userId) return 0;
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .select("total_amount,status")
         .eq("seller_id", userId)
         .eq("status", "delivered");
+      if (error) throw error;
       return ((data ?? []) as { total_amount: number }[]).reduce((s, r) => s + (r.total_amount || 0), 0);
     },
     { enabled: !!userId, staleTime: 5 * 60 * 1000 },
@@ -126,15 +130,14 @@ export function useSellerWeeklyRevenue(userId: string | undefined) {
       start.setDate(end.getDate() - 6);
       start.setHours(0, 0, 0, 0);
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .select("total_amount,created_at,status")
         .eq("seller_id", userId)
         .eq("status", "delivered")
         .gte("created_at", start.toISOString())
         .lte("created_at", end.toISOString());
-
-      if (!data) return [];
+      if (error) throw error;
 
       const byDay = new Map<string, number>();
       for (let i = 6; i >= 0; i--) {
@@ -235,7 +238,8 @@ export function useSellerOrderCounts(sellerId: string | undefined) {
       const counts = await Promise.all(statuses.map(async (status) => {
         let query = supabase.from("orders").select("id", { count: "exact", head: true }).eq("seller_id", sellerId);
         if (status !== "all") query = query.eq("status", status as Exclude<TabStatus, "all">);
-        const { count } = await query;
+        const { count, error } = await query;
+        if (error) throw error;
         return [status, count ?? 0] as const;
       }));
       const byStatus = Object.fromEntries(counts);
@@ -313,13 +317,14 @@ export function useSellerDashboard(userId: string | undefined) {
   const products = useSellerProducts(userId);
   const pendingApproval = usePendingApprovalCount(userId);
   const recentOrders = useSellerRecentOrders(userId);
+  const orderCounts = useSellerOrderCounts(userId);
   const revenue = useSellerRevenue(userId);
   const weekly = useSellerWeeklyRevenue(userId);
 
   const stats = useMemo(() => {
     const all = products.data ?? [];
     const pending = pendingApproval.data ?? 0;
-    const pendingOrders = (recentOrders.data ?? []).filter((o: RecentOrder) => o.status === "pending").length;
+    const pendingOrders = orderCounts.data?.byStatus.pending ?? 0;
     const activeProducts = all.filter((product: SellerProduct) => product.status === "active");
     const outOfStock = activeProducts.filter((product: SellerProduct) => product.stock_quantity <= 0).length;
     const lowStock = activeProducts.filter((product: SellerProduct) => product.stock_quantity > 0 && product.stock_quantity <= (product.low_stock_threshold ?? 5)).length;
@@ -331,9 +336,10 @@ export function useSellerDashboard(userId: string | undefined) {
       lowStock,
       outOfStock,
     } as DashboardStats;
-  }, [products.data, pendingApproval.data, recentOrders.data, revenue.data]);
+  }, [products.data, pendingApproval.data, orderCounts.data, recentOrders.data, revenue.data]);
 
-  const loading = products.isLoading || pendingApproval.isLoading || recentOrders.isLoading || revenue.isLoading || weekly.isLoading;
+  const loading = products.isLoading || pendingApproval.isLoading || recentOrders.isLoading || orderCounts.isLoading || revenue.isLoading || weekly.isLoading;
+  const error = products.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? revenue.error ?? weekly.error ?? null;
 
-  return { products: products.data ?? [], stats, loading, recentOrders: recentOrders.data ?? [], weekly: weekly.data ?? [] };
+  return { products: products.data ?? [], stats, loading, error, orderCounts: orderCounts.data ?? { total: 0, byStatus: {} }, recentOrders: recentOrders.data ?? [], weekly: weekly.data ?? [] };
 }

@@ -20,9 +20,11 @@ export default function SellerDashboard() {
   const [isApproved, setIsApproved] = useState<boolean>(profile?.is_approved ?? false);
   const [checkingApproval, setCheckingApproval] = useState<boolean>(profile?.is_approved === undefined);
 
-  const { products, stats, loading: dashboardLoading, recentOrders, weekly } = useSellerDashboard(user?.id);
+  const { products, stats, loading: dashboardLoading, error: dashboardError, orderCounts, recentOrders, weekly } = useSellerDashboard(user?.id);
 
-  const pendingOrdersCount = useMemo(() => (recentOrders || []).filter((o) => o.status === "pending" || o.status === "processing").length, [recentOrders]);
+  const pendingOrdersCount = useMemo(() => (
+    Number(orderCounts.byStatus.pending || 0) + Number(orderCounts.byStatus.processing || 0)
+  ), [orderCounts]);
   const activeProductCount = useMemo(() => products.filter((product) => product.status === "active").length, [products]);
   const inventoryUnits = useMemo(() => products.reduce((total, product) => total + Math.max(0, Number(product.stock_quantity) || 0), 0), [products]);
   const ratedProducts = useMemo(() => products.filter((product) => Number(product.review_count) > 0), [products]);
@@ -143,6 +145,16 @@ export default function SellerDashboard() {
     { label: "Run Ad", icon: Megaphone, href: "/seller/ads", gradient: "gradient-admin", desc: "Boost visibility" },
     { label: "Withdraw", icon: Wallet, href: "/seller/wallet", gradient: "gradient-primary", desc: "Cash out earnings" },
   ];
+
+  if (dashboardError) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6" role="alert">
+        <h1 className="font-display text-lg font-bold text-foreground">Seller dashboard unavailable</h1>
+        <p className="mt-2 text-sm text-muted-foreground">We could not load the latest store data. Your listings and orders have not been changed.</p>
+        <Button type="button" variant="outline" className="mt-4" onClick={() => window.location.reload()}>Try again</Button>
+      </div>
+    );
+  }
 
   if (showChecking) {
     return (

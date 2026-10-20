@@ -25,11 +25,16 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState({ sellers: 0, buyers: 0, totalUsers: 0, products: 0, orders: 0, disputes: 0, revenue: 0, pendingProducts: 0, pendingSellers: 0 });
   const [recentOrders, setRecentOrders] = useState<Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string; seller_id: string; buyer_name?: string; seller_name?: string }>>([]);
   const [alerts, setAlerts] = useState<SystemAlert[]>([]);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
 
 
   useEffect(() => {
     const fetchStats = async () => {
-      const { data } = await supabase.rpc("admin_platform_counts");
+      const { data, error } = await supabase.rpc("admin_platform_counts");
+      if (error) {
+        setDashboardError("Platform totals could not be loaded. The values below may be incomplete.");
+        return;
+      }
       const row = Array.isArray(data) ? data[0] : data;
       if (row) {
         setStats({
@@ -48,14 +53,22 @@ export default function AdminDashboard() {
 
     const fetchRecentOrders = async () => { 
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("orders")
         .select("id, status, total_amount, created_at, buyer_id, seller_id")
         .order("created_at", { ascending: false })
         .limit(5);
+      if (error) {
+        setDashboardError("Recent orders could not be loaded. The list may be incomplete.");
+        return;
+      }
       if (data && data.length > 0) {
         const userIds = [...new Set([...data.map(o => o.buyer_id), ...data.map(o => o.seller_id)])];
-        const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+        const { data: profiles, error: profilesError } = await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds);
+        if (profilesError) {
+          setDashboardError("Recent order contacts could not be loaded. The list may be incomplete.");
+          return;
+        }
         const map: Record<string, string> = {};
         profiles?.forEach(p => { map[p.user_id] = p.full_name || "Unknown"; });
         setRecentOrders(data.map(o => ({ ...o, buyer_name: map[o.buyer_id] || "Unknown", seller_name: map[o.seller_id] || "Unknown" })));
@@ -63,13 +76,17 @@ export default function AdminDashboard() {
     };
 
     const fetchAlerts = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
 
         .from("system_alerts")
         .select("id, level, source, message, created_at")
         .eq("resolved", false)
         .order("created_at", { ascending: false })
         .limit(20);
+      if (error) {
+        setDashboardError("System alerts could not be loaded.");
+        return;
+      }
       setAlerts((data ?? []) as SystemAlert[]);
     };
 
@@ -145,6 +162,13 @@ export default function AdminDashboard() {
           )}
         </div>
       </AnimatedSection>
+
+      {dashboardError && (
+        <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between" role="alert">
+          <p className="text-sm text-muted-foreground">{dashboardError}</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => window.location.reload()}>Try again</Button>
+        </div>
+      )}
 
       {alerts.length > 0 && (
         <AnimatedSection variant="fade-up" delay={20}>

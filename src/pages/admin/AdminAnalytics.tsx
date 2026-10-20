@@ -63,22 +63,30 @@ export default function AdminAnalytics() {
   const [dailyTraffic, setDailyTraffic] = useState<TrafficDay[]>([]);
   const [topClickedProducts, setTopClickedProducts] = useState<ClickedProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
       const weeks = weeksBack(12);
       const since = weeks[0].toISOString();
 
-      const [usersRes, productsRes, ordersRes, sellersRes, ordersListRes, profilesListRes, itemsRes, trafficRes] = await Promise.all([
+      const [usersRes, productsRes, ordersRes, sellersRes, ordersListRes, profilesListRes, topProductsRes, trafficRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("orders").select("id", { count: "exact", head: true }),
         supabase.from("user_roles").select("id", { count: "exact", head: true }).eq("role", "seller"),
         supabase.from("orders").select("created_at, total_amount, status").gte("created_at", since),
         supabase.from("profiles").select("created_at").gte("created_at", since),
-        supabase.from("order_items").select("quantity, products(title)").limit(500),
+        (supabase.rpc as any)("admin_top_products", { p_limit: 6 }),
         (supabase.rpc as any)("get_platform_traffic_analytics", { p_days: 30 }),
       ]);
+
+      const failedQuery = [usersRes, productsRes, ordersRes, sellersRes, ordersListRes, profilesListRes, topProductsRes, trafficRes].find((result) => result.error);
+      if (failedQuery?.error) {
+        setLoadError("Analytics data could not be loaded completely. No partial totals are being shown.");
+        setLoading(false);
+        return;
+      }
 
       setStats({
         users: usersRes.count || 0,
@@ -97,17 +105,12 @@ export default function AdminAnalytics() {
       const profiles = (profilesListRes.data || []) as { created_at: string }[];
       setUsersSeries(bucketize(profiles, weeks, "count"));
 
-      // Top products by quantity sold
-      const items = (itemsRes.data || []) as any[];
-      const agg = new Map<string, number>();
-      items.forEach(it => {
-        const title = it.products?.title || "Unknown";
-        agg.set(title, (agg.get(title) || 0) + (Number(it.quantity) || 0));
-      });
-      const top = [...agg.entries()]
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 6)
-        .map(([title, total]) => ({ title: title.length > 22 ? title.slice(0, 20) + "…" : title, total }));
+      // Top products are aggregated server-side from delivered orders.
+      const top = ((topProductsRes.data || []) as Array<{ title: string | null; total: number | string }>)
+        .map(({ title, total }) => {
+          const label = title || "Unknown";
+          return { title: label.length > 22 ? `${label.slice(0, 20)}…` : label, total: Number(total) || 0 };
+        });
       setTopProducts(top);
 
       const trafficData = (trafficRes.data || {}) as {
@@ -153,6 +156,16 @@ export default function AdminAnalytics() {
     borderRadius: 8,
     fontSize: 12,
   };
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-destructive/30 bg-destructive/5 p-6" role="alert">
+        <h1 className="font-display text-lg font-bold text-foreground">Analytics unavailable</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{loadError}</p>
+        <button type="button" className="mt-4 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground" onClick={() => window.location.reload()}>Try again</button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
