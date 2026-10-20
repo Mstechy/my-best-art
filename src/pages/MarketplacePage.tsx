@@ -302,13 +302,43 @@ export default function MarketplacePage() {
         });
         if (error) throw error;
         const ids = (matches || []).map((m: any) => m.product_id);
-        if (!ids.length) {
-          return { products: [], hasMore: false };
+        let visuallyMatchedProducts: Product[] = [];
+        if (ids.length) {
+          const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
+          const byId = new Map((productsData || []).map((p: any) => [p.id, p as unknown as Product]));
+          visuallyMatchedProducts = ids.map((id: string) => byId.get(id)).filter(Boolean) as Product[];
         }
-        const { data: productsData } = await supabase.from("products").select("*, product_images(*)").in("id", ids);
-        const byId = new Map((productsData || []).map((p: any) => [p.id, p as unknown as Product]));
-        const ordered = ids.map((id: string) => byId.get(id)).filter(Boolean) as Product[];
-        return { products: ordered, hasMore: false };
+
+        // Vision-generated terms are a recall path for a different photo,
+        // angle, crop, lighting, or background. Direct image matches stay
+        // first; semantic visual matches fill the remaining slots.
+        let semanticProducts: Product[] = [];
+        if (search.trim()) {
+          const { data: semanticData, error: semanticError } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
+            p_query: search.trim(),
+            p_category_id: selectedCategory || null,
+            p_country: shipsTo === "all" ? null : shipsTo,
+            p_min_price: filters.minPrice || null,
+            p_max_price: filters.maxPrice < 10000 ? filters.maxPrice : null,
+            p_min_rating: filters.minRating || null,
+            p_in_stock_only: filters.inStockOnly || null,
+            p_condition: filters.condition === "any" ? null : filters.condition,
+            p_attribute_filters: filters.categoryAttributes || {},
+            p_sort: "relevance",
+            p_limit: CATALOGUE_PAGE_SIZE,
+            p_cursor_relevance: null,
+            p_cursor_created_at: null,
+            p_cursor_id: null,
+            p_seed: null,
+          });
+          if (semanticError) throw semanticError;
+          const parsedSemantic = typeof semanticData === "string" ? JSON.parse(semanticData) : semanticData;
+          semanticProducts = await hydrateVariantMetadata((parsedSemantic?.products || []) as Product[]);
+        }
+
+        const seen = new Set(visuallyMatchedProducts.map(product => product.id));
+        const merged = [...visuallyMatchedProducts, ...semanticProducts.filter(product => !seen.has(product.id))];
+        return { products: merged.slice(0, CATALOGUE_PAGE_SIZE), hasMore: false };
       }
 
       const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {

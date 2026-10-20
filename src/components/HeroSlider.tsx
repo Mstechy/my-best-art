@@ -100,13 +100,15 @@ function HeroCopy({
     <div className="absolute inset-0 flex items-center overflow-hidden">
       <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-8 md:px-12">
         <div className="max-w-xl">
-          {badge && (
-            <span className="mb-2 inline-block rounded-full bg-[#F6C75D] px-2.5 py-0.5 text-[10px] font-bold text-[#5C3A00] sm:mb-3 sm:px-3 sm:py-1 sm:text-xs">
+          {badge ? (
+            <span className="mb-2 inline-block min-h-[18px] rounded-full bg-[#F6C75D] px-2.5 py-0.5 text-[10px] font-bold text-[#5C3A00] sm:mb-3 sm:min-h-[28px] sm:px-3 sm:py-1 sm:text-xs">
               {badge}
             </span>
+          ) : (
+            <span aria-hidden="true" className="mb-2 inline-block min-h-[18px] sm:mb-3 sm:min-h-[28px]" />
           )}
           <h2
-            className="break-words font-black uppercase tracking-tight text-white"
+            className="min-h-[2.16em] break-words font-black uppercase tracking-tight text-white"
             style={{
               fontSize: "clamp(1.375rem, 2.5vw + 1rem, 3.75rem)",
               lineHeight: 1.08,
@@ -118,19 +120,18 @@ function HeroCopy({
           >
             {title}
           </h2>
-          {description && (
-            <p
-              className="mt-2 max-w-md text-xs leading-relaxed text-white/80 sm:mt-3 sm:max-w-lg sm:text-sm md:text-base"
-              style={{
-                display: "-webkit-box",
-                WebkitLineClamp: 3,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {description}
-            </p>
-          )}
+          <p
+            aria-hidden={description ? undefined : true}
+            className="mt-2 min-h-[4.5rem] max-w-md text-xs leading-relaxed text-white/80 sm:mt-3 sm:max-w-lg sm:text-sm md:text-base"
+            style={{
+              display: "-webkit-box",
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+            }}
+          >
+            {description || "\u00a0"}
+          </p>
           {/^https?:\/\//i.test(destination) ? (
             <a href={destination} target="_blank" rel="noreferrer" className={ctaClassName}>
               {ctaLabel}

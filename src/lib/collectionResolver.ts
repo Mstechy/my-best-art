@@ -1,4 +1,28 @@
 import { supabase } from "@/integrations/supabase/client";
+import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
+
+const UNSUPPORTED_HERO_CLAIM = /millions?\s+of\s+products|trusted\s+sellers?\s+around\s+the\s+world|free\s+shipping\s+on\s+your\s+first\s+order/i;
+
+/**
+ * CMS copy is editable, but public launch claims still need a trustworthy
+ * fallback. This guard prevents stale campaign rows from promising catalogue
+ * scale, universal seller coverage, or an unverified shipping offer. Admins can
+ * still publish any ordinary campaign copy; only the known unsupported claims
+ * fall back to the honest launch message.
+ */
+export function normalizeHeroCollectionCopy(collection: EnhancedCollection): EnhancedCollection {
+  const safe = (value: string | null | undefined, fallback: string | null) =>
+    value && !UNSUPPORTED_HERO_CLAIM.test(value) ? value : fallback;
+
+  return {
+    ...collection,
+    title: safe(collection.title, DEFAULT_HERO_COPY.title) || DEFAULT_HERO_COPY.title,
+    description: safe(collection.description, DEFAULT_HERO_COPY.description),
+    badge: safe(collection.badge, DEFAULT_HERO_COPY.badge),
+    hero_badge: safe(collection.hero_badge, DEFAULT_HERO_COPY.badge),
+    cta_label: safe(collection.cta_label, DEFAULT_HERO_COPY.ctaLabel) || DEFAULT_HERO_COPY.ctaLabel,
+  };
+}
 
 /**
  * Collection rule types for automatic product matching.
@@ -123,7 +147,7 @@ export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
     .order("hero_order")
     .order("sort_order");
 
-  return ((data || []) as EnhancedCollection[]);
+  return ((data || []) as EnhancedCollection[]).map(normalizeHeroCollectionCopy);
 }
 
 /**

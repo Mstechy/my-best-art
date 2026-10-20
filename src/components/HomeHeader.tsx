@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { createVisualHash } from "@/lib/visualHash";
+import { analyzeVisualProductImage, readImageDataUrl } from "@/lib/visualProductSearch";
 
 interface HomeHeaderProps {
   categories?: { label: string; value: string }[];
@@ -52,8 +53,17 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
     setImageSearchLoading(true);
     setImageSearchMessage("");
     try {
-      const { hash } = await createVisualHash(file);
+      const [{ hash }, imageDataUrl] = await Promise.all([
+        createVisualHash(file),
+        readImageDataUrl(file),
+      ]);
+      let visualQuery: Awaited<ReturnType<typeof analyzeVisualProductImage>> | null = null;
+      try { visualQuery = await analyzeVisualProductImage(imageDataUrl); }
+      catch { /* The physical fingerprint remains a valid fallback. */ }
+
       const params = new URLSearchParams({ visual: "1", visualHash: hash });
+      if (visualQuery?.search) params.set("search", visualQuery.search);
+      if (visualQuery?.category) params.set("category", visualQuery.category);
       navigate(`/marketplace?${params.toString()}`);
     } catch {
       setImageSearchMessage("We could not read that image. Please try another image.");

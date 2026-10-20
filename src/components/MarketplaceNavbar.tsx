@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { createVisualHash } from "@/lib/visualHash";
+import { analyzeVisualProductImage } from "@/lib/visualProductSearch";
 
 interface MarketplaceNavbarProps {
   search?: string;
@@ -194,12 +195,24 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
     let visualHash: string;
     try { visualHash = (await createVisualHash(imageSearchFile)).hash; }
     catch { setImageSearchLoading(false); setImageSearchLabel("We could not read that image. Please try another JPG, PNG, or WebP."); return; }
-    setImageSearchLoading(false);
+
+    // Keep the local fingerprint as the fast same/similar-image path, then add
+    // server-side visual terms so a different angle/background can still find
+    // the right catalogue family without shopper-entered description text.
+    let visualQuery: Awaited<ReturnType<typeof analyzeVisualProductImage>> | null = null;
+    if (imageSearchDataUrl) {
+      try { visualQuery = await analyzeVisualProductImage(imageSearchDataUrl); }
+      catch { /* The fingerprint search remains available when vision is unavailable. */ }
+    }
+
     const params = new URLSearchParams();
     if (imageSearchCategory) params.set("category", imageSearchCategory);
+    if (visualQuery?.search) params.set("search", visualQuery.search);
+    if (!imageSearchCategory && visualQuery?.category) params.set("category", visualQuery.category);
     params.set("visual", "1");
     params.set("visualHash", visualHash);
     navigate(`/marketplace?${params.toString()}`);
+    setImageSearchLoading(false);
     setImageSearchOpen(false);
     if (imageSearchPreview) URL.revokeObjectURL(imageSearchPreview);
     setImageSearchPreview(null);

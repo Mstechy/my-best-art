@@ -110,64 +110,6 @@ export function usePopulatedCategories() {
   );
 }
 
-/** Raw feed data from a single RPC call (returns product IDs + metadata) */
-export function useHomepageFeed(feedName: FeedName) {
-  return useSupabaseQuery(
-    supabaseKeys.rpcWithArgs("homepage_product_feed", { section: feedName }),
-    async () => {
-      const { data } = await (supabase as any).rpc("homepage_product_feed", {
-        p_section: feedName,
-        // Fetch a small reserve. Products that appeared in an earlier rail are
-        // removed below, so later rails still have enough unique cards.
-        p_limit: 24,
-        // p_seed is omitted on purpose: ordering must be deterministic (see useHomepageData).
-      });
-      return (data ?? []) as any[];
-    },
-    { staleTime: 3 * 60 * 1000 },
-  );
-}
-
-/** Fetch product details by IDs */
-export function useProductsByIds(ids: string[]) {
-  return useSupabaseQuery(
-    // "byIds" segment prevents collision with per-product row keys
-    // (supabaseKeys.row) when the id list happens to contain exactly one id.
-    [...supabaseKeys.table("products"), "byIds", ...ids.sort()],
-    async () => {
-      if (ids.length === 0) return [] as Product[];
-      const { data } = await supabase
-        .from("products")
-        .select("id,title,price,compare_at_price,currency,seller_id,stock_quantity,average_rating,review_count,ships_to,flash_deal_end_at,created_at,product_images(image_url,is_primary,card_small_url,image_width,image_height)")
-        .in("id", ids);
-      return (data ?? []) as unknown as Product[];
-    },
-    { enabled: ids.length > 0, staleTime: 5 * 60 * 1000 },
-  );
-}
-
-/** Fetch seller profiles by user IDs */
-export function useSellerProfiles(userIds: string[]) {
-  return useSupabaseQuery(
-    // "byIds" segment prevents collision with per-seller row keys
-    [...supabaseKeys.table("seller_profiles_public"), "byIds", ...userIds.sort()],
-    async () => {
-      if (userIds.length === 0) return new Map<string, Seller>();
-      const { data } = await supabase
-        .from("seller_profiles_public")
-        .select("user_id,full_name,is_verified")
-        .in("user_id", userIds);
-      const map = new Map<string, Seller>();
-      ((data ?? []) as any[]).forEach((row: any) => {
-        if (row.user_id) map.set(row.user_id, { full_name: row.full_name, is_verified: !!row.is_verified });
-      });
-      return map;
-    },
-    { enabled: userIds.length > 0, staleTime: 10 * 60 * 1000 },
-  );
-}
-
-// ── Composed hook that merges all data ───────────────────────────────────
 
 /** Hydrated homepage read model for future high-traffic deployments. */
 export function useHomepageSnapshot() {
@@ -182,8 +124,7 @@ export function useHomepageSnapshot() {
   );
 }
 
-/** Homepage composition backed by the hydrated snapshot. The legacy composed
- * hook below remains exported for compatibility with older callers. */
+/** Homepage composition backed by the hydrated snapshot. */
 export function useHomepageSnapshotData() {
   const hero = useHeroCollections();
   const categories = useHomepageCategories();
@@ -232,99 +173,5 @@ export function useHomepageSnapshotData() {
     retrySnapshot: snapshot.refetch,
     snapshotFetching: snapshot.isFetching,
     loading: categories.isLoading || snapshot.isLoading,
-  };
-}
-
-export function useHomepageData() {
-  const hero = useHeroCollections();
-  const categories = useHomepageCategories();
-  // Ordering comes from real signals only, so p_seed is deliberately left at its
-  // default for every section: delivered units for Best Sellers, discovery events for
-  // Trending, created_at for New Arrivals, rating for Discover More. The previous
-  // per-visit random seed rotated the starting point on every refresh, which only made
-  // the page look arbitrary and stopped the same product from holding the same spot.
-
-  // Fetch all 5 feeds in parallel
-  const flashDeals = useHomepageFeed("flash_deals");
-  const bestSellers = useHomepageFeed("best_sellers");
-  const newArrivals = useHomepageFeed("new_arrivals");
-  const trending = useHomepageFeed("trending");
-
-  const feedResults = useMemo(
-    () => [flashDeals, bestSellers, newArrivals, trending] as const,
-    [flashDeals, bestSellers, newArrivals, trending],
-  );
-  const allFeedData = useMemo(() => feedResults.flatMap(r => (Array.isArray(r.data) ? r.data : []) as any[]), [feedResults]);
-  const feedLoading = feedResults.some(r => r.isLoading);
-
-  // Extract unique product IDs and seller IDs from all feeds
-  const productIds = useMemo(() => {
-    return [...new Set((allFeedData as any[]).map((row: any) => row.product_id).filter(Boolean))] as string[];
-  }, [allFeedData]);
-
-  const sellerIds = useMemo(() => {
-    return [...new Set((allFeedData as any[]).map((row: any) => row.seller_id).filter(Boolean))] as string[];
-  }, [allFeedData]);
-
-  // Fetch products and profiles — only enabled when we have IDs
-  const products = useProductsByIds(productIds);
-  const profiles = useSellerProfiles(sellerIds);
-
-  // Merge feed data with product details and seller profiles
-  const feeds = useMemo(() => {
-    const productMap = new Map((Array.isArray(products.data) ? products.data : []).map(p => [p.id, p]));
-    const feedNames: FeedName[] = ["flash_deals", "best_sellers", "new_arrivals", "trending"];
-
-    // A homepage is a set of distinct merchandising stories, not five copies
-    // of the same catalogue. Priority is deliberate: time-bound deals, fresh
-    // stock, proven sellers, active trends, then broad discovery.
-    const feedPriority: FeedName[] = ["flash_deals", "best_sellers", "trending", "new_arrivals"];
-    // Budget each section. A section that qualifies for a large share of the
-    // catalogue would otherwise consume every unique id through seenAcrossHomepage and
-    // the later sections would render empty, so the homepage would collapse into one
-    // long block. The cap keeps the stack balanced; anything left over still appears in
-    // the final Discover More section, so nothing is ever hidden from shoppers.
-    const SECTION_LIMIT = 10;
-    // Matches the database ceiling (least(p_limit, 24)) for the catch-all section.
-    const CATCH_ALL_LIMIT = 24;
-    const seenAcrossHomepage = new Set<string>();
-    const distinctFeeds = new Map<FeedName, FeedItem[]>();
-    feedPriority.forEach((name) => {
-      const index = feedNames.indexOf(name);
-        const rawData = Array.isArray(feedResults[index].data) ? feedResults[index].data as any[] : [];
-        const seenInRail = new Set<string>();
-        const items: FeedItem[] = rawData
-          .flatMap((row: any) => {
-            const p = productMap.get(row.product_id);
-            if (!p || seenInRail.has(p.id) || seenAcrossHomepage.has(p.id)) return [];
-            seenInRail.add(p.id);
-            seenAcrossHomepage.add(p.id);
-            const flashDealEndAt = row.flash_deal_end_at || p.flash_deal_end_at || null;
-            return [{
-              ...p,
-              sold_count: Number(row.sold_count),
-              trend_score: Number(row.trend_score),
-              flash_deal_end_at: flashDealEndAt,
-            }];
-          });
-        // The catch-all is never capped - it is the promise that every approved product
-        // is reachable from the homepage. Evidence-based sections stay bounded so one
-        // broad feed cannot crowd out the rest of the page.
-        distinctFeeds.set(name, items.slice(0, name === "new_arrivals" ? CATCH_ALL_LIMIT : SECTION_LIMIT));
-    });
-    return Object.fromEntries(feedNames.map((name) => [name, distinctFeeds.get(name) ?? []])) as Record<FeedName, FeedItem[]>;
-  }, [products.data, feedResults]);
-
-  const loading = categories.isLoading || feedLoading || products.isLoading || profiles.isLoading;
-
-  return {
-    heroSlides: hero.data ?? [],
-    heroLoading: hero.isLoading,
-    categories: categories.data?.categories ?? [],
-    counts: categories.data?.counts ?? {},
-    categoryImages: categories.data?.imageByCategory ?? {},
-    feeds,
-    sellers: profiles.data instanceof Map ? profiles.data : new Map<string, Seller>(),
-    loading,
   };
 }
