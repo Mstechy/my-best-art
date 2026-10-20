@@ -226,7 +226,10 @@ export function ProductCard({
             // `relative z-10`: these are the only controls that must win the tap
             // over the stretched card link.
             <div className="relative z-10 mt-2 flex gap-2">
-              {onBuyNow && <button type="button" onClick={onBuyNow} disabled={unavailable} className="h-8 rounded-full bg-primary px-3 text-[10px] font-bold text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{buyNowLabel}</button>}
+              {/* Ink text on the brand orange, not white: white on #ff791a is
+                 a 2.62:1 contrast ratio (axe color-contrast), while #111111
+                 on the same orange clears 7:1 and keeps the button's colour. */}
+              {onBuyNow && <button type="button" onClick={onBuyNow} disabled={unavailable} className="h-8 rounded-full bg-primary px-3 text-[10px] font-bold text-[#111111] transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{buyNowLabel}</button>}
               {onAddToCart && <button type="button" onClick={onAddToCart} disabled={unavailable} className="grid h-8 w-8 place-items-center rounded-full bg-foreground text-background transition-colors hover:bg-foreground/85 disabled:cursor-not-allowed disabled:opacity-50" aria-label={addToCartLabel}>
                 <ShoppingCart className="h-3.5 w-3.5" />
               </button>}

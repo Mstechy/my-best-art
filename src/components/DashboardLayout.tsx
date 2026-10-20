@@ -127,9 +127,10 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <span className="font-bold text-sm text-[#111111] dark:text-[#FAF5F2] tracking-tight">Tradibu</span>
           </Link>
           <button
+            type="button"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close dashboard navigation"
-            className="lg:hidden text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[#6E6C64] transition-colors hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] focus-visible:ring-offset-2 dark:hover:text-[#FAF5F2] lg:hidden"
           >
             <X className="h-4 w-4" />
           </button>
@@ -158,7 +159,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                     key={item.href}
                     to={item.href}
                     onClick={() => setSidebarOpen(false)}
-                    className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 ${
+                    className={`relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] focus-visible:ring-offset-2 ${
                       isActive
                         ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]"
                         : "text-[#6E6C64] dark:text-[#A0A0A0] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] hover:text-[#111111] dark:hover:text-[#FAF5F2]"
@@ -185,7 +186,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div className="border-t border-[#F2F3F5] dark:border-[#1A1A1A] p-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="flex w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors group">
+              <button type="button" className="flex min-h-11 w-full items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] focus-visible:ring-offset-2 dark:hover:bg-[#1A1A1A] group">
                 <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#111111] dark:bg-[#FAF5F2] shrink-0">
                   <span className="text-[9px] font-bold text-white dark:text-[#111111]">
                     {getInitials(profile?.full_name)}
@@ -234,21 +235,23 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         {/* Header */}
         <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#E8E8E8] dark:border-[#1A1A1A] bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md px-4 lg:px-6">
           <button
+            type="button"
             onClick={() => setSidebarOpen(true)}
             aria-label="Open dashboard navigation"
             aria-controls="dashboard-sidebar"
             aria-expanded={sidebarOpen}
-            className="lg:hidden text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] transition-colors"
+            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-[#6E6C64] transition-colors hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] focus-visible:ring-offset-2 dark:hover:text-[#FAF5F2] lg:hidden"
           >
             <Menu className="h-5 w-5" />
           </button>
           <div className="flex-1" />
           <NotificationBell />
           <ThemeToggle />
-          <Link to="/marketplace">
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-[11px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#1A1A1A] transition-colors">
-              <Store className="h-3 w-3" /> Marketplace
-            </button>
+          <Link
+            to="/marketplace"
+            className="inline-flex min-h-11 items-center gap-1.5 rounded-full border border-[#E8E8E8] px-3 text-[11px] font-semibold text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] focus-visible:ring-offset-2 dark:border-[#222222] dark:text-[#FAF5F2] dark:hover:bg-[#1A1A1A]"
+          >
+            <Store className="h-3 w-3" /> Marketplace
           </Link>
         </header>
 

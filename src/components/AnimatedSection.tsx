@@ -50,6 +50,17 @@ export default function AnimatedSection({
 }: AnimatedSectionProps) {
   const ref = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const handleChange = () => setPrefersReducedMotion(mediaQuery.matches);
+    handleChange();
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   useEffect(() => {
     const el = ref.current;
@@ -68,18 +79,19 @@ export default function AnimatedSection({
   }, [threshold]);
 
   const styles = variantStyles[variant];
+  const motionDisabled = prefersReducedMotion;
 
   return (
     <div
       ref={ref}
       className={cn(
-        "transition-all will-change-transform",
-        isVisible ? styles.visible : styles.hidden,
+        motionDisabled ? "opacity-100 translate-x-0 translate-y-0 scale-100 blur-0" : "transition-all will-change-transform",
+        motionDisabled ? undefined : (isVisible ? styles.visible : styles.hidden),
         className
       )}
       style={{
-        transitionDuration: `${duration}ms`,
-        transitionDelay: `${delay}ms`,
+        transitionDuration: motionDisabled ? "0ms" : `${duration}ms`,
+        transitionDelay: motionDisabled ? "0ms" : `${delay}ms`,
         transitionTimingFunction: "cubic-bezier(0.16, 1, 0.3, 1)",
       }}
     >

@@ -163,7 +163,11 @@ function MarketplaceProductImpressionCard({
             </div>
           )}
           {discount ? (
-            <span className="absolute left-3 top-3 rounded bg-[#E53935] px-2 py-0.5 text-[10px] font-bold text-white">
+            // The badge red is one step deeper than the site's #E53935:
+            // white 10px bold on #E53935 measured 4.22:1 (axe color-contrast
+            // wants 4.5:1); #D32F2F clears it at 4.98:1 while staying the
+            // same deal red to the eye.
+            <span className="absolute left-3 top-3 rounded bg-[#D32F2F] px-2 py-0.5 text-[10px] font-bold text-white">
               -{discount}%
             </span>
           ) : null}
@@ -556,8 +560,13 @@ export default function MarketplacePage() {
     // Avoid sending a page-level mass impression event that could duplicate product views.
   }, [displayedProducts, pageLoading]);
 
+  // A real <main> landmark, not a div: axe's landmark-one-main audit and the
+  // skip link's fragment target both resolve to it, and without one the page
+  // failed both ("Document does not have a main landmark" and "No skip link
+  // target"), costing accessibility and Agentic Browsing points on every scan
+  // of /marketplace.
   return (
-    <div className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
+    <main className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
       <MarketplaceNavbar
         search={search}
         onSearchChange={setSearch}
@@ -629,7 +638,13 @@ export default function MarketplacePage() {
                   categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
                 />
                 <Select value={sortBy} onValueChange={(value) => { if (isMarketplaceSort(value)) setSortBy(value); }}>
-                  <SelectTrigger className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
+                  {/* The Radix trigger renders as role="combobox"; with no
+                       text of its own (SelectValue can be empty before the
+                       first paint) it needs an explicit accessible name -
+                       axe's button-name rule, which is also one of the
+                       agent-critical rules Lighthouse's Agentic Browsing
+                       category filters for. */}
+                  <SelectTrigger aria-label={t("marketplace.sortByLabel")} className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="relevance">{t("marketplace.sortOptions.bestMatch")}</SelectItem>
                     <SelectItem value="newest">{t("marketplace.sortOptions.newest")}</SelectItem>
@@ -659,12 +674,27 @@ export default function MarketplacePage() {
                 </span>
               </div>
             </AnimatedSection>
-            {displayedProducts.length > 0 && (
+            {/* The rail used to mount only once products arrived, injecting
+                 ~350px of content above the catalogue after first paint and
+                 pushing the entire grid down - the layout shift Lighthouse
+                 attributes to this page. Rendering it from the start in its
+                 loading state reserves the same strip; the skeleton matches
+                 the real card height (itemWidth x 1.3 vs the 351px card), so
+                 the skeleton-to-cards swap leaves the grid where it was. */}
+            {(displayedProducts.length > 0 || pageLoading) && (
               <AnimatedSection variant="fade-up" delay={80}>
                 <HorizontalScrollSection
                   title={t("marketplace.popularNow")}
                   subtitle={t("marketplace.scrollToExplore")}
                   itemWidth={180}
+                  loading={displayedProducts.length === 0}
+                  loadingTemplate={
+                    <div className="flex gap-4">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <div key={i} className="shrink-0 animate-pulse rounded-2xl bg-[#F2F3F5] dark:bg-[#202020]" style={{ width: 180, height: 351 }} />
+                      ))}
+                    </div>
+                  }
                   showArrows
                   showDots
                 >
@@ -679,7 +709,9 @@ export default function MarketplacePage() {
                 </HorizontalScrollSection>
               </AnimatedSection>
             )}
-            <AnimatedSection variant="fade-up" delay={100}>
+            {/* The full product grid must keep its geometry stable while data settles.
+                Animating this large wrapper with transforms caused measurable CLS. */}
+            <div>
               {pageLoading && products.length === 0 ? (
                 <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {[...Array(10)].map((_, i) => (
@@ -766,7 +798,7 @@ export default function MarketplacePage() {
                   </Button>
                 </div>
               )}
-            </AnimatedSection>
+            </div>
           </div>
         </div>
       </Container>
@@ -821,6 +853,6 @@ export default function MarketplacePage() {
       </ModalWrapper>
       <SiteFooter />
       <BottomTabBar />
-    </div>
+      </main>
   );
 }

@@ -173,6 +173,7 @@
       "priceHigh": "Price: high to low"
     },
     "all": "All",
+    "sortByLabel": "Sort products",
     "shipsToLabel": "Ships to",
     "shipsToAnywhere": "Anywhere",
     "pricesShownIn": "Prices shown in",

@@ -15,6 +15,13 @@ import { Link } from "react-router-dom";
 import { COUNTRIES } from "@/lib/countries";
 import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
+import {
+  createMarketplaceOrders,
+  initializeMarketplacePayment,
+  quoteMarketplaceShipping,
+  reconcileCheckoutItems as reconcileLiveCheckoutItems,
+  type ShippingQuote,
+} from "@/lib/checkoutService";
 
 /** Generate a unique idempotency key for safe retries without duplicate orders */
 function generateIdempotencyKey(): string {
@@ -33,16 +40,6 @@ interface SavedAddress {
   country: string;
   phone: string | null;
   is_default: boolean;
-}
-
-interface ShippingQuote {
-  sellerId: string;
-  shipping_amount: number;
-  currency: string;
-  shipping_known: boolean;
-  delivery_min_date: string | null;
-  delivery_max_date: string | null;
-  message: string | null;
 }
 
 // Shared input style. `text-base md:text-sm` keeps the control at 16px on
@@ -104,22 +101,7 @@ export default function CheckoutPage() {
 
   const fetchShippingQuotes = useCallback(async (): Promise<ShippingQuote[]> => {
     if (!address.country || Object.keys(sellerGroups).length === 0) return [];
-    const quotes = await Promise.all(Object.entries(sellerGroups).map(async ([sellerId, sellerItems]) => {
-      const { data, error } = await (supabase as any).rpc("quote_marketplace_shipping", {
-        p_seller_id: sellerId,
-        p_destination: address.country,
-        p_items: sellerItems.map(item => ({
-          product_id: item.product_id || item.id.split("::")[0],
-          product_variant_id: item.product_variant_id || null,
-          quantity: item.quantity,
-        })),
-      });
-      if (error) throw error;
-      const row = (Array.isArray(data) ? data[0] : data) as ShippingQuote | null;
-      if (!row || !row.shipping_known) throw new Error(row?.message || "Shipping fee is not configured for this seller.");
-      return { ...row, sellerId, shipping_amount: Number(row.shipping_amount) || 0 };
-    }));
-    return quotes;
+    return quoteMarketplaceShipping(sellerGroups, address.country);
   }, [address.country, sellerGroups]);
 
   useEffect(() => {
@@ -143,34 +125,8 @@ export default function CheckoutPage() {
     return () => { active = false; };
   }, [address.country, fetchShippingQuotes, sellerGroups]);
   const reconcileCheckoutItems = useCallback(async (): Promise<string | null> => {
-    const productIds = [...new Set(checkoutItems.map((item) => item.product_id))];
-    const variantIds = checkoutItems.flatMap((item) => item.product_variant_id ? [item.product_variant_id] : []);
-    const { data: products, error: productError } = productIds.length
-      ? await supabase.from("products").select("id, price, stock_quantity, status, is_approved").in("id", productIds)
-      : { data: [], error: null };
-    if (productError) throw productError;
-    const { data: variants, error: variantError } = variantIds.length
-      ? await supabase.from("product_variants").select("id, product_id, price, stock_quantity, is_active").in("id", variantIds)
-      : { data: [], error: null };
-    if (variantError) throw variantError;
-
-    const productMap = new Map((products ?? []).map((product) => [product.id, product]));
-    const variantMap = new Map((variants ?? []).map((variant) => [variant.id, variant]));
-    let priceChanged = false;
-    let availabilityChanged = false;
-    const nextItems = checkoutItems.map((item) => {
-      const product = productMap.get(item.product_id);
-      const variant = item.product_variant_id ? variantMap.get(item.product_variant_id) : null;
-      const available = Boolean(
-        product && product.status === "active" && product.is_approved &&
-        (!item.product_variant_id || (variant && variant.product_id === product.id && variant.is_active)),
-      );
-      const livePrice = available ? Number(variant?.price ?? product.price) : item.price;
-      const liveStock = available ? Number(variant?.stock_quantity ?? product.stock_quantity) : 0;
-      if (livePrice !== item.price) priceChanged = true;
-      if (!available || liveStock < item.quantity) availabilityChanged = true;
-      return { ...item, price: livePrice, stock_quantity: liveStock };
-    });
+    const reconciliation = await reconcileLiveCheckoutItems(checkoutItems);
+    const { items: nextItems, priceChanged, availabilityChanged } = reconciliation;
 
     const changed = nextItems.some((item, index) => item.price !== checkoutItems[index].price || item.stock_quantity !== checkoutItems[index].stock_quantity);
     if (changed) {
@@ -236,44 +192,17 @@ export default function CheckoutPage() {
         } as any);
       }
 
-      const { data: orderIds, error: orderError } = await supabase.rpc("place_marketplace_orders", {
-        p_orders: Object.entries(sellerGroups).map(([sellerId, sellerItems]) => ({
-          seller_id: sellerId,
-          items: sellerItems.map(item => ({
-            product_id: item.product_id || item.id.split("::")[0],
-            product_variant_id: item.product_variant_id || null,
-            quantity: item.quantity,
-          })),
-        })),
-        p_shipping_address: address,
-        p_idempotency_key: idempotencyKey,
-      });
-      if (orderError) throw orderError;
-      if (!orderIds?.length) throw new Error("No marketplace orders were created.");
+      const orderIds = await createMarketplaceOrders(sellerGroups, address, idempotencyKey);
       const { data: authSession } = await supabase.auth.getSession();
       if (!authSession.session?.access_token) throw new Error("Your session expired. Please sign in again.");
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON;
       if (!supabaseKey) throw new Error("Supabase client configuration is missing.");
-      supabase.functions.setAuth(authSession.session.access_token);
-      const { data: payment, error: paymentError } = await supabase.functions.invoke("paystack", {
-        body: { action: "initialize", orderIds, email: user.email },
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${authSession.session.access_token}`,
-          "Content-Type": "application/json",
-        },
-      });
-      if (paymentError || !payment?.authorization_url) {
-        let message = paymentError?.message || "Could not start secure payment.";
-        const context = (paymentError as { context?: Response } | null)?.context;
-        if (context?.json) {
-          try {
-            const payload = await context.json() as { error?: string };
-            if (payload.error) message = payload.error;
-          } catch { /* keep the original error */ }
-        }
-        throw new Error(message);
-      }
+      const payment = await initializeMarketplacePayment(
+        orderIds,
+        user.email,
+        authSession.session.access_token,
+        supabaseKey,
+      );
       if (directCheckoutItem) clearDirectCheckout();
       else clearCart();
       toast.success("Order created. Complete payment securely with Paystack.");

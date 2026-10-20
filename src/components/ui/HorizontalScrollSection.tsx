@@ -236,7 +236,16 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
             role="list"
             aria-label={`${title} products`}
           >
-            {children}
+            {/* role="list" only permits role="listitem" children; the cards
+                 handed in are links, and axe's aria-required-children rule -
+                 another agent-critical rule - flagged every one of them.
+                 `display: contents` keeps the wrappers out of the box tree,
+                 so the flex layout and gap stay byte-for-byte identical. */}
+            {React.Children.map(children, (child, index) => (
+              <div key={index} role="listitem" className="contents">
+                {child}
+              </div>
+            ))}
           </div>
 
           {/* Right gradient fade */}
@@ -248,26 +257,46 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
         empty || defaultEmpty
       )}
 
-      {/* Dots indicator */}
-      {showDots && !loading && React.Children.count(children) > 0 && (
-        <div className="flex justify-center gap-1.5 mt-4">
-          {Array.from({ length: Math.min(React.Children.count(children), 8) }).map((_, i) => (
-            <button
-              key={i}
-              onClick={() => {
-                const el = scrollRef.current;
-                if (!el) return;
-                el.scrollTo({
-                  left: i * (itemWidth + gap) * 2,
-                  behavior: "smooth",
-                });
-              }}
-              className={`h-1.5 rounded-full transition-all ${
-                i === 0 ? "w-6 bg-[#111111] dark:bg-[#FAF5F2]" : "w-1.5 bg-[#D8D8D2] dark:bg-[#444444]"
-              }`}
-              aria-label={`Go to section ${i + 1}`}
-            />
-          ))}
+      {/* Dots indicator with reserved space. The outer mt-4 + h-6 box (40px)
+           is always rendered when showDots is true, so the dots row can never
+           push content down by its own height after load. Inside, either the
+           loading placeholder, the active dots, or a hidden same-height box
+           keeps the strip identical across every loading/children state. */}
+      {showDots && (
+        <div className="mt-4 h-6">
+          {loading ? (
+            <div aria-hidden="true" className="h-full" />
+          ) : React.Children.count(children) > 0 ? (
+            <div className="flex justify-center gap-0.5 h-full">
+              {Array.from({ length: Math.min(React.Children.count(children), 8) }).map((_, i) => (
+                // The button is a full 24x24 hit target (axe target-size wants
+                // >= 24px in each dimension) with the visual pill kept at its
+                // original 6px height inside a centered grid cell, so the dots
+                // look the same while remaining tappable.
+                <button
+                  key={i}
+                  onClick={() => {
+                    const el = scrollRef.current;
+                    if (!el) return;
+                    el.scrollTo({
+                      left: i * (itemWidth + gap) * 2,
+                      behavior: "smooth",
+                    });
+                  }}
+                  className="grid h-6 w-6 place-items-center rounded-full transition-all"
+                  aria-label={`Go to section ${i + 1}`}
+                >
+                  <span
+                    className={`h-1.5 rounded-full transition-all ${
+                      i === 0 ? "w-6 bg-[#111111] dark:bg-[#FAF5F2]" : "w-1.5 bg-[#D8D8D2] dark:bg-[#444444]"
+                    }`}
+                  />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div aria-hidden="true" className="h-full" />
+          )}
         </div>
       )}
     </Container>
