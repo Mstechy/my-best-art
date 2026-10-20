@@ -68,10 +68,18 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
         </div>
 
         {/* Full search bar with camera icon */}
-        <form onSubmit={handleSearch} className="mt-3">
+        <form
+          onSubmit={handleSearch}
+          toolname="search_marketplace_products_home"
+          tooldescription="Search Tradibu marketplace products from the homepage. This is a safe, read-only search."
+          toolautosubmit=""
+          className="mt-3"
+        >
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
             <input
+              name="query"
+              toolparamdescription="Product name, brand, model, or keyword to search for."
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("nav.searchPlaceholder")}

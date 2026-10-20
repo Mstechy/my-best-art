@@ -78,10 +78,16 @@ export default function CategoriesPage() {
               <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F6C75D]">Marketplace departments</p>
               <h1 className="mt-3 max-w-2xl text-4xl font-black uppercase tracking-tight md:text-6xl">Find products by department</h1>
               <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">Start broad, then narrow by the details that matter — brand, size, condition, price, material, compatibility, and delivery destination.</p>
-              <form onSubmit={submitSearch} className="mt-6 flex max-w-xl rounded-xl bg-white p-1.5 shadow-lg">
+              <form
+                onSubmit={submitSearch}
+                toolname="search_marketplace_by_department"
+                tooldescription="Search Tradibu products by department, brand, model, or keyword. This is a safe, read-only search."
+                toolautosubmit=""
+                className="mt-6 flex max-w-xl rounded-xl bg-white p-1.5 shadow-lg"
+              >
                 <label className="sr-only" htmlFor="department-search">Search the marketplace</label>
                 <Search className="ml-3 h-5 w-5 shrink-0 self-center text-[#666666]" />
-                <input id="department-search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, brands, or models" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-[#111111] outline-none" />
+                <input id="department-search" name="query" toolparamdescription="Product name, brand, model, or keyword to search for." value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, brands, or models" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-[#111111] outline-none" />
                 <button type="submit" className="rounded-lg bg-[#F6C75D] px-4 py-2 text-sm font-bold text-[#111111] hover:bg-[#E8A93D]">Search</button>
               </form>
             </div>

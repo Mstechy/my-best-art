@@ -250,7 +250,13 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
           {/* Search bar */}
           {showSearch && (
-            <form onSubmit={handleSubmit} className="hidden lg:flex flex-1 items-center justify-center px-2">
+            <form
+              onSubmit={handleSubmit}
+              toolname="search_marketplace_products_desktop"
+              tooldescription="Search Tradibu marketplace products by keyword. This is a safe, read-only search."
+              toolautosubmit=""
+              className="hidden lg:flex flex-1 items-center justify-center px-2"
+            >
               <div className="flex w-full max-w-3xl items-center rounded-full border border-[#E8E8E8] bg-white shadow-[0_10px_30px_rgba(17,17,17,0.05)] transition-shadow focus-within:shadow-[0_12px_36px_rgba(17,17,17,0.09)] dark:border-[#333333] dark:bg-[#1A1A1A]">
                 {hasCategories && (
                   <div className="w-44 shrink-0 border-r border-[#E8E8E8] dark:border-[#333333]">
@@ -279,6 +285,8 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 <div className="relative min-w-0 flex-1">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
                   <Input
+                    name="query"
+                    toolparamdescription="Product name, brand, model, or keyword to search for."
                     value={localSearch}
                     onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                     onFocus={() => setSuggestionsOpen(true)}
@@ -441,10 +449,18 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
         {showSearch && (
           <>
-            <form onSubmit={handleSubmit} className="mt-3 lg:hidden">
+            <form
+              onSubmit={handleSubmit}
+              toolname="search_marketplace_products_mobile"
+              tooldescription="Search Tradibu marketplace products by keyword. This is a safe, read-only search."
+              toolautosubmit=""
+              className="mt-3 lg:hidden"
+            >
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
                 <Input
+                  name="query"
+                  toolparamdescription="Product name, brand, model, or keyword to search for."
                   value={localSearch}
                   onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                   onFocus={() => setSuggestionsOpen(true)}

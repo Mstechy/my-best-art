@@ -74,23 +74,28 @@ export default function ContactPage() {
         </div>
 
         <AnimatedSection variant="fade-up" delay={200}>
-          <form onSubmit={submit} className="mt-10 rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+          <form
+            onSubmit={submit}
+            toolname="send_tradibu_contact_message"
+            tooldescription="Prepare a customer support message for Tradibu. The user must review and manually submit it."
+            className="mt-10 rounded-2xl border border-border/60 bg-card p-6 space-y-4"
+          >
             <h2 className="font-display text-xl font-semibold text-foreground flex items-center gap-2">
               <Mail className="h-5 w-5 text-primary" /> Send us a message
             </h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="contact-name" className="text-sm font-medium">Your name</label>
-                <Input id="contact-name" value={name} onChange={(e) => setName(e.target.value.slice(0, 80))} className="mt-1 h-11" autoComplete="name" />
+                <Input id="contact-name" name="name" toolparamdescription="The sender's full name." value={name} onChange={(e) => setName(e.target.value.slice(0, 80))} className="mt-1 h-11" autoComplete="name" />
               </div>
               <div>
                 <label htmlFor="contact-email" className="text-sm font-medium">Email</label>
-                <Input id="contact-email" type="email" value={email} onChange={(e) => setEmail(e.target.value.slice(0, 200))} className="mt-1 h-11" autoComplete="email" />
+                <Input id="contact-email" name="email" toolparamdescription="The sender's email address for the reply." type="email" value={email} onChange={(e) => setEmail(e.target.value.slice(0, 200))} className="mt-1 h-11" autoComplete="email" />
               </div>
             </div>
             <div>
               <label htmlFor="contact-message" className="text-sm font-medium">Message</label>
-              <Textarea id="contact-message" value={message} onChange={(e) => setMessage(e.target.value.slice(0, 2000))} rows={6} className="mt-1" />
+              <Textarea id="contact-message" name="message" toolparamdescription="The support question or message to send." value={message} onChange={(e) => setMessage(e.target.value.slice(0, 2000))} rows={6} className="mt-1" />
               <p className="text-right text-[10px] text-muted-foreground mt-1">{message.length}/2000</p>
             </div>
             <Button type="submit" disabled={submitting} className="gradient-primary text-primary-foreground">
