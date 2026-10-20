@@ -50,8 +50,10 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
   const [isDragging, setIsDragging] = useState(false);
   const [startX, setStartX] = useState(0);
   const [scrollLeft, setScrollLeft] = useState(0);
+  const [activeDot, setActiveDot] = useState(0);
   const [autoScrollPaused, setAutoScrollPaused] = useState(false);
   const autoScrollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const dotCount = Math.min(React.Children.count(children), 8);
 
   const checkScrollRef = useRef<number | null>(null);
 
@@ -69,12 +71,18 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
       if (!el) return;
       setCanScrollLeft(el.scrollLeft > 4);
       setCanScrollRight(el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+      if (dotCount > 0) {
+        const pageWidth = Math.max((itemWidth + gap) * 2, 1);
+        const nextDot = Math.min(dotCount - 1, Math.max(0, Math.round(el.scrollLeft / pageWidth)));
+        setActiveDot(nextDot);
+      }
     });
-  }, []);
+  }, [dotCount, gap, itemWidth]);
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    setActiveDot(0);
     checkScroll();
     el.addEventListener("scroll", checkScroll, { passive: true });
     window.addEventListener("resize", checkScroll);
@@ -268,7 +276,7 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
             <div aria-hidden="true" className="h-full" />
           ) : React.Children.count(children) > 0 ? (
             <div className="flex justify-center gap-0.5 h-full">
-              {Array.from({ length: Math.min(React.Children.count(children), 8) }).map((_, i) => (
+              {Array.from({ length: dotCount }).map((_, i) => (
                 // The button is a full 24x24 hit target (axe target-size wants
                 // >= 24px in each dimension) with the visual pill kept at its
                 // original 6px height inside a centered grid cell, so the dots
@@ -278,6 +286,7 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
                   onClick={() => {
                     const el = scrollRef.current;
                     if (!el) return;
+                    setActiveDot(i);
                     el.scrollTo({
                       left: i * (itemWidth + gap) * 2,
                       behavior: "smooth",
@@ -285,10 +294,11 @@ const HorizontalScrollSection = memo(function HorizontalScrollSection({
                   }}
                   className="grid h-6 w-6 place-items-center rounded-full transition-all"
                   aria-label={`Go to section ${i + 1}`}
+                  aria-current={i === activeDot ? "true" : undefined}
                 >
                   <span
                     className={`h-1.5 rounded-full transition-all ${
-                      i === 0 ? "w-6 bg-[#111111] dark:bg-[#FAF5F2]" : "w-1.5 bg-[#D8D8D2] dark:bg-[#444444]"
+                      i === activeDot ? "w-6 bg-[#111111] dark:bg-[#FAF5F2]" : "w-1.5 bg-[#D8D8D2] dark:bg-[#444444]"
                     }`}
                   />
                 </button>

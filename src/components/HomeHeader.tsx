@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, Camera, MapPin, Flame, LayoutGrid, Tag, Zap, ShoppingCart, User, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
+import { createVisualHash } from "@/lib/visualHash";
 
 interface HomeHeaderProps {
   categories?: { label: string; value: string }[];
@@ -28,11 +29,37 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
   const { user } = useAuth();
   const { totalItems, setIsOpen: openCart } = useCart();
   const [query, setQuery] = useState("");
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imageSearchMessage, setImageSearchMessage] = useState("");
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
     navigate(q ? `/marketplace?search=${encodeURIComponent(q)}` : "/marketplace");
+  };
+
+  const handleImageSearch = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!/^image\/(jpeg|png|webp)$/i.test(file.type) || file.size > 5 * 1024 * 1024) {
+      setImageSearchMessage("Use a JPG, PNG, or WebP image up to 5 MB.");
+      return;
+    }
+
+    setImageSearchLoading(true);
+    setImageSearchMessage("");
+    try {
+      const { hash } = await createVisualHash(file);
+      const params = new URLSearchParams({ visual: "1", visualHash: hash });
+      navigate(`/marketplace?${params.toString()}`);
+    } catch {
+      setImageSearchMessage("We could not read that image. Please try another image.");
+    } finally {
+      setImageSearchLoading(false);
+    }
   };
 
   return (
@@ -85,10 +112,27 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
               placeholder={t("nav.searchPlaceholder")}
               className="h-11 w-full rounded-full border border-[#E8E8E8] bg-[#F7F7F5] pl-10 pr-12 text-sm text-[#111111] outline-none transition-colors focus:border-[#111111] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] dark:focus:border-[#FAF5F2]"
             />
-            <button type="button" aria-label={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
-              <Camera className="h-4 w-4" />
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handleImageSearch}
+              className="sr-only"
+              tabIndex={-1}
+              aria-hidden="true"
+            />
+            <button
+              type="button"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={imageSearchLoading}
+              aria-label={t("nav.searchByImage")}
+              aria-busy={imageSearchLoading}
+              className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] disabled:cursor-wait disabled:opacity-60 dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"
+            >
+              <Camera className="h-4 w-4" aria-hidden="true" />
             </button>
           </div>
+          <p className="sr-only" role="status" aria-live="polite">{imageSearchMessage}</p>
         </form>
 
         {/* Icon shortcut row */}
