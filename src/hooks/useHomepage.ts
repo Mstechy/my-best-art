@@ -193,6 +193,22 @@ export function useHomepageSnapshotData() {
     const sellerMap = new Map<string, Seller>();
     const result = Object.fromEntries(SNAPSHOT_FEED_NAMES.map((name) => {
       const items = (snapshot.data && Array.isArray(snapshot.data[name]) ? snapshot.data[name] : [])
+        // Keep the UI truthful if an older snapshot function is still deployed
+        // while migrations are rolling out. The database is authoritative, but a
+        // client-side guard prevents a legacy response from labeling zero-signal
+        // products as Best Sellers, Trending, or Flash Deals.
+        .filter((item: any) => {
+          if (name === "best_sellers") return Number(item?.sold_count ?? 0) > 0;
+          if (name === "trending") return Number(item?.trend_score ?? 0) > 0;
+          if (name === "flash_deals") {
+            return item?.flash_deal_status === "active"
+              && Boolean(item?.flash_deal_start_at)
+              && Boolean(item?.flash_deal_end_at)
+              && Date.now() >= new Date(item.flash_deal_start_at).getTime()
+              && Date.now() <= new Date(item.flash_deal_end_at).getTime();
+          }
+          return true;
+        })
         .filter((item: any) => item?.id && !seen.has(item.id))
         .map((item: any) => {
           seen.add(item.id);

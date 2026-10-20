@@ -234,3 +234,27 @@ The fix keeps ordinary compare-at pricing visible as a normal product discount, 
 - the product is active and approved
 
 The homepage rail and hot-deal tile now render only when the real feed contains items. The marketplace Flash Deals sort uses the same server-side eligibility rule, and the old fake campaign routes were removed. The migration is `20261020000000_flash_deals_require_explicit_schedule.sql`; apply it after the earlier homepage and search migrations before production verification. Until it is applied, the deployed database can still serve the legacy compare-at fallback.
+
+## Eighth remaining-gap implementation: dashboard data integrity
+
+The dashboard surfaces now distinguish a real zero from a failed data request.
+
+- Seller pending-order totals use the seller order-count queries instead of counting only the latest 20 orders.
+- Seller dashboard query failures show an actionable retry state instead of presenting incomplete totals.
+- Admin totals, recent orders, alerts, and the unified operations queue expose load failures instead of showing a misleading empty state.
+- Admin top-selling products are aggregated server-side from delivered order items; the previous client-side 500-row sample and unpaid-order risk are removed.
+- The admin aggregate is protected by an admin-only RPC and is covered by a regression test.
+
+Apply `20261020001000_admin_analytics_aggregates.sql` after the Flash Deals migration. The repository checks pass, but the Supabase migrations and an end-to-end Paystack/staging run still need to be applied and verified in the real environment before advertising traffic is enabled.
+
+## Ninth remaining-gap implementation: evidence-based merchandising
+
+The homepage snapshot and marketplace sort now share one truth model:
+
+- Best Sellers appear only when a product has at least one delivered unit.
+- Trending appears only when a product has at least one discovery event in the rolling metric window.
+- Flash Deals require an explicitly active, time-bounded deal.
+- New Arrivals remains the honest catalogue entry point for approved listings before the marketplace has sales or engagement history.
+- The frontend applies a defensive guard while migrations roll out, so a legacy snapshot cannot label zero-signal products as Best Sellers or Trending.
+
+Apply `20261020002000_homepage_sections_require_evidence.sql` after `20261020000000_flash_deals_require_explicit_schedule.sql`. Do not seed fake sales, reviews, clicks, or campaigns just to fill a merchandising rail.
