@@ -13,6 +13,8 @@ export interface Product {
   seller_id: string;
   category_id: string | null;
   brand: string | null;
+  gtin: string | null;
+  mpn: string | null;
   weight: string | null;
   dimensions: string | null;
   material: string | null;

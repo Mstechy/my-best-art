@@ -135,5 +135,28 @@ describe("google feed helpers", () => {
       imageCount: 1,
       title: "Product",
     })).toContain("Seller account is not approved to sell");
+
+    expect(googleFeedIssues({
+      status: "active",
+      is_approved: true,
+      price: 500000,
+      imageCount: 3,
+      title: "Lenovo ThinkPad T14",
+      product_type: "Electronics > Laptops",
+      brand: "Lenovo",
+      gtin: "",
+      mpn: "",
+    })).toContain("Add the manufacturer GTIN or MPN when available");
+
+    expect(googleFeedIssues({
+      status: "active",
+      is_approved: true,
+      price: 500000,
+      imageCount: 3,
+      title: "Lenovo ThinkPad T14",
+      product_type: "Electronics > Laptops",
+      brand: "Lenovo",
+      mpn: "20W0001XUS",
+    })).not.toContain("Add the manufacturer GTIN or MPN when available");
   });
 });

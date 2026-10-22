@@ -91,6 +91,9 @@ const input: ProductSeoInput = {
   rating: 4.5,
   reviewCount: 12,
   brand: "Apple",
+  gtin: "4006381333931",
+  mpn: "A2215",
+  condition: "used",
 };
 
 const count = (haystack: string, needle: string): number => haystack.split(needle).length - 1;
@@ -177,6 +180,9 @@ describe("buildProductJsonLd", () => {
     expect(offers.url).toBe(`https://www.tradibu.com/product/${PRODUCT_ID}`);
     expect(schema.image).toEqual([input.image]);
     expect(schema.brand).toEqual({ "@type": "Brand", name: "Apple" });
+    expect(schema.gtin).toBe("4006381333931");
+    expect(schema.mpn).toBe("A2215");
+    expect((offers.itemCondition as string)).toBe("https://schema.org/UsedCondition");
     expect(schema.aggregateRating).toEqual({
       "@type": "AggregateRating",
       ratingValue: "4.5",

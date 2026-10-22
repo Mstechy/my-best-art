@@ -88,6 +88,26 @@ async function reviewImageFiles(
   return { accepted, errors, warnings: [...warnings] };
 }
 
+/** Restored draft files were already measured when first selected. Keep this
+ * path synchronous so reopening a draft does not briefly show an empty gallery
+ * while a needless promise round-trip runs. The same format and size rules are
+ * still applied before the file is rendered. */
+function reviewRestoredImageFiles(files: File[]) {
+  const accepted: File[] = [];
+  const errors: string[] = [];
+  for (const file of files) {
+    const result = checkImageUpload({
+      bytes: file.size,
+      type: file.type,
+      name: file.name,
+      maxBytes: MAX_IMAGE_SIZE_BYTES,
+    });
+    if (result.errors.length > 0) errors.push(`${file.name}: ${result.errors.join(" ")}`);
+    else accepted.push(file);
+  }
+  return { accepted, errors };
+}
+
 export default function SellerProducts() {
   const { formatPrice } = useCurrency();
   const { user, profile, role } = useAuth();
@@ -310,29 +330,28 @@ export default function SellerProducts() {
       // measurement is skipped: these files were measured when they were first
       // picked, the bytes have not changed, and a decode here would only delay
       // reopening a half-finished listing.
-      void reviewImageFiles(media.images, { measure: false }).then(({ accepted, errors }) => {
-        if (errors.length > 0) {
-          toast({
-            title: "Some restored images were skipped",
-            description: errors.slice(0, 3).join(" "),
-            variant: "destructive",
-          });
-        }
-        if (accepted.length === 0) return;
-        setImageItems((prev) => [
-          ...prev,
-          ...accepted.map((file, index) => ({
-            id: `restored-${Date.now()}-${index}`,
-            file,
-            url: URL.createObjectURL(file),
-            name: file.name,
-            isPrimary: prev.length === 0 && index === 0,
-            alt: "",
-            status: "pending" as UploadState,
-            progress: 0,
-          })),
-        ]);
-      });
+      const { accepted, errors } = reviewRestoredImageFiles(media.images);
+      if (errors.length > 0) {
+        toast({
+          title: "Some restored images were skipped",
+          description: errors.slice(0, 3).join(" "),
+          variant: "destructive",
+        });
+      }
+      if (accepted.length === 0) return;
+      setImageItems((prev) => [
+        ...prev,
+        ...accepted.map((file, index) => ({
+          id: `restored-${Date.now()}-${index}`,
+          file,
+          url: URL.createObjectURL(file),
+          name: file.name,
+          isPrimary: prev.length === 0 && index === 0,
+          alt: "",
+          status: "pending" as UploadState,
+          progress: 0,
+        })),
+      ]);
     }
     if (media.descriptionImages.length > 0) {
       setDescriptionImageItems((prev) => [
@@ -927,9 +946,9 @@ export default function SellerProducts() {
     // written back unchanged, so editing an older listing never wipes it.
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
-    const derivedPhoneAttributes = isPhoneListing ? deriveVariantAttributes(variantRows) : {};
+    const derivedDeviceAttributes = isDeviceListing ? deriveVariantAttributes(variantRows) : {};
     const cleanCategoryAttributes = Object.fromEntries(
-      Object.entries({ ...categoryAttributes, ...derivedPhoneAttributes })
+      Object.entries({ ...categoryAttributes, ...derivedDeviceAttributes })
         .map(([key, value]) => [key, value.trim()])
         .filter(([, value]) => value)
     );
@@ -940,20 +959,22 @@ export default function SellerProducts() {
     const selectedConfig = findCategoryConfig(selectedCategory);
     const selectedProductType = findProductTypeConfig(selectedCategory, productTypeKey);
 
-    // If a phone uses SKU-level storage or colour, every SKU must carry that
-    // value. Otherwise buyers can select a row whose displayed specification
-    // does not match the actual inventory.
-    if (isPhoneListing && variantRows.length > 0) {
-      const hasStorageVariants = variantRows.some((row) => row.optionName.trim().toLowerCase() === "storage");
+    // A device SKU matrix must describe one consistent primary option. This
+    // keeps storage/RAM/processor values authoritative instead of allowing one
+    // row to silently mean something different from the rest of the matrix.
+    if (isDeviceListing && variantRows.length > 0) {
+      const deviceOptionNames = [...new Set(variantRows.map((row) => row.optionName.trim().toLowerCase()).filter(Boolean))];
       const hasColourVariants = variantRows.some((row) => row.color.trim());
-      const incompleteStorage = hasStorageVariants && variantRows.some((row) => (
-        row.optionName.trim().toLowerCase() !== "storage" || !row.optionValue.trim()
-      ));
+      const inconsistentDeviceOption = deviceOptionNames.length > 1 || (
+        deviceOptionNames.length === 1 && variantRows.some((row) => (
+          row.optionName.trim().toLowerCase() !== deviceOptionNames[0] || !row.optionValue.trim()
+        ))
+      );
       const incompleteColour = hasColourVariants && variantRows.some((row) => !row.color.trim());
-      if (incompleteStorage || incompleteColour) {
+      if (inconsistentDeviceOption || incompleteColour) {
         toast({
-          title: "Complete phone options",
-          description: "Every phone SKU must use the same storage option structure and include a colour when colour variants are used.",
+          title: `Complete ${isPhoneListing ? "phone" : "laptop"} options`,
+          description: `Every ${isPhoneListing ? "phone" : "laptop"} SKU must use the same primary option and include a colour when colour variants are used.`,
           variant: "destructive",
         });
         setFormTab("variants");
@@ -1319,13 +1340,15 @@ export default function SellerProducts() {
       return;
     }
 
-    if (isPhoneListing && (condition === "used" || condition === "refurbished")) {
-      const evidenceFields = ["carrierStatus", "activationLockStatus"]
+    if (isDeviceListing && (condition === "used" || condition === "refurbished")) {
+      const evidenceFields = (isPhoneListing
+        ? ["carrierStatus", "activationLockStatus"]
+        : ["batteryHealth", "cosmeticCondition"])
         .filter((key) => !cleanCategoryAttributes[key]?.trim());
       if (evidenceFields.length > 0 || imageItems.length < 3) {
         toast({
-          title: "Add used-phone evidence",
-          description: `${evidenceFields.length > 0 ? "State the carrier/network lock and account-lock status. " : ""}${imageItems.length < 3 ? "Add at least three photos showing the device, screen, and condition." : ""}`,
+          title: `Add used-${isPhoneListing ? "phone" : "laptop"} evidence`,
+          description: `${evidenceFields.length > 0 ? (isPhoneListing ? "State the carrier/network lock and account-lock status. " : "State the battery health and cosmetic condition. ") : ""}${imageItems.length < 3 ? "Add at least three photos showing the device, screen, and condition." : ""}`,
           variant: "destructive",
         });
         setFormTab(evidenceFields.length > 0 ? "specs" : "media");
@@ -1397,7 +1420,7 @@ export default function SellerProducts() {
     }
 
     if (formTab === "specs") {
-      const effective = { ...categoryAttributes, ...phoneOptionAttributes };
+      const effective = { ...categoryAttributes, ...deviceOptionAttributes };
       const missing = [...requiredSpecificationKeys].filter((key) => !effective[key]?.trim());
       if (missing.length > 0) {
         toast({ title: "Complete the required details", description: "Finish the fields marked * before adding photos.", variant: "destructive" });
@@ -1513,15 +1536,17 @@ export default function SellerProducts() {
     [selectedProductTypeConfig],
   );
   const isPhoneListing = selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones";
+  const isLaptopListing = selectedProductTypeConfig.key === "laptops";
+  const isDeviceListing = isPhoneListing || isLaptopListing;
   const primaryVariationDetails = variationTypeDetails(variantPrimaryOption);
   const hasVariantRows = variantRows.length > 0;
-  const phoneOptionAttributes = useMemo(
-    () => isPhoneListing ? deriveVariantAttributes(variantRows) : {},
-    [isPhoneListing, variantRows],
+  const deviceOptionAttributes = useMemo(
+    () => isDeviceListing ? deriveVariantAttributes(variantRows) : {},
+    [isDeviceListing, variantRows],
   );
   const effectiveCategoryAttributes = useMemo(
-    () => ({ ...categoryAttributes, ...phoneOptionAttributes }),
-    [categoryAttributes, phoneOptionAttributes],
+    () => ({ ...categoryAttributes, ...deviceOptionAttributes }),
+    [categoryAttributes, deviceOptionAttributes],
   );
   const showLegacySizeColumn = variantRows.some((row) => Boolean(row.size.trim()));
   const showColourColumn = variantRows.some((row) => Boolean(row.color.trim())) || Boolean(variantColorValues.trim());
@@ -1584,6 +1609,10 @@ export default function SellerProducts() {
     price: product.price,
     imageCount: product.product_images.filter((image) => image.image_url.startsWith("https://")).length,
     title: product.title,
+    brand: product.brand,
+    gtin: product.gtin,
+    mpn: product.mpn,
+    product_type: categories.find((category) => category.id === product.category_id)?.name,
   });
 
   const statusColors: Record<string, string> = {
@@ -1688,8 +1717,8 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Title *</label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
-                    <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
+                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
+                    <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : isLaptopListing ? "Use brand, model, RAM, storage, processor family, and a meaningful configuration. Keep claims consistent with the specifications below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
@@ -1728,7 +1757,7 @@ export default function SellerProducts() {
                   </div>
                   <div className="rounded-lg border border-border bg-muted/20 p-4">
                     <h3 className="text-sm font-semibold text-foreground">Google product details</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">Optional manufacturer identifiers help Google match your product. Only enter a GTIN printed on the product or its packaging.</p>
+                    <p className="mt-1 text-xs text-muted-foreground">For phones and laptops, use the real manufacturer brand and MPN, plus the GTIN printed on the product or packaging when one exists. Never invent an identifier.</p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div>
                         <label className="text-sm font-medium text-foreground">Brand</label>
@@ -1918,6 +1947,7 @@ export default function SellerProducts() {
                         <p className="text-sm font-medium text-foreground">{selectedProductTypeConfig.label} Details</p>
                         <p className="mt-1 text-xs text-muted-foreground">Fields marked * are required before submission. These details help buyers compare products in {selectedCategory?.name || "this category"}.</p>
                         {isPhoneListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">For Wi-Fi-only devices, choose "Wi-Fi only" and "No SIM or eSIM support"; carrier and account-lock fields are optional. For used or refurbished phones, show the actual device, all sides, screen on, packaging/accessories, and visible flaws. Never enter an IMEI or serial number in a public listing.</p>}
+                        {isLaptopListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Use the exact processor, RAM, storage type/capacity, display resolution, GPU, and operating system. For used or refurbished laptops, report battery health honestly and show the screen, keyboard, ports, charger, and visible wear.</p>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {selectedProductTypeConfig.fields.map((field) => (

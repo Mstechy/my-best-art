@@ -38,6 +38,9 @@ interface ProductRow {
   description: string | null;
   meta_description: string | null;
   brand: string | null;
+  gtin: string | null;
+  mpn: string | null;
+  condition: string | null;
   stock_quantity: string | number | null;
   average_rating: string | number | null;
   review_count: string | number | null;
@@ -50,7 +53,7 @@ interface ProductRow {
  * "primary, else first" rule ProductDetailPage uses.
  */
 const SELECT_COLUMNS =
-  "id,title,price,currency,description,meta_description,brand,stock_quantity,average_rating,review_count,product_images(image_url,is_primary)";
+  "id,title,price,currency,description,meta_description,brand,gtin,mpn,condition,stock_quantity,average_rating,review_count,product_images(image_url,is_primary)";
 
 /**
  * The project ships `VITE_SUPABASE_ANON` in .env while earlier Vercel setups
@@ -122,6 +125,9 @@ async function prerender(root: string, mode: string): Promise<void> {
       rating: toNumber(product.average_rating),
       reviewCount: toNumber(product.review_count),
       brand: product.brand,
+      gtin: product.gtin,
+      mpn: product.mpn,
+      condition: product.condition,
     };
 
     // Head first, then the static body (heading + paragraph + core link graph):

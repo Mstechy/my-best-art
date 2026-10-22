@@ -203,6 +203,9 @@ export function useProductSEO({
   rating,
   reviewCount,
   brand,
+  gtin,
+  mpn,
+  condition,
 }: {
   productName: string;
   price: number;
@@ -215,6 +218,9 @@ export function useProductSEO({
   rating?: number;
   reviewCount?: number;
   brand?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
+  condition?: string | null;
 }) {
   // Price in the visitor's currency for the human-readable description is no
   // longer used here: `formatPrice` converts into whatever currency the visitor
@@ -234,6 +240,9 @@ export function useProductSEO({
     rating,
     reviewCount,
     brand,
+    gtin,
+    mpn,
+    condition,
   };
 
   // Every value below comes from the shared builders, which

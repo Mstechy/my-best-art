@@ -52,6 +52,8 @@ type ProductFormDraft = { title: string; description: string; price: string; com
 const LISTING_CURRENCIES = ["NGN", "USD", "GBP", "EUR", "CAD", "AUD", "ZAR", "KES", "GHS", "INR", "JPY", "BRL", "MXN"];
 const VARIATION_TYPES = [
   { value: "storage", label: "Storage capacity", placeholder: "128GB, 256GB, 512GB" },
+  { value: "ram", label: "RAM", placeholder: "8GB, 16GB, 32GB" },
+  { value: "processor", label: "Processor", placeholder: "Core i5, Ryzen 7, M3" },
   { value: "size", label: "Size", placeholder: "Small, Medium, Large" },
   { value: "model", label: "Model", placeholder: "Standard, Pro, Max" },
   { value: "finish", label: "Finish", placeholder: "Matte, Glossy" },
@@ -81,17 +83,21 @@ function uniqueValues(values: string[]): string[] {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
 }
 
-function deriveVariantAttributes(rows: readonly VariantDraft[]): { storage?: string; color?: string } {
-  const storage = uniqueValues(
-    rows
-      .filter((row) => row.optionName.trim().toLowerCase() === "storage")
-      .map((row) => row.optionValue),
-  );
+function deriveVariantAttributes(rows: readonly VariantDraft[]): { storage?: string; ram?: string; processor?: string; color?: string } {
+  const optionAttributes: Record<string, string[]> = { storage: [], ram: [], processor: [] };
+  for (const row of rows) {
+    const optionName = row.optionName.trim().toLowerCase().replace(/\s+/g, "_");
+    if (optionName in optionAttributes) optionAttributes[optionName].push(row.optionValue);
+  }
   const colors = uniqueValues(rows.map((row) => row.color));
   return {
-    ...(storage.length > 0 ? { storage: storage.join(", ") } : {}),
+    ...Object.fromEntries(
+      Object.entries(optionAttributes)
+        .map(([key, values]) => [key, uniqueValues(values).join(", ")])
+        .filter(([, value]) => value),
+    ),
     ...(colors.length > 0 ? { color: colors.join(", ") } : {}),
-  };
+  } as { storage?: string; ram?: string; processor?: string; color?: string };
 }
 
 export type { UploadState, ImageMediaItem, DescriptionImageItem, VideoMediaItem, VariantDraft, ProductFormDraft };

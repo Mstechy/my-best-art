@@ -279,12 +279,17 @@ Deno.serve(async (req) => {
             const productPageVariant = activeVariants.find((variant) => Number(variant.stock_quantity) > 0)
               ?? activeVariants[0];
             const productPagePrice = Number(productPageVariant?.price ?? product.price);
+            const productType = categoryPath(product.category_id);
             const issues = googleFeedIssues({
               status: "active",
               is_approved: true,
               price: productPagePrice,
               imageCount: validImages.length,
               title: product.title,
+              brand: product.brand,
+              gtin: product.gtin,
+              mpn: product.mpn,
+              product_type: productType,
             });
             if (issues.length > 0) {
               recordProductError({ product_id: product.id, title: product.title, reason: issues.join("; ") });
@@ -306,7 +311,7 @@ Deno.serve(async (req) => {
                 gtin: product.gtin,
                 mpn: product.mpn,
                 stock_quantity: stock,
-                product_type: categoryPath(product.category_id),
+                product_type: productType,
                 images: validImages,
               },
               { shipping, defaultBrand },

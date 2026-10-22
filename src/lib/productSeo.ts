@@ -60,6 +60,9 @@ export interface ProductSeoInput {
   rating?: number;
   reviewCount?: number;
   brand?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
+  condition?: string | null;
 }
 
 const SITE_NAME = "Tradibu";
@@ -198,6 +201,14 @@ export function buildProductJsonLd(input: ProductSeoInput): Record<string, unkno
   // survive the spread instead of this product-specific one.
   const description = input.description ? collapseWhitespace(input.description) : `Buy ${name} on Tradibu.`;
   const brand = input.brand ? collapseWhitespace(String(input.brand)) : "";
+  const gtin = input.gtin ? collapseWhitespace(String(input.gtin)) : "";
+  const mpn = input.mpn ? collapseWhitespace(String(input.mpn)) : "";
+  const rawCondition = String(input.condition || "").toLowerCase();
+  const itemCondition = rawCondition.includes("refurb")
+    ? "https://schema.org/RefurbishedCondition"
+    : rawCondition.includes("used")
+      ? "https://schema.org/UsedCondition"
+      : "https://schema.org/NewCondition";
   const rating = typeof input.rating === "number" && Number.isFinite(input.rating) ? input.rating : 0;
   const reviewCount =
     typeof input.reviewCount === "number" && Number.isFinite(input.reviewCount) ? input.reviewCount : 0;
@@ -217,12 +228,14 @@ export function buildProductJsonLd(input: ProductSeoInput): Record<string, unkno
       // rich result is not invalidated by the format changing.
       price: price.toFixed(2),
       availability: `https://schema.org/${input.availability || "InStock"}`,
-      itemCondition: "https://schema.org/NewCondition",
+      itemCondition,
     },
   };
 
   if (input.image) schema.image = [resolveSiteUrl(input.image)];
   if (brand) schema.brand = { "@type": "Brand", name: brand };
+  if (gtin) schema.gtin = gtin;
+  if (mpn) schema.mpn = mpn;
   // Breadcrumb rich results (Google's BreadcrumbList). The product page
   // deliberately renders no visible breadcrumb trail (see
   // docs/PRD_MARKETHUB_PRODUCT_PAGE_AND_SELLER_UPLOAD.md - the header search-only

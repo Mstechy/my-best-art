@@ -93,7 +93,7 @@ vi.mock("@/lib/listingDraftMedia", () => ({
 }));
 
 /** Mirrors the ProductFormDraft shape the page writes to localStorage. */
-function seedDraft(title = "Seeded draft listing") {
+function seedDraft(title = "Seeded draft listing", formTab = "basic") {
   window.localStorage.setItem(
     DRAFT_KEY,
     JSON.stringify({
@@ -123,7 +123,7 @@ function seedDraft(title = "Seeded draft listing") {
       variantStorageValues: "",
       variantPrimaryOption: "storage",
       showSoldCount: true,
-      formTab: "basic",
+      formTab,
       seoSlug: "",
       metaDescription: "",
       lowStockThreshold: "5",
@@ -203,18 +203,9 @@ describe("seller listing draft recovery", () => {
       videos: [],
       doc: null,
     });
-    seedDraft();
+    seedDraft("Seeded draft listing", "media");
     render(<SellerProducts />);
     await screen.findByText("Add New Product");
-    await settle();
-
-    // Radix Tabs activates on pointerdown, so a bare `click` is not enough to
-    // switch steps in jsdom; the full pointer sequence is required.
-    const photosTab = screen.getByRole("tab", { name: /photos/i });
-    fireEvent.pointerDown(photosTab, { button: 0 });
-    fireEvent.mouseDown(photosTab, { button: 0 });
-    fireEvent.pointerUp(photosTab, { button: 0 });
-    fireEvent.click(photosTab);
     await settle();
 
     // The counter is `{count}/{max} images` in the JSX, which renders as three

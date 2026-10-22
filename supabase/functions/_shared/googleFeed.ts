@@ -274,6 +274,10 @@ export interface FeedReadyInput {
   price: number | string | null;
   imageCount: number;
   title?: string | null;
+  brand?: string | null;
+  gtin?: string | null;
+  mpn?: string | null;
+  product_type?: string | null;
 }
 
 /**
@@ -292,5 +296,20 @@ export function googleFeedIssues(product: FeedReadyInput): string[] {
   if (!product.title || !product.title.trim()) issues.push("Add a title");
   if (!(Number(product.price) > 0)) issues.push("Set a price above zero");
   if (!product.imageCount) issues.push("Add at least one product image");
+
+  // Electronics are normally manufactured goods. Google can match them much
+  // better when the seller supplies the real brand plus GTIN, or brand plus
+  // manufacturer part number when no GTIN exists. Do not apply this rule to
+  // every category: handmade and custom products may legitimately have no UPI.
+  const productType = String(product.product_type || "").toLowerCase();
+  const manufacturedElectronics = /electronics|computer|mobile phone|laptop|tablet|camera|television|audio/.test(productType);
+  if (manufacturedElectronics) {
+    const brand = String(product.brand || "").trim();
+    const gtin = String(product.gtin || "").trim();
+    const mpn = String(product.mpn || "").trim();
+    if (!brand) issues.push("Add the product brand");
+    if (gtin && !isValidGtin(gtin)) issues.push("Fix the GTIN or remove it if the manufacturer did not assign one");
+    if (!gtin && !mpn) issues.push("Add the manufacturer GTIN or MPN when available");
+  }
   return issues;
 }

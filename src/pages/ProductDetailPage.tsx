@@ -225,6 +225,9 @@ export default function ProductDetailPage() {
     rating: product?.average_rating,
     reviewCount: product?.review_count,
     brand: product?.brand,
+    gtin: product?.gtin,
+    mpn: product?.mpn,
+    condition: product?.condition,
   });
   const hasAvailableVariant = (size?: string, color?: string) => productVariants.some(variant =>
     variant.is_active &&
