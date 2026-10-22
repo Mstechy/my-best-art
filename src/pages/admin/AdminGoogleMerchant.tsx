@@ -214,7 +214,7 @@ export default function AdminGoogleMerchant() {
       toast({ title: "Feed generation failed", description: error?.message || data?.error, variant: "destructive" });
       return;
     }
-    toast({ title: "Product feed regenerated", description: `${data.productCount} products included.` });
+    toast({ title: "Product feed regenerated", description: `${data.productCount} feed items included.` });
     await loadFeedData();
   };
 
@@ -307,7 +307,7 @@ export default function AdminGoogleMerchant() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <Metric label="Last run" value={latestRun ? new Date(latestRun.started_at).toLocaleString() : "No completed run yet"} />
-            <Metric label="Products in last run" value={latestRun ? displayNumber(latestRun.product_count) : "—"} />
+            <Metric label="Feed items in last run" value={latestRun ? displayNumber(latestRun.product_count) : "—"} />
             <Metric label="Reported errors" value={latestRun ? displayNumber(latestRun.error_count) : "—"} />
           </div>
           {latestRun && (

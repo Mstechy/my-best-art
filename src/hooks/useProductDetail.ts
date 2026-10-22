@@ -105,21 +105,23 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
 
 // ── Individual hooks ─────────────────────────────────────────────────────
 
-/** Fetch the main product by ID */
-export function useProduct(id: string | undefined) {
+/** Fetch a public product by either its immutable ID or SEO slug. */
+export function useProduct(idOrSlug: string | undefined) {
   return useSupabaseQuery(
-    supabaseKeys.row("products", id ?? ""),
+    supabaseKeys.row("products", idOrSlug ?? ""),
     async () => {
-      if (!id) throw new Error("No product ID");
+      if (!idOrSlug) throw new Error("No product ID or slug");
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(idOrSlug);
+      const column = isUuid ? "id" : "seo_slug";
       const { data, error } = await supabase
         .from("products")
         .select("*, product_images(*)")
-        .eq("id", id)
+        .eq(column, idOrSlug)
         .single();
       if (error) throw error;
       return normalizeProduct(data as unknown as Record<string, unknown>);
     },
-    { enabled: !!id, staleTime: 5 * 60 * 1000 },
+    { enabled: !!idOrSlug, staleTime: 5 * 60 * 1000 },
   );
 }
 

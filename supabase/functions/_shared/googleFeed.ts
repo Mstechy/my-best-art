@@ -43,6 +43,13 @@ export interface FeedShippingSettings {
 
 export interface FeedProduct {
   id: string;
+  /** Stable SEO slug. The UUID remains the feed id; the public link is slug-first. */
+  slug?: string | null;
+  variantId?: string | null;
+  itemGroupId?: string | null;
+  color?: string | null;
+  size?: string | null;
+  googleProductCategory?: string | null;
   title: string;
   description?: string | null;
   /** Current selling price. Numeric or PostgREST numeric-as-string. */
@@ -138,7 +145,7 @@ export function isValidGtin(value: string): boolean {
   return (10 - (sum % 10)) % 10 === checkDigit;
 }
 
-const isHttps = (value: string) => {
+export const isHttps = (value: string) => {
   try {
     return new URL(value).protocol === "https:";
   } catch {
@@ -148,7 +155,9 @@ const isHttps = (value: string) => {
 
 /** One `<item>`: the native RSS elements Google requires + the `g:` attributes. */
 export function buildFeedItem(product: FeedProduct, options: FeedItemOptions = {}): string {
-  const url = `${FEED_SITE_URL}/product/${product.id}`;
+  const slug = String(product.slug || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  const baseUrl = `${FEED_SITE_URL}/product/${encodeURIComponent(slug || product.id)}`;
+  const url = product.variantId ? `${baseUrl}?variant=${encodeURIComponent(product.variantId)}` : baseUrl;
   const title = truncateText(stripHtml(product.title), FEED_TITLE_MAX) || "Product";
   const description = truncateText(stripHtml(product.description), FEED_DESCRIPTION_MAX) || title;
 
@@ -193,6 +202,10 @@ export function buildFeedItem(product: FeedProduct, options: FeedItemOptions = {
   lines.push(`    <g:availability>${feedAvailability(product.stock_quantity)}</g:availability>`);
   lines.push(`    <g:condition>${normalizeFeedCondition(product.condition)}</g:condition>`);
 
+  if (product.itemGroupId) lines.push(`    <g:item_group_id>${escapeXml(product.itemGroupId)}</g:item_group_id>`);
+  if (product.color) lines.push(`    <g:color>${escapeXml(stripHtml(product.color))}</g:color>`);
+  if (product.size) lines.push(`    <g:size>${escapeXml(stripHtml(product.size))}</g:size>`);
+
   const brand = stripHtml(product.brand) || stripHtml(options.defaultBrand);
   if (brand) lines.push(`    <g:brand>${escapeXml(brand)}</g:brand>`);
 
@@ -204,6 +217,9 @@ export function buildFeedItem(product: FeedProduct, options: FeedItemOptions = {
 
   const productType = stripHtml(product.product_type);
   if (productType) lines.push(`    <g:product_type>${escapeXml(productType)}</g:product_type>`);
+  if (product.googleProductCategory) {
+    lines.push(`    <g:google_product_category>${escapeXml(product.googleProductCategory)}</g:google_product_category>`);
+  }
 
   const shipping = options.shipping;
   if (shipping && shipping.price !== null && shipping.price !== undefined && shipping.country) {
@@ -278,6 +294,25 @@ export interface FeedReadyInput {
   gtin?: string | null;
   mpn?: string | null;
   product_type?: string | null;
+}
+
+/**
+ * Map the controlled marketplace category paths to Google's taxonomy for the
+ * high-volume electronics types. Unknown paths are left to product_type rather
+ * than guessing a potentially wrong Google category.
+ */
+export function googleProductCategory(productType?: string | null): string | null {
+  const value = stripHtml(productType).toLowerCase();
+  if (/\bmobile phones?\b|\bsmartphones?\b|\bcell phones?\b|\bphones?\b/.test(value)) {
+    return "Electronics > Communications > Telephony > Mobile Phones";
+  }
+  if (/\blaptops?\b|\bnotebooks?\b/.test(value)) {
+    return "Electronics > Computers > Laptops";
+  }
+  if (/\btablets?\b/.test(value)) {
+    return "Electronics > Computers > Tablet Computers";
+  }
+  return null;
 }
 
 /**

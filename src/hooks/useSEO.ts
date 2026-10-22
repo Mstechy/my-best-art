@@ -7,6 +7,7 @@ import {
   type ProductSeoInput,
 } from "@/lib/productSeo";
 import { getProductCardImageUrl } from "@/lib/productImageUrls";
+import { getProductPath, getProductUrl } from "@/lib/productUrls";
 
 interface SEOProps {
   title?: string;
@@ -206,6 +207,7 @@ export function useProductSEO({
   gtin,
   mpn,
   condition,
+  slug,
 }: {
   productName: string;
   price: number;
@@ -221,6 +223,7 @@ export function useProductSEO({
   gtin?: string | null;
   mpn?: string | null;
   condition?: string | null;
+  slug?: string | null;
 }) {
   // Price in the visitor's currency for the human-readable description is no
   // longer used here: `formatPrice` converts into whatever currency the visitor
@@ -228,7 +231,7 @@ export function useProductSEO({
   // `offers.priceCurrency`. The shared builder prices in the listing currency.
   const seoInput: ProductSeoInput = {
     id,
-    url: new URL(`/product/${id}`, SITE_URL).toString(),
+    url: getProductUrl({ id, seo_slug: slug }, SITE_URL),
     productName,
     price,
     currency,
@@ -254,7 +257,7 @@ export function useProductSEO({
     description: buildProductDescription(seoInput),
     image: image || DEFAULT_IMAGE,
     imagePreload: seoInput.imagePreload,
-    url: `/product/${id}`,
+    url: getProductPath({ id, seo_slug: slug }),
     type: "product",
     structuredData: buildProductJsonLd(seoInput),
   });

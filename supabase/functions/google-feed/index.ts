@@ -16,6 +16,8 @@ import {
   FEED_CURRENCY,
   feedSellerEligible,
   googleFeedIssues,
+  googleProductCategory,
+  isHttps,
   type FeedSellerFlags,
 } from "../_shared/googleFeed.ts";
 
@@ -40,11 +42,20 @@ interface ProductRow {
   condition: string | null;
   gtin: string | null;
   mpn: string | null;
+  seo_slug: string | null;
   stock_quantity: number | string;
   category_id: string | null;
   seller_id: string;
   product_images: { image_url: string; is_primary: boolean; sort_order: number }[] | null;
-  product_variants: { price: number | string | null; stock_quantity: number; is_active: boolean; sort_order: number }[] | null;
+  product_variants: {
+    id: string;
+    price: number | string | null;
+    stock_quantity: number;
+    is_active: boolean;
+    sort_order: number;
+    image_url: string | null;
+    option_values: Record<string, string> | null;
+  }[] | null;
 }
 
 interface ProfileRow {
@@ -199,8 +210,8 @@ Deno.serve(async (req) => {
       const { data: page, error } = await admin
         .from("products")
         .select(
-          "id, title, description, price, compare_at_price, currency, brand, condition, gtin, mpn, stock_quantity, category_id, seller_id, " +
-            "product_images(image_url, is_primary, sort_order), product_variants(price, stock_quantity, is_active, sort_order)",
+            "id, title, description, price, compare_at_price, currency, brand, condition, gtin, mpn, seo_slug, stock_quantity, category_id, seller_id, " +
+            "product_images(image_url, is_primary, sort_order), product_variants(id, price, stock_quantity, is_active, sort_order, image_url, option_values)",
         )
         .eq("status", "active")
         .eq("is_approved", true)
@@ -274,50 +285,68 @@ Deno.serve(async (req) => {
             const activeVariants = variants
               .filter((variant) => variant.is_active !== false)
               .sort((left, right) => (left.sort_order ?? 0) - (right.sort_order ?? 0));
-            const variantStock = activeVariants.reduce((sum, variant) => sum + Number(variant.stock_quantity || 0), 0);
-            const stock = activeVariants.length > 0 ? variantStock : Number(product.stock_quantity) || 0;
-            const productPageVariant = activeVariants.find((variant) => Number(variant.stock_quantity) > 0)
-              ?? activeVariants[0];
-            const productPagePrice = Number(productPageVariant?.price ?? product.price);
             const productType = categoryPath(product.category_id);
-            const issues = googleFeedIssues({
-              status: "active",
-              is_approved: true,
-              price: productPagePrice,
-              imageCount: validImages.length,
-              title: product.title,
-              brand: product.brand,
-              gtin: product.gtin,
-              mpn: product.mpn,
-              product_type: productType,
-            });
-            if (issues.length > 0) {
-              recordProductError({ product_id: product.id, title: product.title, reason: issues.join("; ") });
-              continue;
-            }
-
-            const item = buildFeedItem(
-              {
-                id: product.id,
-                title: product.title,
-                description: product.description,
-                price: productPagePrice,
-                compare_at_price: product.compare_at_price,
-                // Product detail prices are rendered from the NGN base amount;
-                // the Nigeria-targeted feed must use the same NGN offer currency.
-                currency: FEED_CURRENCY,
+            const googleCategory = googleProductCategory(productType);
+            const feedVariants = activeVariants.length > 0 ? activeVariants : [null];
+            for (const variant of feedVariants) {
+              const variantOptions = variant?.option_values ?? {};
+              const variantStock = variant ? Number(variant.stock_quantity || 0) : Number(product.stock_quantity) || 0;
+              const variantPrice = Number(variant?.price ?? product.price);
+              const variantImage = variant?.image_url && isHttps(variant.image_url) ? variant.image_url : null;
+              const variantLabel = Object.entries(variantOptions)
+                .filter(([key, value]) => !["gtin", "mpn"].includes(key) && value)
+                .map(([, value]) => value)
+                .join(" / ");
+              const variantTitle = variantLabel ? `${product.title} - ${variantLabel}` : product.title;
+              const variantGtin = variantOptions.gtin || (activeVariants.length <= 1 ? product.gtin : null);
+              const variantMpn = variantOptions.mpn || (activeVariants.length <= 1 ? product.mpn : null);
+              const issues = googleFeedIssues({
+                status: "active",
+                is_approved: true,
+                price: variantPrice,
+                imageCount: validImages.length + (variantImage ? 1 : 0),
+                title: variantTitle,
                 brand: product.brand,
-                condition: product.condition,
-                gtin: product.gtin,
-                mpn: product.mpn,
-                stock_quantity: stock,
+                gtin: variantGtin,
+                mpn: variantMpn,
                 product_type: productType,
-                images: validImages,
-              },
-              { shipping, defaultBrand },
-            );
-            controller.enqueue(encoder.encode(`${item}\n`));
-            productCount += 1;
+              });
+              const blockingIssues = issues.filter((issue) =>
+                !issue.startsWith("Add the product brand") &&
+                !issue.startsWith("Add the manufacturer GTIN or MPN"),
+              );
+              if (blockingIssues.length > 0) {
+                recordProductError({ product_id: product.id, title: variantTitle, reason: blockingIssues.join("; ") });
+                continue;
+              }
+
+              const item = buildFeedItem(
+                {
+                  id: variant ? `${product.id}-${variant.id}` : product.id,
+                  variantId: variant?.id,
+                  itemGroupId: activeVariants.length > 1 ? product.id : null,
+                  slug: product.seo_slug,
+                  title: variantTitle,
+                  description: product.description,
+                  price: variantPrice,
+                  compare_at_price: product.compare_at_price,
+                  currency: FEED_CURRENCY,
+                  brand: product.brand,
+                  condition: product.condition,
+                  gtin: variantGtin,
+                  mpn: variantMpn,
+                  stock_quantity: variantStock,
+                  product_type: productType,
+                  googleProductCategory: googleCategory,
+                  color: variantOptions.color || variantOptions.colour,
+                  size: variantOptions.size,
+                  images: variantImage ? [variantImage, ...validImages] : validImages,
+                },
+                { shipping, defaultBrand },
+              );
+              controller.enqueue(encoder.encode(`${item}\n`));
+              productCount += 1;
+            }
           }
         } catch (error) {
           generationError = error;

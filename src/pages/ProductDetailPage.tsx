@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, ChevronRight, Flame, Store, ShoppingCart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,11 +35,13 @@ import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { trackView } from "@/hooks/useBatchedViewTracking";
 import { useProductSEO } from "@/hooks/useSEO";
+import { getProductPath } from "@/lib/productUrls";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
 import { countryName } from "@/lib/countries";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { addItem, beginDirectCheckout, totalItems, setIsOpen: setCartOpen } = useCart();
   const { user, role } = useAuth();
@@ -228,7 +230,16 @@ export default function ProductDetailPage() {
     gtin: product?.gtin,
     mpn: product?.mpn,
     condition: product?.condition,
+    slug: product?.seo_slug,
   });
+
+  useEffect(() => {
+    if (!product || !id || !product.seo_slug) return;
+    const preferredPath = getProductPath(product);
+    if (window.location.pathname !== preferredPath) {
+      window.history.replaceState({}, "", preferredPath);
+    }
+  }, [id, product]);
   const hasAvailableVariant = (size?: string, color?: string) => productVariants.some(variant =>
     variant.is_active &&
     variant.stock_quantity > 0 &&
@@ -330,7 +341,12 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!hasProductVariants || variantAttributeKeys.size === 0) return;
-    const defaultVariant = productVariants.find((variant) => variant.is_active && variant.stock_quantity > 0)
+    const requestedVariantId = searchParams.get("variant");
+    const requestedVariant = requestedVariantId
+      ? productVariants.find((variant) => variant.id === requestedVariantId && variant.is_active)
+      : undefined;
+    const defaultVariant = requestedVariant
+      ?? productVariants.find((variant) => variant.is_active && variant.stock_quantity > 0)
       ?? productVariants.find((variant) => variant.is_active);
     if (!defaultVariant) return;
 
@@ -341,7 +357,7 @@ export default function ProductDetailPage() {
           .map((key) => [key, defaultVariant.option_values[key]]),
       ),
     );
-  }, [hasProductVariants, product?.id, productVariants, variantAttributeKeys]);
+  }, [hasProductVariants, product?.id, productVariants, variantAttributeKeys, searchParams]);
 
   const submitReview = useCallback(async () => {
     if (!user || !id || !product) return;

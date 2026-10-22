@@ -1787,7 +1787,7 @@ export default function SellerProducts() {
                   <div>
                     <label className="text-sm font-medium text-foreground">URL Slug</label>
                     <Input value={seoSlug} onChange={(e) => { setSeoSlug(e.target.value); setSlugTouched(true); }} placeholder="product-url-slug" className="mt-1" />
-                    <p className="mt-1 text-xs text-muted-foreground">Live URL: /product/{seoSlug || "your-slug"}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Preferred public URL: /product/{seoSlug || "your-slug"}. Existing ID links remain supported.</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Meta Description <span className="text-xs text-muted-foreground font-normal">(optional, max 160 chars)</span></label>

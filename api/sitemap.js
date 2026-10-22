@@ -38,6 +38,7 @@ function sendSitemap(response, urls, status = 200) {
   response.status(status);
   response.setHeader("Content-Type", "application/xml; charset=utf-8");
   response.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
+  if (status >= 500) response.setHeader("Retry-After", "300");
   response.end(
     `<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${urls}</urlset>`,
   );
@@ -50,7 +51,7 @@ export default async function handler(_request, response) {
     // Logged, not thrown: a missing env var is a deployment mistake, and this
     // is the only way to see it. Vercel surfaces console output in the logs.
     console.error("[sitemap] Missing Supabase env vars. Expected VITE_SUPABASE_URL and VITE_SUPABASE_ANON.");
-    sendSitemap(response, "");
+    sendSitemap(response, "", 503);
     return;
   }
 
@@ -69,7 +70,7 @@ export default async function handler(_request, response) {
     for (;;) {
       const { data, error } = await supabase
         .from("products")
-        .select("id, updated_at")
+        .select("id, seo_slug, updated_at")
         .eq("status", "active")
         .eq("is_approved", true)
         .order("updated_at", { ascending: false })
@@ -85,7 +86,9 @@ export default async function handler(_request, response) {
         const lastmod = product.updated_at
           ? `<lastmod>${new Date(product.updated_at).toISOString().slice(0, 10)}</lastmod>`
           : "";
-        return `<url><loc>${SITE_URL}/product/${escapeXml(product.id)}</loc>${lastmod}<changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+        const slug = String(product.seo_slug || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+        const path = slug || product.id;
+        return `<url><loc>${SITE_URL}/product/${escapeXml(path)}</loc>${lastmod}<changefreq>weekly</changefreq><priority>0.8</priority></url>`;
       })
       .join("");
 
@@ -95,7 +98,6 @@ export default async function handler(_request, response) {
     // Log the real cause. The previous catch discarded it entirely, which is
     // why this endpoint failed for an unknown reason on a live domain.
     console.error("[sitemap] Failed to build product sitemap:", error);
-    sendSitemap(response, "", 200);
+    sendSitemap(response, "", 503);
   }
 }
-

@@ -7,12 +7,14 @@ import {
   isValidGtin,
   feedSellerEligible,
   googleFeedIssues,
+  googleProductCategory,
 } from "@/lib/googleFeed";
 
 describe("google feed helpers", () => {
   it("builds a valid Google Shopping item from a product record", () => {
     const xml = buildFeedItem({
       id: "prod_123",
+      slug: "samsung-galaxy-note-10",
       title: "<b>Galaxy Note</b> 10",
       description: "<p>Fast phone with <strong>big battery</strong>.</p>",
       price: 250000,
@@ -32,7 +34,7 @@ describe("google feed helpers", () => {
     });
 
     expect(xml).toContain("<title>Galaxy Note 10</title>");
-    expect(xml).toContain(`<link>${FEED_SITE_URL}/product/prod_123</link>`);
+    expect(xml).toContain(`<link>${FEED_SITE_URL}/product/samsung-galaxy-note-10</link>`);
     expect(xml).toContain("<g:price>300000.00 NGN</g:price>");
     expect(xml).toContain("<g:sale_price>250000.00 NGN</g:sale_price>");
     expect(xml).toContain("<g:availability>in_stock</g:availability>");
@@ -158,5 +160,26 @@ describe("google feed helpers", () => {
       brand: "Lenovo",
       mpn: "20W0001XUS",
     })).not.toContain("Add the manufacturer GTIN or MPN when available");
+  });
+
+  it("adds Google taxonomy and variant metadata when supplied", () => {
+    const item = buildFeedItem({
+      id: "prod_phone-black",
+      variantId: "variant-black",
+      itemGroupId: "prod_phone",
+      slug: "apple-iphone-15",
+      title: "Apple iPhone 15 - Black / 256GB",
+      price: 500000,
+      stock_quantity: 4,
+      color: "Black",
+      googleProductCategory: googleProductCategory("Electronics > Phones"),
+      images: ["https://cdn.example.com/phone.jpg"],
+    });
+
+    expect(item).toContain("/product/apple-iphone-15?variant=variant-black");
+    expect(item).toContain("<g:item_group_id>prod_phone</g:item_group_id>");
+    expect(item).toContain("<g:color>Black</g:color>");
+    expect(item).toContain("<g:google_product_category>Electronics &gt; Communications &gt; Telephony &gt; Mobile Phones</g:google_product_category>");
+    expect(googleProductCategory("Electronics > Laptops")).toBe("Electronics > Computers > Laptops");
   });
 });

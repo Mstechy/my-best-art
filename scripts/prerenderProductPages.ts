@@ -4,6 +4,7 @@ import { loadEnv, type Plugin } from "vite";
 import { injectProductHead, resolveSiteUrl, truncateText, type ProductSeoInput } from "../src/lib/productSeo";
 import { injectStaticBody } from "../src/lib/prerenderBody";
 import { getProductCardImageUrl } from "../src/lib/productImageUrls";
+import { getProductPath } from "../src/lib/productUrls";
 
 /**
  * Build-time <head> prerender for product URLs.
@@ -40,6 +41,7 @@ interface ProductRow {
   brand: string | null;
   gtin: string | null;
   mpn: string | null;
+  seo_slug: string | null;
   condition: string | null;
   stock_quantity: string | number | null;
   average_rating: string | number | null;
@@ -53,7 +55,7 @@ interface ProductRow {
  * "primary, else first" rule ProductDetailPage uses.
  */
 const SELECT_COLUMNS =
-  "id,title,price,currency,description,meta_description,brand,gtin,mpn,condition,stock_quantity,average_rating,review_count,product_images(image_url,is_primary)";
+  "id,title,price,currency,description,meta_description,brand,gtin,mpn,seo_slug,condition,stock_quantity,average_rating,review_count,product_images(image_url,is_primary)";
 
 /**
  * The project ships `VITE_SUPABASE_ANON` in .env while earlier Vercel setups
@@ -113,7 +115,7 @@ async function prerender(root: string, mode: string): Promise<void> {
     const image = pickImage(product.product_images);
     const input: ProductSeoInput = {
       id: product.id,
-      url: resolveSiteUrl(`/product/${product.id}`),
+      url: resolveSiteUrl(getProductPath({ id: product.id, seo_slug: product.seo_slug })),
       productName: product.title,
       price: toNumber(product.price),
       currency: product.currency || "NGN",
@@ -138,7 +140,8 @@ async function prerender(root: string, mode: string): Promise<void> {
       heading: product.title,
       description: input.description ? truncateText(input.description, 480) : null,
     });
-    const directory = path.join(outputRoot, product.id);
+    const slugPath = getProductPath({ id: product.id, seo_slug: product.seo_slug }).replace(/^\/product\//, "");
+    const directory = path.join(outputRoot, slugPath);
     await fs.mkdir(directory, { recursive: true });
     // Written both ways round, because the two resolutions Vercel can pick are
     // not the same code path:
@@ -161,7 +164,17 @@ async function prerender(root: string, mode: string): Promise<void> {
     // plain-text platform 404 for every unrouted path. The destination is
     // `/index`, and src/test/vercelRouting.test.ts fails if that regresses.
     await fs.writeFile(path.join(directory, "index.html"), html, "utf8");
-    await fs.writeFile(path.join(outputRoot, `${product.id}.html`), html, "utf8");
+    await fs.writeFile(path.join(outputRoot, `${slugPath}.html`), html, "utf8");
+
+    // Preserve every existing UUID URL as a compatibility copy. Its canonical
+    // points at the slug URL above, so old bookmarks and indexed URLs converge
+    // without breaking checkout links or seller dashboards.
+    if (slugPath !== product.id) {
+      const legacyDirectory = path.join(outputRoot, product.id);
+      await fs.mkdir(legacyDirectory, { recursive: true });
+      await fs.writeFile(path.join(legacyDirectory, "index.html"), html, "utf8");
+      await fs.writeFile(path.join(outputRoot, `${product.id}.html`), html, "utf8");
+    }
   }
 
   console.log(`[prerender] Wrote product <head> for ${products.length} product(s).`);
@@ -171,6 +184,13 @@ async function prerender(root: string, mode: string): Promise<void> {
 export function prerenderProductPages(): Plugin {
   let mode = "production";
   let root = process.cwd();
+
+  // A local build may intentionally run without Supabase credentials, but a
+  // deployment must never silently publish product routes with the homepage
+  // SPA shell. Vercel and CI are strict by default; local developers can opt
+  // into the same behaviour with PRERENDER_REQUIRED=true.
+  const prerenderRequired = () =>
+    process.env.PRERENDER_REQUIRED === "true" || process.env.VERCEL === "1" || process.env.CI === "true";
 
   return {
     name: "tradibu:prerender-product-pages",
@@ -185,6 +205,7 @@ export function prerenderProductPages(): Plugin {
       try {
         await prerender(root, mode);
       } catch (error) {
+        if (prerenderRequired()) throw error;
         console.warn(
           "[prerender] Failed; product pages fall back to the SPA shell:",
           error instanceof Error ? error.message : error,
