@@ -12,7 +12,7 @@ import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import { Package, ArrowLeft, ShoppingBag, CheckCircle2, Lock, ShieldCheck, BookmarkPlus, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { COUNTRIES } from "@/lib/countries";
+import { COUNTRIES, phonePlaceholder } from "@/lib/countries";
 import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import {
@@ -51,11 +51,11 @@ const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#6E
 
 export default function CheckoutPage() {
   const { items, clearCart, syncItems, directCheckoutItem, updateDirectCheckoutItem, clearDirectCheckout } = useCart();
-  const { formatPrice } = useCurrency();
+  const { formatPrice, country: preferredCountry } = useCurrency();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [address, setAddress] = useState({ name: "", phone: "", street: "", city: "", state: "", zip: "", country: "" });
+  const [address, setAddress] = useState({ name: "", phone: "", street: "", city: "", state: "", zip: "", country: preferredCountry || "NG" });
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [saveAfter, setSaveAfter] = useState(false);
   const [addressLabel, setAddressLabel] = useState("");
@@ -305,7 +305,7 @@ export default function CheckoutPage() {
                 </div>
                  <div>
                    <label htmlFor="checkout-phone" className={labelCls}>Phone</label>
-                   <input id="checkout-phone" className={inputCls} value={address.phone} onChange={e => setAddress(p => ({ ...p, phone: e.target.value }))} placeholder="+234 800 000 0000" />
+                   <input id="checkout-phone" type="tel" inputMode="tel" autoComplete="tel" className={inputCls} value={address.phone} onChange={e => setAddress(p => ({ ...p, phone: e.target.value }))} placeholder={phonePlaceholder(address.country)} />
                  </div>
                 <div>
                   <label htmlFor="checkout-street" className={labelCls}>Street Address *</label>

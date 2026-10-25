@@ -60,6 +60,11 @@ interface CategoryRow {
   name: string;
 }
 
+interface CategoryCountRow {
+  category_id: string;
+  product_count: number;
+}
+
 interface CollectionRow {
   slug: string;
   title: string;
@@ -212,12 +217,15 @@ interface RouteSet {
 }
 
 async function departmentRoutes(supabase: ResolvedSupabase): Promise<RouteSet> {
-  // Every department, including the ones holding no stock today. An empty
-  // department is a thin page, but a department that inherits the homepage's
-  // canonical is a page Google will never show at all - and the catalogue is
-  // seeded with 26 of them so it can scale.
-  const rows = await fetchRows<CategoryRow>(supabase, "categories", "select=slug,name&order=sort_order");
-  const usable = rows.filter((row) => Boolean(row.slug && row.name));
+  // A seeded department is not a useful landing page until it has approved
+  // inventory. Keep empty departments in the interactive directory as upcoming,
+  // but do not prerender or submit them to search engines.
+  const [rows, counts] = await Promise.all([
+    fetchRows<CategoryRow & { id: string }>(supabase, "categories", "select=id,slug,name&order=sort_order"),
+    fetchRows<CategoryCountRow>(supabase, "rpc/homepage_category_counts", ""),
+  ]);
+  const liveCategoryIds = new Set(counts.filter((row) => Number(row.product_count) > 0).map((row) => row.category_id));
+  const usable = rows.filter((row) => Boolean(row.id && row.slug && row.name && liveCategoryIds.has(row.id)));
   return {
     routes: usable.map((row) => ({
       path: `/categories/${row.slug}`,

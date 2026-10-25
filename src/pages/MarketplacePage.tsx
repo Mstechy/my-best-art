@@ -32,7 +32,7 @@ import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
-import { dedupeProducts, isMarketplaceSort } from "@/lib/marketplaceContracts";
+import { dedupeProducts, filterProductsByCategory, isMarketplaceSort } from "@/lib/marketplaceContracts";
 import { toast } from "sonner";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -270,7 +270,9 @@ export default function MarketplacePage() {
     setCategoriesLoading(false);
   };
 
-  const catalogueCacheKey = useMemo(() => cacheKeyFor("marketplace_catalogue", {
+  const categoryFilterPending = Boolean(categoryParam) && (categoriesLoading || !selectedCategory);
+
+  const catalogueCacheKey = useMemo(() => categoryFilterPending ? null : cacheKeyFor("marketplace_catalogue", {
     search: search.trim() || null,
     category: selectedCategory || null,
     shipsTo: shipsTo === "all" ? null : shipsTo,
@@ -284,7 +286,7 @@ export default function MarketplacePage() {
     seed: sortBy === "random" ? pageSeed : null,
     visualHash: visualHashParam || null,
     pageSize: CATALOGUE_PAGE_SIZE,
-  }), [search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
+  }), [categoryFilterPending, search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
 
   const {
     data: catalogueData,
@@ -457,7 +459,7 @@ export default function MarketplacePage() {
     return (categoryAttributes[key] || fallback[key] || "").trim();
   };
 
-  const filtered = useMemo(() => products, [products]);
+  const filtered = useMemo(() => filterProductsByCategory(products, selectedCategory), [products, selectedCategory]);
 
   const visualFallbackProducts = useMemo(() => {
     if (!isVisualSearch || filtered.length > 0) return [];
@@ -475,6 +477,11 @@ export default function MarketplacePage() {
   // Departments with stock only. The catalogue holds 26 categories so it can grow, and
   // offering a department with nothing in it just leads to an empty grid.
   const populatedCategories = usePopulatedCategories();
+  const electronicsSubcategories = useMemo(() => {
+    if (selectedCategoryRecord?.slug !== "electronics") return [];
+    const supportedSlugs = new Set(["phones-accessories", "computers", "gaming", "watches", "audio"]);
+    return populatedCategories.filter((category) => supportedSlugs.has(category.slug));
+  }, [populatedCategories, selectedCategoryRecord?.slug]);
 
   // The catalogue rendered no SEO at all, so every /categories/<slug> URL shared the
   // static title from index.html and Google could not tell 26 departments apart. A
@@ -644,6 +651,24 @@ export default function MarketplacePage() {
                     ? t("marketplace.categoryDescription", { category: selectedCategoryRecord.name })
                     : t("marketplace.defaultDescription")}
               </p>
+              {electronicsSubcategories.length > 0 && (
+                <section className="mb-6" aria-labelledby="electronics-types">
+                  <div className="mb-3 flex items-end justify-between gap-3">
+                    <div>
+                      <h2 id="electronics-types" className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Shop Electronics by type</h2>
+                      <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Jump to a stocked product listing, then filter and compare.</p>
+                    </div>
+                    <Link to="/categories" className="shrink-0 text-xs font-semibold underline underline-offset-4">All departments</Link>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {electronicsSubcategories.map((category) => (
+                      <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="rounded-xl border border-[#E8E8E8] bg-white px-3 py-3 text-xs font-semibold transition hover:border-[#111111] dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2]">
+                        {category.name}
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
             </AnimatedSection>
             <AnimatedSection variant="fade-up" delay={50}>
               <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeProducts, isMarketplaceSort, MARKETPLACE_SORTS } from "@/lib/marketplaceContracts";
+import { dedupeProducts, filterProductsByCategory, isMarketplaceSort, MARKETPLACE_SORTS } from "@/lib/marketplaceContracts";
 
 describe("marketplace contracts", () => {
   it("accepts every server-supported sort and rejects unknown values", () => {
@@ -12,5 +12,16 @@ describe("marketplace contracts", () => {
     const existing = [{ id: "a" }, { id: "b" }];
     const next = [{ id: "b" }, { id: "c" }, { id: "c" }, { id: "d" }];
     expect(dedupeProducts(next, existing)).toEqual([{ id: "c" }, { id: "d" }]);
+  });
+
+  it("never leaks products from another category into a listing", () => {
+    const products = [
+      { id: "phone", category_id: "electronics" },
+      { id: "shirt", category_id: "fashion" },
+      { id: "uncategorized", category_id: null },
+    ];
+
+    expect(filterProductsByCategory(products, "fashion")).toEqual([{ id: "shirt", category_id: "fashion" }]);
+    expect(filterProductsByCategory(products, null)).toEqual(products);
   });
 });

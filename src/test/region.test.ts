@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { countryFromTimeZone, countryToCurrency, detectCountryFromEnvironment } from "@/lib/region";
+import { phonePlaceholder } from "@/lib/countries";
 
 describe("region detection", () => {
   it.each([
@@ -31,5 +32,10 @@ describe("region detection", () => {
 
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it("uses the selected country's dial code in checkout guidance", () => {
+    expect(phonePlaceholder("NG")).toContain("+234");
+    expect(phonePlaceholder("US")).toContain("+1");
   });
 });
