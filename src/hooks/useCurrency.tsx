@@ -1,6 +1,6 @@
 import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { countryToCurrency, detectCountryFromEnvironment } from "@/lib/region";
+import { countryToCurrency, detectCountryFromEnvironment, resolveCountryPreference } from "@/lib/region";
 
 interface CurrencyInfo { code: string; symbol: string; rate: number; }
 interface CurrencyRateRow { code: string; symbol: string; rate_to_usd: number; }
@@ -43,12 +43,11 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
 
   const setCurrencyCode = useCallback((nextCode: string) => { const normalized = nextCode.toUpperCase(); if (!FALLBACK[normalized]) return; setCode(normalized); saveStored("preferred_currency", normalized); saveStored(CURRENCY_MANUAL_KEY, "true"); }, []);
   const setCountry = useCallback((nextCountry: string | null) => {
-    const normalized = nextCountry?.toUpperCase() || null;
-    const resolvedCountry = normalized || detectCountryFromEnvironment() || "NG";
-    setCountryState(resolvedCountry);
-    saveStored("preferred_country", normalized);
-    saveStored(COUNTRY_MANUAL_KEY, normalized ? "true" : null);
-    const mapped = countryToCurrency(resolvedCountry) || "NGN";
+    const resolved = resolveCountryPreference(nextCountry, detectCountryFromEnvironment());
+    setCountryState(resolved.country);
+    saveStored("preferred_country", resolved.country);
+    saveStored(COUNTRY_MANUAL_KEY, resolved.country ? "true" : null);
+    const mapped = resolved.currency;
     setCode(mapped);
     saveStored("preferred_currency", mapped);
     saveStored(CURRENCY_MANUAL_KEY, null);

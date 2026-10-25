@@ -93,7 +93,7 @@ export function NavDrawer({
         {/* Header with close */}
         <div className="flex items-center justify-between border-b border-[#E8E8E8] p-4 dark:border-[#222222]">
           <span className="font-sans text-lg font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2] lowercase">
-            market<span className="text-[#F6C75D]">hub</span>
+            Tradibu
           </span>
           <button
             onClick={onClose}

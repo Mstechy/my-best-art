@@ -53,6 +53,15 @@ export function countryToCurrency(country?: string | null): string | null {
   return COUNTRY_TO_CURRENCY[country.toUpperCase()] || null;
 }
 
+export function resolveCountryPreference(nextCountry: string | null, detectedCountry: string | null = null) {
+  const country = nextCountry?.trim().toUpperCase() || null;
+  const fallbackCountry = detectedCountry?.trim().toUpperCase() || "NG";
+  return {
+    country,
+    currency: countryToCurrency(country || fallbackCountry) || "NGN",
+  };
+}
+
 export function countryFromTimeZone(timeZone: string): string | null {
   return TIMEZONE_COUNTRY_MAP[timeZone] || null;
 }

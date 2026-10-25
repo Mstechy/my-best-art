@@ -53,7 +53,7 @@ export default function CartDrawer() {
             <span className="flex items-center gap-2">
               <ShoppingBag className="h-4 w-4" />
               <span className="font-sans text-base font-black tracking-tighter lowercase">
-                market<span className="text-[#F6C75D]">hub</span>
+                Tradibu
               </span>
             </span>
             <span className="text-[10px] font-semibold text-[#6E6C64] shrink-0">{totalItems} item{totalItems !== 1 ? "s" : ""}</span>

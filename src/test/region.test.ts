@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { countryFromTimeZone, countryToCurrency, detectCountryFromEnvironment } from "@/lib/region";
+import { countryFromTimeZone, countryToCurrency, detectCountryFromEnvironment, resolveCountryPreference } from "@/lib/region";
 import { phonePlaceholder } from "@/lib/countries";
 
 describe("region detection", () => {
@@ -37,5 +37,10 @@ describe("region detection", () => {
   it("uses the selected country's dial code in checkout guidance", () => {
     expect(phonePlaceholder("NG")).toContain("+234");
     expect(phonePlaceholder("US")).toContain("+1");
+  });
+
+  it("preserves Ship anywhere instead of rewriting it to the detected country", () => {
+    expect(resolveCountryPreference(null, "NG")).toEqual({ country: null, currency: "NGN" });
+    expect(resolveCountryPreference(" us ", "NG")).toEqual({ country: "US", currency: "USD" });
   });
 });

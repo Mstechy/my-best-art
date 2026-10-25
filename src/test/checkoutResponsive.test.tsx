@@ -11,20 +11,21 @@
  *      (City/State, ZIP/Country) must collapse to one column below `sm`.
  *   2. iOS Safari zooms the viewport when a focused input is below 16px, so
  *      every field carries `text-base md:text-sm`.
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
  *
  * jsdom cannot measure layout, so the viewport-specific classes are asserted
  * directly, following src/test/dashboardResponsiveShell.test.tsx.
  */
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import CheckoutPage from "@/pages/CheckoutPage";
 
 /** Mutable holder, hoisted so the vi.mock factories can read it. */
 const state = vi.hoisted(() => ({
+  preferredCountry: null as string | null,
   items: [
     {
       id: "cart-1",
@@ -77,6 +78,8 @@ vi.mock("@/hooks/useCurrency", () => ({
   useCurrency: () => ({
     formatPrice: (amount: number) => `$${amount.toFixed(2)}`,
     convertPrice: (amount: number) => amount,
+    country: state.preferredCountry,
+    currency: { code: "NGN" },
   }),
 }));
 
@@ -105,6 +108,25 @@ function placeOrderButtons(): HTMLElement[] {
 }
 
 describe("checkout responsive layout", () => {
+  beforeEach(() => {
+    state.preferredCountry = null;
+  });
+
+  it("updates the checkout destination when the shared country preference resolves after mount", async () => {
+    state.preferredCountry = null;
+    const view = renderCheckout();
+    expect(screen.getByRole("combobox")).toHaveTextContent("Nigeria");
+
+    state.preferredCountry = "US";
+    view.rerender(
+      <MemoryRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <CheckoutPage />
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => expect(screen.getByRole("combobox")).toHaveTextContent("United States"));
+  });
+
   it("pins Place Order in a mobile-only bottom bar and keeps the summary CTA inline from md up", () => {
     renderCheckout();
 

@@ -78,6 +78,17 @@ export default function CheckoutPage() {
   const checkoutGrandTotal = checkoutTotal + shippingTotal;
   const shippingQuoteReady = Boolean(address.country) && !shippingQuoteLoading && !shippingQuoteError && shippingQuotes.length === Object.keys(sellerGroups).length;
   const checkoutEventSentRef = useRef(false);
+  const addressCountryDirtyRef = useRef(false);
+  const savedAddressAppliedRef = useRef(false);
+
+  // The regional preference can resolve after checkout's first render. Keep a
+  // pristine checkout destination aligned with it, without overwriting a
+  // country the shopper has already selected or a saved address.
+  useEffect(() => {
+    if (addressCountryDirtyRef.current || savedAddressAppliedRef.current) return;
+    const nextCountry = preferredCountry || "NG";
+    setAddress((current) => current.country === nextCountry ? current : { ...current, country: nextCountry });
+  }, [preferredCountry]);
 
   useEffect(() => {
     if (checkoutItems.length === 0) return;
@@ -154,6 +165,7 @@ export default function CheckoutPage() {
   }, [user]);
 
   const applySaved = (a: SavedAddress) => {
+    savedAddressAppliedRef.current = true;
     const savedCountry = COUNTRIES.find(country => country.code === a.country || country.name.toLowerCase() === a.country.toLowerCase())?.code || "";
     setAddress({
       name: a.recipient, phone: a.phone || "", street: [a.line1, a.line2].filter(Boolean).join(", "),
@@ -329,7 +341,7 @@ export default function CheckoutPage() {
                   </div>
                   <div>
                     <label className={labelCls}>Country *</label>
-                    <Select value={address.country} onValueChange={country => setAddress(p => ({ ...p, country }))}>
+                    <Select value={address.country} onValueChange={country => { addressCountryDirtyRef.current = true; setAddress(p => ({ ...p, country })); }}>
                       <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
                       <SelectContent>{COUNTRIES.map(country => <SelectItem key={country.code} value={country.code}>{country.name}</SelectItem>)}</SelectContent>
                     </Select>
