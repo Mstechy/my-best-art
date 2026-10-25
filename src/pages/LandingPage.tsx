@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useNavigate } from "react-router-dom";
 import { Package, Zap, Clock, UserPlus, Flame, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
-import AfterFirstPaint from "@/components/AfterFirstPaint";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -463,26 +462,12 @@ export default function LandingPage() {
           image height from the stored dimensions, the page height is already correct
           on the first paint. Only NEW items are ever placed, so nothing on screen
           moves when a page arrives. */}
-      {/* The below-the-fold rails and the catch-all feed are deferred past the first
-          paint, which is the house `AfterFirstPaint` contract applied to rendering
-          rather than to subscriptions.
-
-          This is web.dev's LCP guidance step 2 - "ensure the LCP element can render
-          as soon as its resource finishes loading" - and the hero IS this page's LCP
-          element. It was waiting on a single React commit that also built every
-          below-the-fold skeleton, so the element render delay was the whole commit,
-          not the image: measured on the Lighthouse mobile profile (390x844 @3x,
-          CPU 4x, Slow 4G) the hero file had arrived and still painted 1.16s after
-          FCP. Restricting the first commit to the above-the-fold shell lets the hero
-          paint IN that commit instead of after it.
-
-          `AfterFirstPaint` renders its children with NO wrapper element, so the
-          Container stays a direct child of `main` and `order-4` keeps its place in
-          the flex ordering. The mount waits for `load` plus two animation frames -
-          deliberately never a timer, which fires on schedule even while the thread
-          is busy - and a client-side navigation afterwards mounts immediately. */}
-      <AfterFirstPaint>
-        <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
+      {/* Product rails mount in the first React commit. They render reserved
+          skeletons while the snapshot is in flight, so a slow image/font/API
+          request cannot leave the mobile page with a blank region waiting for the
+          window `load` event. CSS content-visibility still defers expensive
+          off-screen painting without deferring the DOM or its loading state. */}
+      <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
           {visibleFeeds.map(feed => {
             const isCatchAll = feed.key === CATCH_ALL_FEED;
             const cards = isCatchAll ? catchAllCards : railCards.get(feed.key) ?? [];
@@ -517,8 +502,7 @@ export default function LandingPage() {
               </section>
             );
           })}
-        </Container>
-      </AfterFirstPaint>
+      </Container>
     </main>
     <SiteFooter />
   </div>;

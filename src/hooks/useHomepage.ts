@@ -63,6 +63,8 @@ export function useHomepageCategories() {
         (supabase as any).from("categories").select("id,name,slug,parent_id").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
       ]);
+      if (categoriesRes.error) throw categoriesRes.error;
+      if (countsRes.error) throw countsRes.error;
       const categories = (categoriesRes.data ?? []) as Category[];
       const counts = Object.fromEntries(
         ((countsRes.data ?? []) as any[]).map((row: any) => [row.category_id, Number(row.product_count)])
@@ -161,6 +163,10 @@ export function useHomepageSnapshotData() {
     return { feeds: result, sellers: sellerMap };
   }, [snapshot.data]);
 
+  const retrySnapshot = async () => {
+    await Promise.all([snapshot.refetch(), categories.refetch()]);
+  };
+
   return {
     heroSlides: hero.data ?? [],
     heroLoading: hero.isLoading,
@@ -169,9 +175,9 @@ export function useHomepageSnapshotData() {
     categoryImages: categories.data?.imageByCategory ?? {},
     feeds,
     sellers,
-    snapshotError: snapshot.error,
-    retrySnapshot: snapshot.refetch,
-    snapshotFetching: snapshot.isFetching,
+    snapshotError: snapshot.error ?? categories.error,
+    retrySnapshot,
+    snapshotFetching: snapshot.isFetching || categories.isFetching,
     loading: categories.isLoading || snapshot.isLoading,
   };
 }

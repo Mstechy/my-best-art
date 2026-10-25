@@ -4,22 +4,20 @@
  * The Oct 2026 field audit measured the LCP image ready at ~0.69s and the hero
  * still painting 2.13s later: the first React commit after `load` built the hero
  * AND every below-the-fold feed skeleton in one batch, so the hero's render
- * delay was the whole commit. The feed Container now mounts through the house
- * `AfterFirstPaint` (load + two frames, never a timer).
+ * delay was the whole commit. The feed Container now mounts in the first commit
+ * with reserved skeletons, so a slow mobile load cannot leave a blank product area.
  *
- * Two halves are pinned here, mirroring src/test/afterFirstPaint.test.tsx:
+ * Two halves are pinned here:
  *
  *   1. On a cold load the hero artwork IS in the first render (it is the LCP
  *      element - if it waited for `load` the regression this whole mechanism
- *      exists to prevent would be back), while the feed Container is NOT, and
- *      when it does mount it is a DIRECT child of <main> - `AfterFirstPaint`
- *      renders children with no wrapper, and a wrapper would break the
- *      `order-4` flex ordering that places the feed after the hero rails.
+ *      exists to prevent would be back), and the feed Container is present as a
+ *      DIRECT child of <main> with loading skeletons.
  *
- *   2. On a client-side navigation (document already complete) nothing is held
- *      back, so the feed never appears empty mid-session.
+ *   2. On a client-side navigation nothing is held back, so the feed never
+ *      appears empty mid-session.
  */
-import { act, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -73,26 +71,6 @@ vi.mock("@/components/MarketplaceNavbar", () => ({
 }));
 vi.mock("@/components/CartDrawer", () => ({ default: () => null }));
 
-/**
- * jsdom implements requestAnimationFrame as a timer, so a stub that runs the
- * callback synchronously makes AfterFirstPaint's double-frame hop deterministic
- * (same approach as afterFirstPaint.test.tsx).
- */
-function installFrameStub() {
-  const original = window.requestAnimationFrame;
-  window.requestAnimationFrame = ((cb: FrameRequestCallback) => {
-    cb(0);
-    return 0;
-  }) as typeof window.requestAnimationFrame;
-  return () => {
-    window.requestAnimationFrame = original;
-  };
-}
-
-function setReadyState(value: DocumentReadyState) {
-  Object.defineProperty(document, "readyState", { value, configurable: true });
-}
-
 function renderLanding() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -106,23 +84,11 @@ function renderLanding() {
   );
 }
 
-/** The below-the-fold feed: `order-4` marks the deferred Container uniquely. */
-const deferredFeed = () => document.querySelector("main > .order-4");
+/** The product feed: `order-4` marks the Container uniquely. */
+const productFeed = () => document.querySelector("main > .order-4");
 
 describe("landing first-commit contract", () => {
-  let restoreFrames: () => void;
-
-  beforeEach(() => {
-    restoreFrames = installFrameStub();
-    setReadyState("loading");
-  });
-
-  afterEach(() => {
-    restoreFrames();
-    setReadyState("complete");
-  });
-
-  it("paints the hero artwork immediately and defers the feed until after load", () => {
+  it("paints the hero artwork and feed skeleton immediately", () => {
     renderLanding();
 
     // The LCP element is in the FIRST render - it must not wait for `load`.
@@ -131,34 +97,23 @@ describe("landing first-commit contract", () => {
     expect(document.querySelector('img[src*="electronics-products-1600x686"]')).not.toBeNull();
     expect(document.querySelector('source[srcset*="electronics-products-480x270"]')).not.toBeNull();
 
-    // The below-the-fold feed is NOT part of that commit...
-    expect(deferredFeed()).toBeNull();
-
-    // ...until load has happened and two frames have confirmed the paint.
-    act(() => {
-      window.dispatchEvent(new Event("load"));
-    });
-    expect(deferredFeed()).not.toBeNull();
+    // A slow window load must not hide products. The feed is present immediately
+    // and its grid owns the loading skeleton while data is pending.
+    expect(productFeed()).not.toBeNull();
+    expect(productFeed()?.querySelector('[role="list"]')).not.toBeNull();
   });
 
-  it("keeps the deferred Container a direct child of main so order-4 still places it", () => {
-    // AfterFirstPaint renders children with NO wrapper element; a wrapper would
-    // sit between <main> and the Container and silently defeat its position in
-    // the flex ordering of the page.
-    setReadyState("complete");
+  it("keeps the product Container a direct child of main so order-4 still places it", () => {
     renderLanding();
-    const feed = deferredFeed();
+    const feed = productFeed();
     expect(feed).not.toBeNull();
     expect(feed?.parentElement?.tagName).toBe("MAIN");
     expect(feed?.className).toContain("order-4");
   });
 
-  it("renders the feed without waiting when the document already finished loading", () => {
-    // A client-side navigation back to "/" must not blank the feed section
-    // while the document re-fires no `load` event.
-    setReadyState("complete");
+  it("does not depend on a window load event for client-side navigation", () => {
     renderLanding();
-    expect(deferredFeed()).not.toBeNull();
+    expect(productFeed()).not.toBeNull();
     // Sanity: the above-the-fold shell (the single H1) is present too.
     expect(screen.getByRole("heading", { level: 1 })).toBeInTheDocument();
   });

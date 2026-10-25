@@ -61,6 +61,14 @@ describe("MasonryFeedGrid", () => {
     expect(screen.queryByRole("list")).not.toBeInTheDocument();
   });
 
+  it("shows a retry state when the first page fails", () => {
+    const onRetry = vi.fn();
+    renderGrid({ items: [], error: new Error("network down"), onRetry });
+    expect(screen.getByText("Products could not be loaded right now.")).toBeInTheDocument();
+    screen.getAllByRole("button", { name: /try again/i })[0].click();
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
   it("offers a retry when the next page fails", async () => {
     const onRetry = vi.fn();
     renderGrid({ items: [item("a")], error: new Error("network down"), onRetry });

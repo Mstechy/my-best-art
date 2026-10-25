@@ -136,7 +136,8 @@ export function MasonryFeedGrid<T extends MasonryFeedItem>({
   }, [uniqueItems]);
 
   const showSkeletons = loading && uniqueItems.length === 0;
-  const showEmpty = !loading && uniqueItems.length === 0;
+  const showError = !loading && uniqueItems.length === 0 && Boolean(error);
+  const showEmpty = !loading && uniqueItems.length === 0 && !showError;
   const showFooter = !showSkeletons && !showEmpty;
 
   const columnStyle = { columnGap: `${gutter}px`, rowGap: `${gutter}px` } as const;
@@ -175,6 +176,20 @@ export function MasonryFeedGrid<T extends MasonryFeedItem>({
             </li>
           ))}
         </ul>
+      ) : showError ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-10 text-center text-sm text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100" role="alert">
+          <p>Products could not be loaded right now.</p>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-300 bg-white px-4 text-xs font-semibold transition-colors hover:bg-amber-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-amber-800 dark:bg-amber-950/40 dark:hover:bg-amber-900/50"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Try again
+            </button>
+          )}
+        </div>
       ) : showEmpty ? (
         emptyState ?? (
           <div className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-5 py-12 text-center text-sm text-muted-foreground">
