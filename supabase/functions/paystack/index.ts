@@ -194,19 +194,39 @@ Deno.serve(async (req: Request) => {
   if (orders.some((order) => order.currency !== "NGN")) return json({ error: "Paystack currently supports NGN orders only" }, 400);
   const amount = Math.round(orders.reduce((sum, order) => sum + Number(order.total_amount), 0) * 100);
   const reference = `mh_${crypto.randomUUID().replace(/-/g, "").slice(0, 24)}`;
+
+  // Claim the unpaid orders before calling Paystack. A fast webhook can arrive
+  // immediately after Paystack accepts a transaction; marking the orders first
+  // closes the race where payment succeeds but the browser's follow-up update
+  // loses to the webhook.
+  const { data: claimedOrders, error: claimError } = await admin
+    .from("orders")
+    .update({ payment_status: "initialized", payment_reference: reference })
+    .in("id", ids)
+    .eq("status", "pending")
+    .eq("payment_status", "unpaid")
+    .select("id");
+  if (claimError || ((claimedOrders ?? []) as IdRow[]).length !== ids.length) {
+    return json({ error: "Orders are no longer payable" }, 409);
+  }
+
   const response = await fetch("https://api.paystack.co/transaction/initialize", {
     method: "POST",
     headers: { Authorization: `Bearer ${env("PAYSTACK_SECRET_KEY")}`, "Content-Type": "application/json" },
     body: JSON.stringify({ email: body.email || auth.user.email, amount, currency: "NGN", reference, callback_url: `https://www.tradibu.com/buyer/orders?payment_reference=${encodeURIComponent(reference)}`, metadata: { order_ids: ids, user_id: auth.user.id } }),
   });
   const initialized = await response.json();
-  if (!response.ok || !initialized.status) return json({ error: initialized.message || "Could not initialize payment" }, 502);
-  const { error: updateError } = await admin
-    .from("orders")
-    .update({ payment_status: "initialized", payment_reference: reference })
-    .in("id", ids)
-    .eq("status", "pending")
-    .eq("payment_status", "unpaid");
-  if (updateError) return json({ error: "Payment initialized but order update failed" }, 500);
+  if (!response.ok || !initialized.status || typeof initialized.data?.authorization_url !== "string") {
+    // Do not leave a failed gateway attempt blocking a retry. If a webhook won
+    // the race and marked an order paid, this predicate leaves it untouched.
+    await admin
+      .from("orders")
+      .update({ payment_status: "unpaid", payment_reference: null })
+      .in("id", ids)
+      .eq("status", "pending")
+      .eq("payment_status", "initialized")
+      .eq("payment_reference", reference);
+    return json({ error: initialized.message || "Could not initialize payment" }, 502);
+  }
   return json({ authorization_url: initialized.data.authorization_url, reference });
 });
