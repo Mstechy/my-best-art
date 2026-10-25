@@ -51,7 +51,8 @@ const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#6E
 
 export default function CheckoutPage() {
   const { items, clearCart, syncItems, directCheckoutItem, updateDirectCheckoutItem, clearDirectCheckout } = useCart();
-  const { formatPrice, country: preferredCountry } = useCurrency();
+  const { formatPrice, country: preferredCountry, currency } = useCurrency();
+  const displayCurrency = currency?.code || "NGN";
   const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -410,6 +411,11 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2] pt-2 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
                   <span>Total</span><span>{formatPrice(checkoutGrandTotal)}</span>
                 </div>
+                {displayCurrency !== "NGN" && (
+                  <p className="text-[10px] leading-relaxed text-[#6E6C64] dark:text-[#A0A0A0]">
+                    Displayed in {displayCurrency}. Paystack currently processes Tradibu orders in NGN; your bank may apply its exchange rate.
+                  </p>
+                )}
               </div>
 
               <button

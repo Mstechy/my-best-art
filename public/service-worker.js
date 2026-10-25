@@ -1,4 +1,4 @@
-// MarketHub Service Worker v2
+// Tradibu Service Worker v2
 // Advanced caching: Stale-While-Revalidate for API, Cache-First for assets
 
 // v7: first-party /assets and /images are no longer intercepted - they rely on
@@ -6,10 +6,10 @@
 // image's initiator in the HTML document. Bumping the version retires the
 // now-unused first-party entries the v6 worker left in the image cache.
 const CACHE_VERSION = 'v7';
-const STATIC_CACHE = `markethub-static-${CACHE_VERSION}`;
-const IMAGE_CACHE = `markethub-images-${CACHE_VERSION}`;
-const API_CACHE = `markethub-api-${CACHE_VERSION}`;
-const FONT_CACHE = `markethub-fonts-${CACHE_VERSION}`;
+const STATIC_CACHE = `tradibu-static-${CACHE_VERSION}`;
+const IMAGE_CACHE = `tradibu-images-${CACHE_VERSION}`;
+const API_CACHE = `tradibu-api-${CACHE_VERSION}`;
+const FONT_CACHE = `tradibu-fonts-${CACHE_VERSION}`;
 
 const PRECACHE_URLS = [
   '/',
@@ -53,7 +53,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames
           .filter((name) => {
-            return name.startsWith('markethub-') && !name.includes(CACHE_VERSION);
+            return (name.startsWith('tradibu-') || name.startsWith('markethub-')) && !name.includes(CACHE_VERSION);
           })
           .map((name) => caches.delete(name))
       );
