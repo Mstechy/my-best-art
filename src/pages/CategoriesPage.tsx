@@ -1,6 +1,6 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ArrowRight, Package, Search, Sparkles, Tag, Clock3 } from "lucide-react";
+import { ArrowRight, Package, Search, Sparkles, Tag, Clock3, RefreshCw } from "lucide-react";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import SiteFooter from "@/components/SiteFooter";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,6 +24,7 @@ export default function CategoriesPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [collections, setCollections] = useState<EnhancedCollection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   // Departments with stock only. The page body below still lists the full directory.
   const populatedCategories = usePopulatedCategories();
@@ -38,21 +39,32 @@ export default function CategoriesPage() {
     url: "/categories",
   });
 
-  useEffect(() => {
+  const loadCategories = useCallback(async () => {
+    setLoading(true);
+    setLoadError(null);
     const load = async () => {
-      const [{ data }, { data: categoryCounts }, categoryCollections] = await Promise.all([
+      const [categoriesResult, countsResult, categoryCollections] = await Promise.all([
         supabase.from("categories").select("id,name,slug,icon").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
         fetchCollectionsByPlacement("categories", 6),
       ]);
-      const categoryRows = (data || []) as Category[];
-      const countsByCategory = new Map<string, number>(((categoryCounts || []) as { category_id: string; product_count: number }[]).map((item) => [item.category_id, Number(item.product_count)]));
+      if (categoriesResult.error) throw categoriesResult.error;
+      if (countsResult.error) throw countsResult.error;
+      const categoryRows = (categoriesResult.data || []) as Category[];
+      const countsByCategory = new Map<string, number>(((countsResult.data || []) as { category_id: string; product_count: number }[]).map((item) => [item.category_id, Number(item.product_count)]));
       setCategories(categoryRows.map((category) => ({ ...category, product_count: countsByCategory.get(category.id) || 0 })));
       setCollections(categoryCollections);
       setLoading(false);
     };
-    void load();
+    void load().catch(() => {
+      setCategories([]);
+      setCollections([]);
+      setLoadError("Departments could not be loaded right now.");
+      setLoading(false);
+    });
   }, []);
+
+  useEffect(() => { void loadCategories(); }, [loadCategories]);
 
   const liveCategories = useMemo(() => categories.filter((category) => (category.product_count || 0) > 0).sort((a, b) => (b.product_count || 0) - (a.product_count || 0)), [categories]);
   const totalLiveProducts = useMemo(() => liveCategories.reduce((total, category) => total + (category.product_count || 0), 0), [liveCategories]);
@@ -101,7 +113,7 @@ export default function CategoriesPage() {
       </section>
 
       <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
-        {loading ? <div className="grid gap-x-6 border-y border-[#E8E8E8] sm:grid-cols-2 lg:grid-cols-3 dark:border-[#333333]">{Array.from({ length: 9 }).map((_, index) => <div key={index} className="h-14 animate-pulse border-b border-[#E8E8E8] dark:border-[#333333]" />)}</div> : categories.length === 0 ? <div className="rounded-2xl border bg-card p-10 text-center"><Package className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="font-semibold">Departments are being prepared.</p><Link to="/marketplace" className="mt-3 inline-flex items-center gap-2 text-sm underline">Browse all products <ArrowRight className="h-4 w-4" /></Link></div> : <>
+        {loading ? <div className="grid gap-x-6 border-y border-[#E8E8E8] sm:grid-cols-2 lg:grid-cols-3 dark:border-[#333333]">{Array.from({ length: 9 }).map((_, index) => <div key={index} className="h-14 animate-pulse border-b border-[#E8E8E8] dark:border-[#333333]" />)}</div> : loadError ? <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-10 text-center text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"><p className="font-semibold">{loadError}</p><button type="button" onClick={() => void loadCategories()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-400 px-5 py-2 text-sm font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40"><RefreshCw className="h-4 w-4" /> Try again</button></div> : categories.length === 0 ? <div className="rounded-2xl border bg-card p-10 text-center"><Package className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="font-semibold">Departments are being prepared.</p><Link to="/marketplace" className="mt-3 inline-flex items-center gap-2 text-sm underline">Browse all products <ArrowRight className="h-4 w-4" /></Link></div> : <>
           {collections.length > 0 && <section className="mt-14" aria-labelledby="curated-collections"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6E6C64]">Shop by need</p><h2 id="curated-collections" className="mt-1 text-3xl font-black tracking-tight">Curated collections</h2><p className="mt-2 text-sm text-[#6E6C64]">Focused product sets for deals, seasons, brands, and specific shopping missions.</p></div><div className="grid gap-4 md:grid-cols-3">{collections.map((collection) => <Link key={collection.id} to={`/collections/${encodeURIComponent(collection.slug)}`} className="group relative min-h-44 overflow-hidden rounded-2xl bg-[#1A1A1A] p-5 text-white shadow-sm"><img src={collection.image_url || ""} alt="" className={`absolute inset-0 h-full w-full object-cover opacity-60 transition duration-300 group-hover:scale-105 ${collection.image_url ? "" : "hidden"}`} loading="lazy" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" /><div className="relative flex h-full flex-col justify-end"><span className="mb-2 text-xs font-bold uppercase tracking-wider text-[#F6C75D]">{collection.badge || "Collection"}</span><h3 className="text-xl font-bold">{collection.title}</h3><span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold">Shop now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></div></Link>)}</div></section>}
 
           <section className="mt-14 border-t border-[#E8E8E8] pt-10 dark:border-[#333333]" aria-labelledby="all-departments"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6E6C64]">Full directory</p><h2 id="all-departments" className="mt-1 text-3xl font-black tracking-tight">All departments</h2><p className="mt-2 text-sm text-[#6E6C64]">Only departments with approved inventory open into a product listing. New departments remain visible as upcoming without sending shoppers to unrelated products.</p></div><div className="grid gap-x-6 border-y border-[#E8E8E8] sm:grid-cols-2 lg:grid-cols-3 dark:border-[#333333]">{categories.map((category) => category.product_count ? <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="group flex items-center justify-between border-b border-[#E8E8E8] py-4 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0 lg:[&:nth-last-child(3)]:border-b-0 dark:border-[#333333]"><span><span className="block font-semibold group-hover:underline">{category.name}</span><span className="mt-0.5 block text-xs text-[#6E6C64]">{category.product_count} {category.product_count === 1 ? "product" : "products"}</span></span><ArrowRight className="h-4 w-4 text-[#6E6C64] transition-transform group-hover:translate-x-1 group-hover:text-[#111111] dark:group-hover:text-white" /></Link> : <div key={category.id} className="flex items-center justify-between border-b border-[#E8E8E8] py-4 text-[#6E6C64] dark:border-[#333333]"><span><span className="block font-semibold text-[#6E6C64] dark:text-[#A0A0A0]">{category.name}</span><span className="mt-0.5 block text-xs">Coming soon</span></span><span className="text-xs font-semibold uppercase tracking-wider">Upcoming</span></div>)}</div></section>

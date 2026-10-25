@@ -8,7 +8,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useUnreadMessages } from "@/hooks/useUnreadMessages";
 import ThemeToggle from "@/components/ThemeToggle";
-import CurrencySelector from "@/components/CurrencySelector";
 import RegionalPreferences from "@/components/RegionalPreferences";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -447,8 +446,8 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                   <LanguageSwitcher />
                 </div>
                 <div className="flex items-center justify-between px-3">
-                  <span className="text-xs text-[#6E6C64] font-medium">{t("nav.currency")}</span>
-                  <CurrencySelector />
+                  <span className="text-xs text-[#6E6C64] font-medium">Delivery & currency</span>
+                  <RegionalPreferences />
                 </div>
                 <div className="flex items-center justify-between px-3">
                   <span className="text-xs text-[#6E6C64] font-medium">{t("nav.theme")}</span>
