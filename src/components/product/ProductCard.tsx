@@ -5,6 +5,7 @@ import { CheckCircle2, Flame, Heart, Package, ShoppingCart, Star } from "lucide-
 
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import ProductImage from "@/components/product/ProductImage";
+import PriceDisplay from "@/components/product/PriceDisplay";
 import { BrandCard } from "@/components/ui/BrandCard";
 import { cn } from "@/lib/utils";
 import { observeProductImpression } from "@/lib/productImpressionObserver";
@@ -217,10 +218,13 @@ export function ProductCard({
             inconsistent spacing seen between tiles. A fixed gap keeps every card's
             rhythm identical, which is what product grids on large marketplaces do. */}
         <div className="pt-2">
-          <div className="flex min-h-5 items-baseline gap-1.5">
-            <span className="text-sm font-bold text-foreground">{formatPrice(product.price)}</span>
-            {compareAtVisible && <span className="text-[10px] text-muted-foreground line-through">{formatPrice(product.compareAtPrice!)}</span>}
-          </div>
+          <PriceDisplay
+            price={product.price}
+            compareAtPrice={compareAtVisible ? product.compareAtPrice : null}
+            formatPrice={formatPrice}
+            size="sm"
+            className="min-h-5"
+          />
           {product.flashDealEndAt && <FlashDealCountdown endAt={product.flashDealEndAt} className="mt-1 text-destructive" />}
           {showPurchaseActions && (
             // `relative z-10`: these are the only controls that must win the tap

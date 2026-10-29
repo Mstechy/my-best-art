@@ -117,7 +117,7 @@ function fromPageItem(product: CatalogueFeedItem): FeedCard {
 
 
 export default function LandingPage() {
-  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, sellers, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
+  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
   const navigate = useNavigate();
@@ -201,7 +201,6 @@ export default function LandingPage() {
 
   const renderFeedCard = useCallback(
     (card: FeedCard, _index: number, state: { priority: boolean }) => {
-      const seller = sellers.get(card.sellerId);
       const discount = discountLabel(card.price, card.compareAtPrice);
       return (
         <ProductCard
@@ -220,14 +219,12 @@ export default function LandingPage() {
             badge: discount ? { label: discount, tone: "destructive" as const } : null,
           }}
           formatPrice={(amount) => formatPrice(amount, card.currency)}
-          sellerName={seller?.full_name || undefined}
-          sellerVerified={seller?.is_verified}
           imageAspectRatio={getAspectRatio(card)}
           priority={state.priority}
         />
       );
     },
-    [formatPrice, getAspectRatio, sellers],
+    [formatPrice, getAspectRatio],
   );
 
   const visibleFeeds = useMemo(
