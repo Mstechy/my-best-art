@@ -14,6 +14,7 @@ import CookieConsent from "@/components/CookieConsent";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SiteAnalyticsTracker from "@/components/SiteAnalyticsTracker";
 import SkipLink from "@/components/SkipLink";
+import RouteLoadingFallback from "@/components/RouteLoadingFallback";
 
 // Public pages - lazy load all for billion-scale bundle splitting
 // Dashboard shell is route-only; loading it with the public app would pull
@@ -119,22 +120,7 @@ function BuyerRoute({ children }: { children: React.ReactNode }) {
 function RouteSuspense({ children }: { children: React.ReactNode }) {
   return (
     <Suspense
-      fallback={
-        <div
-          className="flex min-h-screen items-center justify-center bg-background"
-          role="status"
-          aria-live="polite"
-          aria-label="Loading page"
-        >
-          <div className="flex flex-col items-center gap-3">
-            <div
-              className="h-10 w-10 animate-spin rounded-full border-4 border-muted border-t-foreground motion-reduce:animate-none"
-              aria-hidden="true"
-            />
-            <span className="text-sm text-muted-foreground">Loading…</span>
-          </div>
-        </div>
-      }
+      fallback={<RouteLoadingFallback />}
     >
       {children}
     </Suspense>

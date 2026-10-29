@@ -60,3 +60,6 @@ pw_err.txt
 start_preview.ps1
 test-results/
 check_cls.ps1
+
+# UI audit screenshots
+.tmp-ui-audit/

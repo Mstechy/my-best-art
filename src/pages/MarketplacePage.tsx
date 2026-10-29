@@ -603,7 +603,7 @@ export default function MarketplacePage() {
   // target"), costing accessibility and Agentic Browsing points on every scan
   // of /marketplace.
   return (
-    <main className="min-h-screen bg-[#FAFAFA] dark:bg-[#121212] text-[#111111] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
+    <div className="min-h-screen bg-[#FAFAFA] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
       <MarketplaceNavbar
         search={search}
         onSearchChange={setSearch}
@@ -615,6 +615,7 @@ export default function MarketplacePage() {
         }}
       />
       <CartDrawer />
+      <main className="min-h-screen pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
       <Container className="py-8">
         <div className="flex gap-6">
           <div className="hidden lg:block w-60 shrink-0">
@@ -904,8 +905,9 @@ export default function MarketplacePage() {
           </div>
         </div>
       </ModalWrapper>
+      </main>
       <SiteFooter />
       <BottomTabBar />
-      </main>
+    </div>
   );
 }
