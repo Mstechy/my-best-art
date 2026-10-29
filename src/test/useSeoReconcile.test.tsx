@@ -1,3 +1,4 @@
+import React from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render } from "@testing-library/react";
 import { injectProductHead, PRODUCT_STRUCTURED_DATA_ID, type ProductSeoInput } from "@/lib/productSeo";

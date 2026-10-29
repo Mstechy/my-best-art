@@ -6,6 +6,7 @@
  * two guarantees that make a waterfall feed usable: one list to a screen reader, and
  * only NEW tiles being rendered.
  */
+import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 

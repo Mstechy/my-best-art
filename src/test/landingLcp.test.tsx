@@ -17,6 +17,7 @@
  *   2. On a client-side navigation nothing is held back, so the feed never
  *      appears empty mid-session.
  */
+import React from "react";
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";

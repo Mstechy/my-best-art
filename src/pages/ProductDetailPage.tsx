@@ -685,6 +685,7 @@ export default function ProductDetailPage() {
                           type="button"
                           disabled={!hasAvailableVariant(size, selectedColor || undefined)}
                           onClick={() => setSelectedSize(size)}
+                          aria-pressed={selectedSize === size}
                           className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedSize === size ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
                         >
                           {size}
@@ -704,6 +705,7 @@ export default function ProductDetailPage() {
                           type="button"
                           disabled={!hasAvailableVariant(selectedSize || undefined, color)}
                           onClick={() => setSelectedColor(color)}
+                          aria-pressed={selectedColor === color}
                           className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${selectedColor === color ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] border-[#E8E8E8] dark:border-[#222222] hover:border-[#111111] dark:hover:border-[#555555]"}`}
                         >
                           {color}
@@ -722,6 +724,7 @@ export default function ProductDetailPage() {
                 <button type="button" onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} disabled={!canPurchase || quantity >= purchasableStock} aria-label="Increase quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">+</button>
               </div>
               <button
+                type="button"
                 onClick={() => startPurchase("cart")}
                 disabled={!canPurchase}
                 className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
@@ -729,6 +732,7 @@ export default function ProductDetailPage() {
                 {purchaseButtonLabel}
               </button>
               <button
+                type="button"
                 onClick={() => startPurchase("buy")}
                 disabled={!canPurchase}
                 className="hidden flex-1 rounded-full border border-[#111111] py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:block"

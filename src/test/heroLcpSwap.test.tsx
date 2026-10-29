@@ -17,6 +17,7 @@
  * changed key, a changed children slot shape, a changed element type), this
  * fails - and so would LCP, silently, in the field.
  */
+import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";

@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
-import type { ChangeEvent, FormEvent } from "react";
+import type { ChangeEvent, FormEvent, KeyboardEvent } from "react";
 import { useEffect, useRef, useState, memo, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
@@ -68,6 +68,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   const [imageSearchCategory, setImageSearchCategory] = useState<string | null>(selectedCategory);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const [navigationCollections, setNavigationCollections] = useState<NavigationCollection[]>([]);
   const [localSearch, setLocalSearch] = useState(search);
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
@@ -132,10 +133,15 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   // Fetch suggestions based on local search
   useEffect(() => {
     const query = localSearch.trim();
-    if (query.length < 2) { setSuggestions([]); return; }
+    if (query.length < 2) {
+      setSuggestions([]);
+      setActiveSuggestionIndex(-1);
+      return;
+    }
     const timer = window.setTimeout(async () => {
       const { data } = await supabase.rpc("marketplace_search_suggestions", { p_query: query, p_limit: 6 });
       setSuggestions((data || []) as SearchSuggestion[]);
+      setActiveSuggestionIndex(-1);
     }, 180);
     return () => window.clearTimeout(timer);
   }, [localSearch]);
@@ -158,6 +164,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
   const chooseSuggestion = (suggestion: SearchSuggestion) => {
     setSuggestionsOpen(false);
+    setActiveSuggestionIndex(-1);
     if (suggestion.suggestion_type === "category" && suggestion.category_id) {
       onSearchChange?.("");
       onCategoryChange?.(suggestion.category_id);
@@ -166,6 +173,26 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
     }
     onSearchChange?.(suggestion.label);
     navigate(buildMarketplaceUrl(suggestion.label, selectedCategory));
+  };
+
+  const handleSuggestionKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const canNavigateSuggestions = suggestionsOpen && suggestions.length > 0;
+    if (event.key === "Escape") {
+      setSuggestionsOpen(false);
+      setActiveSuggestionIndex(-1);
+      return;
+    }
+    if (!canNavigateSuggestions) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setActiveSuggestionIndex((current) => (current + 1) % suggestions.length);
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setActiveSuggestionIndex((current) => (current - 1 + suggestions.length) % suggestions.length);
+    } else if (event.key === "Enter" && activeSuggestionIndex >= 0) {
+      event.preventDefault();
+      chooseSuggestion(suggestions[activeSuggestionIndex]);
+    }
   };
 
   const handleImageSearch = (event: ChangeEvent<HTMLInputElement>) => {
@@ -296,22 +323,30 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
                 <div className="relative min-w-0 flex-1">
                   <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
+                  <label htmlFor="marketplace-search-desktop" className="sr-only">{t("nav.searchPlaceholder")}</label>
                   <Input
+                    id="marketplace-search-desktop"
                     name="query"
                     toolparamdescription="Product name, brand, model, or keyword to search for."
                     value={localSearch}
                     onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                     onFocus={() => setSuggestionsOpen(true)}
                     onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
+                    onKeyDown={handleSuggestionKeyDown}
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded={suggestionsOpen && suggestions.length > 0}
+                    aria-controls="marketplace-search-suggestions-desktop"
+                    aria-activedescendant={activeSuggestionIndex >= 0 ? `marketplace-search-suggestion-desktop-${activeSuggestionIndex}` : undefined}
                     placeholder={t("nav.searchPlaceholder")}
                     className="h-12 border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:text-[#FAF5F2]"
                   />
                   <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
                   {suggestionsOpen && suggestions.length > 0 && (
-                    <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
+                    <div id="marketplace-search-suggestions-desktop" role="listbox" aria-label={t("nav.suggestions")} className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
                       <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#6E6C64]">{t("nav.suggestions")}</p>
                       {suggestions.map((suggestion, index) => (
-                        <button key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)} className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222]">
+                        <button id={`marketplace-search-suggestion-desktop-${index}`} key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`} role="option" aria-selected={activeSuggestionIndex === index} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => chooseSuggestion(suggestion)} className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors dark:text-[#FAF5F2] ${activeSuggestionIndex === index ? "bg-[#F2F3F5] dark:bg-[#222222]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#222222]"}`}>
                           <Search className="h-3.5 w-3.5 text-[#6E6C64]" />
                           <span className="truncate">{suggestion.label}</span>
                           <span className="ml-auto text-[10px] text-[#6E6C64]">{suggestion.suggestion_type === "category" ? t("nav.suggestionCategory") : t("nav.suggestionProduct")}</span>
@@ -470,28 +505,39 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             >
               <div className="relative min-w-0 flex-1">
                 <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6E6C64]" />
+                <label htmlFor="marketplace-search-mobile" className="sr-only">{t("nav.searchPlaceholderMobile")}</label>
                 <Input
+                  id="marketplace-search-mobile"
                   name="query"
                   toolparamdescription="Product name, brand, model, or keyword to search for."
                   value={localSearch}
                   onChange={e => { setLocalSearch(e.target.value); setSuggestionsOpen(true); }}
                   onFocus={() => setSuggestionsOpen(true)}
                   onBlur={() => window.setTimeout(() => setSuggestionsOpen(false), 120)}
+                  onKeyDown={handleSuggestionKeyDown}
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded={suggestionsOpen && suggestions.length > 0}
+                  aria-controls="marketplace-search-suggestions-mobile"
+                  aria-activedescendant={activeSuggestionIndex >= 0 ? `marketplace-search-suggestion-mobile-${activeSuggestionIndex}` : undefined}
                   placeholder={t("nav.searchPlaceholderMobile")}
                   className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-20 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
                 />
                 <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-11 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
                 <button type="submit" aria-label={t("nav.search")} className="absolute right-1.5 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full bg-[#111111] text-white transition-colors hover:bg-[#222222] dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-[#E8E8E8]"><ArrowRight className="h-4 w-4" /></button>
                 {suggestionsOpen && suggestions.length > 0 && (
-                  <div className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
+                  <div id="marketplace-search-suggestions-mobile" role="listbox" aria-label={t("nav.suggestions")} className="absolute left-0 top-[calc(100%+8px)] z-[60] w-full overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-1.5 shadow-xl dark:border-[#333333] dark:bg-[#1A1A1A]">
                     <p className="px-3 py-2 text-[10px] font-bold uppercase tracking-[0.16em] text-[#6E6C64]">{t("nav.suggestions")}</p>
                     {suggestions.map((suggestion, index) => (
                       <button
+                        id={`marketplace-search-suggestion-mobile-${index}`}
                         key={`${suggestion.suggestion_type}-${suggestion.category_id || suggestion.label}-${index}`}
+                        role="option"
+                        aria-selected={activeSuggestionIndex === index}
                         type="button"
                         onMouseDown={(event) => event.preventDefault()}
                         onClick={() => chooseSuggestion(suggestion)}
-                        className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+                        className={`flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm text-[#111111] transition-colors dark:text-[#FAF5F2] ${activeSuggestionIndex === index ? "bg-[#F2F3F5] dark:bg-[#222222]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#222222]"}`}
                       >
                         <Search className="h-3.5 w-3.5 text-[#6E6C64]" />
                         <span className="truncate">{suggestion.label}</span>

@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/NotificationBell";
 import DashboardFooter from "@/components/DashboardFooter";
@@ -102,6 +102,19 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const navSections = getNavSections(role);
   const unread = useUnreadMessages();
 
+  useEffect(() => {
+    if (!sidebarOpen) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setSidebarOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [sidebarOpen]);
+
   const handleSignOut = async () => {
     await signOut();
     navigate("/auth/login");
@@ -114,8 +127,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <aside
         id="dashboard-sidebar"
         aria-label="Dashboard navigation"
-        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col border-r border-[#E8E8E8] dark:border-[#1A1A1A] bg-white dark:bg-[#111111] transition-transform duration-300 lg:translate-x-0 ${
-          sidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`fixed inset-y-0 left-0 z-50 w-60 flex flex-col border-r border-[#E8E8E8] dark:border-[#1A1A1A] bg-white dark:bg-[#111111] transition-[transform,visibility] duration-300 lg:translate-x-0 ${
+          sidebarOpen ? "visible translate-x-0" : "invisible -translate-x-full lg:visible lg:translate-x-0"
         }`}
       >
         {/* Logo */}
@@ -152,7 +165,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
                 {section.label}
               </p>
               {section.items.map((item) => {
-                const isActive = location.pathname === item.href;
+                const isActive = location.pathname === item.href || location.pathname.startsWith(`${item.href}/`);
                 const isChat = item.href.endsWith("/chat");
                 return (
                   <Link

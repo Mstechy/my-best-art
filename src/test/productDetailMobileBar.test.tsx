@@ -10,7 +10,7 @@
  * useProductDetailData and returns null without one, so the stub supplies a
  * minimal product plus an inert Supabase client for child components.
  */
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";

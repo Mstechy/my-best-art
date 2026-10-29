@@ -16,7 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
  * jsdom cannot measure layout, so the viewport-specific classes are asserted
  * directly, following src/test/dashboardResponsiveShell.test.tsx.
  */
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";

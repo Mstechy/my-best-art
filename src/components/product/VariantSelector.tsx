@@ -39,10 +39,10 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
         const selectedValue = selectedOptions[key] || "";
 
         return (
-          <div key={key}>
-            <p className="mb-2 text-xs font-bold capitalize">
+          <fieldset key={key}>
+            <legend className="mb-2 text-xs font-bold capitalize">
               {key}: <span className="font-normal text-[#6E6C64]">{selectedValue || "Select"}</span>
-            </p>
+            </legend>
             <div className="flex flex-wrap gap-2">
               {values.map((value) => {
                 const isSelected = selectedValue === value;
@@ -54,6 +54,7 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
                     type="button"
                     onClick={() => onChange({ ...selectedOptions, [key]: value })}
                     disabled={!isAvailable}
+                    aria-pressed={isSelected}
                     aria-label={`${key}: ${value}${isAvailable ? "" : ", unavailable"}`}
                     className={`relative rounded-lg border px-4 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${isSelected ? "border-transparent bg-[#111111] text-white dark:bg-[#FAF5F2] dark:text-[#111111]" : "border-[#E8E8E8] bg-white hover:border-[#111111] dark:border-[#222222] dark:bg-[#1E1E1E] dark:hover:border-[#555555]"}`}
                   >
@@ -64,7 +65,7 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
                 );
               })}
             </div>
-          </div>
+          </fieldset>
         );
       })}
     </div>

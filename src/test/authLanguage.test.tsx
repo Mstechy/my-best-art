@@ -1,5 +1,6 @@
 import { createInstance } from "i18next";
 import { initReactI18next, I18nextProvider } from "react-i18next";
+import React from "react";
 import { act, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";

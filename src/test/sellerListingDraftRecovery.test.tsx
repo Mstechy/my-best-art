@@ -17,6 +17,7 @@
  * tree — including the Radix dialog — without network access and without async
  * state updates landing after the assertions.
  */
+import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 

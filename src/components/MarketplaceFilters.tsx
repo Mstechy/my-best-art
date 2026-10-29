@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "../components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "../components/ui/sheet";
 import { Button } from "../components/ui/button";
 import { Slider } from "../components/ui/slider";
 import { Label } from "../components/ui/label";
@@ -58,7 +58,10 @@ export default function MarketplaceFilters({
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader><SheetTitle>Filters</SheetTitle></SheetHeader>
+        <SheetHeader>
+          <SheetTitle>Filters</SheetTitle>
+          <SheetDescription>Refine products by price, rating, condition, availability, and category details.</SheetDescription>
+        </SheetHeader>
         <div className="space-y-6 mt-6">
           <div>
             <Label>Price Range</Label>
@@ -66,6 +69,7 @@ export default function MarketplaceFilters({
               <Slider
                 min={0} max={10000} step={10}
                 value={[draft.minPrice, draft.maxPrice]}
+                aria-label="Price range"
                 onValueChange={([min, max]) => setDraft(d => ({ ...d, minPrice: min, maxPrice: max }))}
               />
               <div className="flex justify-between mt-2 text-xs text-muted-foreground">
@@ -79,7 +83,7 @@ export default function MarketplaceFilters({
             <Label>Minimum Rating</Label>
             <div className="flex gap-1 mt-2">
               {[0, 1, 2, 3, 4, 5].map(r => (
-                <button key={r} onClick={() => setDraft(d => ({ ...d, minRating: r }))}
+                <button type="button" key={r} aria-pressed={draft.minRating === r} onClick={() => setDraft(d => ({ ...d, minRating: r }))}
                   className={`flex-1 h-10 rounded-md border text-xs font-medium transition-colors ${draft.minRating === r ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}>
                   {r === 0 ? "Any" : (
                     <span className="inline-flex items-center gap-0.5">{r}<Star className="h-3 w-3 fill-current" /></span>
@@ -93,7 +97,7 @@ export default function MarketplaceFilters({
             <Label>Condition</Label>
             <div className="grid grid-cols-2 gap-2 mt-2 sm:grid-cols-4">
               {["any", "new", "used", "refurbished"].map(c => (
-                <button key={c} onClick={() => setDraft(d => ({ ...d, condition: c }))}
+                <button type="button" key={c} aria-pressed={draft.condition === c} onClick={() => setDraft(d => ({ ...d, condition: c }))}
                   className={`h-10 rounded-md border text-xs font-medium capitalize transition-colors ${draft.condition === c ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}>
                   {c}
                 </button>
@@ -122,6 +126,8 @@ export default function MarketplaceFilters({
                     <Label className="text-xs text-muted-foreground">{formatFilterLabel(filter)}</Label>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button
+                        type="button"
+                        aria-pressed={!draft.categoryAttributes[filter]}
                         onClick={() => updateCategoryFilter(filter, "any")}
                         className={`h-9 rounded-md border px-3 text-xs font-medium transition-colors ${
                           !draft.categoryAttributes[filter] ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"
@@ -132,6 +138,8 @@ export default function MarketplaceFilters({
                       {options.map(option => (
                         <button
                           key={option}
+                          type="button"
+                          aria-pressed={draft.categoryAttributes[filter] === option}
                           onClick={() => updateCategoryFilter(filter, option)}
                           className={`h-9 rounded-md border px-3 text-xs font-medium transition-colors ${
                             draft.categoryAttributes[filter] === option ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"

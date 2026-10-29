@@ -295,9 +295,9 @@ export default function CheckoutPage() {
 
               {saved.length > 0 && (
                 <div className="mb-5">
-                  <label className={labelCls}>Saved Addresses</label>
+                  <label htmlFor="checkout-saved-address" className={labelCls}>Saved Addresses</label>
                   <Select onValueChange={(id) => { const a = saved.find(s => s.id === id); if (a) applySaved(a); }}>
-                    <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm text-[#111111] dark:text-[#FAF5F2]">
+                    <SelectTrigger id="checkout-saved-address" className="h-10 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm text-[#111111] dark:text-[#FAF5F2]">
                       <SelectValue placeholder="Choose a saved address" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222]">
@@ -314,7 +314,7 @@ export default function CheckoutPage() {
               <div className="grid gap-3">
                 <div>
                   <label htmlFor="checkout-name" className={labelCls}>Full Name *</label>
-                  <input id="checkout-name" className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" />
+                  <input id="checkout-name" autoComplete="name" className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" aria-required="true" />
                 </div>
                  <div>
                    <label htmlFor="checkout-phone" className={labelCls}>Phone</label>
@@ -322,27 +322,27 @@ export default function CheckoutPage() {
                  </div>
                 <div>
                   <label htmlFor="checkout-street" className={labelCls}>Street Address *</label>
-                  <input id="checkout-street" className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" />
+                  <input id="checkout-street" autoComplete="street-address" className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" aria-required="true" />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="checkout-city" className={labelCls}>City *</label>
-                    <input id="checkout-city" className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" />
+                    <input id="checkout-city" autoComplete="address-level2" className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" aria-required="true" />
                   </div>
                   <div>
                     <label htmlFor="checkout-state" className={labelCls}>State</label>
-                    <input id="checkout-state" className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
+                    <input id="checkout-state" autoComplete="address-level1" className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="checkout-zip" className={labelCls}>ZIP Code</label>
-                    <input id="checkout-zip" className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
+                    <input id="checkout-zip" autoComplete="postal-code" className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
                   </div>
                   <div>
-                    <label className={labelCls}>Country *</label>
+                    <label htmlFor="checkout-country" className={labelCls}>Country *</label>
                     <Select value={address.country} onValueChange={country => { addressCountryDirtyRef.current = true; setAddress(p => ({ ...p, country })); }}>
-                      <SelectTrigger className="h-10 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
+                      <SelectTrigger id="checkout-country" className="h-10 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
                       <SelectContent>{COUNTRIES.map(country => <SelectItem key={country.code} value={country.code}>{country.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>

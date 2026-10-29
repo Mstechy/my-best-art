@@ -13,6 +13,7 @@
  * directly. The interactions are driven through accessible roles and labels,
  * which is also what proves the mobile trigger is reachable without sight.
  */
+import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";

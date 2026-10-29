@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, AlertCircle, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus, ChevronLeft, ChevronRight } from "lucide-react";
@@ -126,6 +127,7 @@ export default function SellerProducts() {
   const [bulkPrice, setBulkPrice] = useState("");
   const [bulkStock, setBulkStock] = useState("");
   const [needsAttentionOnly, setNeedsAttentionOnly] = useState(false);
+  const [deleteProductId, setDeleteProductId] = useState<string | null>(null);
   const productPageSize = 24;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [listingMinimized, setListingMinimized] = useState(false);
@@ -1056,12 +1058,11 @@ export default function SellerProducts() {
       tags: cleanTags.length > 0 ? cleanTags : null,
       ships_to: shipsTo,
       show_sold_count: showSoldCount,
-      // Editing a listing is the seller's response to a moderation request.
-      // Clear the old request so the next review starts with fresh metadata.
-      moderation_reason: null,
-      moderation_next_action: null,
-      moderation_owner_id: null,
-      moderation_updated_at: new Date().toISOString(),
+      // Moderation metadata belongs to administrators. Keep it out of the
+      // seller-owned update payload; the database trigger intentionally rejects
+      // seller changes to these fields. Admins can review the seller's updated
+      // listing and clear or replace the moderation request through the admin
+      // approval workflow.
       ...flashDealFields,
       variants: { ...mergeCategoryAttributes(editingProduct?.variants, {
         categoryGroup: selectedConfig.title,
@@ -1449,12 +1450,20 @@ export default function SellerProducts() {
 
   const toggleStatus = async (product: Product) => {
     const newStatus = product.status === "active" ? "draft" : "active";
-    await supabase.from("products").update({ status: newStatus }).eq("id", product.id);
+    const { error } = await supabase.from("products").update({ status: newStatus }).eq("id", product.id);
+    if (error) {
+      toast({ title: "Could not update product status", description: error.message, variant: "destructive" });
+      return;
+    }
     fetchProducts();
   };
 
   const archiveProduct = async (id: string) => {
-    await supabase.from("products").update({ status: "archived" }).eq("id", id);
+    const { error } = await supabase.from("products").update({ status: "archived" }).eq("id", id);
+    if (error) {
+      toast({ title: "Could not archive product", description: error.message, variant: "destructive" });
+      return;
+    }
     fetchProducts();
   };
 
@@ -1512,7 +1521,11 @@ export default function SellerProducts() {
   };
 
   const deleteProduct = async (id: string) => {
-    await supabase.from("products").delete().eq("id", id);
+    const { error } = await supabase.from("products").delete().eq("id", id);
+    if (error) {
+      toast({ title: "Could not delete product", description: error.message, variant: "destructive" });
+      return;
+    }
     toast({ title: "Product deleted" });
     fetchProducts();
   };
@@ -2616,13 +2629,19 @@ export default function SellerProducts() {
                       <Button variant="outline" size="sm" onClick={() => openEdit(product)} className="flex-1 gap-1">
                         <Pencil className="h-3 w-3" /> Edit
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => toggleStatus(product)}>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleStatus(product)}
+                        aria-label={product.status === "active" ? `Move ${product.title} to drafts` : `Make ${product.title} active`}
+                        title={product.status === "active" ? "Move to drafts" : "Make active"}
+                      >
                         {product.status === "active" ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => archiveProduct(product.id)}>
+                      <Button variant="outline" size="sm" onClick={() => archiveProduct(product.id)} aria-label={`Archive ${product.title}`} title="Archive product">
                         <Archive className="h-3 w-3" />
                       </Button>
-                      <Button variant="outline" size="sm" onClick={() => deleteProduct(product.id)} className="text-destructive hover:text-destructive">
+                      <Button variant="outline" size="sm" onClick={() => setDeleteProductId(product.id)} aria-label={`Delete ${product.title}`} title="Delete product" className="text-destructive hover:text-destructive">
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
@@ -2648,6 +2667,30 @@ export default function SellerProducts() {
           </Button>
         </div>
       </div>
+      <AlertDialog open={!!deleteProductId} onOpenChange={(open) => { if (!open) setDeleteProductId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this product?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the listing and its related product records. Existing orders remain intact. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!deleteProductId) return;
+                const id = deleteProductId;
+                setDeleteProductId(null);
+                await deleteProduct(id);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
