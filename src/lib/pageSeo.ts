@@ -39,7 +39,7 @@ import { META_DESCRIPTION_MAX, buildPageTitle, resolveSiteUrl, truncateText } fr
 export const HOME_PAGE_SEO = {
   title: "Online Marketplace for Trusted Shopping",
   description:
-    "Shop on Tradibu, the online marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection.",
+    "Shop on Tradibu, a marketplace for products from independent sellers. Discover great deals with secure payments and buyer protection.",
 };
 
 /**

@@ -42,6 +42,7 @@ export default function MarqueeBanner() {
   return (
     <div
       className="group relative overflow-hidden border-y border-[#E8E8E8] bg-[#F6C75D]"
+      role="region"
       aria-label="Promotions"
     >
       <div className="flex w-max animate-[marquee_40s_linear_infinite] py-1.5 group-hover:[animation-play-state:paused] motion-reduce:animate-none">

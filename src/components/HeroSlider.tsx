@@ -255,6 +255,7 @@ const HeroSlider = memo(function HeroSlider({
       aria-roledescription="carousel"
       aria-label="Featured collections"
       aria-hidden={pending || undefined}
+      {...(pending ? { inert: "" } : {})}
     >
       {/* Slides container */}
       <div
