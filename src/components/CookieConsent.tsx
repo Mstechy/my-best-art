@@ -27,7 +27,7 @@ export default function CookieConsent() {
        the checkout/product CTA bars h≈65), so the card is lifted clear of it
        instead of covering — and being covered by — that navigation. `md` and
        up have no bottom bar, so the normal corner offset applies there. */
-    <div className="fixed inset-x-3 bottom-[calc(6rem_+_env(safe-area-inset-bottom,0px))] z-[60] sm:inset-x-auto sm:right-4 sm:w-[360px] md:bottom-4 animate-fade-in">
+    <aside aria-label="Cookie consent" className="fixed inset-x-3 bottom-[calc(6rem_+_env(safe-area-inset-bottom,0px))] z-[60] sm:inset-x-auto sm:right-4 sm:w-[360px] md:bottom-4 animate-fade-in">
       <div className="relative rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1A1A1A] shadow-xl p-4">
 
         {/* Close button */}
@@ -72,6 +72,6 @@ export default function CookieConsent() {
         </div>
 
       </div>
-    </div>
+    </aside>
   );
 }

@@ -1,0 +1,12 @@
+{
+  "$schema": "./schemas/tsconfig.schema.json",
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"]
+  },
+  "include": [
+    "src/vite-env.d.ts",
+    "src/webmcp.d.ts",
+    "src/test"
+  ]
+}

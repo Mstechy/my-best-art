@@ -39,7 +39,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E] flex items-center justify-center p-4 overflow-hidden">
+    <main id="main-content" tabIndex={-1} className="relative min-h-screen bg-[#FAFAFA] dark:bg-[#0E0E0E] flex items-center justify-center p-4 overflow-hidden">
       <div className="absolute right-4 top-4 z-10 rounded-full bg-white/80 shadow-sm dark:bg-[#1A1A1A]/80">
         <LanguageSwitcher />
       </div>
@@ -160,6 +160,6 @@ export default function LoginPage() {
           <Link to="/privacy" className="underline hover:text-[#6E6C64]">{t("auth.privacyPolicy")}</Link>
         </p>
       </div>
-    </div>
+    </main>
   );
 }

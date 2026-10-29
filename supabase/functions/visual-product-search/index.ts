@@ -23,6 +23,10 @@ const rateBuckets = new Map<string, { startedAt: number; count: number }>();
 const RATE_LIMIT = 6;
 const RATE_WINDOW_MS = 60_000;
 const OPENAI_TIMEOUT_MS = 15_000;
+const MAX_IMAGE_DATA_URL_LENGTH = 7_000_000;
+const MAX_CONTENT_LENGTH = MAX_IMAGE_DATA_URL_LENGTH + 128;
+const MAX_ACTIVE_REQUESTS = 2;
+let activeRequests = 0;
 const VALID_CATEGORIES = new Set(["electronics", "fashion", "home", "beauty", "jewelry", "toys", "automotive", "appliances"]);
 
 function corsHeaders(req: Request, extra: Record<string, string> = {}) {
@@ -46,6 +50,11 @@ function requestKey(req: Request) {
 
 function isRateLimited(req: Request) {
   const now = Date.now();
+  // Discard expired buckets so spoofed or rotating request identifiers cannot
+  // grow this process-local map without bound between platform cold starts.
+  for (const [key, bucket] of rateBuckets) {
+    if (now - bucket.startedAt >= RATE_WINDOW_MS) rateBuckets.delete(key);
+  }
   const key = requestKey(req);
   const bucket = rateBuckets.get(key);
   if (!bucket || now - bucket.startedAt >= RATE_WINDOW_MS) {
@@ -62,11 +71,15 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders(req) });
   if (req.method !== "POST") return json({ error: "Only POST is supported." }, 405, req);
   if (isRateLimited(req)) return json({ error: "Too many visual searches. Please try again in a minute." }, 429, req, { "Retry-After": "60" });
+  const declaredLength = Number(req.headers.get("content-length") || 0);
+  if (declaredLength > MAX_CONTENT_LENGTH) return json({ error: "Image payload is too large." }, 413, req);
+  if (activeRequests >= MAX_ACTIVE_REQUESTS) return json({ error: "Visual search is busy. Please try again shortly." }, 429, req, { "Retry-After": "10" });
+  activeRequests += 1;
   try {
     const apiKey = Deno.env.get("OPENAI_API_KEY");
     if (!apiKey) return json({ error: "Visual search is not configured yet." }, 503, req);
     const { imageDataUrl } = await req.json();
-    if (typeof imageDataUrl !== "string" || !/^data:image\/(jpeg|png|webp);base64,/i.test(imageDataUrl) || imageDataUrl.length > 7_000_000) {
+    if (typeof imageDataUrl !== "string" || !/^data:image\/(jpeg|png|webp);base64,/i.test(imageDataUrl) || imageDataUrl.length > MAX_IMAGE_DATA_URL_LENGTH) {
       return json({ error: "Use a JPG, PNG, or WebP image up to 5 MB." }, 400, req);
     }
 
@@ -98,6 +111,8 @@ Deno.serve(async (req) => {
     return json({ search, category, confidence: parsed.confidence === "high" || parsed.confidence === "medium" ? parsed.confidence : "low" }, 200, req);
   } catch {
     return json({ error: "Could not analyse that image." }, 500, req);
+  } finally {
+    activeRequests -= 1;
   }
 });
 

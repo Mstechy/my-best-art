@@ -52,3 +52,11 @@ dump_log.txt
 # Local TypeScript/debug scratch output - never belongs in the repo
 tsc_*.txt
 migration_list.txt
+
+# Debug artifacts
+check_logs*.ps1
+devserver.txt
+pw_err.txt
+start_preview.ps1
+test-results/
+check_cls.ps1

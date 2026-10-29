@@ -189,24 +189,75 @@ export function CartProvider({ children }: { children: ReactNode }) {
       // cart_items table not yet in generated types – use any-typed helper
       const itemsTable = supabase.from("cart_items" as any) as any;
 
+      // Reconcile incrementally. Deleting the whole cart before inserting the
+      // replacement made a transient network/RLS failure look like a successful
+      // empty cart and permanently discarded the server copy.
       try {
-        await itemsTable.delete().eq("cart_id", cartId);
-      } catch (e) { console.error("[Cart] DB delete failed", e); return; }
-      if (cartItems.length === 0) return;
+        const { data: existingRows, error: existingError } = await itemsTable
+          .select("product_id, product_variant_id")
+          .eq("cart_id", cartId);
+        if (existingError) throw existingError;
 
-      const rows = cartItems.map(item => ({
-        cart_id: cartId,
-        product_id: item.product_id || item.id.split("::")[0],
-        product_variant_id: item.product_variant_id || null,
-        unit_price: item.price,
-        variant_attributes: item.variant_attributes || {},
-        quantity: item.quantity,
-        seller_name: item.seller_name,
-      }));
+        const rowKey = (productId: string, variantId: string | null) =>
+          `${productId}::${variantId || "base"}`;
+        const desiredKeys = new Set(
+          cartItems.map((item) => rowKey(item.product_id || item.id.split("::")[0], item.product_variant_id || null)),
+        );
 
-      try {
-        await itemsTable.insert(rows);
-      } catch (e) { console.error("[Cart] DB insert failed", e); }
+        for (const existing of (existingRows ?? []) as { product_id: string; product_variant_id: string | null }[]) {
+          if (desiredKeys.has(rowKey(existing.product_id, existing.product_variant_id))) continue;
+          let deleteQuery = itemsTable
+            .delete()
+            .eq("cart_id", cartId)
+            .eq("product_id", existing.product_id);
+          deleteQuery = existing.product_variant_id
+            ? deleteQuery.eq("product_variant_id", existing.product_variant_id)
+            : deleteQuery.is("product_variant_id", null);
+          const { error } = await deleteQuery;
+          if (error) throw error;
+        }
+
+        for (const item of cartItems) {
+          const productId = item.product_id || item.id.split("::")[0];
+          const variantId = item.product_variant_id || null;
+          const row = {
+            cart_id: cartId,
+            product_id: productId,
+            product_variant_id: variantId,
+            unit_price: item.price,
+            variant_attributes: item.variant_attributes || {},
+            quantity: item.quantity,
+            seller_name: item.seller_name,
+          };
+
+          // PostgreSQL UNIQUE constraints treat NULL values as distinct, so
+          // the nullable base-product variant cannot safely use upsert().
+          // Resolve that row explicitly; variant rows retain the existing
+          // unique-key upsert path.
+          if (!variantId) {
+            const { data: current, error: lookupError } = await itemsTable
+              .select("id")
+              .eq("cart_id", cartId)
+              .eq("product_id", productId)
+              .is("product_variant_id", null)
+              .maybeSingle();
+            if (lookupError) throw lookupError;
+            if (current?.id) {
+              const { error } = await itemsTable.update(row).eq("id", current.id);
+              if (error) throw error;
+            } else {
+              const { error } = await itemsTable.insert(row);
+              if (error) throw error;
+            }
+          } else {
+            const { error } = await itemsTable.upsert(row, {
+              onConflict: "cart_id,product_id,product_variant_id",
+              ignoreDuplicates: false,
+            });
+            if (error) throw error;
+          }
+        }
+      } catch (e) { console.error("[Cart] DB reconciliation failed; local state retained", e); }
     } else {
       // ── Anonymous: write to IndexedDB only ──
       await persistentCacheSet(ANON_CART_KEY, cartItems, 7 * 24 * 60 * 60 * 1000); // 7 day TTL
