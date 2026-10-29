@@ -6,7 +6,9 @@ const publicRoutes = ["/", "/marketplace", "/categories", "/auth/login"] as cons
 function describeViolations(violations: Awaited<ReturnType<AxeBuilder["analyze"]>>["violations"]) {
   return violations
     .map((violation) => {
-      const targets = violation.nodes.map((node) => node.target.join(", ")).join(" | ");
+      const targets = violation.nodes
+        .map((node) => `${node.target.join(", ")} ${node.html}`)
+        .join(" | ");
       return `${violation.id} (${violation.impact ?? "unknown"}): ${violation.help} [${targets}]`;
     })
     .join("\n");

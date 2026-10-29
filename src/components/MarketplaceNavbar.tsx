@@ -277,10 +277,10 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                           its own until a value is chosen, which left it with an empty
                           accessible name and failed the button-name audit. */}
                       <SelectTrigger
-                        aria-label={t("nav.searchInCategory", { category: t("nav.allCategories") })}
+                        aria-labelledby="marketplace-category-value"
                         className="h-12 w-full rounded-none border-0 bg-transparent px-4 text-sm font-medium text-[#111111] shadow-none focus:ring-0 dark:text-[#FAF5F2]"
                       >
-                        <SelectValue placeholder={t("nav.allCategories")} />
+                        <SelectValue id="marketplace-category-value" placeholder={t("nav.allCategories")} />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="__all__">{t("nav.allCategories")}</SelectItem>

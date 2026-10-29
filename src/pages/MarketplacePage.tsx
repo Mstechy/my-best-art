@@ -693,13 +693,11 @@ export default function MarketplacePage() {
                   categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
                 />
                 <Select value={sortBy} onValueChange={(value) => { if (isMarketplaceSort(value)) setSortBy(value); }}>
-                  {/* The Radix trigger renders as role="combobox"; with no
-                       text of its own (SelectValue can be empty before the
-                       first paint) it needs an explicit accessible name -
-                       axe's button-name rule, which is also one of the
-                       agent-critical rules Lighthouse's Agentic Browsing
-                       category filters for. */}
-                  <SelectTrigger aria-label={t("marketplace.sortByLabel")} className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue /></SelectTrigger>
+                  {/* The visible SelectValue supplies the combobox name. An
+                       aria-label that only says "Sort by" would override the
+                       visible option text and fail axe's label-content-name
+                       consistency rule. */}
+                  <SelectTrigger aria-labelledby="marketplace-sort-value" className="h-10 w-[150px] rounded-full border-[#E8E8E8] bg-white text-xs font-semibold dark:border-[#222222] dark:bg-[#1E1E1E]"><SelectValue id="marketplace-sort-value" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="relevance">{t("marketplace.sortOptions.bestMatch")}</SelectItem>
                     <SelectItem value="newest">{t("marketplace.sortOptions.newest")}</SelectItem>
