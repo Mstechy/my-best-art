@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { validateSellerProductCsv } from "@/lib/sellerProductCsv";
+import { CSV_IGNORE_COLUMN, getSellerProductCsvHeaders, suggestSellerProductCsvMapping, validateSellerProductCsv } from "@/lib/sellerProductCsv";
 
 const fashion = { id: "fashion-id", name: "Fashion", slug: "fashion" };
 const electronics = { id: "electronics-id", name: "Electronics", slug: "electronics" };
@@ -134,5 +134,28 @@ describe("validateSellerProductCsv", () => {
     const noSku = validateSellerProductCsv(csvFor(row({ sku: "" })), [fashion]);
     expect(noSku.products).toHaveLength(1);
     expect(noSku.products[0]?.sku).toBeNull();
+  });
+
+  it("maps common spreadsheet headers without changing the existing template", () => {
+    const sourceHeaders = ["product_name", "product_description", "selling_price", "stock", "category", "type", "images", "barcode", "notes"];
+    const sourceValues = [
+      row().title,
+      row().description,
+      row().price,
+      row().stock_quantity,
+      row().category_slug,
+      row().product_type,
+      row().image_urls,
+      row().gtin,
+      "internal note",
+    ];
+    const csv = `${sourceHeaders.join(",")}\r\n${sourceValues.map((value) => `"${value}"`).join(",")}`;
+    const headers = getSellerProductCsvHeaders(csv);
+    const mapping = suggestSellerProductCsvMapping(headers);
+    mapping.notes = CSV_IGNORE_COLUMN;
+
+    const result = validateSellerProductCsv(csv, [fashion], mapping);
+    expect(result.errors).toEqual([]);
+    expect(result.products[0]).toMatchObject({ title: row().title, price: 25000, stockQuantity: 5, gtin: null });
   });
 });

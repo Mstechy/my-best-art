@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const browserChannel = process.env.PLAYWRIGHT_CHANNEL;
+const browserExecutablePath = process.env.PLAYWRIGHT_EXECUTABLE_PATH;
 
 export default defineConfig({
   testDir: "./e2e",
@@ -21,6 +22,7 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         ...(browserChannel ? { channel: browserChannel } : {}),
+        ...(browserExecutablePath ? { launchOptions: { executablePath: browserExecutablePath } } : {}),
       },
     },
   ],

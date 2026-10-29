@@ -8,6 +8,26 @@ const MAX_IMAGES = 12;
 const OPTIONAL_HEADERS = [
   "currency", "sku", "brand", "gtin", "mpn", "condition", "compare_at_price",
 ];
+export const CSV_IGNORE_COLUMN = "__ignore__";
+export const CSV_UNMAPPED_COLUMN = "__unmapped__";
+export const CSV_MAPPABLE_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
+
+const HEADER_ALIASES: Record<string, string[]> = {
+  title: ["product_name", "product_title", "item_name", "item_title", "name"],
+  description: ["product_description", "product_details", "details", "long_description"],
+  price: ["selling_price", "sale_price", "unit_price", "current_price"],
+  currency: ["currency_code", "price_currency"],
+  stock_quantity: ["stock", "inventory", "quantity", "available_stock"],
+  category_slug: ["category", "category_name", "department", "department_name"],
+  product_type: ["product_type_key", "product_type_name", "type", "item_type"],
+  image_urls: ["image_url", "images", "photos", "photo_urls", "product_images"],
+  sku: ["seller_sku", "product_sku", "item_sku", "item_code", "code"],
+  brand: ["manufacturer", "maker", "brand_name"],
+  gtin: ["barcode", "ean", "upc", "isbn"],
+  mpn: ["model_number", "part_number", "manufacturer_part_number"],
+  condition: ["item_condition", "product_condition"],
+  compare_at_price: ["original_price", "regular_price", "msrp", "compare_price"],
+};
 
 export interface CsvCategory {
   id: string;
@@ -96,8 +116,25 @@ function parseRecords(csv: string): string[][] {
   return records;
 }
 
-function normalizeHeader(value: string): string {
+export function normalizeSellerProductCsvHeader(value: string): string {
   return value.trim().replace(/^\uFEFF/, "").toLowerCase().replace(/[\s-]+/g, "_");
+}
+
+export type CsvColumnMapping = Record<string, string>;
+
+export function getSellerProductCsvHeaders(csv: string): string[] {
+  const records = parseRecords(csv.replace(/^\uFEFF/, ""));
+  return records[0]?.map(normalizeSellerProductCsvHeader) ?? [];
+}
+
+export function suggestSellerProductCsvMapping(headers: string[]): CsvColumnMapping {
+  const aliases = new Map(Object.entries(HEADER_ALIASES).flatMap(([canonical, values]) => values.map((alias) => [alias, canonical] as const)));
+  return Object.fromEntries(headers.map((header) => [
+    header,
+    CSV_MAPPABLE_HEADERS.includes(header) || header.startsWith("attr_")
+      ? header
+      : aliases.get(header) || CSV_UNMAPPED_COLUMN,
+  ]));
 }
 
 function attributeHeader(key: string): string {
@@ -123,18 +160,23 @@ function productTypeFor(category: CsvCategory, value: string): ProductTypeConfig
   );
 }
 
-export function validateSellerProductCsv(csv: string, categories: CsvCategory[]): CsvValidationResult {
+export function validateSellerProductCsv(csv: string, categories: CsvCategory[], columnMapping: CsvColumnMapping = {}): CsvValidationResult {
   const records = parseRecords(csv.replace(/^\uFEFF/, ""));
   if (records.length === 0) throw new Error("Add a header row and at least one product row to the CSV.");
   if (records.length - 1 > MAX_PRODUCT_ROWS) {
     throw new Error(`A single import can contain up to ${MAX_PRODUCT_ROWS} product rows. Split larger catalogs into separate CSV files.`);
   }
 
-  const headers = records[0].map(normalizeHeader);
-  const blankHeaders = headers.some((header) => !header);
+  const sourceHeaders = records[0].map(normalizeSellerProductCsvHeader);
+  const blankHeaders = sourceHeaders.some((header) => !header);
   if (blankHeaders) throw new Error("Every CSV column needs a heading. Remove any unnamed columns.");
-  const duplicateHeaders = headers.filter((header, index) => headers.indexOf(header) !== index);
+  const duplicateHeaders = sourceHeaders.filter((header, index) => sourceHeaders.indexOf(header) !== index);
   if (duplicateHeaders.length > 0) throw new Error(`The CSV contains duplicate column headings: ${[...new Set(duplicateHeaders)].join(", ")}.`);
+  const mappedHeaders = sourceHeaders.map((header) => columnMapping[header] || header);
+  const activeColumnIndexes = mappedHeaders.flatMap((header, index) => header === CSV_IGNORE_COLUMN ? [] : [index]);
+  const headers = activeColumnIndexes.map((index) => mappedHeaders[index]);
+  const unresolvedHeaders = headers.filter((header) => header === CSV_UNMAPPED_COLUMN);
+  if (unresolvedHeaders.length > 0) throw new Error("Map every unfamiliar CSV column to a Tradibu field or choose Ignore before previewing.");
   const missingHeaders = REQUIRED_HEADERS.filter((header) => !headers.includes(header));
   if (missingHeaders.length > 0) throw new Error(`Missing required columns: ${missingHeaders.join(", ")}.`);
   if (headers.some((header) => header.startsWith("attr_") && header.length === 5)) {
@@ -154,9 +196,9 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[])
 
   records.slice(1).forEach((cells, index) => {
     const rowNumber = index + 2;
-    const row = Object.fromEntries(headers.map((header, column) => [header, (cells[column] ?? "").trim()]));
+    const row = Object.fromEntries(activeColumnIndexes.map((sourceColumn, activeColumn) => [headers[activeColumn], (cells[sourceColumn] ?? "").trim()]));
     const rowErrors: string[] = [];
-    if (cells.length > headers.length) rowErrors.push("This row has more values than the header. Check for unescaped commas in cell values.");
+    if (cells.length > sourceHeaders.length) rowErrors.push("This row has more values than the header. Check for unescaped commas in cell values.");
     const title = row.title ?? "";
     if (!title) rowErrors.push("Add a product title.");
     if (title.length > 200) rowErrors.push("Product titles must be 200 characters or fewer.");
@@ -197,13 +239,14 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[])
     })) rowErrors.push("Every image must be a valid absolute HTTPS URL.");
 
     const attributes: Record<string, string> = {};
-    headers.forEach((header, column) => {
-      if (header.startsWith("attr_") && cells[column]?.trim()) {
+    activeColumnIndexes.forEach((sourceColumn, activeColumn) => {
+      const header = headers[activeColumn];
+      if (header.startsWith("attr_") && cells[sourceColumn]?.trim()) {
         const suppliedKey = header.slice(5);
         const canonicalKey = productType?.fields.find((field) =>
           field.key.toLowerCase().replace(/_/g, "") === suppliedKey.replace(/_/g, "")
         )?.key ?? suppliedKey;
-        attributes[canonicalKey] = cells[column].trim();
+        attributes[canonicalKey] = cells[sourceColumn].trim();
       }
     });
     const brand = row.brand || attributes.brand || "";
@@ -274,7 +317,7 @@ export const SELLER_PRODUCT_CSV_TEMPLATE = [
 
 export const SELLER_PRODUCT_CSV_GUIDE = [
   "Required columns: title, description, price, stock_quantity, category_slug, product_type, image_urls.",
-  "Use category name/slug and product type key/label shown in the seller listing form.",
+  "Use category name/slug and product type key/label shown in the seller listing form. Common spreadsheet headers such as product_name, barcode, stock, and images are mapped during preview.",
   "Add category-specific specifications as attr_fieldname columns, for example attr_color or attr_storage.",
   "Separate multiple image URLs with |. Images must be public HTTPS URLs.",
   "Descriptions must be 80-5000 characters. Currency defaults to NGN; condition defaults to new.",

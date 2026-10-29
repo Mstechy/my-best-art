@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Search, Package, Pencil, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, AlertCircle, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Package, Pencil, Copy, Trash2, ImagePlus, Eye, EyeOff, Archive, Clock, CheckCircle2, AlertCircle, X, Heart, ShoppingCart, GripVertical, Play, Upload, RotateCcw, Star, Globe, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import AnimatedSection from "@/components/AnimatedSection";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -826,6 +826,35 @@ export default function SellerProducts() {
     setDialogOpen(true);
   };
 
+  const openDuplicate = async (product: Product) => {
+    await openEdit(product);
+
+    // Reuse only seller-owned listing content. A duplicate must enter the normal
+    // draft/approval path as a new product, so it must not retain the source id,
+    // source image row ids, promotion window, moderation state, or sales history.
+    setEditingProduct(null);
+    setSavedProductId(null);
+    setTitle(`Copy of ${product.title}`);
+    setSku(generateSku());
+    setStockQuantity("0");
+    setFlashDealEnabled(false);
+    setFlashDealDiscount("");
+    setFlashDealStart("");
+    setFlashDealEnd("");
+    setSeoSlug("");
+    setSlugTouched(false);
+    setImageItems((items) => items.map(({ dbId: _dbId, ...item }) => item));
+    setRemovedImageIds([]);
+    setRemovedVideoUrls([]);
+    setRemovedDescriptionImageUrls([]);
+    setFormTab("basic");
+    setDialogOpen(true);
+    toast({
+      title: "Listing copied into a new draft",
+      description: "Review the title, price, stock and photos before submitting it for approval.",
+    });
+  };
+
   const generateStorageColorMatrix = () => {
     const colors = splitVariantValues(variantColorValues);
     const primaryValues = splitVariantValues(variantStorageValues);
@@ -1109,6 +1138,25 @@ export default function SellerProducts() {
           if (error) {
             mediaHadError = true;
             updateImageUploadState(item.id, { status: "error", error: error.message });
+          }
+          continue;
+        }
+        if (!item.file && item.url) {
+          // A duplicated listing reuses the source listing's public media URL.
+          // Create a new product_images row so the source listing remains
+          // independent; orders, reviews and analytics are never copied.
+          const { data: inserted, error: insertError } = await supabase.from("product_images").insert({
+            product_id: productId,
+            image_url: item.url,
+            is_primary: item.isPrimary,
+            sort_order: i,
+            alt: item.alt.trim() || null,
+          } as never).select("id").single();
+          if (insertError) {
+            mediaHadError = true;
+            updateImageUploadState(item.id, { status: "error", error: insertError.message });
+          } else {
+            updateImageUploadState(item.id, { dbId: (inserted as { id: string }).id, status: "uploaded", progress: 100 });
           }
           continue;
         }
@@ -1709,9 +1757,9 @@ export default function SellerProducts() {
                     Start with what every buyer needs to recognise this product. If storage, colour, or another option changes the price, set those exact prices in <span className="font-semibold">2. Options</span> - do not create separate product listings.
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Category *</label>
+                    <label htmlFor="product-category" className="text-sm font-medium text-foreground">Category *</label>
                     <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setProductTypeKey(""); setCategoryAttributes({}); }}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
+                      <SelectTrigger id="product-category" className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                       <SelectContent>
                         {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                       </SelectContent>
@@ -1719,9 +1767,9 @@ export default function SellerProducts() {
                     <p className="mt-1 text-xs text-muted-foreground">Choose a category first so the listing can show the right product details.</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Product Type *</label>
+                    <label htmlFor="product-type" className="text-sm font-medium text-foreground">Product Type *</label>
                     <Select value={productTypeKey} onValueChange={(value) => { setProductTypeKey(value); setCategoryAttributes({}); }} disabled={!categoryId}>
-                      <SelectTrigger className="mt-1"><SelectValue placeholder={categoryId ? "Select product type" : "Choose category first"} /></SelectTrigger>
+                      <SelectTrigger id="product-type" className="mt-1"><SelectValue placeholder={categoryId ? "Select product type" : "Choose category first"} /></SelectTrigger>
                       <SelectContent>
                         {selectableProductTypes.map(type => <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>)}
                       </SelectContent>
@@ -1729,8 +1777,8 @@ export default function SellerProducts() {
                     <p className="mt-1 text-xs text-muted-foreground">Only product types that belong to this category are shown. Product type controls the exact fields buyers and admins will see.</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Product Title *</label>
-                    <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
+                    <label htmlFor="product-title" className="text-sm font-medium text-foreground">Product Title *</label>
+                    <Input id="product-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : isLaptopListing ? "Use brand, model, RAM, storage, processor family, and a meaningful configuration. Keep claims consistent with the specifications below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
                   </div>
                   <div>
@@ -1746,24 +1794,24 @@ export default function SellerProducts() {
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium text-foreground">{hasVariantRows ? "Starting price (from SKU prices)" : "Price for a single-price product *"}</label>
+                      <label htmlFor="product-price" className="text-sm font-medium text-foreground">{hasVariantRows ? "Starting price (from SKU prices)" : "Price for a single-price product *"}</label>
                       {hasVariantRows ? (
-                        <Input value={lowestVariantPrice === null ? "Add a price for each SKU in Options" : `${currency} ${lowestVariantPrice.toFixed(2)}`} readOnly className="mt-1 bg-muted" aria-label="Starting price calculated from SKU prices" />
+                        <Input id="product-price" value={lowestVariantPrice === null ? "Add a price for each SKU in Options" : `${currency} ${lowestVariantPrice.toFixed(2)}`} readOnly className="mt-1 bg-muted" aria-label="Starting price calculated from SKU prices" />
                       ) : (
-                        <Input type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 250000" className="mt-1" />
+                        <Input id="product-price" type="number" min="0.01" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="e.g. 250000" className="mt-1" />
                       )}
                       <p className="mt-1 text-xs text-muted-foreground">{hasVariantRows ? "Calculated from the lowest exact SKU price. Buyers pay the price for the storage and colour they choose." : "Use this only when every unit has the same price. Options with different prices are set in the next tab."}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-foreground">Compare at price</label>
-                      <Input type="number" step="0.01" value={compareAtPrice} onChange={(e) => { setCompareAtPrice(e.target.value); setCompareAtError(""); }} placeholder="Original price" className="mt-1" />
+                      <label htmlFor="product-compare-price" className="text-sm font-medium text-foreground">Compare at price</label>
+                      <Input id="product-compare-price" type="number" step="0.01" value={compareAtPrice} onChange={(e) => { setCompareAtPrice(e.target.value); setCompareAtError(""); }} placeholder="Original price" className="mt-1" />
                       {compareAtError && <p className="mt-1 text-xs text-destructive">{compareAtError}</p>}
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Listing currency *</label>
+                    <label htmlFor="product-currency" className="text-sm font-medium text-foreground">Listing currency *</label>
                     <Select value={currency} onValueChange={setCurrency}>
-                      <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                      <SelectTrigger id="product-currency" className="mt-1"><SelectValue /></SelectTrigger>
                       <SelectContent>{LISTING_CURRENCIES.map((code) => <SelectItem key={code} value={code}>{code}</SelectItem>)}</SelectContent>
                     </Select>
                     <p className="mt-1 text-xs text-muted-foreground">Enter the real amount you charge in this currency. Buyers see an estimated conversion in their selected currency.</p>
@@ -1773,13 +1821,13 @@ export default function SellerProducts() {
                     <p className="mt-1 text-xs text-muted-foreground">For phones and laptops, use the real manufacturer brand and MPN, plus the GTIN printed on the product or packaging when one exists. Never invent an identifier.</p>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div>
-                        <label className="text-sm font-medium text-foreground">Brand</label>
-                        <Input value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Manufacturer brand" className="mt-1" />
+                        <label htmlFor="product-brand" className="text-sm font-medium text-foreground">Brand</label>
+                        <Input id="product-brand" value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Manufacturer brand" className="mt-1" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-foreground">Condition</label>
+                        <label htmlFor="product-condition" className="text-sm font-medium text-foreground">Condition</label>
                         <Select value={condition} onValueChange={setCondition}>
-                          <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                          <SelectTrigger id="product-condition" className="mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="new">New</SelectItem>
                             <SelectItem value="used">Used</SelectItem>
@@ -1788,18 +1836,18 @@ export default function SellerProducts() {
                         </Select>
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-foreground">GTIN (optional)</label>
-                        <Input inputMode="numeric" value={gtin} onChange={(event) => setGtin(event.target.value.replace(/\s/g, ""))} placeholder="8, 12, 13, or 14 digits" className="mt-1" />
+                        <label htmlFor="product-gtin" className="text-sm font-medium text-foreground">GTIN (optional)</label>
+                        <Input id="product-gtin" inputMode="numeric" value={gtin} onChange={(event) => setGtin(event.target.value.replace(/\s/g, ""))} placeholder="8, 12, 13, or 14 digits" className="mt-1" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-foreground">Manufacturer part number (optional)</label>
-                        <Input value={mpn} onChange={(event) => setMpn(event.target.value)} placeholder="Manufacturer's MPN" className="mt-1" />
+                        <label htmlFor="product-mpn" className="text-sm font-medium text-foreground">Manufacturer part number (optional)</label>
+                        <Input id="product-mpn" value={mpn} onChange={(event) => setMpn(event.target.value)} placeholder="Manufacturer's MPN" className="mt-1" />
                       </div>
                     </div>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">URL Slug</label>
-                    <Input value={seoSlug} onChange={(e) => { setSeoSlug(e.target.value); setSlugTouched(true); }} placeholder="product-url-slug" className="mt-1" />
+                    <label htmlFor="product-slug" className="text-sm font-medium text-foreground">URL Slug</label>
+                    <Input id="product-slug" value={seoSlug} onChange={(e) => { setSeoSlug(e.target.value); setSlugTouched(true); }} placeholder="product-url-slug" className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">Preferred public URL: /product/{seoSlug || "your-slug"}. Existing ID links remain supported.</p>
                   </div>
                   <div>
@@ -1815,23 +1863,23 @@ export default function SellerProducts() {
                       ))}
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-foreground">Low Stock Threshold</label>
-                    <Input type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} placeholder="5" className="mt-1" />
+                    <label htmlFor="product-low-stock-threshold" className="text-sm font-medium text-foreground">Low Stock Threshold</label>
+                    <Input id="product-low-stock-threshold" type="number" min="0" value={lowStockThreshold} onChange={(e) => setLowStockThreshold(e.target.value)} placeholder="5" className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">Shows "Only X left" when stock drops to this number.</p>
                   </div>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
-                      <label className="text-sm font-medium text-foreground">{hasVariantRows ? "Total SKU stock" : "Stock quantity"}</label>
+                      <label htmlFor="product-stock" className="text-sm font-medium text-foreground">{hasVariantRows ? "Total SKU stock" : "Stock quantity"}</label>
                       {hasVariantRows ? (
-                        <Input value={String(totalVariantStock)} readOnly className="mt-1 bg-muted" aria-label="Total stock calculated from SKU rows" />
+                        <Input id="product-stock" value={String(totalVariantStock)} readOnly className="mt-1 bg-muted" aria-label="Total stock calculated from SKU rows" />
                       ) : (
-                        <Input type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="e.g. 12" className="mt-1" />
+                        <Input id="product-stock" type="number" min="0" step="1" value={stockQuantity} onChange={(e) => setStockQuantity(e.target.value)} placeholder="e.g. 12" className="mt-1" />
                       )}
                       <p className="mt-1 text-xs text-muted-foreground">{hasVariantRows ? "Calculated from the stock entered for each SKU in Options." : "How many units are ready to sell now."}</p>
                     </div>
                     <div>
-                      <div className="flex items-center justify-between gap-2"><label className="text-sm font-medium text-foreground">SKU</label><Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSku(generateSku())}>Generate new</Button></div>
-                      <Input value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Optional" className="mt-1" />
+                      <div className="flex items-center justify-between gap-2"><label htmlFor="product-sku" className="text-sm font-medium text-foreground">SKU</label><Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setSku(generateSku())}>Generate new</Button></div>
+                      <Input id="product-sku" value={sku} onChange={(e) => setSku(e.target.value)} placeholder="Optional" className="mt-1" />
                     </div>
                   </div>
                   {/* Flash Deal */}
@@ -1965,10 +2013,10 @@ export default function SellerProducts() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         {selectedProductTypeConfig.fields.map((field) => (
                           <div key={field.key}>
-                            <label className="text-sm font-medium text-foreground">{field.label}{requiredSpecificationKeys.has(field.key) ? " *" : ""}</label>
+                            <label htmlFor={`product-spec-${field.key}`} className="text-sm font-medium text-foreground">{field.label}{requiredSpecificationKeys.has(field.key) ? " *" : ""}</label>
                             {field.type === "select" ? (
                               <Select value={categoryAttributes[field.key] || ""} onValueChange={(value) => updateCategoryAttribute(field.key, value)}>
-                                <SelectTrigger className="mt-1"><SelectValue placeholder={`Select ${field.label.toLowerCase()}`} /></SelectTrigger>
+                                <SelectTrigger id={`product-spec-${field.key}`} className="mt-1"><SelectValue placeholder={`Select ${field.label.toLowerCase()}`} /></SelectTrigger>
                                 <SelectContent>
                                   {(field.options || []).map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
                                 </SelectContent>
@@ -1977,6 +2025,7 @@ export default function SellerProducts() {
                               <Textarea
                                 value={categoryAttributes[field.key] || ""}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
+                                id={`product-spec-${field.key}`}
                                 placeholder={field.placeholder}
                                 className="mt-1"
                                 rows={3}
@@ -1986,6 +2035,7 @@ export default function SellerProducts() {
                                 type={field.type === "date" ? "date" : "text"}
                                 value={categoryAttributes[field.key] || ""}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
+                                id={`product-spec-${field.key}`}
                                 placeholder={field.placeholder}
                                 className="mt-1"
                               />
@@ -2628,6 +2678,15 @@ export default function SellerProducts() {
                     <div className="flex gap-1 mt-3">
                       <Button variant="outline" size="sm" onClick={() => openEdit(product)} className="flex-1 gap-1">
                         <Pencil className="h-3 w-3" /> Edit
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => void openDuplicate(product)}
+                        aria-label={`Duplicate ${product.title}`}
+                        title="Duplicate listing"
+                      >
+                        <Copy className="h-3 w-3" />
                       </Button>
                       <Button
                         variant="outline"

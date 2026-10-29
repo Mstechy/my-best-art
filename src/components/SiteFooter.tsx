@@ -11,7 +11,7 @@ export default function SiteFooter() {
       <Container>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.shop")}</h3>
+            <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.shop")}</h2>
             <ul className="space-y-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.allProducts")}</Link></li>
               <li><Link to="/categories" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.categories")}</Link></li>
@@ -20,7 +20,7 @@ export default function SiteFooter() {
             </ul>
           </div>
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.sell")}</h3>
+            <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.sell")}</h2>
             <ul className="space-y-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               <li><Link to="/auth/register" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.becomeVendor")}</Link></li>
               <li><Link to="/auth/login" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.merchantDashboard")}</Link></li>
@@ -28,7 +28,7 @@ export default function SiteFooter() {
             </ul>
           </div>
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.support")}</h3>
+            <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.support")}</h2>
             <ul className="space-y-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               <li><Link to="/auth/login" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.buyerCenter")}</Link></li>
               <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.shippingDelivery")}</Link></li>
@@ -37,7 +37,7 @@ export default function SiteFooter() {
             </ul>
           </div>
           <div>
-            <h3 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.brandName")}</h3>
+            <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.brandName")}</h2>
             <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] leading-relaxed">
               {t("footer.description")}
             </p>

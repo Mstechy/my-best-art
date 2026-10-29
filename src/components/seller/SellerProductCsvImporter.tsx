@@ -3,12 +3,13 @@ import { CheckCircle2, CircleAlert, Download, Loader2, Upload } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { getProductTypesForCategory, getRequiredFields } from "@/lib/categoryConfig";
-import { SELLER_PRODUCT_CSV_GUIDE, SELLER_PRODUCT_CSV_TEMPLATE, validateSellerProductCsv, type CsvCategory, type CsvProduct, type CsvRowError } from "@/lib/sellerProductCsv";
+import { CSV_IGNORE_COLUMN, CSV_MAPPABLE_HEADERS, CSV_UNMAPPED_COLUMN, getSellerProductCsvHeaders, suggestSellerProductCsvMapping, SELLER_PRODUCT_CSV_GUIDE, SELLER_PRODUCT_CSV_TEMPLATE, validateSellerProductCsv, type CsvCategory, type CsvColumnMapping, type CsvProduct, type CsvRowError } from "@/lib/sellerProductCsv";
 
 type ImportStatus = "ready" | "imported" | "error";
 type ImportRow = { product: CsvProduct; status: ImportStatus; error?: string; sku?: string };
@@ -36,6 +37,10 @@ function downloadFile(name: string, contents: string) {
   anchor.download = name;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function formatCsvHeader(header: string) {
+  return header.replace(/^attr_/, "Attribute: ").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function categoryReferenceCsv(categories: CsvCategory[]) {
@@ -110,6 +115,9 @@ export default function SellerProductCsvImporter({
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [fileName, setFileName] = useState("");
+  const [csvText, setCsvText] = useState("");
+  const [sourceHeaders, setSourceHeaders] = useState<string[]>([]);
+  const [columnMapping, setColumnMapping] = useState<CsvColumnMapping>({});
   const [fileErrors, setFileErrors] = useState<CsvRowError[]>([]);
   const [rows, setRows] = useState<ImportRow[]>([]);
   const [fileError, setFileError] = useState("");
@@ -122,12 +130,36 @@ export default function SellerProductCsvImporter({
     return result;
   }, { ready: 0, imported: 0, error: 0 }), [rows]);
 
+  const applyValidation = (contents: string, mapping: CsvColumnMapping) => {
+    const result = validateSellerProductCsv(contents, categories, mapping);
+    setRows(result.products.map((product) => ({ product, status: "ready" })));
+    setFileErrors(result.errors);
+    if (result.products.length === 0) setFileError("No rows passed validation. Fix the row errors and preview the CSV again.");
+    else setFileError("");
+  };
+
+  const previewMappedFile = () => {
+    const unresolved = sourceHeaders.filter((header) => (columnMapping[header] || CSV_UNMAPPED_COLUMN) === CSV_UNMAPPED_COLUMN);
+    if (unresolved.length > 0) {
+      setFileError(`Choose a destination or Ignore for: ${unresolved.slice(0, 5).map(formatCsvHeader).join(", ")}${unresolved.length > 5 ? "…" : ""}.`);
+      return;
+    }
+    try {
+      applyValidation(csvText, columnMapping);
+    } catch (error) {
+      setFileError(error instanceof Error ? error.message : "Could not validate this CSV file.");
+    }
+  };
+
   const chooseFile = async (file?: File) => {
     setFileError("");
     setRows([]);
     setFileErrors([]);
     setProgress(0);
     setFileName("");
+    setCsvText("");
+    setSourceHeaders([]);
+    setColumnMapping({});
     if (!file) return;
     if (!file.name.toLowerCase().endsWith(".csv")) {
       setFileError("Choose a .csv file exported from Excel or Google Sheets.");
@@ -138,11 +170,18 @@ export default function SellerProductCsvImporter({
       return;
     }
     try {
-      const result = validateSellerProductCsv(await file.text(), categories);
+      const contents = await file.text();
+      const headers = getSellerProductCsvHeaders(contents);
+      const mapping = suggestSellerProductCsvMapping(headers);
       setFileName(file.name);
-      setRows(result.products.map((product) => ({ product, status: "ready" })));
-      setFileErrors(result.errors);
-      if (result.products.length === 0) setFileError("No rows passed validation. Fix the row errors and upload the CSV again.");
+      setCsvText(contents);
+      setSourceHeaders(headers);
+      setColumnMapping(mapping);
+      if (headers.some((header) => mapping[header] === CSV_UNMAPPED_COLUMN)) {
+        setFileError("Map unfamiliar columns before previewing products.");
+      } else {
+        applyValidation(contents, mapping);
+      }
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "Could not read this CSV file.");
     }
@@ -272,6 +311,34 @@ export default function SellerProductCsvImporter({
             <p className="mt-2 text-xs font-medium">Categories: {categories.map((category) => `${category.name} (${category.slug})`).join(", ") || "Loading…"}</p>
             <p className="mt-1 text-xs text-muted-foreground">For each category, product type keys and labels must match the seller listing form. Add required fields as attr_fieldname columns.</p>
           </details>
+
+          {sourceHeaders.length > 0 && (
+            <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3" aria-label="CSV column mapping">
+              <div>
+                <p className="text-sm font-semibold">Column mapping</p>
+                <p className="mt-1 text-xs text-muted-foreground">Recognized columns are mapped automatically. Map unfamiliar columns or explicitly ignore them before previewing.</p>
+              </div>
+              <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+                {sourceHeaders.map((header) => {
+                  const selected = columnMapping[header] || CSV_UNMAPPED_COLUMN;
+                  return (
+                    <div key={header} className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:items-center">
+                      <span className="truncate text-xs font-medium" title={header}>{formatCsvHeader(header)}</span>
+                      <Select value={selected} onValueChange={(value) => setColumnMapping((current) => ({ ...current, [header]: value }))}>
+                        <SelectTrigger aria-label={`Map ${formatCsvHeader(header)}`} className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={CSV_UNMAPPED_COLUMN}>Choose mapping</SelectItem>
+                          <SelectItem value={CSV_IGNORE_COLUMN}>Ignore column</SelectItem>
+                          {CSV_MAPPABLE_HEADERS.map((option) => <SelectItem key={option} value={option}>{formatCsvHeader(option)}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  );
+                })}
+              </div>
+              <Button type="button" variant="secondary" onClick={previewMappedFile} disabled={importing}>Preview mapped products</Button>
+            </div>
+          )}
 
           <div>
             <label htmlFor="seller-product-csv" className="mb-1 block text-sm font-medium">Choose a CSV file</label>

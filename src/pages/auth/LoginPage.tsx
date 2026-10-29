@@ -153,11 +153,11 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="mt-6 text-center text-[10px] text-[#C0C0B8] dark:text-[#444444]">
+        <p className="mt-6 text-center text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">
           {t("auth.signInAgreement")}{" "}
-          <Link to="/terms" className="underline hover:text-[#6E6C64]">{t("auth.terms")}</Link>
+          <Link to="/terms" className="underline hover:text-[#111111] dark:hover:text-[#FAF5F2]">{t("auth.terms")}</Link>
           {" "}{t("auth.and")}{" "}
-          <Link to="/privacy" className="underline hover:text-[#6E6C64]">{t("auth.privacyPolicy")}</Link>
+          <Link to="/privacy" className="underline hover:text-[#111111] dark:hover:text-[#FAF5F2]">{t("auth.privacyPolicy")}</Link>
         </p>
       </div>
     </main>
