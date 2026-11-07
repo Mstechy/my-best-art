@@ -27,7 +27,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 8080",
+    // Start Vite directly so Playwright owns the actual server process. The
+    // npm wrapper can leave a child process behind on Windows after the suite
+    // completes, which makes a passing run appear hung to callers and CI.
+    command: "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 8080",
     url: "http://127.0.0.1:8080",
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

@@ -25,6 +25,10 @@ for (const route of publicRoutes) {
     // instead of treating the Suspense shell as a failed page.
     await expect(page.locator("main")).toHaveCount(1, { timeout: 20_000 });
     await expect(page.locator("h1")).toHaveCount(1, { timeout: 20_000 });
+    // Consent is intentionally delayed to avoid competing with first paint;
+    // wait for it before scanning so the same persistent UI is covered on
+    // every route instead of making the result timing-dependent.
+    await expect(page.getByTestId("cookie-consent")).toBeVisible({ timeout: 5_000 });
 
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations.map((violation) => violation.id), describeViolations(results.violations)).toEqual([]);
