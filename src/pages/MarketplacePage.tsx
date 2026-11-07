@@ -673,12 +673,12 @@ export default function MarketplacePage() {
             </AnimatedSection>
             <AnimatedSection variant="fade-up" delay={50}>
               <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
-                <button onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
+                <button type="button" aria-pressed={!selectedCategory} onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
                   className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
                   All
                 </button>
                 {populatedCategories.map(cat => (
-                  <button key={cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
+                  <button key={cat.id} type="button" aria-pressed={selectedCategory === cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
                     className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
                     {cat.name}
                   </button>
@@ -715,9 +715,9 @@ export default function MarketplacePage() {
                 <div className="flex items-center gap-2">
                   <Globe className="h-4 w-4 text-[#6E6C64] dark:text-[#A0A0A0]" />
                   <span className="text-xs font-semibold text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.shipsToLabel")}</span>
-                  <button onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
+                  <button type="button" onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
                     className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none">
-                    <span>{shipsTo === "all" ? `${t("marketplace.anywhere")} ðŸŒ` : countryName(shipsTo)}</span>
+                    <span>{shipsTo === "all" ? t("marketplace.anywhere") : countryName(shipsTo)}</span>
                   </button>
                 </div>
                 <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] ml-auto">
@@ -728,6 +728,11 @@ export default function MarketplacePage() {
                 </span>
               </div>
             </AnimatedSection>
+            <div className="mb-4 flex min-h-5 items-center" aria-live="polite">
+              <p className="text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0]">
+                {t("marketplace.showingProducts", { count: displayedProducts.length })}
+              </p>
+            </div>
             {/* The rail used to mount only once products arrived, injecting
                  ~350px of content above the catalogue after first paint and
                  pushing the entire grid down - the layout shift Lighthouse
@@ -800,11 +805,13 @@ export default function MarketplacePage() {
                     return (
                       <ProductCard
                         key={product.id}
-                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url,
+                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, brand: product.brand, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url,
                         imageSmallUrl: primaryImage?.card_small_url ?? null, flashDealEndAt: flashActive ? product.flash_deal_end_at : null, videoUrl: getProductVideos(product.variants)[0], badge: flashActive && product.flash_deal_end_at ? { label: t("marketplace.flash"), tone: "destructive" } : discount ? { label: `-${discount}%`, tone: "destructive" } : product.stock_quantity <= 5 && product.stock_quantity > 0 ? { label: t("marketplace.labelHot"), tone: "seller" } : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? { label: t("marketplace.labelNew"), tone: "brand" } : null }}
                         formatPrice={formatPrice}
                         sellerName={seller?.full_name || t("marketplace.seller")}
                         sellerVerified={seller?.is_verified ?? false}
+                        shippingLabel={shipsTo === "all" ? t("marketplace.shipsWorldwide") : t("marketplace.shipsToDestination", { destination: countryName(shipsTo) })}
+                        hasVariants={Boolean(product.variants?.sizes?.length || product.variants?.colors?.length)}
                         onProductClick={() => {
                           trackProductDiscovery(product.id, "click");
                           trackGA4Event("select_item", {

@@ -128,14 +128,15 @@ export default function AdminProducts() {
       <AnimatedSection variant="fade-up" delay={50}>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by product name..." className="pl-10 h-11" />
+          <label htmlFor="admin-product-search" className="sr-only">Search products by name</label>
+          <Input id="admin-product-search" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by product name..." className="pl-10 h-11" />
         </div>
       </AnimatedSection>
 
       <AnimatedSection variant="fade-up" delay={80}>
         <div className="flex gap-1 overflow-x-auto pb-2">
           {tabs.map(t => (
-            <button key={t.value} onClick={() => setTab(t.value)}
+            <button key={t.value} type="button" aria-pressed={tab === t.value} onClick={() => setTab(t.value)}
               className={`whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium transition-all ${tab === t.value ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}
             >
               {t.label} <span className="ml-1 text-xs opacity-70">({t.count})</span>
@@ -158,8 +159,10 @@ export default function AdminProducts() {
                 <p className="mt-1 text-sm text-muted-foreground">Products will appear here as sellers list them.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
+              <>
+              <div className="hidden overflow-x-auto md:block">
                 <Table>
+                  <caption className="sr-only">Product management listings</caption>
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>
@@ -249,6 +252,41 @@ export default function AdminProducts() {
                   </TableBody>
                 </Table>
               </div>
+              <div className="space-y-3 p-3 md:hidden">
+                {products.map(product => (
+                  <article key={product.id} className="rounded-xl border border-border/60 bg-background p-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
+                        {product.primary_image ? (
+                          <ProductImage src={product.primary_image} alt={product.title} loading="lazy" />
+                        ) : (
+                          <div className="flex h-full items-center justify-center"><Package className="h-5 w-5 text-muted-foreground" /></div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
+                        <p className="mt-1 truncate text-xs text-muted-foreground">{product.seller_name || "Unknown seller"}</p>
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <Badge variant={product.status === "active" ? "default" : "secondary"} className="capitalize text-[10px]">{product.status}</Badge>
+                          {product.is_approved ? <Badge className="bg-success/10 text-success border-success/20 text-[10px]">Approved</Badge> : <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">Pending</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-2">
+                      <div><p className="text-[10px] text-muted-foreground">Price</p><p className="text-sm font-semibold text-foreground">{formatPrice(product.price)}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Stock</p><p className="text-sm font-semibold text-foreground">{product.stock_quantity}</p></div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {product.status === "active" && !product.is_approved && <Button type="button" size="sm" onClick={() => approveProduct(product.id)} className="gap-1 bg-success text-success-foreground hover:bg-success/90"><CheckCircle2 className="h-3 w-3" />Approve</Button>}
+                      {product.status === "active" && !product.is_approved && <Button type="button" size="sm" variant="outline" onClick={() => { setRejectTarget(product); setRejectReason(product.moderation_reason || ""); setRejectNextAction(product.moderation_next_action || "Update the listing and submit it again for review."); }} className="gap-1 text-destructive hover:text-destructive"><XCircle className="h-3 w-3" />Request changes</Button>}
+                      {product.is_approved && <Button type="button" size="sm" variant="outline" onClick={() => { setRejectTarget(product); setRejectReason(product.moderation_reason || ""); setRejectNextAction(product.moderation_next_action || "Update the listing and submit it again for review."); }} className="gap-1"><XCircle className="h-3 w-3" />Hide</Button>}
+                      {product.seller_id === user?.id ? <Link to="/seller/products"><Button type="button" size="sm" variant="outline" className="gap-1"><Pencil className="h-3 w-3" />Edit</Button></Link> : <Link to={`/product/${product.id}`} target="_blank"><Button type="button" size="sm" variant="ghost" className="gap-1 text-muted-foreground">View</Button></Link>}
+                      <Button type="button" size="sm" variant="outline" onClick={() => setDeleteId(product.id)} className="gap-1 text-destructive hover:text-destructive"><Trash2 className="h-3 w-3" />Delete</Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              </>
             )}
           </CardContent>
         </Card>

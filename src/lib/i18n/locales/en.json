@@ -93,6 +93,8 @@
     "warranty": "Warranty",
     "stock": "Stock",
     "soldCount": "sold",
+    "onlyLeft": "Only {{count}} left",
+    "optionsAvailable": "Options available",
     "outOfStock": "Out of Stock",
     "quantity": "Quantity",
     "viewDetails": "View Details",
@@ -200,6 +202,9 @@
     "removeFromWishlist": "Remove from wishlist",
     "seller": "Seller",
     "anywhere": "Anywhere",
+    "showingProducts": "Showing {{count}} products",
+    "shipsWorldwide": "Ships worldwide",
+    "shipsToDestination": "Ships to {{destination}}",
     "breadcrumbAria": "Breadcrumb",
     "clearPromotion": "Clear promotion"
   },

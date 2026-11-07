@@ -87,6 +87,8 @@
     "warranty": "Garantie",
     "stock": "Stock",
     "soldCount": "vendus",
+    "onlyLeft": "Plus que {{count}}",
+    "optionsAvailable": "Options disponibles",
     "outOfStock": "Rupture de stock",
     "quantity": "Quantité",
     "viewDetails": "Voir les détails",
@@ -194,6 +196,9 @@
     "removeFromWishlist": "Retirer des favoris",
     "seller": "Vendeur",
     "anywhere": "Partout",
+    "showingProducts": "{{count}} produits affichés",
+    "shipsWorldwide": "Livraison mondiale",
+    "shipsToDestination": "Livraison à {{destination}}",
     "breadcrumbAria": "Fil d'Ariane",
     "clearPromotion": "Supprimer la promotion"
   },

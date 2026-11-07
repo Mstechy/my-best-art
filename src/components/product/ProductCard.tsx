@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Flame, Heart, Package, ShoppingCart, Star } from "lucide-react";
+import { CheckCircle2, Flame, Heart, Layers3, Package, ShoppingCart, Star, Truck } from "lucide-react";
 
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import ProductImage from "@/components/product/ProductImage";
@@ -16,6 +16,7 @@ export type ProductCardProduct = {
   price: number;
   compareAtPrice?: number | null;
   stockQuantity: number;
+  brand?: string | null;
   averageRating?: number;
   reviewCount?: number;
   // Delivered units. Real social proof for a young catalogue, where every product
@@ -35,6 +36,8 @@ type ProductCardProps = {
   formatPrice: (amount: number) => string;
   sellerName?: string;
   sellerVerified?: boolean;
+  shippingLabel?: string;
+  hasVariants?: boolean;
   onProductClick?: () => void;
   onProductImpression?: () => void;
   onBuyNow?: () => void;
@@ -90,6 +93,8 @@ export function ProductCard({
   formatPrice,
   sellerName,
   sellerVerified = false,
+  shippingLabel,
+  hasVariants = false,
   onProductClick,
   onProductImpression,
   onBuyNow,
@@ -112,6 +117,7 @@ export function ProductCard({
   const hasImpressionHandler = onProductImpression !== undefined;
   const compareAtVisible = product.compareAtPrice && product.compareAtPrice > product.price;
   const unavailable = product.stockQuantity === 0;
+  const lowStock = product.stockQuantity > 0 && product.stockQuantity <= 5;
   const showPurchaseActions = Boolean(onBuyNow || onAddToCart);
   // Reserved height of the media box. `aspect-ratio` (not a fixed height) so the
   // box tracks the column width the masonry layout gives it, and `object-fit:
@@ -188,6 +194,7 @@ export function ProductCard({
           >
             <h3 className="min-h-10 line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h3>
           </Link>
+          {product.brand && <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{product.brand}</p>}
           {(product.soldCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">
@@ -208,6 +215,25 @@ export function ProductCard({
             <div className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
               <span className="truncate">{sellerName}</span>
               {sellerVerified && <CheckCircle2 className="h-3 w-3 shrink-0 text-seller" />}
+            </div>
+          )}
+          {(shippingLabel || hasVariants || lowStock) && (
+            <div className="mt-2 flex min-h-4 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
+              {shippingLabel && (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-success" />
+                  <span className="truncate">{shippingLabel}</span>
+                </span>
+              )}
+              {hasVariants && (
+                <span className="inline-flex items-center gap-1">
+                  <Layers3 aria-hidden="true" className="h-3 w-3 shrink-0" />
+                  {t("product.optionsAvailable")}
+                </span>
+              )}
+              {lowStock && (
+                <span className="font-semibold text-destructive">{t("product.onlyLeft", { count: product.stockQuantity })}</span>
+              )}
             </div>
           )}
         </div>

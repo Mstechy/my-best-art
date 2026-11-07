@@ -2513,7 +2513,8 @@ export default function SellerProducts() {
         <div className="space-y-3">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(0); }} placeholder="Search products..." className="pl-10 h-11" />
+            <label htmlFor="seller-product-search" className="sr-only">Search your products</label>
+            <Input id="seller-product-search" value={search} onChange={(e) => { setSearch(e.target.value); setProductPage(0); }} placeholder="Search products..." className="pl-10 h-11" />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" size="sm" variant={needsAttentionOnly ? "secondary" : "outline"} onClick={() => { setNeedsAttentionOnly((value) => !value); setProductPage(0); }}>
