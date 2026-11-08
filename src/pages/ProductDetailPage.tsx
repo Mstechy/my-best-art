@@ -72,6 +72,7 @@ export default function ProductDetailPage() {
   const {
     product: productQuery,
     seller: sellerQuery,
+    category: categoryQuery,
     soldCount: soldCountQuery,
     docs: docsQuery,
     variants: variantsQuery,
@@ -85,6 +86,7 @@ export default function ProductDetailPage() {
 
   const product = productQuery.data ?? null;
   const seller = sellerQuery.data ?? null;
+  const category = categoryQuery.data ?? null;
   const soldCount = soldCountQuery.data ?? 0;
   const productDocs = docsQuery.data ?? [];
   const productVariants = useMemo(() => variantsQuery.data ?? [], [variantsQuery.data]);
@@ -203,11 +205,17 @@ export default function ProductDetailPage() {
   const requiresOptionSelection = hasProductVariants
     ? !selectedVariant
     : (variantSizes.length > 0 && !selectedSize) || (variantColors.length > 0 && !selectedColor);
-  const purchaseButtonLabel = !canPurchase && requiresOptionSelection
-    ? "Select options"
-    : purchasableStock === 0
-      ? "Out of stock"
+  const inventoryAvailable = hasProductVariants
+    ? hasInStockVariant
+    : (product?.stock_quantity ?? 0) > 0;
+  const purchaseButtonLabel = !inventoryAvailable
+    ? "Out of stock"
+    : requiresOptionSelection
+      ? "Select options"
       : "Add to Cart";
+  // An incomplete variant selection is an actionable state: the button opens
+  // the selector sheet. Only a genuinely unavailable product/SKU is disabled.
+  const purchaseDisabled = requiresOptionSelection ? !inventoryAvailable : !canPurchase;
   const deliveryDestination = preferredCountry ? countryName(preferredCountry) : null;
   const startingVariantPrice = useMemo(() => {
     if (!hasProductVariants || !product) return null;
@@ -469,12 +477,12 @@ export default function ProductDetailPage() {
     // The page already exposes the complete selector on desktop. Once a
     // purchasable SKU is selected, a second picker would be needless friction.
     // Keep the sheet only as a guard when options are still incomplete.
-    if (hasProductVariants && !selectedVariant) {
+    if (requiresOptionSelection) {
       setPurchaseAction(action);
       return;
     }
     completePurchase(action);
-  }, [product, user, hasProductVariants, selectedVariant, completePurchase]);
+  }, [product, user, requiresOptionSelection, completePurchase]);
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-[calc(72px+env(safe-area-inset-bottom,0px))] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
@@ -500,7 +508,21 @@ export default function ProductDetailPage() {
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <>
+          <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
+            <Link to="/" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Home</Link>
+            <span aria-hidden="true">/</span>
+            <Link to="/marketplace" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Marketplace</Link>
+            {category?.name && (
+              <>
+                <span aria-hidden="true">/</span>
+                <Link to={category.slug ? `/categories/${category.slug}` : "/categories"} className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">{category.name}</Link>
+              </>
+            )}
+            <span aria-hidden="true">/</span>
+            <span className="max-w-[18rem] truncate font-medium text-[#111111] dark:text-[#FAF5F2]">{product.title}</span>
+          </nav>
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div>
               {mediaItems.length > 0 && (
                 <Carousel setApi={setCarouselApi} className="w-full">
@@ -610,9 +632,8 @@ export default function ProductDetailPage() {
                       <span>({product.review_count})</span>
                     </div>
                   )}
-                  {soldCount > 0 && <span>{soldCount} sold</span>}
-                  <span className="truncate">Delivery: {policies.shipping?.summary ?? "Confirm delivery cost and timing"}</span>
-                  {purchasableStock === 0 && <span className="text-[#E53935] font-semibold">Out of stock</span>}
+                  {product.show_sold_count !== false && soldCount > 0 && <span>{soldCount} sold</span>}
+                  {purchasableStock === 0 && <span className="font-semibold text-[#E53935]">Out of stock</span>}
                 </div>
 
                 {/* The quantity control stays in the main buy box for every SKU type. */}
@@ -717,6 +738,25 @@ export default function ProductDetailPage() {
               </>
             )}
 
+            <section aria-label="Delivery and returns" className="rounded-2xl border border-[#E8E8E8] bg-white p-3 dark:border-[#222222] dark:bg-[#181818]">
+              <div className="flex items-start gap-3">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#16803C] dark:text-[#5EE38B]" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold">Delivery{deliveryDestination ? ` to ${deliveryDestination}` : ""}</p>
+                  <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{policies.shipping?.summary ?? "Choose a destination to confirm delivery cost and timing."}</p>
+                </div>
+              </div>
+              {policies.returns?.summary && (
+                <div className="mt-3 flex items-start gap-3 border-t border-[#E8E8E8] pt-3 dark:border-[#2A2A2A]">
+                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-[#16803C] dark:text-[#5EE38B]" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold">Returns & refunds</p>
+                    <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{policies.returns.summary}</p>
+                  </div>
+                </div>
+              )}
+            </section>
+
             <div className="flex items-center gap-4">
               <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]" aria-label="Quantity">
                 <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!canPurchase || quantity <= 1} aria-label="Decrease quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">−</button>
@@ -726,7 +766,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => startPurchase("cart")}
-                disabled={!canPurchase}
+                disabled={purchaseDisabled}
                 className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
               >
                 {purchaseButtonLabel}
@@ -734,7 +774,7 @@ export default function ProductDetailPage() {
               <button
                 type="button"
                 onClick={() => startPurchase("buy")}
-                disabled={!canPurchase}
+                disabled={purchaseDisabled}
                 className="hidden flex-1 rounded-full border border-[#111111] py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:block"
               >
                 Buy Now
@@ -762,7 +802,7 @@ export default function ProductDetailPage() {
               />
             )}
 
-            <div className="space-y-2">
+            <div className="space-y-2 border-t border-[#E8E8E8] pt-3 dark:border-[#222222]">
               {policiesLoading && <p className="px-1 text-xs text-[#6E6C64]">Loading policy information...</p>}
               {policiesError && <p className="px-1 text-xs text-[#6E6C64]">Policy information is unavailable.</p>}
               <button type="button" onClick={() => setServiceSheet("shipping")} className="flex min-h-11 w-full items-center gap-3 rounded-xl px-1 text-left transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">
@@ -808,6 +848,7 @@ export default function ProductDetailPage() {
             {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
           </div>
+          </>
         )}
 
         <Sheet open={verifiedSellerOpen} onOpenChange={setVerifiedSellerOpen}>
@@ -1029,7 +1070,7 @@ export default function ProductDetailPage() {
           <button
             type="button"
             onClick={() => startPurchase("cart")}
-            disabled={!canPurchase}
+            disabled={purchaseDisabled}
             className="h-11 min-w-0 flex-1 rounded-full border border-[#111111] bg-transparent px-1 text-[13px] font-bold leading-tight text-[#111111] transition-colors hover:bg-brand-tint hover:text-brand-dark disabled:cursor-not-allowed disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
           >
             {purchaseButtonLabel}
@@ -1037,7 +1078,7 @@ export default function ProductDetailPage() {
           <button
             type="button"
             onClick={() => startPurchase("buy")}
-            disabled={!canPurchase}
+            disabled={purchaseDisabled}
             className="h-11 min-w-0 flex-1 rounded-full bg-brand px-1 text-[13px] font-bold leading-tight text-ink transition-colors hover:bg-brand-dark disabled:cursor-not-allowed disabled:opacity-50"
           >
             Buy Now

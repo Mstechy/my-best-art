@@ -12,7 +12,7 @@
  */
 import React, { type ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 
 import ProductDetailPage from "@/pages/ProductDetailPage";
@@ -20,6 +20,7 @@ import ProductDetailPage from "@/pages/ProductDetailPage";
 /** Mutable holders, hoisted so the vi.mock factories can read them. */
 const state = vi.hoisted(() => ({
   product: null as Record<string, unknown> | null,
+  variants: [] as Array<Record<string, unknown>>,
   totalItems: 0,
   recentIds: [] as string[],
 }));
@@ -43,9 +44,10 @@ vi.mock("@/hooks/useProductDetail", () => ({
   useProductDetailData: () => ({
     product: { data: state.product },
     seller: { data: { user_id: "seller-1", full_name: "Test Store", is_verified: true } },
+    category: { data: { name: "Test Category", slug: "test-category" } },
     soldCount: { data: 0 },
     docs: { data: [] },
-    variants: { data: [] },
+    variants: { data: state.variants },
     reviews: { data: [] },
     keywords: { data: [] },
     sellerFollowerCount: { data: 0 },
@@ -200,6 +202,7 @@ function bottomBar(container: HTMLElement) {
 describe("ProductDetailPage mobile bottom chrome", () => {
   beforeEach(() => {
     state.product = { ...baseProduct };
+    state.variants = [];
     state.totalItems = 5;
   });
 
@@ -252,6 +255,22 @@ describe("ProductDetailPage mobile bottom chrome", () => {
     const bar = bottomBar(container);
     expect(within(bar).getByRole("button", { name: "Out of stock" })).toBeDisabled();
     expect(within(bar).getByRole("button", { name: "Buy Now" })).toBeDisabled();
+  });
+
+  it("keeps incomplete variant selection actionable from the mobile bar", () => {
+    state.product = {
+      ...baseProduct,
+      variants: { sizes: ["M"], colors: [] },
+    };
+    state.variants = [];
+
+    const { container } = renderPage();
+    const bar = bottomBar(container);
+    const selectOptions = within(bar).getByRole("button", { name: "Select options" });
+
+    expect(selectOptions).toBeEnabled();
+    fireEvent.click(selectOptions);
+    expect(screen.getByRole("heading", { name: "Select options" })).toBeInTheDocument();
   });
 
   it("gives each product gallery thumbnail an accessible name and selected state", () => {

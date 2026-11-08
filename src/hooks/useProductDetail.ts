@@ -358,9 +358,11 @@ export function useProductDetailData(productId: string | undefined) {
 
   const sellerAvgRating = sellerStats.data?.avg_rating ?? 0;
 
-  const loading = product.isLoading || seller.isLoading || category.isLoading ||
-    soldCount.isLoading || docs.isLoading || variants.isLoading ||
-    sellerFollowerCount.isLoading || sellerStats.isLoading || reviews.isLoading || keywords.isLoading;
+  // The first viewport only needs the product, seller identity and active SKU
+  // data. Reviews, documents, keywords, seller metrics and category context are
+  // secondary sections; keeping them out of this gate lets the buy surface
+  // render while those sections resolve independently.
+  const loading = product.isLoading || seller.isLoading || variants.isLoading;
 
   return {
     product,

@@ -733,41 +733,6 @@ export default function MarketplacePage() {
                 {t("marketplace.showingProducts", { count: displayedProducts.length })}
               </p>
             </div>
-            {/* The rail used to mount only once products arrived, injecting
-                 ~350px of content above the catalogue after first paint and
-                 pushing the entire grid down - the layout shift Lighthouse
-                 attributes to this page. Rendering it from the start in its
-                 loading state reserves the same strip; the skeleton matches
-                 the real card height (itemWidth x 1.3 vs the 351px card), so
-                 the skeleton-to-cards swap leaves the grid where it was. */}
-            {(displayedProducts.length > 0 || pageLoading) && (
-              <AnimatedSection variant="fade-up" delay={80}>
-                <HorizontalScrollSection
-                  title={t("marketplace.popularNow")}
-                  subtitle={t("marketplace.scrollToExplore")}
-                  itemWidth={180}
-                  loading={displayedProducts.length === 0}
-                  loadingTemplate={
-                    <div className="flex gap-4">
-                      {Array.from({ length: 5 }).map((_, i) => (
-                        <div key={i} className="shrink-0 animate-pulse rounded-2xl bg-[#F2F3F5] dark:bg-[#202020]" style={{ width: 180, height: 351 }} />
-                      ))}
-                    </div>
-                  }
-                  showArrows
-                  showDots
-                >
-                  {displayedProducts.slice(0, 20).map(product => (
-                    <MarketplaceProductImpressionCard
-                      key={product.id}
-                      product={product}
-                      formatPrice={formatPrice}
-                      seller={sellerProfiles[product.seller_id]}
-                    />
-                  ))}
-                </HorizontalScrollSection>
-              </AnimatedSection>
-            )}
             {/* The full product grid must keep its geometry stable while data settles.
                 Animating this large wrapper with transforms caused measurable CLS. */}
             <div>
@@ -860,6 +825,28 @@ export default function MarketplacePage() {
                 </div>
               )}
             </div>
+            {/* Keep the primary catalogue visible before discovery content. This
+                rail is supplemental merchandising, not the user's result set. */}
+            {displayedProducts.length > 0 && (
+              <AnimatedSection variant="fade-up" delay={80}>
+                <HorizontalScrollSection
+                  title={t("marketplace.popularNow")}
+                  subtitle={t("marketplace.scrollToExplore")}
+                  itemWidth={180}
+                  showArrows
+                  showDots
+                >
+                  {displayedProducts.slice(0, 20).map(product => (
+                    <MarketplaceProductImpressionCard
+                      key={product.id}
+                      product={product}
+                      formatPrice={formatPrice}
+                      seller={sellerProfiles[product.seller_id]}
+                    />
+                  ))}
+                </HorizontalScrollSection>
+              </AnimatedSection>
+            )}
           </div>
         </div>
       </Container>
