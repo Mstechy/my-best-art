@@ -9,6 +9,20 @@ interface VariantSelectorProps {
 }
 
 const NON_ATTRIBUTE_KEYS = new Set(["sku", "id", "product_id"]);
+const ATTRIBUTE_ORDER = ["storage", "color", "colour", "size", "ram", "capacity", "condition"];
+
+const formatAttributeLabel = (key: string) => {
+  const labels: Record<string, string> = {
+    color: "Colour",
+    colour: "Colour",
+    storage: "Storage",
+    ram: "RAM",
+    size: "Size",
+    capacity: "Capacity",
+    condition: "Condition",
+  };
+  return labels[key.toLowerCase()] ?? key.replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase());
+};
 
 export default function VariantSelector({ variants, selectedOptions, onChange }: VariantSelectorProps) {
   const attributeKeys = useMemo(() => {
@@ -18,7 +32,11 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
         if (!NON_ATTRIBUTE_KEYS.has(key) && variant.option_values[key]) keys.add(key);
       });
     });
-    return [...keys];
+    return [...keys].sort((a, b) => {
+      const aIndex = ATTRIBUTE_ORDER.indexOf(a.toLowerCase());
+      const bIndex = ATTRIBUTE_ORDER.indexOf(b.toLowerCase());
+      return (aIndex < 0 ? ATTRIBUTE_ORDER.length : aIndex) - (bIndex < 0 ? ATTRIBUTE_ORDER.length : bIndex);
+    });
   }, [variants]);
 
   if (attributeKeys.length === 0) return null;
@@ -40,8 +58,8 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
 
         return (
           <fieldset key={key}>
-            <legend className="mb-2 text-xs font-bold capitalize">
-              {key}: <span className="font-normal text-[#6E6C64]">{selectedValue || "Select"}</span>
+            <legend className="mb-2 text-xs font-bold">
+              {formatAttributeLabel(key)}: <span className="font-normal text-[#6E6C64]">{selectedValue || "Select"}</span>
             </legend>
             <div className="flex flex-wrap gap-2">
               {values.map((value) => {
@@ -55,8 +73,8 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
                     onClick={() => onChange({ ...selectedOptions, [key]: value })}
                     disabled={!isAvailable}
                     aria-pressed={isSelected}
-                    aria-label={`${key}: ${value}${isAvailable ? "" : ", unavailable"}`}
-                    className={`relative rounded-lg border px-4 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${isSelected ? "border-transparent bg-[#111111] text-white dark:bg-[#FAF5F2] dark:text-[#111111]" : "border-[#E8E8E8] bg-white hover:border-[#111111] dark:border-[#222222] dark:bg-[#1E1E1E] dark:hover:border-[#555555]"}`}
+                    aria-label={`${formatAttributeLabel(key)}: ${value}${isAvailable ? ", available" : ", unavailable"}`}
+                    className={`relative min-h-11 rounded-lg border px-4 py-2 text-xs font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-40 disabled:line-through ${isSelected ? "border-transparent bg-[#111111] text-white dark:bg-[#FAF5F2] dark:text-[#111111]" : "border-[#E8E8E8] bg-white hover:border-[#111111] dark:border-[#222222] dark:bg-[#1E1E1E] dark:hover:border-[#555555]"}`}
                   >
                     {key.toLowerCase() === "color" && <span className="mr-1.5 inline-block h-3 w-3 rounded-full border border-black/15" style={{ backgroundColor: value.toLowerCase() }} aria-hidden="true" />}
                     {value}

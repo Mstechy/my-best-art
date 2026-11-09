@@ -280,15 +280,21 @@ export default function ProductDetailPage() {
     const images = (product?.product_images || []).filter((img) => img.image_url?.trim().length > 0);
     const productVideos = product ? getProductVideos(product.variants).filter((vurl) => vurl?.trim().length > 0) : [];
     const list: { type: "video" | "image"; url: string; id: string }[] = [];
+    const seenImageUrls = new Set<string>();
     // If a variant with its own image is selected, show that image first (AliExpress behavior)
     if (selectedVariant?.image_url?.trim()) {
-      list.push({ type: "image", url: selectedVariant.image_url.trim(), id: `variant-${selectedVariant.id}` });
+      const url = selectedVariant.image_url.trim();
+      seenImageUrls.add(url);
+      list.push({ type: "image", url, id: `variant-${selectedVariant.id}` });
     }
     productVideos.forEach((vurl, idx) => {
       list.push({ type: "video", url: vurl, id: `video-${idx}` });
     });
-    images.forEach(img => {
-      list.push({ type: "image", url: img.image_url.trim(), id: img.id });
+    images.forEach((img) => {
+      const url = img.image_url.trim();
+      if (seenImageUrls.has(url)) return;
+      seenImageUrls.add(url);
+      list.push({ type: "image", url, id: img.id });
     });
     return list;
   }, [product, selectedVariant]);
@@ -716,11 +722,11 @@ export default function ProductDetailPage() {
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#F2F3F5] px-3 py-2.5 text-xs dark:bg-[#222222]" aria-live="polite">
                   {selectedVariant ? (
                     <>
-                      <span className="font-bold">{formatPrice(purchasablePrice)}</span>
-                      <span className="font-semibold text-[#666666] dark:text-[#A0A0A0]">{purchasableStock} available</span>
+                      <span className="min-w-0"><span className="block text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">Selected configuration</span><span className="mt-0.5 block truncate font-bold">{Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" / ")}</span></span>
+                      <span className="shrink-0 text-right"><span className="block font-bold">{formatPrice(purchasablePrice)}</span><span className="font-semibold text-[#16803C] dark:text-[#5EE38B]">{purchasableStock} available</span></span>
                     </>
                   ) : (
-                    <span className="font-medium text-[#666666] dark:text-[#A0A0A0]">Choose every option to see the exact SKU price.</span>
+                    <span className="font-medium text-[#666666] dark:text-[#A0A0A0]">Choose every option to see the exact price, stock, and matching product image.</span>
                   )}
                 </div>
               </section>
