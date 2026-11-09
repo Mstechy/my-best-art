@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { countryFromTimeZone, countryToCurrency, detectCountryFromEnvironment, resolveCountryPreference } from "@/lib/region";
+import { countryFromTimeZone, countryToCurrency, detectCountryFromEnvironment, detectCountryFromIP, resolveCountryPreference } from "@/lib/region";
 import { phonePlaceholder } from "@/lib/countries";
 
 describe("region detection", () => {
@@ -42,5 +42,20 @@ describe("region detection", () => {
   it("preserves Ship anywhere instead of rewriting it to the detected country", () => {
     expect(resolveCountryPreference(null, "NG")).toEqual({ country: null, currency: "NGN" });
     expect(resolveCountryPreference(" us ", "NG")).toEqual({ country: "US", currency: "USD" });
+  });
+
+  it("uses a supported IP country as a best-effort default and caches only the country code", async () => {
+    localStorage.removeItem("tradibu:ip-country:v1");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, text: async () => "NG\n" }));
+
+    await expect(detectCountryFromIP()).resolves.toBe("NG");
+
+    const cached = localStorage.getItem("tradibu:ip-country:v1");
+    expect(cached).toContain('"country":"NG"');
+    expect(cached).not.toContain("ip");
+    expect(cached).not.toContain("address");
+
+    vi.unstubAllGlobals();
+    localStorage.removeItem("tradibu:ip-country:v1");
   });
 });
