@@ -2,11 +2,14 @@ import React from "react";
 import { describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import VariantSelector from "@/components/product/VariantSelector";
+import { selectVariantOptions } from "@/lib/variantSelection";
 
 const variants = [
   { id: "black-128", option_values: { color: "Black", storage: "128GB" }, price: 850000, stock_quantity: 3, is_active: true, image_url: null },
   { id: "black-256", option_values: { color: "Black", storage: "256GB" }, price: 950000, stock_quantity: 0, is_active: true, image_url: null },
   { id: "blue-128", option_values: { color: "Blue", storage: "128GB" }, price: 870000, stock_quantity: 2, is_active: true, image_url: null },
+  { id: "yellow-256", option_values: { color: "Yellow", storage: "256GB" }, price: 990000, stock_quantity: 1, is_active: true, image_url: null },
+  { id: "black-512", option_values: { color: "Black", storage: "512GB" }, price: 1100000, stock_quantity: 0, is_active: true, image_url: null },
 ];
 
 describe("VariantSelector", () => {
@@ -16,7 +19,7 @@ describe("VariantSelector", () => {
     const legends = screen.getAllByRole("group");
     expect(legends[0]).toHaveTextContent("Storage: Select");
     expect(legends[1]).toHaveTextContent("Colour: Select");
-    expect(screen.getByRole("button", { name: "Storage: 256GB, unavailable" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Storage: 512GB, unavailable" })).toBeDisabled();
   });
 
   it("keeps the selected option announced and sends the complete selection upward", () => {
@@ -28,5 +31,12 @@ describe("VariantSelector", () => {
 
     expect(onChange).toHaveBeenCalledWith({ storage: "128GB", color: "Blue" });
     expect(screen.getByRole("button", { name: "Storage: 128GB, available" })).toHaveAttribute("aria-pressed", "true");
+  });
+
+  it("reconciles an incompatible selection to the first real SKU", () => {
+    expect(selectVariantOptions(variants, { storage: "128GB", color: "Black" }, "color", "Yellow")).toEqual({
+      color: "Yellow",
+      storage: "256GB",
+    });
   });
 });

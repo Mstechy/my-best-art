@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Check } from "lucide-react";
 import type { ProductVariant } from "@/hooks/useProductDetail";
+import { selectVariantOptions } from "@/lib/variantSelection";
 
 interface VariantSelectorProps {
   variants: ProductVariant[];
@@ -41,14 +42,9 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
 
   if (attributeKeys.length === 0) return null;
 
-  const isOptionAvailable = (key: string, value: string) => {
-    const nextOptions = { ...selectedOptions, [key]: value };
-    return variants.some((variant) =>
-      variant.is_active &&
-      variant.stock_quantity > 0 &&
-      Object.entries(nextOptions).every(([optionKey, optionValue]) => variant.option_values[optionKey] === optionValue),
-    );
-  };
+  const isOptionAvailable = (key: string, value: string) => variants.some((variant) =>
+    variant.is_active && variant.stock_quantity > 0 && variant.option_values[key] === value,
+  );
 
   return (
     <div className="space-y-4">
@@ -70,7 +66,7 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
                   <button
                     key={value}
                     type="button"
-                    onClick={() => onChange({ ...selectedOptions, [key]: value })}
+                    onClick={() => onChange(selectVariantOptions(variants, selectedOptions, key, value))}
                     disabled={!isAvailable}
                     aria-pressed={isSelected}
                     aria-label={`${formatAttributeLabel(key)}: ${value}${isAvailable ? ", available" : ", unavailable"}`}
