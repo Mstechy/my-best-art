@@ -4,7 +4,7 @@ import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, CheckCircle2, Package, Flame, Heart, X, Globe, Star } from "lucide-react";
+import { ShoppingCart, CheckCircle2, Package, Flame, Heart, Globe, Star } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
@@ -30,6 +30,7 @@ import MarketplaceFilters from "@/components/MarketplaceFilters";
 import { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/marketplaceFiltersState";
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { dedupeProducts, filterProductsByCategory, isMarketplaceSort } from "@/lib/marketplaceContracts";
@@ -91,19 +92,15 @@ async function hydrateVariantMetadata(products: Product[]): Promise<Product[]> {
 }
 
 function ModalWrapper({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  const { t } = useTranslation();
-  if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-[#1E1E1E] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] w-full max-w-sm overflow-hidden shadow-2xl z-10">
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-[#F2F3F5] dark:border-[#222222]">
-          <h3 className="text-xs font-bold text-[#111111] dark:text-[#FAF5F2] uppercase tracking-wider">{title}</h3>
-          <button onClick={onClose} className="text-[#6E6C64] dark:text-[#A0A0A0] hover:text-[#111111] dark:hover:text-[#FAF5F2] p-1 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors" aria-label={t("common.close")}><X className="h-4 w-4" /></button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-sm overflow-hidden rounded-2xl border-[#E8E8E8] bg-white p-0 dark:border-[#222222] dark:bg-[#1E1E1E]">
+        <DialogTitle className="border-b border-[#F2F3F5] px-6 pb-3 pt-5 text-left text-xs font-bold uppercase tracking-wider text-[#111111] dark:border-[#222222] dark:text-[#FAF5F2]">
+          {title}
+        </DialogTitle>
         <div className="p-6">{children}</div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
