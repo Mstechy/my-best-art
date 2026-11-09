@@ -38,6 +38,7 @@ import { useProductSEO } from "@/hooks/useSEO";
 import { getProductPath } from "@/lib/productUrls";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
 import { countryName } from "@/lib/countries";
+import { getProductFactEntries } from "@/lib/cataloguePresentation";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -156,11 +157,16 @@ export default function ProductDetailPage() {
   const productDetailSpecs = useMemo(() => {
     if (!product) return null;
     const systemKeys = new Set(["categoryGroup", "productTypeKey"]);
-    const details = Object.fromEntries(
-      Object.entries(getCategoryAttributes(product.variants)).filter(([key]) => !variantAttributeKeys.has(key) && !systemKeys.has(key))
-    ) as Record<string, string>;
+    const productType = getProductType(product.variants);
+    const productTypeConfig = findProductTypeConfig(category, productType?.key);
+    const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
+    const details: Record<string, string> = {};
+    Object.entries(getCategoryAttributes(product.variants)).forEach(([key, value]) => {
+      if (variantAttributeKeys.has(key) || systemKeys.has(key) || !value?.trim()) return;
+      details[labels[key] ?? key] = value.trim();
+    });
     const addDetail = (label: string, value: string | null | undefined) => {
-      if (value?.trim()) details[label] = value.trim();
+      if (value?.trim() && !details[label]) details[label] = value.trim();
     };
     addDetail("Brand", product.brand);
     addDetail("Material", product.material);
@@ -170,7 +176,22 @@ export default function ProductDetailPage() {
     addDetail("Condition", product.condition);
     addDetail("Warranty", product.warranty || product.warranty_period);
     return Object.keys(details).length > 0 ? details : null;
-  }, [product, variantAttributeKeys]);
+  }, [category, product, variantAttributeKeys]);
+  const productQuickFacts = useMemo(() => {
+    if (!product) return [];
+    const productType = getProductType(product.variants);
+    const productTypeConfig = findProductTypeConfig(category, productType?.key);
+    const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
+    const isPhone = productType?.key === "mobile-phones" || productType?.key === "phones" || category?.slug === "phones-accessories";
+    return getProductFactEntries({
+      attributes: getCategoryAttributes(product.variants),
+      topLevel: { brand: product.brand, color: product.color, condition: product.condition },
+      labels,
+      keys: isPhone
+        ? ["brand", "model", "storage", "color", "network", "connectivity", "operatingSystem", "condition"]
+        : ["brand", "model", "storage", "color", "condition"],
+    });
+  }, [category, product]);
   const selectedVariant = hasProductVariants
     ? (variantAttributeKeys.size > 0 && [...variantAttributeKeys].every((key) => selectedVariantOptions[key])
       ? productVariants.find((variant) =>
@@ -635,6 +656,17 @@ export default function ProductDetailPage() {
                   {product.show_sold_count !== false && soldCount > 0 && <span>{soldCount} sold</span>}
                   {purchasableStock === 0 && <span className="font-semibold text-[#E53935]">Out of stock</span>}
                 </div>
+
+                {productQuickFacts.length > 0 && (
+                  <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[#E8E8E8] bg-[#E8E8E8] dark:border-[#222222] dark:bg-[#222222]" aria-label="Product highlights">
+                    {productQuickFacts.map((fact) => (
+                      <div key={fact.key} className="bg-white px-3 py-2.5 dark:bg-[#1A1A1A]">
+                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{fact.label}</dt>
+                        <dd className="mt-0.5 break-words text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{fact.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
 
                 {/* The quantity control stays in the main buy box for every SKU type. */}
                 {/* Promo pricing banner (MarketHub-adapted) */}

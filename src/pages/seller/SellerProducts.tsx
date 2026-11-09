@@ -26,6 +26,8 @@ import { generateSku } from "@/lib/sku";
 import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
 import { buildListingQualityWarnings, buildListingReadiness } from "@/lib/listingReadiness";
+import { getCategoryPathLabel } from "@/lib/cataloguePresentation";
+import { getPhoneTitleQuality } from "@/lib/productListingPresentation";
 import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
@@ -1652,6 +1654,13 @@ export default function SellerProducts() {
   const updateCategoryAttribute = (key: string, value: string) => {
     setCategoryAttributes(prev => ({ ...prev, [key]: value }));
   };
+  const phoneTitleWarning = isPhoneListing
+    ? getPhoneTitleQuality({
+      title,
+      brand,
+      variants: { categoryAttributes, productType: { key: selectedProductTypeConfig.key } },
+    })
+    : null;
 
   const getApprovalBadge = (product: Product) => {
     if (product.status !== "active") return null;
@@ -1761,7 +1770,7 @@ export default function SellerProducts() {
                     <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setProductTypeKey(""); setCategoryAttributes({}); }}>
                       <SelectTrigger id="product-category" className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                       <SelectContent>
-                        {categories.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                        {categories.map(c => <SelectItem key={c.id} value={c.id}>{getCategoryPathLabel(c, categories)}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <p className="mt-1 text-xs text-muted-foreground">Choose a category first so the listing can show the right product details.</p>
@@ -1780,6 +1789,13 @@ export default function SellerProducts() {
                     <label htmlFor="product-title" className="text-sm font-medium text-foreground">Product Title *</label>
                     <Input id="product-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : isLaptopListing ? "Use brand, model, RAM, storage, processor family, and a meaningful configuration. Keep claims consistent with the specifications below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
+                    {isPhoneListing && (
+                      <div className="mt-3 rounded-xl border border-[#F3D36A] bg-[#FFF9E6] p-3 text-xs text-[#5F4A00] dark:border-[#6E5A17] dark:bg-[#2B250F] dark:text-[#F9E7A7]">
+                        <p className="font-semibold">Phone listing checklist</p>
+                        <p className="mt-1">Use one listing for the iPhone model. Put storage and colour price differences in Options, then complete the comparison details in the Details step.</p>
+                        {phoneTitleWarning && <p role="alert" className="mt-2 font-semibold">{phoneTitleWarning}</p>}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
