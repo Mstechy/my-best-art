@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getPhoneTitleQuality, getProductListingMeta } from "@/lib/productListingPresentation";
+import { getLaptopTitleQuality, getPhoneTitleQuality, getProductListingMeta } from "@/lib/productListingPresentation";
 
 describe("product listing presentation", () => {
   it("shows compact iPhone comparison signals without repeating the title", () => {
@@ -56,6 +56,19 @@ describe("product listing presentation", () => {
       title: "Apple iPhone 16 Pro 256GB",
       brand: "Apple",
       variants: { productType: { key: "mobile-phones" }, categoryAttributes: { model: "iPhone 16 Pro" } },
+    })).toBeNull();
+  });
+
+  it("warns sellers when a laptop title is missing its comparison identity", () => {
+    expect(getLaptopTitleQuality({
+      title: "Laptop for sale",
+      brand: "Lenovo",
+      variants: { productType: { key: "laptops" }, categoryAttributes: { model: "ThinkPad T14 Gen 5" } },
+    })).toContain("brand and model");
+    expect(getLaptopTitleQuality({
+      title: "Lenovo ThinkPad T14 Gen 5",
+      brand: "Lenovo",
+      variants: { productType: { key: "laptops" }, categoryAttributes: { model: "ThinkPad T14 Gen 5" } },
     })).toBeNull();
   });
 });

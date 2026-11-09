@@ -76,9 +76,7 @@ export function getProductListingMeta(input: ProductListingPresentationInput): s
  * Seller-facing title guidance for high-consideration phone listings. This is
  * advisory: it never blocks an existing listing or changes the saved title.
  */
-export function getPhoneTitleQuality(input: ProductListingPresentationInput): string | null {
-  if (!isPhoneListing(input)) return null;
-
+function getTitleQuality(input: ProductListingPresentationInput, productLabel: "phone" | "laptop"): string | null {
   const title = normalize(cleanValue(input.title));
   const attributes = readVariants(input.variants)?.categoryAttributes ?? {};
   const brand = normalize(cleanValue(input.brand) || cleanValue(attributes.brand));
@@ -89,6 +87,20 @@ export function getPhoneTitleQuality(input: ProductListingPresentationInput): st
   if (!model || !title.includes(model)) missing.push("model");
 
   return missing.length > 0
-    ? `Add the ${missing.join(" and ")} to the product title so buyers can compare phone listings.`
+    ? `Add the ${missing.join(" and ")} to the product title so buyers can compare ${productLabel} listings.`
     : null;
+}
+
+export function getProductTitleQuality(input: ProductListingPresentationInput): string | null {
+  if (isPhoneListing(input)) return getTitleQuality(input, "phone");
+  if (isLaptopListing(input)) return getTitleQuality(input, "laptop");
+  return null;
+}
+
+export function getPhoneTitleQuality(input: ProductListingPresentationInput): string | null {
+  return isPhoneListing(input) ? getTitleQuality(input, "phone") : null;
+}
+
+export function getLaptopTitleQuality(input: ProductListingPresentationInput): string | null {
+  return isLaptopListing(input) ? getTitleQuality(input, "laptop") : null;
 }

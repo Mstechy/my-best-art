@@ -6,7 +6,7 @@
  * shapes, so they live together rather than being duplicated per call site.
  */
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getRequiredFields } from "@/lib/categoryConfig";
-import { getPhoneTitleQuality } from "@/lib/productListingPresentation";
+import { getProductTitleQuality } from "@/lib/productListingPresentation";
 
 interface Category {
   id: string;
@@ -178,13 +178,13 @@ function getListingHealth(product: Product, category?: Category): ListingHealthI
   if (missingSpecifications.length > 0) {
     issues.push({ message: `Missing required details: ${missingSpecifications.slice(0, 2).join(", ")}${missingSpecifications.length > 2 ? ` +${missingSpecifications.length - 2}` : ""}`, tone: "warning" });
   }
-  const phoneTitleQuality = getPhoneTitleQuality({
+  const titleQuality = getProductTitleQuality({
     title: product.title,
     brand: product.brand,
     categorySlug: category?.slug,
     variants: product.variants,
   });
-  if (phoneTitleQuality) issues.push({ message: phoneTitleQuality, tone: "warning" });
+  if (titleQuality) issues.push({ message: titleQuality, tone: "warning" });
   if (["clothes", "shirt", "iphone", "apron", "nuckles"].includes(product.title.trim().toLowerCase())) issues.push({ message: "Use a specific searchable title", tone: "warning" });
   return issues;
 }

@@ -27,7 +27,7 @@ import { createVisualHash } from "@/lib/visualHash";
 import { clearDraftMedia, loadDraftMedia, saveDraftMedia, type RestoredMedia } from "@/lib/listingDraftMedia";
 import { buildListingQualityWarnings, buildListingReadiness } from "@/lib/listingReadiness";
 import { getCategoryPathLabel } from "@/lib/cataloguePresentation";
-import { getPhoneTitleQuality } from "@/lib/productListingPresentation";
+import { getLaptopTitleQuality, getPhoneTitleQuality } from "@/lib/productListingPresentation";
 import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
@@ -1661,6 +1661,13 @@ export default function SellerProducts() {
       variants: { categoryAttributes, productType: { key: selectedProductTypeConfig.key } },
     })
     : null;
+  const laptopTitleWarning = isLaptopListing
+    ? getLaptopTitleQuality({
+      title,
+      brand,
+      variants: { categoryAttributes, productType: { key: selectedProductTypeConfig.key } },
+    })
+    : null;
 
   const getApprovalBadge = (product: Product) => {
     if (product.status !== "active") return null;
@@ -1794,6 +1801,13 @@ export default function SellerProducts() {
                         <p className="font-semibold">Phone listing checklist</p>
                         <p className="mt-1">Use one listing for the iPhone model. Put storage and colour price differences in Options, then complete the comparison details in the Details step.</p>
                         {phoneTitleWarning && <p role="alert" className="mt-2 font-semibold">{phoneTitleWarning}</p>}
+                      </div>
+                    )}
+                    {isLaptopListing && (
+                      <div className="mt-3 rounded-xl border border-sky-200 bg-sky-50 p-3 text-xs text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                        <p className="font-semibold">Laptop listing checklist</p>
+                        <p className="mt-1">Use one listing for the model family. Put RAM, storage, processor and colour price differences in Options, then complete the comparison details in Details.</p>
+                        {laptopTitleWarning && <p role="alert" className="mt-2 font-semibold">{laptopTitleWarning}</p>}
                       </div>
                     )}
                   </div>
