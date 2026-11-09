@@ -186,6 +186,8 @@ export default function AdminProducts() {
                               )}
                             </div>
                             <span className="font-medium text-foreground text-sm truncate max-w-[200px]">{product.title}</span>
+                            {product.category_name && <span className="text-xs text-muted-foreground">{product.category_name}</span>}
+                            {product.listing_health.length > 0 && <Badge variant="outline" className="w-fit border-amber-500/40 text-[10px] text-amber-700 dark:text-amber-300" title={product.listing_health.map((issue) => issue.message).join("; ")}>Listing needs attention</Badge>}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -265,7 +267,9 @@ export default function AdminProducts() {
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="line-clamp-2 text-sm font-semibold text-foreground">{product.title}</h3>
+                        {product.category_name && <p className="mt-1 truncate text-xs text-muted-foreground">{product.category_name}</p>}
                         <p className="mt-1 truncate text-xs text-muted-foreground">{product.seller_name || "Unknown seller"}</p>
+                        {product.listing_health.length > 0 && <Badge variant="outline" className="mt-1 border-amber-500/40 text-[10px] text-amber-700 dark:text-amber-300">Listing needs attention</Badge>}
                         <div className="mt-2 flex flex-wrap gap-1">
                           <Badge variant={product.status === "active" ? "default" : "secondary"} className="capitalize text-[10px]">{product.status}</Badge>
                           {product.is_approved ? <Badge className="bg-success/10 text-success border-success/20 text-[10px]">Approved</Badge> : <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px]">Pending</Badge>}

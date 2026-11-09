@@ -521,7 +521,7 @@ export default function MarketplacePage() {
                   setSelectedCategory(match?.id || null);
                   setFilters(f => ({ ...f, categoryAttributes: {} }));
                 }}
-                categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parent_id }))}
+                categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, icon: category.icon, parent_id: category.parent_id }))}
               />
             </div>
           </div>
@@ -591,7 +591,7 @@ export default function MarketplacePage() {
                         setFilters(f => ({ ...f, categoryAttributes: {} }));
                         setIsCategoriesOpen(false);
                       }}
-                      categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parent_id }))}
+                      categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, icon: category.icon, parent_id: category.parent_id }))}
                     />
                   </SheetContent>
                 </Sheet>

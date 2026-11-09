@@ -2,6 +2,7 @@
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
+import { getListingHealth, normalizeProductRow, type ProductRow } from "@/lib/sellerListing/listingEntities";
 
 export interface AdminProfile {
   user_id: string;
@@ -21,6 +22,9 @@ export interface AdminProduct {
   seller_name?: string;
   seller_email?: string;
   primary_image?: string;
+  category_name?: string;
+  category_slug?: string;
+  listing_health: { message: string; tone: "warning" | "critical" }[];
   moderation_reason?: string | null;
   moderation_next_action?: string | null;
   moderation_owner_id?: string | null;
@@ -64,16 +68,17 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
       if (tab === "approved") productsQuery = productsQuery.eq("is_approved", true);
       if (tab === "archived") productsQuery = productsQuery.eq("status", "archived");
 
-      const [{ data: productsData, error: productsError, count }, allCount, pendingCount, approvedCount, archivedCount] = await Promise.all([
+      const [{ data: productsData, error: productsError, count }, allCount, pendingCount, approvedCount, archivedCount, categoriesResult] = await Promise.all([
         productsQuery,
         supabase.from("products").select("id", { count: "exact", head: true }),
         supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "active").eq("is_approved", false),
         supabase.from("products").select("id", { count: "exact", head: true }).eq("is_approved", true),
         supabase.from("products").select("id", { count: "exact", head: true }).eq("status", "archived"),
+        supabase.from("categories").select("id,name,slug"),
       ]);
 
       if (productsError) throw productsError;
-      for (const result of [allCount, pendingCount, approvedCount, archivedCount]) {
+      for (const result of [allCount, pendingCount, approvedCount, archivedCount, categoriesResult]) {
         if (result.error) throw result.error;
       }
       if (!productsData) return { products: [], total: 0, counts: { all: 0, pending: 0, approved: 0, archived: 0 } };
@@ -86,11 +91,15 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
 
       const profileMap = new Map<string, AdminProfile>();
       (profiles ?? []).forEach((p: AdminProfile) => profileMap.set(p.user_id, p));
+      const categoryMap = new Map<string, { id: string; name: string; slug: string }>();
+      ((categoriesResult.data ?? []) as { id: string; name: string; slug: string }[]).forEach((category) => categoryMap.set(category.id, category));
 
       const mapped: AdminProduct[] = productsData.map((p) => {
         const imgs = (p as any).product_images || [];
         const primary = imgs.find((i: any) => i.is_primary) || imgs[0];
         const profile = profileMap.get(p.seller_id);
+        const category = categoryMap.get(p.category_id || "");
+        const listingHealth = getListingHealth(normalizeProductRow(p as unknown as ProductRow), category);
         return {
           id: p.id,
           title: p.title,
@@ -103,6 +112,9 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
           seller_name: profile?.full_name || undefined,
           seller_email: profile?.email || undefined,
           primary_image: primary?.image_url,
+          category_name: category?.name,
+          category_slug: category?.slug,
+          listing_health: listingHealth,
           moderation_reason: (p as any).moderation_reason ?? null,
           moderation_next_action: (p as any).moderation_next_action ?? null,
           moderation_owner_id: (p as any).moderation_owner_id ?? null,

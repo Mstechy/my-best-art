@@ -1,4 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
+import { Baby, BookOpen, Briefcase, Car, CarFront, ChefHat, Cpu, Dumbbell, Gamepad2, Gem, Glasses, Home, Laptop, Package, PawPrint, Puzzle, Refrigerator, Shirt, ShoppingBag, Smartphone, Sofa, Sparkles, UtensilsCrossed, Watch } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 /** Type-only access to the config module's shape - see the dynamic import below. */
 type CategoryConfigs = typeof import("@/lib/categoryConfig").CATEGORY_CONFIGS;
@@ -6,8 +8,16 @@ type CategoryConfigs = typeof import("@/lib/categoryConfig").CATEGORY_CONFIGS;
 interface CategorySidebarProps {
   selectedCategory: string | null;
   onSelect: (categorySlug: string | null) => void;
-  categories: { id: string; name: string; slug: string; parent_id?: string | null }[];
+  categories: { id: string; name: string; slug: string; icon?: string | null; parent_id?: string | null }[];
 }
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  Baby, BookOpen, Briefcase, Car, CarFront, ChefHat, Cpu, Dumbbell, Gamepad2, Gem, Glasses, Home,
+  Laptop, PawPrint, Puzzle, Refrigerator, Shirt, ShoppingBag, Smartphone, Sofa, Sparkles,
+  UtensilsCrossed, Watch,
+};
+
+const categoryIcon = (icon?: string | null) => CATEGORY_ICONS[icon || ""] || Package;
 
 const TOP_LEVEL_ORDER = [
   "fashion",
@@ -58,15 +68,15 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
       const groups = parentRows.flatMap((parent) => {
         const children = categories.filter((category) => category.parent_id === parent.id);
         const entries = children.length > 0 ? children : [parent];
-        return entries.length > 0 ? [{ parent: parent.id, label: parent.name, subcategories: entries.map((category) => ({ slug: category.slug, label: category.name })) }] : [];
+        return entries.length > 0 ? [{ parent: parent.id, label: parent.name, subcategories: entries.map((category) => ({ slug: category.slug, label: category.name, icon: category.icon })) }] : [];
       });
       const groupedSlugs = new Set(groups.flatMap((group) => group.subcategories.map((subcategory) => subcategory.slug)));
       const remaining = categories.filter((category) => !groupedSlugs.has(category.slug) && !categoryMap.has(category.parent_id || ""));
-      if (remaining.length) groups.push({ parent: "more", label: "More", subcategories: remaining.map((category) => ({ slug: category.slug, label: category.name })) });
+      if (remaining.length) groups.push({ parent: "more", label: "More", subcategories: remaining.map((category) => ({ slug: category.slug, label: category.name, icon: category.icon })) });
       return groups;
     }
     if (!configs) return [];
-    const map = new Map<string, { parent: string; label: string; subcategories: { slug: string; label: string }[] }>();
+    const map = new Map<string, { parent: string; label: string; subcategories: { slug: string; label: string; icon?: string | null }[] }>();
     const categoryBySlug = new Map(categories.map(c => [c.slug, c]));
 
     TOP_LEVEL_ORDER.forEach(key => {
@@ -81,7 +91,7 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
 
     const remaining = categories.filter(c => !map.has(c.slug));
     if (remaining.length) {
-      map.set("more", { parent: "more", label: "More", subcategories: remaining.map(c => ({ slug: c.slug, label: c.name })) });
+      map.set("more", { parent: "more", label: "More", subcategories: remaining.map(c => ({ slug: c.slug, label: c.name, icon: c.icon })) });
     }
     return Array.from(map.values());
   }, [categories, configs]);
@@ -130,8 +140,9 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
                     <button
                       key={sub.slug}
                       onClick={() => onSelect(sub.slug)}
-                      className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition-colors ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}
                     >
+                      {(() => { const Icon = categoryIcon(sub.icon); return <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${isActive ? "bg-white/15 dark:bg-black/10" : "bg-[#F2F3F5] dark:bg-[#2A2A2D]"}`}><Icon aria-hidden="true" className="h-3.5 w-3.5" /></span>; })()}
                       {sub.label}
                     </button>
                   );
