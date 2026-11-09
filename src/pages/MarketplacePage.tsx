@@ -31,6 +31,7 @@ import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { dedupeProducts, filterProductsByCategory, isMarketplaceSort } from "@/lib/marketplaceContracts";
+import { getProductListingMeta } from "@/lib/productListingPresentation";
 import { toast } from "sonner";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -55,7 +56,7 @@ interface Product {
   created_at: string;
   average_rating: number;
   review_count: number;
-  variants: { sizes?: string[]; colors?: string[]; categoryAttributes?: Record<string, string>; productVideos?: string[] } | null;
+  variants: { sizes?: string[]; colors?: string[]; categoryAttributes?: Record<string, string>; productVideos?: string[]; productType?: { key?: string; label?: string } } | null;
   product_images: { image_url: string; is_primary: boolean; card_small_url?: string | null }[];
   flash_deal_discount_percent: number | null;
   flash_deal_start_at: string | null;
@@ -663,11 +664,11 @@ export default function MarketplacePage() {
                     return (
                       <ProductCard
                         key={product.id}
-                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, brand: product.brand, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url,
+                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, brand: product.brand, meta: getProductListingMeta({ title: product.title, brand: product.brand, categorySlug: selectedCategoryRecord?.slug, condition: product.condition, variants: product.variants }), averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url,
                         imageSmallUrl: primaryImage?.card_small_url ?? null, flashDealEndAt: flashActive ? product.flash_deal_end_at : null, videoUrl: getProductVideos(product.variants)[0], badge: flashActive && product.flash_deal_end_at ? { label: t("marketplace.flash"), tone: "destructive" } : discount ? { label: `-${discount}%`, tone: "destructive" } : product.stock_quantity <= 5 && product.stock_quantity > 0 ? { label: t("marketplace.labelHot"), tone: "seller" } : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? { label: t("marketplace.labelNew"), tone: "brand" } : null }}
                         formatPrice={formatPrice}
                         priority={index < 5}
-                        sellerName={seller?.full_name || t("marketplace.seller")}
+                        sellerName={seller?.full_name || undefined}
                         sellerVerified={seller?.is_verified ?? false}
                         shippingLabel={shipsTo === "all" ? t("marketplace.shipsWorldwide") : t("marketplace.shipsToDestination", { destination: countryName(shipsTo) })}
                         hasVariants={Boolean(product.variants?.sizes?.length || product.variants?.colors?.length)}

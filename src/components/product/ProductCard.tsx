@@ -17,6 +17,8 @@ export type ProductCardProduct = {
   compareAtPrice?: number | null;
   stockQuantity: number;
   brand?: string | null;
+  /** Compact comparison values supplied by the category-aware listing mapper. */
+  meta?: string[];
   averageRating?: number;
   reviewCount?: number;
   // Delivered units. Real social proof for a young catalogue, where every product
@@ -206,6 +208,16 @@ export function ProductCard({
             />
             {product.flashDealEndAt && <FlashDealCountdown endAt={product.flashDealEndAt} className="mt-1 text-destructive" />}
           </div>
+          {product.meta && product.meta.length > 0 && (
+            <p className="mt-1 flex flex-wrap items-center gap-x-1 text-[11px] text-muted-foreground">
+              {product.meta.map((value, index) => (
+                <span key={`${value}-${index}`} className="inline-flex items-center gap-1">
+                  {index > 0 && <span aria-hidden="true" className="text-muted-foreground/50">•</span>}
+                  <span>{value}</span>
+                </span>
+              ))}
+            </p>
+          )}
           {product.brand && <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{product.brand}</p>}
           {(product.soldCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">

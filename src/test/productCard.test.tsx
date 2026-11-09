@@ -67,4 +67,28 @@ describe("ProductCard", () => {
     expect(heading.compareDocumentPosition(price) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText("Options available")).not.toBeInTheDocument();
   });
+
+  it("renders category comparison metadata after the price without reserving empty rows", () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter>
+          <ProductCard
+            product={{
+              id: "iphone-listing",
+              title: "Apple iPhone 16 Pro",
+              price: 933000,
+              stockQuantity: 4,
+              meta: ["256GB", "5G", "New / sealed"],
+            }}
+            formatPrice={(amount) => `₦${amount.toLocaleString()}`}
+          />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByText("256GB")).toBeInTheDocument();
+    expect(screen.getByText("5G")).toBeInTheDocument();
+    expect(screen.getByText("New / sealed")).toBeInTheDocument();
+    expect(screen.getByText("₦933,000")).toBeInTheDocument();
+  });
 });
