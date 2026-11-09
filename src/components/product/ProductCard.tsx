@@ -140,8 +140,8 @@ export function ProductCard({
   }, [product.id, hasImpressionHandler]);
 
   return (
-    <div ref={impressionNodeRef} className="h-full">
-    <BrandCard className={cn("group relative flex h-full flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:ring-2 focus-within:ring-primary/60 focus-within:ring-offset-1", className)}>
+    <div ref={impressionNodeRef}>
+    <BrandCard className={cn("group relative flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:ring-2 focus-within:ring-primary/60 focus-within:ring-offset-1", className)}>
       {/* Media. Deliberately NOT wrapped in its own link: the stretched title link
           below covers the whole card, so the image is part of ONE generously sized
           target rather than a second one competing for the same tap. */}
@@ -185,7 +185,7 @@ export function ProductCard({
           )}
         </div>
 
-      <div className="flex flex-1 flex-col p-3">
+      <div className="flex flex-col p-3">
         <div>
           {/* One stretched link for the whole card. Tailwind's `after:inset-0`
               idiom rather than an absolutely positioned sibling: the anchor keeps

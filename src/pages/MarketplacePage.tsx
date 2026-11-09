@@ -565,10 +565,6 @@ export default function MarketplacePage() {
                 </section>
               )}
             </AnimatedSection>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8E8E8] bg-white px-3 py-2.5 dark:border-[#222222] dark:bg-[#1E1E1E]">
-              <RegionalPreferences showLabel className="justify-start px-1 py-1" />
-              <p className="text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.catalogueRegionDescription")}</p>
-            </div>
             <AnimatedSection variant="fade-up" delay={60}>
               <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
                 <Sheet open={isCategoriesOpen} onOpenChange={setIsCategoriesOpen}>
@@ -622,13 +618,16 @@ export default function MarketplacePage() {
                 </Select>
               </div>
             </AnimatedSection>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8E8E8] bg-white px-3 py-2.5 dark:border-[#222222] dark:bg-[#1E1E1E]">
+              <RegionalPreferences showLabel className="justify-start px-1 py-1" />
+              <p className="text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.catalogueRegionDescription")}</p>
+            </div>
             <div className="mb-4 flex min-h-5 items-center" aria-live="polite">
               <p className="text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0]">
                 {t("marketplace.showingProducts", { count: displayedProducts.length })}
               </p>
             </div>
-            {/* The full product grid must keep its geometry stable while data settles.
-                Animating this large wrapper with transforms caused measurable CLS. */}
+            {/* Keep catalogue geometry predictable while data settles. */}
             <div>
               {pageLoading && products.length === 0 ? (
                 <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
