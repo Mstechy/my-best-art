@@ -12,6 +12,7 @@ interface ProgressiveImageProps {
   sizes?: string;
   loading?: "lazy" | "eager";
   fetchPriority?: "high" | "low" | "auto";
+  fit?: "cover" | "contain";
   decoding?: "async" | "sync" | "auto";
   onLoad?: () => void;
   onError?: () => void;
@@ -38,6 +39,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
   sizes,
   loading = "lazy",
   fetchPriority = "auto",
+  fit = "cover",
   decoding = "async",
   onLoad,
   onError,
@@ -111,14 +113,16 @@ const ProgressiveImage = memo(function ProgressiveImage({
         animation: "shimmer 1.5s ease-in-out infinite",
       }
     : {};
+  const imageFitClass = fit === "contain" ? "object-contain" : "object-cover";
 
   return (
     <div
       ref={wrapperRef}
       className={`relative overflow-hidden ${wrapperClassName}`}
       style={{
-        width: width ? `${width}px` : "100%",
-        height: height ? `${height}px` : "100%",
+        // width/height are intrinsic image attributes for layout reservation;
+        // applying them to the wrapper would make every responsive card 900px
+        // wide when ProductImage supplies its intrinsic dimensions.
         backgroundColor: placeholderColor,
         ...style,
       }}
@@ -128,7 +132,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
           src={placeholderUrl.current}
           alt=""
           aria-hidden="true"
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full ${imageFitClass} transition-opacity duration-500 ${
             loaded ? "opacity-0" : "opacity-100"
           }`}
           style={{ filter: `blur(${blurAmount}px)`, transform: "scale(1.1)" }}
@@ -146,7 +150,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
           srcSet={srcSet}
           sizes={sizes}
           alt={alt}
-          className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full ${imageFitClass} transition-opacity duration-500 ${
             loaded ? "opacity-100" : "opacity-0"
           } ${className}`}
           width={width}

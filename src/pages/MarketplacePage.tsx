@@ -2,35 +2,32 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ShoppingCart, CheckCircle2, Package, Flame, Heart, Globe, Star } from "lucide-react";
+import { Menu, Package } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import SiteFooter from "@/components/SiteFooter";
 import CategorySidebar from "@/components/CategorySidebar";
+import RegionalPreferences from "@/components/RegionalPreferences";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
-import HorizontalScrollSection from "@/components/ui/HorizontalScrollSection";
 import { Container } from "@/components/ui/Container";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useCachedFetch, cacheKeyFor } from "@/hooks/useCachedFetch";
-import { useProductViewTracking } from "@/hooks/useProductViewTracking";
 import { useSEO } from "@/hooks/useSEO";
 import { usePopulatedCategories } from "@/hooks/useHomepage";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
-import { COUNTRIES, countryName } from "@/lib/countries";
+import { countryName } from "@/lib/countries";
 import { findCategoryConfig, getCategoryAttributes, getProductVideos } from "@/lib/categoryConfig";
 import MarketplaceFilters from "@/components/MarketplaceFilters";
 import { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/marketplaceFiltersState";
-import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { dedupeProducts, filterProductsByCategory, isMarketplaceSort } from "@/lib/marketplaceContracts";
@@ -91,106 +88,6 @@ async function hydrateVariantMetadata(products: Product[]): Promise<Product[]> {
   });
 }
 
-function ModalWrapper({ isOpen, onClose, title, children }: { isOpen: boolean; onClose: () => void; title: string; children: React.ReactNode }) {
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-sm overflow-hidden rounded-2xl border-[#E8E8E8] bg-white p-0 dark:border-[#222222] dark:bg-[#1E1E1E]">
-        <DialogTitle className="border-b border-[#F2F3F5] px-6 pb-3 pt-5 text-left text-xs font-bold uppercase tracking-wider text-[#111111] dark:border-[#222222] dark:text-[#FAF5F2]">
-          {title}
-        </DialogTitle>
-        <div className="p-6">{children}</div>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function MarketplaceProductImpressionCard({
-  product,
-  seller,
-  formatPrice,
-}: {
-  product: Product;
-  seller?: { full_name: string | null; is_verified: boolean };
-  formatPrice: (amount: number, sourceCurrency?: string) => string;
-}) {
-  const analyticsItem = {
-    item_id: product.id,
-    item_name: product.title,
-    price: product.price,
-    quantity: 1,
-    ...(product.brand ? { item_brand: product.brand } : {}),
-  };
-  const { ref } = useProductViewTracking(product.id, () => {
-    trackGA4Event("view_item_list", {
-      currency: product.currency || "NGN",
-      item_list_id: "marketplace",
-      item_list_name: "Tradibu marketplace",
-      items: [analyticsItem],
-    });
-  });
-  const { t } = useTranslation();
-  const primaryImage = product.product_images?.find(item => item.is_primary)?.image_url || product.product_images?.[0]?.image_url;
-  const baseDiscount = product.compare_at_price && product.compare_at_price > product.price
-    ? Math.round((1 - product.price / product.compare_at_price) * 100)
-    : null;
-  const flashActive = product.flash_deal_status === "active" && product.flash_deal_discount_percent && product.flash_deal_discount_percent > 0;
-  const discount = flashActive ? product.flash_deal_discount_percent : baseDiscount;
-
-  return (
-    <div ref={ref} className="shrink-0" style={{ width: 180 }}>
-      <Link
-        to={`/product/${product.id}`}
-        onClick={() => {
-          trackProductDiscovery(product.id, "click");
-          trackGA4Event("select_item", {
-            currency: product.currency || "NGN",
-            item_list_id: "marketplace",
-            item_list_name: "Tradibu marketplace",
-            items: [analyticsItem],
-          });
-        }}
-        className="group overflow-hidden rounded-3xl border border-[#E8E8E8] bg-white transition hover:-translate-y-0.5 hover:shadow-lg dark:border-[#222222] dark:bg-[#1E1E1E]"
-      >
-        <div className="relative aspect-square bg-[#F7F7F5] dark:bg-[#1E1E1E]">
-          {primaryImage ? (
-            <ProductImage src={primaryImage} alt={product.title} className="group-hover:scale-105" loading="lazy" />
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <Package className="h-6 w-6 text-[#6E6C64]" />
-            </div>
-          )}
-          {discount ? (
-            // The badge red is one step deeper than the site's #E53935:
-            // white 10px bold on #E53935 measured 4.22:1 (axe color-contrast
-            // wants 4.5:1); #D32F2F clears it at 4.98:1 while staying the
-            // same deal red to the eye.
-            <span className="absolute left-3 top-3 rounded bg-[#D32F2F] px-2 py-0.5 text-[10px] font-bold text-white">
-              -{discount}%
-            </span>
-          ) : null}
-        </div>
-        <div className="p-3">
-          <h3 className="text-sm font-semibold text-[#111111] dark:text-[#FAF5F2] line-clamp-2">{product.title}</h3>
-          <div className="mt-2 flex items-center justify-between gap-2">
-            <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(product.price)}</span>
-            {product.compare_at_price && product.compare_at_price > product.price ? (
-              <span className="text-[10px] text-[#6E6C64] line-through">{formatPrice(product.compare_at_price)}</span>
-            ) : null}
-          </div>
-          <p className="mt-2 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0] truncate">{seller?.full_name || t("marketplace.seller")}</p>
-          {product.average_rating > 0 && (
-            <div className="mt-2 flex items-center gap-1 text-[10px] text-[#111111] dark:text-[#FAF5F2]">
-              <Star className="h-3 w-3 fill-[#F6C75D] text-[#F6C75D]" />
-              <span className="font-semibold">{product.average_rating.toFixed(1)}</span>
-              <span className="text-[#6E6C64] dark:text-[#A0A0A0]">({product.review_count})</span>
-            </div>
-          )}
-        </div>
-      </Link>
-    </div>
-  );
-}
-
 export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug: categoryRouteSlug } = useParams<{ slug?: string }>();
@@ -218,12 +115,10 @@ export default function MarketplacePage() {
   const { addItem, beginDirectCheckout } = useCart();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { currency, setCurrencyCode, currencies, country: preferredCountry, setCountry, formatPrice } = useCurrency();
+  const { country: preferredCountry, formatPrice } = useCurrency();
   const { isWishlisted, toggleWishlist } = useWishlist();
+  const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
 
-  const [isLocationOpen, setIsLocationOpen] = useState(false);
-  const [isLocationConfirmScreen, setIsLocationConfirmScreen] = useState(true);
-  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
 
   useEffect(() => { fetchData(); }, []);
   useEffect(() => { setShipsTo(preferredCountry || "all"); }, [preferredCountry]);
@@ -610,12 +505,13 @@ export default function MarketplacePage() {
           setSelectedCategory(value);
           setFilters(f => ({ ...f, categoryAttributes: {} }));
         }}
+        showRegionalPreferences={false}
       />
       <CartDrawer />
       <main className="min-h-screen pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
       <Container className="py-8">
         <div className="flex gap-6">
-          <div className="hidden lg:block w-60 shrink-0">
+          <div className="hidden w-64 shrink-0 lg:block xl:w-72">
             <div className="sticky top-24">
               <CategorySidebar
                 selectedCategory={selectedCategory}
@@ -668,22 +564,36 @@ export default function MarketplacePage() {
                 </section>
               )}
             </AnimatedSection>
-            <AnimatedSection variant="fade-up" delay={50}>
-              <div className="flex gap-2 overflow-x-auto pb-2 mb-6 scrollbar-hide select-none">
-                <button type="button" aria-pressed={!selectedCategory} onClick={() => { setSelectedCategory(null); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
-                  className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${!selectedCategory ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
-                  All
-                </button>
-                {populatedCategories.map(cat => (
-                  <button key={cat.id} type="button" aria-pressed={selectedCategory === cat.id} onClick={() => { setSelectedCategory(cat.id); setFilters(f => ({ ...f, categoryAttributes: {} })); }}
-                    className={`whitespace-nowrap rounded-full px-5 py-2 text-xs font-semibold border transition-all duration-200 ${selectedCategory === cat.id ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] border-transparent" : "bg-white dark:bg-[#1E1E1E] text-[#111111] dark:text-[#FAF5F2] border-[#E8E8E8] dark:border-[#222222] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}>
-                    {cat.name}
-                  </button>
-                ))}
-              </div>
-            </AnimatedSection>
+            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8E8E8] bg-white px-3 py-2.5 dark:border-[#222222] dark:bg-[#1E1E1E]">
+              <RegionalPreferences showLabel className="justify-start px-1 py-1" />
+              <p className="text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.catalogueRegionDescription")}</p>
+            </div>
             <AnimatedSection variant="fade-up" delay={60}>
               <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
+                <Sheet open={isCategoriesOpen} onOpenChange={setIsCategoriesOpen}>
+                  <SheetTrigger asChild>
+                    <Button variant="outline" className="h-10 gap-2 rounded-full lg:hidden">
+                      <Menu className="h-4 w-4" />
+                      {t("nav.allCategories")}
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[min(22rem,90vw)] overflow-y-auto bg-white p-4 text-[#111111] dark:bg-[#111111] dark:text-[#FAF5F2]">
+                    <SheetHeader className="mb-4 text-left">
+                      <SheetTitle className="text-left text-base">{t("nav.allCategories")}</SheetTitle>
+                      <SheetDescription className="text-left text-xs">{t("marketplace.browseCategoriesDescription")}</SheetDescription>
+                    </SheetHeader>
+                    <CategorySidebar
+                      selectedCategory={selectedCategory}
+                      onSelect={(slugOrId) => {
+                        const match = categories.find(c => c.slug === slugOrId || c.id === slugOrId);
+                        setSelectedCategory(match?.id || null);
+                        setFilters(f => ({ ...f, categoryAttributes: {} }));
+                        setIsCategoriesOpen(false);
+                      }}
+                      categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parent_id }))}
+                    />
+                  </SheetContent>
+                </Sheet>
                 <MarketplaceFilters
                   value={filters} onChange={setFilters} activeCount={activeFilterCount}
                   categoryName={selectedCategoryRecord?.name}
@@ -709,20 +619,6 @@ export default function MarketplacePage() {
                     <SelectItem value="price_high">{t("marketplace.sortOptions.priceHigh")}</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-[#6E6C64] dark:text-[#A0A0A0]" />
-                  <span className="text-xs font-semibold text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.shipsToLabel")}</span>
-                  <button type="button" onClick={() => { setIsLocationConfirmScreen(true); setIsLocationOpen(true); }}
-                    className="flex items-center gap-1.5 h-9 px-4 text-xs font-semibold bg-white dark:bg-[#1E1E1E] border border-[#E8E8E8] dark:border-[#222222] text-[#111111] dark:text-[#FAF5F2] rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] transition-colors focus:outline-none">
-                    <span>{shipsTo === "all" ? t("marketplace.anywhere") : countryName(shipsTo)}</span>
-                  </button>
-                </div>
-                <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] ml-auto">
-                  {t("marketplace.pricesShownIn")}{" "}
-                  <button onClick={() => setIsCurrencyOpen(true)} className="font-bold text-[#111111] dark:text-[#FAF5F2] hover:underline focus:outline-none">
-                    {currency.code} ({currency.symbol})
-                  </button>
-                </span>
               </div>
             </AnimatedSection>
             <div className="mb-4 flex min-h-5 items-center" aria-live="polite">
@@ -757,7 +653,7 @@ export default function MarketplacePage() {
                 </div>
               ) : (
                 <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {displayedProducts.map(product => {
+                  {displayedProducts.map((product, index) => {
                     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
                     const seller = sellerProfiles[product.seller_id];
                     const baseDiscount = product.compare_at_price && product.compare_at_price > product.price
@@ -770,6 +666,7 @@ export default function MarketplacePage() {
                         product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, brand: product.brand, averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url,
                         imageSmallUrl: primaryImage?.card_small_url ?? null, flashDealEndAt: flashActive ? product.flash_deal_end_at : null, videoUrl: getProductVideos(product.variants)[0], badge: flashActive && product.flash_deal_end_at ? { label: t("marketplace.flash"), tone: "destructive" } : discount ? { label: `-${discount}%`, tone: "destructive" } : product.stock_quantity <= 5 && product.stock_quantity > 0 ? { label: t("marketplace.labelHot"), tone: "seller" } : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? { label: t("marketplace.labelNew"), tone: "brand" } : null }}
                         formatPrice={formatPrice}
+                        priority={index < 5}
                         sellerName={seller?.full_name || t("marketplace.seller")}
                         sellerVerified={seller?.is_verified ?? false}
                         shippingLabel={shipsTo === "all" ? t("marketplace.shipsWorldwide") : t("marketplace.shipsToDestination", { destination: countryName(shipsTo) })}
@@ -822,63 +719,10 @@ export default function MarketplacePage() {
                 </div>
               )}
             </div>
-            {/* Keep the primary catalogue visible before discovery content. This
-                rail is supplemental merchandising, not the user's result set. */}
-            {displayedProducts.length > 0 && (
-              <AnimatedSection variant="fade-up" delay={80}>
-                <HorizontalScrollSection
-                  title={t("marketplace.popularNow")}
-                  subtitle={t("marketplace.scrollToExplore")}
-                  itemWidth={180}
-                  showArrows
-                  showDots
-                >
-                  {displayedProducts.slice(0, 20).map(product => (
-                    <MarketplaceProductImpressionCard
-                      key={product.id}
-                      product={product}
-                      formatPrice={formatPrice}
-                      seller={sellerProfiles[product.seller_id]}
-                    />
-                  ))}
-                </HorizontalScrollSection>
-              </AnimatedSection>
-            )}
           </div>
         </div>
       </Container>
-      <ModalWrapper isOpen={isLocationOpen} onClose={() => setIsLocationOpen(false)} title={t("marketplace.deliveryDestination")}> 
-        {isLocationConfirmScreen ? (
-          <div className="text-center space-y-4 select-none">
-            <div className="mx-auto h-12 w-12 rounded-full bg-[#FAF5F2] dark:bg-[#2A2A2D] flex items-center justify-center text-[#F6C75D]"><Globe className="h-6 w-6" /></div>
-            <div className="space-y-1">
-              <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.destinationDetected")}</p>
-              <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{shipsTo === "all" ? t("marketplace.anywhere") : countryName(shipsTo)}</p>
-            </div>
-            <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] px-2 leading-relaxed">{t("marketplace.changeDeliveryLocation")}</p>
-            <div className="pt-2 space-y-2">
-              <button onClick={() => setIsLocationConfirmScreen(false)} className="w-full bg-[#111111] dark:bg-[#FAF5F2] hover:bg-[#222222] dark:hover:bg-[#EAE0D8] text-white dark:text-[#111111] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200">{t("marketplace.yesChangeLocation")}</button>
-              <button onClick={() => setIsLocationOpen(false)} className="w-full bg-transparent border border-[#C8C8C0] dark:border-[#333333] text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-xs font-semibold py-2.5 rounded-full transition-colors duration-200">{t("marketplace.noKeepLocation")}</button>
-            </div>
-          </div>
-        ) : (
-          <div className="space-y-4 select-none">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.selectDestination")}</span>
-              <button onClick={() => setIsLocationConfirmScreen(true)} className="text-[10px] font-semibold text-[#6E6C64] hover:text-[#111111] dark:hover:text-[#FAF5F2] hover:underline">Back: {t("common.back")}</button>
-            </div>
-            <div className="max-h-[220px] overflow-y-auto space-y-1 pr-1.5 scrollbar-thin">
-              <button onClick={() => { setCountry(null); setIsLocationOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${shipsTo === "all" ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"}`}><span>{t("marketplace.anywhere")}</span>{shipsTo === "all" && <CheckCircle2 className="h-3.5 w-3.5" />}</button>
-              {COUNTRIES.map(c => {
-                const isActive = shipsTo === c.code;
-                return (
-                  <button key={c.code} onClick={() => { setCountry(c.code); setIsLocationOpen(false); }} className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold transition-colors flex items-center justify-between ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D] text-[#111111] dark:text-[#FAF5F2]"}`}><span>{c.name}</span>{isActive && <CheckCircle2 className="h-3.5 w-3.5" />}</button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </ModalWrapper>
+      {/* Legacy currency modal removed from the rendered marketplace. RegionalPreferences owns this flow.
       <ModalWrapper isOpen={isCurrencyOpen} onClose={() => setIsCurrencyOpen(false)} title={t("marketplace.preferredCurrency")}>
         <div className="space-y-4 select-none">
           <p className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.chooseYourPreferredCurrency")}</p>
@@ -896,6 +740,7 @@ export default function MarketplacePage() {
           </div>
         </div>
       </ModalWrapper>
+      */}
       </main>
       <SiteFooter />
       <BottomTabBar />

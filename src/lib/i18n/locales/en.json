@@ -3,8 +3,8 @@
     "dailyDeals": "Daily Deals",
     "topSellers": "Top Sellers",
     "newDrops": "New Drops",
-    "searchPlaceholder": "Search products, brands, and categories",
-    "searchPlaceholderMobile": "Search products",
+    "searchPlaceholder": "Search products, brands and stores",
+    "searchPlaceholderMobile": "Search products, brands and stores",
     "search": "Search",
     "allCategories": "All categories",
     "searchInCategory": "Search in {{category}}",
@@ -36,7 +36,8 @@
     "suggestionProduct": "Product",
     "openCart": "Open cart",
     "openNavigationMenu": "Open navigation menu",
-    "openDashboard": "Open dashboard"
+    "openDashboard": "Open dashboard",
+    "deliveryTo": "Deliver to"
   },
   "home": {
     "browse": "Browse",
@@ -57,6 +58,9 @@
     "joinTradibu": "Join Tradibu",
     "joinTradibuDesc": "Build your store on Tradibu",
     "shopByCategory": "Shop by category",
+    "marketplaceTitle": "Marketplace",
+    "marketplaceSubtitle": "Shop from independent sellers",
+    "featuredProduct": "Featured product",
     "pageTitle": "Online Marketplace for Trusted Shopping",
     "pageTitleLong": "Online Marketplace for Trusted Shopping | Tradibu",
     "bestSellers": "Best Sellers",
@@ -155,6 +159,8 @@
   },
   "marketplace": {
     "title": "Marketplace",
+    "catalogueRegionDescription": "Products and delivery labels update for your destination.",
+    "browseCategoriesDescription": "Browse departments before narrowing the product results.",
     "breadcrumbHome": "Home",
     "breadcrumbCategories": "Categories",
     "browseCategory": "Browse available categories from independent sellers.",

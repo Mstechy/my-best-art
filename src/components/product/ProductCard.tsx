@@ -145,7 +145,7 @@ export function ProductCard({
             src={product.imageUrl}
             cardSmallUrl={product.imageSmallUrl}
             alt={product.title}
-            className="group-hover:scale-105"
+            fit="contain"
             loading={priority ? "eager" : "lazy"}
             fetchPriority={priority ? "high" : "auto"}
           />
@@ -192,8 +192,20 @@ export function ProductCard({
             onClick={onProductClick}
             className="block rounded-md outline-none after:absolute after:inset-0 after:z-0 after:rounded-card after:bg-transparent after:content-[''] hover:after:bg-foreground/[0.03] active:after:bg-foreground/[0.07] focus-visible:after:ring-2 focus-visible:after:ring-primary"
           >
-            <h3 className="min-h-10 line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h3>
+            <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h3>
           </Link>
+          {/* Price is the first comparison signal after the product name. Optional
+              metadata follows it and can disappear without pushing the price into
+              a different visual zone. */}
+          <div className="mt-2">
+            <PriceDisplay
+              price={product.price}
+              compareAtPrice={compareAtVisible ? product.compareAtPrice : null}
+              formatPrice={formatPrice}
+              size="sm"
+            />
+            {product.flashDealEndAt && <FlashDealCountdown endAt={product.flashDealEndAt} className="mt-1 text-destructive" />}
+          </div>
           {product.brand && <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{product.brand}</p>}
           {(product.soldCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -218,7 +230,7 @@ export function ProductCard({
             </div>
           )}
           {(shippingLabel || hasVariants || lowStock) && (
-            <div className="mt-2 flex min-h-4 flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
+            <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
               {shippingLabel && (
                 <span className="inline-flex min-w-0 items-center gap-1">
                   <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-success" />
@@ -238,20 +250,7 @@ export function ProductCard({
           )}
         </div>
 
-        {/* `pt-2`, not `mt-auto`. `mt-auto` pushed the price to the bottom of the
-            `h-full` column and opened a FLEXIBLE gap between the description and the
-            price that grew on cards with less meta (no rating, no seller chip) - the
-            inconsistent spacing seen between tiles. A fixed gap keeps every card's
-            rhythm identical, which is what product grids on large marketplaces do. */}
-        <div className="pt-2">
-          <PriceDisplay
-            price={product.price}
-            compareAtPrice={compareAtVisible ? product.compareAtPrice : null}
-            formatPrice={formatPrice}
-            size="sm"
-            className="min-h-5"
-          />
-          {product.flashDealEndAt && <FlashDealCountdown endAt={product.flashDealEndAt} className="mt-1 text-destructive" />}
+        <div className="pt-3">
           {showPurchaseActions && (
             // `relative z-10`: these are the only controls that must win the tap
             // over the stretched card link.

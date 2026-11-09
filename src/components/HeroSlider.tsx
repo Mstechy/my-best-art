@@ -2,8 +2,7 @@ import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Link } from "react-router-dom";
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
-import { getHeroImageSources, DEFAULT_HERO_IMAGE_URL } from "@/lib/heroImages";
-import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
+import { getHeroImageSources } from "@/lib/heroImages";
 
 interface HeroSliderProps {
   slides: EnhancedCollection[];
@@ -70,16 +69,10 @@ export function HeroArtwork({
 /**
  * One slide's overlay copy: badge, title, description, CTA.
  *
- * Shared by the pending stage and the live slides ON PURPOSE. The two states
- * must emit the exact same element tree - same wrappers, same classes, same
- * child order - so React patches the nodes painted before the query resolved
- * instead of replacing them. A replaced <h2>/<p>/<a> repaints the hero box,
- * which hands Largest Contentful Paint a fresh candidate at data arrival; an
- * attribute write on the existing nodes does not. The pending stage passes the
- * build-time defaults (src/lib/heroDefaults.ts, byte-aligned with the
- * hero-enabled row), the live slides pass the row itself - for the seeded
- * campaign those are the same strings, so the swap is visually silent and the
- * user never sees a bare image waiting on the query.
+ * Live slide overlay copy: badge, title, description, and CTA are all sourced
+ * from the resolved campaign row. The pending stage intentionally uses only a
+ * neutral geometry-preserving skeleton because no campaign is authoritative
+ * until the query resolves.
  */
 function HeroCopy({
   badge,
@@ -229,21 +222,16 @@ const HeroSlider = memo(function HeroSlider({
     }
   };
 
-  // `len === 0` is the pending state: the hero query has not resolved yet. The
-  // component still renders - see the pending stage inside the slides container -
-  // so the hero <img> enters the DOM in the FIRST React commit and is PATCHED in
-  // place when the slides arrive, rather than the whole slider being mounted
-  // later and repainting an identical box (which resets Largest Contentful Paint
-  // to the moment the query returned, ~1.3s after the bytes were already ready).
+  // `len === 0` is the pending state: keep the final hero geometry stable, but
+  // do not show an image or copy from a campaign that has not been resolved.
   const pending = len === 0;
   const activeIndex = current < len ? current : 0;
   const slide = pending ? null : slides[activeIndex];
   const overlayOpacity = slide?.hero_overlay_opacity ?? 0.45;
 
   return (
-    // The section stays decorative (aria-hidden) while pending: no slides, nothing
-    // for assistive tech to explore. Dropping the attribute when slides arrive is
-    // an attribute write, never a repaint.
+    // The section stays decorative (aria-hidden) while pending: no campaign is
+    // available for assistive technology to explore yet.
     <section
       className="relative w-full overflow-hidden bg-[#111111]"
       onMouseEnter={() => setIsPaused(true)}
@@ -259,60 +247,22 @@ const HeroSlider = memo(function HeroSlider({
     >
       {/* Slides container */}
       <div
-        className="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]"
+        className="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]"
         style={{ backgroundColor: "#1C1C1E" }}
       >
-        {/* Pending stage: the hero query is still in flight, so slide 0 does not
-            exist yet - but the box still paints the default artwork (byte-for-
-            byte the file index.html preloads) behind the default overlay.
-
-            Same key ("lead"), same classes, same HeroArtwork props as slide 0
-            below. When the query resolves, React therefore PATCHES this div in
-            place instead of replacing the subtree: the <picture> and <img> nodes
-            survive with identical src/srcset for the seeded campaign (the legacy
-            banner URL resolves to the same preloaded webp via
-            getHeroImageSources), and an <img> whose attributes never change
-            never repaints - so the Largest Contentful Paint candidate painted at
-            first commit stays the final one. The old shape - a placeholder
-            <div> in LandingPage swapped for this slider - replaced those nodes
-            and repainted the identical box, which is why Lighthouse reported LCP
-            at the QUERY arrival instead of at first paint. */}
-        {/* ONE child slot for both states: the pending stage and the live slides
-            must come from the SAME expression, both as arrays, so React's children
-            normalization sees identical shapes and keys. Two separate slots
-            (`{pending && ...}` beside `{slides.map(...)}`) normalize differently
-            (element vs array), the keys never line up, and React REPLACES the
-            subtree on arrival - a fresh <img> repaints the identical box and
-            resets Largest Contentful Paint to the data. The node-identity contract
-            is pinned by src/test/heroLcpSwap.test.tsx. */}
+        {/* The pending stage reserves the final hero geometry but deliberately
+            avoids painting an unverified campaign image or copy. The first hero
+            image the shopper sees is therefore the real live campaign, not a
+            default that changes when Supabase resolves. */}
         {pending ? [
           <div
-            key="lead"
-            className="absolute inset-0 transition-opacity duration-500 ease-in-out opacity-100"
+            key="pending"
+            className="absolute inset-0 animate-pulse bg-[#F3EEE9] dark:bg-[#28282B]"
             aria-hidden="true"
           >
-            <HeroArtwork
-              imageUrl={DEFAULT_HERO_IMAGE_URL}
-              alt=""
-              priority
-              imgClassName="h-full w-full object-cover opacity-100"
-            />
-            <div
-              className="absolute inset-0"
-              style={{
-                background: `linear-gradient(to right, rgba(0,0,0,${overlayOpacity + 0.2}) 0%, rgba(0,0,0,${overlayOpacity}) 50%, rgba(0,0,0,${overlayOpacity * 0.6}) 100%)`,
-              }}
-            />
-            {/* Copy overlay painted BEFORE the query resolves, from the
-                build-time defaults. Same HeroCopy the live slide uses, so the
-                pending -> live swap patches these text nodes in place. */}
-            <HeroCopy
-              badge={DEFAULT_HERO_COPY.badge}
-              title={DEFAULT_HERO_COPY.title}
-              description={DEFAULT_HERO_COPY.description}
-              destination={DEFAULT_HERO_COPY.ctaLink}
-              ctaLabel={DEFAULT_HERO_COPY.ctaLabel}
-            />
+            <div className="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[#F6C75D]/45 via-[#F6C75D]/15 to-transparent" />
+            <div className="absolute inset-x-6 bottom-8 h-3 max-w-xs rounded-full bg-black/10 dark:bg-white/10" />
+            <div className="absolute inset-x-6 bottom-14 h-8 max-w-md rounded-lg bg-black/10 dark:bg-white/10" />
           </div>,
         ] : slides.map((s, index) => {
           const isActive = index === activeIndex;

@@ -30,6 +30,7 @@ interface MarketplaceNavbarProps {
   categories?: { label: string; value: string }[];
   selectedCategory?: string | null;
   onCategoryChange?: (value: string | null) => void;
+  showRegionalPreferences?: boolean;
 }
 
 const DEFAULT_SUGGESTIONS = ["wireless earbuds", "smart watch", "fashion", "home decor"];
@@ -52,6 +53,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   categories = [],
   selectedCategory = null,
   onCategoryChange,
+  showRegionalPreferences = true,
 }: MarketplaceNavbarProps) {
   const { t } = useTranslation();
   const { user, role, signOut } = useAuth();
@@ -270,8 +272,8 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2]">
-      <div className="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">
-        <div className="flex items-center gap-3">
+      <div className="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           {/* Logo block */}
           <Link to="/" aria-label="Tradibu home" className="flex items-baseline shrink-0 select-none">
             <span className="font-sans text-xl font-black tracking-tighter text-[#111111] dark:text-[#FAF5F2]">
@@ -281,7 +283,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           </Link>
 
           {/* Horizontal nav links */}
-          <div className="hidden lg:flex items-center gap-6 text-[13px] font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 shrink-0">
+          <div className="hidden shrink-0 items-center gap-4 text-xs font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 lg:flex">
             <Link to="/marketplace?sort=flash_deals" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.dailyDeals")}</Link>
             <Link to="/marketplace?sort=best_sellers" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.topSellers")}</Link>
             <Link to="/marketplace?sort=newest" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.newDrops")}</Link>
@@ -294,18 +296,18 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               toolname="search_marketplace_products_desktop"
               tooldescription="Search Tradibu marketplace products by keyword. This is a safe, read-only search."
               toolautosubmit=""
-              className="hidden lg:flex flex-1 items-center justify-center px-2"
+              className="hidden flex-1 items-center justify-center px-1 lg:flex"
             >
-              <div className="flex w-full max-w-3xl items-center rounded-full border border-[#E8E8E8] bg-white shadow-[0_10px_30px_rgba(17,17,17,0.05)] transition-shadow focus-within:shadow-[0_12px_36px_rgba(17,17,17,0.09)] dark:border-[#333333] dark:bg-[#1A1A1A]">
+              <div className="flex w-full max-w-2xl items-center rounded-full border border-[#E8E8E8] bg-white shadow-[0_10px_30px_rgba(17,17,17,0.05)] transition-shadow focus-within:shadow-[0_12px_36px_rgba(17,17,17,0.09)] dark:border-[#333333] dark:bg-[#1A1A1A]">
                 {hasCategories && (
-                  <div className="w-44 shrink-0 border-r border-[#E8E8E8] dark:border-[#333333]">
+                  <div className="w-36 shrink-0 border-r border-[#E8E8E8] dark:border-[#333333]">
                     <Select value={activeCategory} onValueChange={(value) => onCategoryChange?.(value === "__all__" ? null : value)}>
                       {/* Radix renders the trigger as role="combobox" with no text of
                           its own until a value is chosen, which left it with an empty
                           accessible name and failed the button-name audit. */}
                       <SelectTrigger
                         aria-labelledby="marketplace-category-value"
-                        className="h-12 w-full rounded-none border-0 bg-transparent px-4 text-sm font-medium text-[#111111] shadow-none focus:ring-0 dark:text-[#FAF5F2]"
+                        className="h-11 w-full rounded-none border-0 bg-transparent px-3 text-xs font-medium text-[#111111] shadow-none focus:ring-0 dark:text-[#FAF5F2]"
                       >
                         <SelectValue id="marketplace-category-value" placeholder={t("nav.allCategories")} />
                       </SelectTrigger>
@@ -339,7 +341,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                     aria-controls="marketplace-search-suggestions-desktop"
                     aria-activedescendant={activeSuggestionIndex >= 0 ? `marketplace-search-suggestion-desktop-${activeSuggestionIndex}` : undefined}
                     placeholder={t("nav.searchPlaceholder")}
-                    className="h-12 border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:text-[#FAF5F2]"
+                    className="h-11 border-0 bg-transparent pl-11 pr-12 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:text-[#FAF5F2]"
                   />
                   <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
                   {suggestionsOpen && suggestions.length > 0 && (
@@ -363,6 +365,8 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 </Button>
               </div>
                 <input
+                id="marketplace-image-search-desktop"
+                name="image"
                 ref={imageInputRef}
                 type="file"
                 accept="image/*"
@@ -388,7 +392,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           {/* Language Switcher - hide on small mobile */}
           <div className="hidden sm:block"><LanguageSwitcher /></div>
           {/* RegionalPreferences - hide on small mobile */}
-          <div className="hidden sm:block"><RegionalPreferences /></div>
+          {showRegionalPreferences && <div className="hidden sm:block"><RegionalPreferences /></div>}
           {/* Messages (logged-in only) - hide on small mobile */}
           {user && (
             <Link to={chatPath} aria-label={t("nav.messages")} className="relative p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden sm:inline-flex">
@@ -429,6 +433,23 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             {totalItems > 0 && (
               <span className="absolute -top-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#F6C75D] text-[10px] font-bold text-[#5C3A00]">
                 {totalItems}
+              </span>
+            )}
+          </button>
+
+          {/* The reference keeps cart access visible in the compact header as
+              well as the bottom navigation, so a shopper never has to hunt for
+              the current basket from the first viewport. */}
+          <button
+            type="button"
+            onClick={() => openCart(true)}
+            className="relative grid h-10 w-10 place-items-center rounded-full text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:hidden"
+            aria-label={t("nav.openCart")}
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && (
+              <span className="absolute right-0 top-0 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#F6C75D] px-1 text-[10px] font-bold text-[#5C3A00]">
+                {totalItems > 99 ? "99+" : totalItems}
               </span>
             )}
           </button>
@@ -520,7 +541,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                   aria-expanded={suggestionsOpen && suggestions.length > 0}
                   aria-controls="marketplace-search-suggestions-mobile"
                   aria-activedescendant={activeSuggestionIndex >= 0 ? `marketplace-search-suggestion-mobile-${activeSuggestionIndex}` : undefined}
-                  placeholder={t("nav.searchPlaceholderMobile")}
+                  placeholder={t("nav.searchPlaceholder")}
                   className="h-11 rounded-full border border-[#E8E8E8] bg-white pl-10 pr-20 text-sm text-[#111111] shadow-none placeholder:text-[#6E6C64] focus-visible:ring-0 dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]"
                 />
                 <button type="button" onClick={handleVisualClick} aria-label={t("nav.searchByImage")} title={t("nav.searchByImage")} className="absolute right-11 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-full text-[#6E6C64] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]"><Camera className="h-4 w-4" /></button>
@@ -549,6 +570,8 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               </div>
             </form>
             <input
+              id="marketplace-image-search-mobile"
+              name="image"
               ref={imageInputRef}
               type="file"
               accept="image/*"
@@ -606,7 +629,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               </DialogContent>
             </Dialog>
 
-            <div className="mt-3 hidden lg:flex flex-wrap items-center gap-2">
+            <div className="mt-2 hidden flex-wrap items-center gap-2 lg:flex">
               <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6E6C64] dark:text-[#A0A0A0]">
                 {t("nav.trending")}
               </span>

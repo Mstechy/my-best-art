@@ -6,8 +6,6 @@ import { createRoot } from "react-dom/client";
 import { describe, expect, it } from "vitest";
 
 import { HOME_SHELL_END, HOME_SHELL_START, stripHomeShell } from "@/lib/htmlHead";
-import { DEFAULT_HERO_IMAGE_URL, getHeroImageSources } from "@/lib/heroImages";
-import { DEFAULT_HERO_COPY } from "@/lib/heroDefaults";
 import { CORE_NAV_LINKS } from "@/lib/prerenderBody";
 
 /**
@@ -22,13 +20,9 @@ import { CORE_NAV_LINKS } from "@/lib/prerenderBody";
  *      that matches how the resource is actually fetched, ordered before every
  *      fetchable resource.
  *
- *   2. The preload and the <picture> disagreeing about which file to fetch.
- *      A previous imagesrcset + imagesizes="100vw" rule resolved to a different
- *      file than the <source> on high-DPR phones: two downloads, neither reused,
- *      and the LCP request stayed attributed to the JS bundle. The candidate
- *      lists are now asserted byte-for-byte against src/lib/heroImages.ts (the
- *      single source of truth both sides read from), and every candidate is
- *      asserted to exist on disk so a renamed asset cannot silently 404 the LCP.
+ *   2. The shell must not preload an unverified campaign. The live homepage
+ *      query owns the hero image; a hard-coded preload would paint one campaign
+ *      and then replace it when the query resolves.
  */
 
 /** The real shell, comments stripped so prose about <link> cannot match as markup. */
@@ -37,8 +31,6 @@ const shell = readFileSync(path.join(process.cwd(), "index.html"), "utf8").repla
 const linkTags = (html: string): string[] => html.match(/<link\b[^>]*>/g) ?? [];
 const preconnects = linkTags(shell).filter((tag) => /rel="preconnect"/.test(tag));
 const imagePreloads = linkTags(shell).filter((tag) => /rel="preload"/.test(tag) && /as="image"/.test(tag));
-
-const sources = getHeroImageSources(DEFAULT_HERO_IMAGE_URL);
 
 describe("homepage shell LCP plumbing", () => {
   it("carries exactly one preconnect per origin, ahead of every fetchable resource", () => {
@@ -59,49 +51,18 @@ describe("homepage shell LCP plumbing", () => {
     expect(shell).toContain('<link rel="preconnect" href="https://bnkyddmmhaaefzfvzpqs.supabase.co" crossorigin="anonymous" />');
     expect(shell).toContain('<link rel="preconnect" href="https://fonts.googleapis.com" />');
 
-    // Earliest possible position: before the image preloads and before the font
-    // stylesheet, so the sockets are already opening while those are scanned.
+    // Earliest possible position: before the font stylesheet, so the socket is
+    // already opening while it is scanned.
     const fontsAt = shell.indexOf('href="https://fonts.googleapis.com" />');
     expect(fontsAt).toBeGreaterThan(-1);
-    expect(shell.indexOf('rel="preload"')).toBeGreaterThan(fontsAt);
+    expect(imagePreloads).toHaveLength(0);
     expect(shell.indexOf("fonts.googleapis.com/css2")).toBeGreaterThan(fontsAt);
   });
 
-  it("preloads byte-for-byte the candidate list the <picture> selects from", () => {
-    expect(sources.mobileSrcSet).toBeDefined();
-    expect(sources.mobileSrc).toBeDefined();
-
-    // Exactly one preload per media band - never two preloads naming different
-    // files for the same viewport, which is the double-download bug itself.
-    expect(imagePreloads).toHaveLength(2);
-
-    const mobile = imagePreloads.find((tag) => /media="\(max-width: 640px\)"/.test(tag));
-    expect(mobile, "mobile preload present").toBeDefined();
-    expect(mobile).toContain(`imagesrcset="${sources.mobileSrcSet}"`);
-    // href stays as the fallback for UAs without imagesrcset support; it must
-    // name a real candidate of that same list, not a third file.
-    expect(mobile).toContain(`href="${sources.mobileSrc}"`);
-
-    const desktop = imagePreloads.find((tag) => /media="\(min-width: 641px\)"/.test(tag));
-    expect(desktop, "desktop preload present").toBeDefined();
-    expect(desktop).toContain(`href="${sources.src}"`);
-
-    // Both preloads fetch with priority - the LCP request must not queue.
-    for (const tag of imagePreloads) expect(tag).toContain('fetchpriority="high"');
-  });
-
-  it("ships every candidate file the shell and the <picture> name", () => {
-    const candidateUrls = new Set<string>([
-      sources.src,
-      ...(sources.mobileSrc ? [sources.mobileSrc] : []),
-      ...(sources.mobileSrcSet ?? "").split(",").map((candidate) => candidate.trim().split(" ")[0]),
-    ]);
-    candidateUrls.delete("");
-    expect(candidateUrls.size).toBeGreaterThanOrEqual(3);
-    for (const url of candidateUrls) {
-      const onDisk = path.join(process.cwd(), "public", url);
-      expect(existsSync(onDisk), `${url} must exist under public/`).toBe(true);
-    }
+  it("leaves campaign artwork to the live hero query", () => {
+    expect(imagePreloads).toHaveLength(0);
+    expect(shell).not.toContain("electronics-products-1600x686.webp");
+    expect(shell).not.toContain("electronics-products-480x270.webp");
   });
 });
 
@@ -118,11 +79,9 @@ describe("homepage shell LCP plumbing", () => {
  *     no handoff script and cannot race. The last test proves that behavior
  *     against the real react-dom rather than asserting it in a comment.
  *
- *  2. Geometry. The mirrored navbar, promo band and hero box must match what
- *     `MarketplaceNavbar`, `MarqueeBanner` and `HeroSlider`'s pending stage
- *     render in that first commit - same classes, same order, same hero
- *     <picture> bytes - or the swap shifts layout and spends the CLS this shell
- *     exists to protect. A change to those components must change this file.
+ *  2. Geometry. The mirrored navbar and hero box must match what
+ *     `MarketplaceNavbar` and `HeroSlider`'s pending stage render in that first
+ *     commit. A change to those components must change this file.
  *
  *  3. Reachability of `/`. Every other route is served this same document when
  *     no prerendered copy exists, so the in-shell guard has to drop it for any
@@ -159,7 +118,7 @@ describe("the first-paint shell", () => {
     expect(shellBody).toContain(
       '<nav class="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2]">',
     );
-    expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-4">');
+    expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-3">');
     // Below md the right side collapses to the hamburger (p-2.5 + h-5 = 40px),
     // then the mobile search field (h-11) stacks under the row.
     expect(shellBody).toContain('<div class="flex items-center gap-0.5 sm:gap-1 shrink-0 ml-auto">');
@@ -167,33 +126,25 @@ describe("the first-paint shell", () => {
     expect(shellBody).toContain('<div class="p-2.5 rounded-full hidden md:inline-flex">');
     expect(shellBody).toContain('<div class="mt-3 lg:hidden">');
     expect(shellBody).toContain('class="h-11 w-full rounded-full border border-[#E8E8E8]');
-    // At lg the desktop form's 48px field inside its 1px border drives the row.
-    expect(shellBody).toContain('<div class="hidden lg:flex flex-1 items-center justify-center px-2">');
-    expect(shellBody).toContain('class="h-12 w-full border-0 bg-transparent');
+    // At lg the compact desktop field drives the row.
+    expect(shellBody).toContain('<div class="hidden flex-1 items-center justify-center px-1 lg:flex">');
+    expect(shellBody).toContain('class="h-11 w-full border-0 bg-transparent');
   });
 
-  it("mirrors the band and hero box with byte-for-byte the preloaded picture", () => {
+  it("mirrors the public hero-first geometry without a guessed campaign", () => {
     expect(shellBody).toContain('<h1 class="sr-only">');
     expect(shellBody).toContain('<main class="flex flex-col pb-8">');
     expect(shellBody).toContain(
       '<div class="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">',
     );
     expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">');
-    expect(shellBody).toContain('<div class="grid grid-cols-1 lg:grid-cols-[260px_1fr_220px] gap-4">');
+    expect(shellBody).toContain('<div class="grid grid-cols-1 gap-4">');
     expect(shellBody).toContain('<div class="min-w-0">');
-    // HeroSlider's slides-container box: base aspect 16/9 floored at 240px on
-    // phones - the box the swap must reproduce to the pixel.
+    // HeroSlider's pending box: base aspect 16/9 floored at 240px on phones.
     expect(shellBody).toContain(
-      'class="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]"',
+      'class="relative aspect-[16/9] min-h-[240px] w-full animate-pulse bg-[#F3EEE9] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px] dark:bg-[#28282B]"',
     );
-    // The picture must be the same request the head preloads - one download,
-    // reused by both documents, so the swap repaints the identical box.
-    expect(shellBody).toContain(
-      `<source media="(max-width: 640px)" srcset="${sources.mobileSrcSet}" width="${sources.mobileWidth}" height="${sources.mobileHeight}" type="image/webp" />`,
-    );
-    expect(shellBody).toContain(
-      `<img src="${sources.src}" width="${sources.width}" height="${sources.height}" alt="" class="h-full w-full object-cover opacity-100" loading="eager" fetchpriority="high" decoding="async" />`,
-    );
+    expect(shellBody).not.toContain("electronics-products-1600x686.webp");
   });
   it("states the same English copy the first React commit resolves from t()", () => {
     const en = JSON.parse(
@@ -203,47 +154,14 @@ describe("the first-paint shell", () => {
     for (const key of ["dailyDeals", "topSellers", "newDrops"]) {
       expect(shellBody, `nav.${key}`).toContain(`>${en.nav[key]}</a>`);
     }
-    // MarqueeBanner's ITEMS are English literals, mirrored verbatim - and the
-    // shell's track is frozen (React installs the animated one, starting at 0).
-    for (const label of [
-      "Browse electronics",
-      "New arrivals this week",
-      "Review delivery terms",
-    ]) {
-      expect(shellBody, label).toContain(label);
-    }
+    expect(shellBody).not.toContain("MarqueeBanner");
     expect(shellBody).not.toContain("animate-[marquee");
   });
 
-  it("paints the default hero copy in the shell, byte-aligned with the slider's pending stage", () => {
-    // Reported defect: first paint showed a bare image and the text popped in
-    // seconds later, when the Home query resolved. The badge/title/description/
-    // CTA are now part of the static shell - and of HeroSlider's pending stage,
-    // which reads the same constants from src/lib/heroDefaults.ts (mirroring
-    // the one hero-enabled database row). Edit the row -> update the constant ->
-    // this test keeps the shell honest against it.
-    expect(shellBody).toContain(`>${DEFAULT_HERO_COPY.badge}</span>`);
-    expect(shellBody).toContain(`>${DEFAULT_HERO_COPY.title}</h2>`);
-    // The description's only escapable character is `&`; its newline is kept
-    // (after normalizing CRLF, the way the HTML parser does) so the shell's
-    // textContent matches React's string exactly.
-    const escapedDescription = DEFAULT_HERO_COPY.description.replace(/&/g, "&amp;");
-    expect(shellBody.replace(/\r\n/g, "\n")).toContain(`>${escapedDescription}</p>`);
-    expect(shellBody).toContain(`>${DEFAULT_HERO_COPY.ctaLabel}</a>`);
-    expect(shellBody).toContain(`href="${DEFAULT_HERO_COPY.ctaLink}"`);
-
-    // Same overlay shape the pending stage emits, in the same order as the
-    // artwork and gradient: artwork -> gradient -> overlay.
-    const artworkAt = shellBody.indexOf("<picture");
-    const gradientAt = shellBody.indexOf('style="background: linear-gradient(');
-    const overlayAt = shellBody.indexOf('<div class="absolute inset-0 flex items-center overflow-hidden">');
-    expect(artworkAt).toBeGreaterThan(-1);
-    expect(gradientAt).toBeGreaterThan(artworkAt);
-    expect(overlayAt).toBeGreaterThan(gradientAt);
-
-    // The CTA is decorative while the shell stands - out of the tab order,
-    // asserted where it is introduced (the global rule below covers the rest).
-    expect(shellBody).toMatch(/<a href="\/collections\/electronics-products"[^>]*tabindex="-1"/);
+  it("keeps unverified campaign copy out of the static shell", () => {
+    expect(shellBody).not.toContain("Electronics products");
+    expect(shellBody).not.toContain("Shop collection");
+    expect(shellBody).toContain("animate-pulse");
   });
 
   it("links the crawl graph from the static homepage", () => {

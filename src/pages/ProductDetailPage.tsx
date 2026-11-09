@@ -738,25 +738,6 @@ export default function ProductDetailPage() {
               </>
             )}
 
-            <section aria-label="Delivery and returns" className="rounded-2xl border border-[#E8E8E8] bg-white p-3 dark:border-[#222222] dark:bg-[#181818]">
-              <div className="flex items-start gap-3">
-                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#16803C] dark:text-[#5EE38B]" />
-                <div className="min-w-0">
-                  <p className="text-xs font-bold">Delivery{deliveryDestination ? ` to ${deliveryDestination}` : ""}</p>
-                  <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{policies.shipping?.summary ?? "Choose a destination to confirm delivery cost and timing."}</p>
-                </div>
-              </div>
-              {policies.returns?.summary && (
-                <div className="mt-3 flex items-start gap-3 border-t border-[#E8E8E8] pt-3 dark:border-[#2A2A2A]">
-                  <Shield className="mt-0.5 h-4 w-4 shrink-0 text-[#16803C] dark:text-[#5EE38B]" />
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold">Returns & refunds</p>
-                    <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{policies.returns.summary}</p>
-                  </div>
-                </div>
-              )}
-            </section>
-
             <div className="flex items-center gap-4">
               <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]" aria-label="Quantity">
                 <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!canPurchase || quantity <= 1} aria-label="Decrease quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">−</button>

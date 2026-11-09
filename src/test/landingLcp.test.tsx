@@ -9,10 +9,10 @@
  *
  * Two halves are pinned here:
  *
- *   1. On a cold load the hero artwork IS in the first render (it is the LCP
- *      element - if it waited for `load` the regression this whole mechanism
- *      exists to prevent would be back), and the feed Container is present as a
- *      DIRECT child of <main> with loading skeletons.
+ *   1. On a cold load the hero geometry IS in the first render, but campaign
+ *      artwork waits for the live hero query so an unverified image cannot flash
+ *      before the real campaign. The feed Container is present as a DIRECT child
+ *      of <main> with loading skeletons.
  *
  *   2. On a client-side navigation nothing is held back, so the feed never
  *      appears empty mid-session.
@@ -89,14 +89,13 @@ function renderLanding() {
 const productFeed = () => document.querySelector("main > .order-4");
 
 describe("landing first-commit contract", () => {
-  it("paints the hero artwork and feed skeleton immediately", () => {
+  it("paints the stable hero stage and feed skeleton immediately", () => {
     renderLanding();
 
-    // The LCP element is in the FIRST render - it must not wait for `load`.
-    // HeroArtwork's <img> always carries the desktop src; the mobile rendition
-    // is the <source> in the same <picture>.
-    expect(document.querySelector('img[src*="electronics-products-1600x686"]')).not.toBeNull();
-    expect(document.querySelector('source[srcset*="electronics-products-480x270"]')).not.toBeNull();
+    // The hero box is in the FIRST render, but no campaign image is shown until
+    // the authoritative hero query resolves.
+    expect(document.querySelector('section[aria-label="Featured collections"]')).not.toBeNull();
+    expect(document.querySelector('section[aria-label="Featured collections"] img')).toBeNull();
 
     // A slow window load must not hide products. The feed is present immediately
     // and its grid owns the loading skeleton while data is pending.

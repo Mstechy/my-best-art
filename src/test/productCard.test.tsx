@@ -42,4 +42,29 @@ describe("ProductCard", () => {
     expect(screen.getByText("Options available")).toBeInTheDocument();
     expect(screen.getByText("Only 3 left")).toBeInTheDocument();
   });
+
+  it("places price directly after the title when optional details are absent", () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter>
+          <ProductCard
+            product={{
+              id: "compact-product",
+              title: "Compact product",
+              price: 25,
+              stockQuantity: 20,
+            }}
+            formatPrice={(amount) => `$${amount}`}
+          />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    const heading = screen.getByRole("heading", { name: "Compact product" });
+    const price = screen.getByText("$25");
+    expect(heading).not.toHaveClass("min-h-10");
+    expect(price).toBeInTheDocument();
+    expect(heading.compareDocumentPosition(price) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByText("Options available")).not.toBeInTheDocument();
+  });
 });

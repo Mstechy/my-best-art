@@ -5,12 +5,19 @@ import { ArrowLeft, Mail, ShoppingBag, Loader2, CheckCircle2 } from "lucide-reac
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useSEO } from "@/hooks/useSEO";
 
 export default function ForgotPasswordPage() {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+
+  useSEO({
+    title: "Reset your password",
+    description: "Request a secure password reset link for your Tradibu account.",
+    url: "/auth/forgot-password",
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

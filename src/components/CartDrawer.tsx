@@ -125,7 +125,7 @@ export default function CartDrawer() {
                   <div className="flex items-center gap-2 mt-auto pt-2">
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="h-6 w-6 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                      className="h-11 w-11 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
                       aria-label={`Decrease quantity of ${item.title}`}
                     >
                       <Minus className="h-2.5 w-2.5" />
@@ -134,14 +134,14 @@ export default function CartDrawer() {
                     <button
                       onClick={() => updateQuantity(item.id, item.quantity + 1)}
                       disabled={item.quantity >= item.stock_quantity}
-                      className="h-6 w-6 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                      className="h-11 w-11 rounded-lg border border-[#E8E8E8] dark:border-[#222222] flex items-center justify-center hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
                       aria-label={`Increase quantity of ${item.title}`}
                     >
                       <Plus className="h-2.5 w-2.5" />
                     </button>
                     <button
                       onClick={() => removeItem(item.id)}
-                      className="ml-auto h-6 w-6 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      className="ml-auto h-11 w-11 rounded-lg flex items-center justify-center text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                       aria-label={`Remove ${item.title} from cart`}
                     >
                       <Trash2 className="h-3 w-3" />
@@ -156,7 +156,7 @@ export default function CartDrawer() {
         {items.length > 0 && (
           <div className="sticky bottom-0 z-10 px-5 py-4 border-t border-[#F2F3F5] dark:border-[#1A1A1A] space-y-3 bg-white dark:bg-[#111111] pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Total</span>
+              <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Subtotal</span>
               <span className="text-xl font-bold text-[#111111] dark:text-[#FAF5F2]">{formatPrice(totalPrice)}</span>
             </div>
             <Link to="/checkout" onClick={() => setIsOpen(false)} className="block w-full py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold text-center hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors">

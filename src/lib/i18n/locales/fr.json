@@ -3,8 +3,8 @@
     "dailyDeals": "Bonnes Affaires",
     "topSellers": "Meilleures Ventes",
     "newDrops": "Nouveautés",
-    "searchPlaceholder": "Rechercher des produits, marques et catégories",
-    "searchPlaceholderMobile": "Rechercher des produits",
+    "searchPlaceholder": "Rechercher des produits, marques et boutiques",
+    "searchPlaceholderMobile": "Rechercher des produits, marques et boutiques",
     "search": "Rechercher",
     "allCategories": "Toutes les catégories",
     "searchInCategory": "Rechercher dans {{category}}",
@@ -32,7 +32,8 @@
     "analysingImage": "Analyse de l'image…",
     "switchLanguage": "Changer de langue",
     "suggestionCategory": "Catégorie",
-    "suggestionProduct": "Produit"
+    "suggestionProduct": "Produit",
+    "deliveryTo": "Livrer à"
   },
   "home": {
     "browse": "Parcourir",
@@ -53,6 +54,9 @@
     "joinTradibu": "Rejoignez Tradibu",
     "joinTradibuDesc": "Créez votre boutique sur Tradibu",
     "shopByCategory": "Acheter par catégorie",
+    "marketplaceTitle": "Marché en ligne",
+    "marketplaceSubtitle": "Achetez auprès de vendeurs indépendants",
+    "featuredProduct": "Produit en vedette",
     "pageTitle": "Place de marché en ligne pour des achats fiables",
     "pageTitleLong": "Place de marché en ligne pour des achats fiables | Tradibu",
     "bestSellers": "Meilleures ventes",
@@ -149,6 +153,8 @@
   },
   "marketplace": {
     "title": "Marketplace",
+    "catalogueRegionDescription": "Les produits et les informations de livraison s'adaptent a votre destination.",
+    "browseCategoriesDescription": "Parcourez les rayons avant d'affiner les resultats.",
     "breadcrumbHome": "Accueil",
     "breadcrumbCategories": "Catégories",
     "browseCategory": "Explorez les catégories des vendeurs indépendants.",

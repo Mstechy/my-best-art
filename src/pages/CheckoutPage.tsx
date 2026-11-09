@@ -15,6 +15,7 @@ import { Link } from "react-router-dom";
 import { COUNTRIES, phonePlaceholder } from "@/lib/countries";
 import { ANALYTICS_CONSENT_CHANGED } from "@/lib/analyticsConsent";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
+import { useSEO } from "@/hooks/useSEO";
 import {
   createMarketplaceOrders,
   initializeMarketplacePayment,
@@ -46,7 +47,7 @@ interface SavedAddress {
 // phones so iOS Safari does not zoom the page when the field is focused
 // (see the matching rule in src/index.css), and `min-w-0` lets it shrink
 // inside narrow grid columns instead of widening the card.
-const inputCls = "w-full min-w-0 h-10 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-base md:text-sm text-[#111111] dark:text-[#FAF5F2] placeholder-[#C0C0B8] dark:placeholder-[#444444] outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors";
+const inputCls = "w-full min-w-0 h-11 px-3 rounded-xl border border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-base md:text-sm text-[#111111] dark:text-[#FAF5F2] placeholder-[#C0C0B8] dark:placeholder-[#444444] outline-none focus:border-[#111111] dark:focus:border-[#555555] transition-colors";
 const labelCls = "block text-[10px] font-bold uppercase tracking-wider text-[#6E6C64] dark:text-[#A0A0A0] mb-1";
 
 export default function CheckoutPage() {
@@ -55,6 +56,11 @@ export default function CheckoutPage() {
   const displayCurrency = currency?.code || "NGN";
   const { user } = useAuth();
   const navigate = useNavigate();
+  useSEO({
+    title: "Checkout",
+    description: "Review delivery details, shipping and payment before placing your Tradibu order.",
+    url: "/checkout",
+  });
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState({ name: "", phone: "", street: "", city: "", state: "", zip: "", country: preferredCountry || "NG" });
   const [saved, setSaved] = useState<SavedAddress[]>([]);
@@ -297,7 +303,7 @@ export default function CheckoutPage() {
                 <div className="mb-5">
                   <label htmlFor="checkout-saved-address" className={labelCls}>Saved Addresses</label>
                   <Select onValueChange={(id) => { const a = saved.find(s => s.id === id); if (a) applySaved(a); }}>
-                    <SelectTrigger id="checkout-saved-address" className="h-10 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm text-[#111111] dark:text-[#FAF5F2]">
+                    <SelectTrigger id="checkout-saved-address" className="h-11 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm text-[#111111] dark:text-[#FAF5F2]">
                       <SelectValue placeholder="Choose a saved address" />
                     </SelectTrigger>
                     <SelectContent className="bg-white dark:bg-[#1A1A1A] border-[#E8E8E8] dark:border-[#222222]">
@@ -342,7 +348,7 @@ export default function CheckoutPage() {
                   <div>
                     <label htmlFor="checkout-country" className={labelCls}>Country *</label>
                     <Select value={address.country} onValueChange={country => { addressCountryDirtyRef.current = true; setAddress(p => ({ ...p, country })); }}>
-                      <SelectTrigger id="checkout-country" className="h-10 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
+                      <SelectTrigger id="checkout-country" className="h-11 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
                       <SelectContent>{COUNTRIES.map(country => <SelectItem key={country.code} value={country.code}>{country.name}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>
@@ -351,11 +357,13 @@ export default function CheckoutPage() {
 
               <div className="mt-4 space-y-2">
                 <label className="flex items-center gap-2 text-xs cursor-pointer text-[#6E6C64] dark:text-[#A0A0A0]">
-                  <input type="checkbox" checked={saveAfter} onChange={e => setSaveAfter(e.target.checked)} className="h-3.5 w-3.5 rounded border-[#E8E8E8] dark:border-[#222222] accent-[#111111]" />
+                  <input id="checkout-save-address" name="save_address" type="checkbox" checked={saveAfter} onChange={e => setSaveAfter(e.target.checked)} className="h-3.5 w-3.5 rounded border-[#E8E8E8] dark:border-[#222222] accent-[#111111]" />
                   <BookmarkPlus className="h-3.5 w-3.5" /> Save this address for future orders
                 </label>
                 {saveAfter && (
                   <input
+                    id="checkout-address-label"
+                    name="address_label"
                     className={inputCls}
                     value={addressLabel}
                     onChange={e => setAddressLabel(e.target.value)}

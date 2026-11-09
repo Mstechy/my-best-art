@@ -18,7 +18,10 @@ export default function FlashDealCountdown({ endAt, className }: FlashDealCountd
     const tick = () => {
       const diff = target - Date.now();
       if (diff <= 0) {
-        setRemaining({ d: 0, h: 0, m: 0, s: 0 });
+        // An expired deal must not advertise a fake active countdown. The
+        // parent can still render the product, but this optional promotion
+        // state disappears cleanly once its real end time has passed.
+        setRemaining(null);
         return;
       }
       const d = Math.floor(diff / (1000 * 60 * 60 * 24));

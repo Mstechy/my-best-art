@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Eye, EyeOff, ArrowRight, ShoppingBag, Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import { useSEO } from "@/hooks/useSEO";
 
 export default function LoginPage() {
   const { t } = useTranslation();
@@ -17,6 +18,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useSEO({
+    title: "Sign in",
+    description: "Sign in to your Tradibu account to manage orders, saved products and purchases.",
+    url: "/auth/login",
+  });
 
   // Redirect if already logged in
   useEffect(() => {

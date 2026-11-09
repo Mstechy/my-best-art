@@ -40,4 +40,26 @@ describe("ProgressiveImage", () => {
 
     expect(onError).toHaveBeenCalledOnce();
   });
+
+  it("keeps intrinsic dimensions on the image without fixing the responsive wrapper size", () => {
+    render(
+      <ProgressiveImage
+        src="/product-image.webp"
+        alt="Responsive product image"
+        width={900}
+        height={900}
+        fit="contain"
+        loading="eager"
+        wrapperClassName="responsive-image-wrapper"
+      />,
+    );
+
+    const image = screen.getByRole("img", { name: "Responsive product image" });
+    const wrapper = document.querySelector(".responsive-image-wrapper");
+
+    expect(image).toHaveAttribute("width", "900");
+    expect(image).toHaveAttribute("height", "900");
+    expect(image).toHaveClass("object-contain");
+    expect(wrapper).not.toHaveStyle({ width: "900px", height: "900px" });
+  });
 });

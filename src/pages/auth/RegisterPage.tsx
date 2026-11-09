@@ -9,6 +9,7 @@ import {
   Eye, EyeOff, ArrowRight, ShoppingBag, Loader2,
   ShoppingCart, Store, Check,
 } from "lucide-react";
+import { useSEO } from "@/hooks/useSEO";
 
 type Role = "seller" | "buyer";
 
@@ -25,6 +26,12 @@ export default function RegisterPage() {
   const [showForm, setShowForm] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+
+  useSEO({
+    title: "Create an account",
+    description: "Create a Tradibu buyer or seller account and start using the marketplace.",
+    url: "/auth/register",
+  });
 
   // Redirect if already logged in
   useEffect(() => {

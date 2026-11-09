@@ -13,6 +13,7 @@ interface ProductImageProps {
   className?: string;
   loading?: "lazy" | "eager";
   fetchPriority?: "high" | "low" | "auto";
+  fit?: "cover" | "contain";
   style?: React.CSSProperties;
 }
 
@@ -24,6 +25,7 @@ export default function ProductImage({
   className,
   loading = "lazy",
   fetchPriority = "auto",
+  fit = "cover",
   style,
 }: ProductImageProps) {
   const hasSource = !!src && src.trim().length > 0;
@@ -90,8 +92,11 @@ export default function ProductImage({
           srcSet={responsiveSrc?.srcSet}
           sizes={responsiveSrc?.sizes}
           alt={alt}
+          width={900}
+          height={900}
           loading={loading}
           fetchPriority={fetchPriority}
+          fit={fit}
           wrapperClassName="h-full w-full"
           className="group-hover:scale-105"
           onError={handleError}

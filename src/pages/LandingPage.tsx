@@ -1,12 +1,11 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Link, useNavigate } from "react-router-dom";
-import { Package, Zap, Clock, UserPlus, Flame, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Package, Flame, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import PromoBanner from "@/components/PromoBanner";
-import MarqueeBanner from "@/components/MarqueeBanner";
 import SiteFooter from "@/components/SiteFooter";
 import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
@@ -15,7 +14,6 @@ import HeroSlider from "@/components/HeroSlider";
 import { Container } from "@/components/ui/Container";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
-import CategorySidebar from "@/components/CategorySidebar";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useHomepageSnapshotData, FEEDS, type FeedItem } from "@/hooks/useHomepage";
 import { useCatalogueFeed, FEED_PAGE_SIZE, type CatalogueFeedItem } from "@/hooks/useCatalogueFeed";
@@ -23,6 +21,7 @@ import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { clampDisplayAspectRatio } from "@/lib/imageHeaders";
 import { useSEO } from "@/hooks/useSEO";
 import { HOME_PAGE_SEO } from "@/lib/pageSeo";
+import RegionalPreferences from "@/components/RegionalPreferences";
 
 /**
  * The catch-all section - the one section that keeps going.
@@ -120,7 +119,6 @@ export default function LandingPage() {
   const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
-  const navigate = useNavigate();
 
   // Copy lives in HOME_PAGE_SEO so index.html's static <head> and this render
   // cannot describe `/` differently. src/test/pageSeoHead.test.ts fails if the
@@ -250,9 +248,9 @@ export default function LandingPage() {
   // safe-area padding. The reservation now mirrors the bar exactly: 4rem + inset
   // below md, where the bar hides, back to the flat 4rem.
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
-    <MarketplaceNavbar categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
+    <MarketplaceNavbar showRegionalPreferences={false} categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
-    <CartDrawer /><PromoBanner /><MarqueeBanner />
+    <CartDrawer /><PromoBanner />
     <main className="flex flex-col pb-8">
       {snapshotError && (
         <Container className="order-first w-full pt-4">
@@ -276,29 +274,23 @@ export default function LandingPage() {
           </div>
         </Container>
       )}
-      {/* Hero area — 3 columns: category tree | carousel | promo tiles (AliExpress/1688 style) */}
+      {/* Public homepage opening: identity, hero, then one category discovery block. */}
       {/* Single H1 for the page. Visually hidden so the hero design is untouched,
           but present for crawlers and screen readers (the hero artwork already
           states the value proposition visually). */}
       <h1 className="sr-only">{t("home.pageTitle")}</h1>
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
-          <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr_220px] gap-4">
-            {/* Left: category tree (hidden on mobile) */}
-            <div className="hidden lg:block">
-              <CategorySidebar
-                selectedCategory={null}
-                onSelect={(slug) => { navigate(slug ? `/categories/${slug}` : "/marketplace"); }}
-                categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, parent_id: category.parent_id }))}
-              />
-            </div>
-
-            {/* Center: hero carousel.
+          <div className="mb-4 lg:hidden">
+            <p className="text-2xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2]">{t("home.marketplaceTitle")}</p>
+            <p className="mt-1 text-sm text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.marketplaceSubtitle")}</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4">
+            {/* Primary hero carousel.
 
                 ONE HeroSlider instance across both states: `slides=[]` while the
-                hero query is in flight (the slider paints its pending stage - the
-                default artwork index.html preloads, in the same box, behind the
-                same default overlay), live slides the moment they arrive.
+                hero query is in flight (the slider paints a neutral pending stage),
+                then live slides the moment they arrive.
 
                 The previous shape swapped a placeholder <div> for the slider on
                 data arrival, which REPLACED the <picture>/<img> DOM nodes and
@@ -315,45 +307,40 @@ export default function LandingPage() {
               {heroLoading || heroSlides.length > 0 ? (
                 <HeroSlider slides={heroSlides} />
               ) : heroFallback ? (
-                <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[16/9] min-h-[240px] w-full overflow-hidden rounded-2xl bg-[#111111] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[360px] lg:min-h-[440px]">
-                  {heroFallback.product_images[0]?.image_url && <ProductImage src={heroFallback.product_images[0].image_url} alt={heroFallback.title} className="h-full w-full object-cover opacity-60 transition-transform duration-500 group-hover:scale-105" loading="eager" />}
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent" />
-                  <div className="relative z-10 flex max-w-md flex-col justify-end p-6 text-white md:p-10"><p className="line-clamp-2 text-2xl font-bold md:text-4xl">{heroFallback.title}</p><p className="mt-3 text-sm text-white/80">{formatPrice(heroFallback.price, heroFallback.currency)}</p></div>
+                <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[16/9] min-h-[240px] w-full overflow-hidden rounded-2xl bg-[#F6C75D] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]">
+                  <div className="absolute inset-y-0 right-0 w-[56%] overflow-hidden">
+                    {heroFallback.product_images[0]?.image_url && <ProductImage src={heroFallback.product_images[0].image_url} alt={heroFallback.title} fit="contain" className="h-full w-full p-3 transition-transform duration-500 group-hover:scale-105 md:p-6" loading="eager" />}
+                  </div>
+                  <div className="relative z-10 flex w-[62%] flex-col justify-center bg-gradient-to-r from-[#F6C75D] via-[#F6C75D]/95 to-transparent p-5 pr-2 text-[#111111] md:p-10">
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#5C3A00]">{t("home.featuredProduct")}</p>
+                    <p className="line-clamp-3 text-xl font-black leading-tight md:text-4xl">{heroFallback.title}</p>
+                    <p className="mt-3 text-sm font-semibold text-[#5C3A00]">{formatPrice(heroFallback.price, heroFallback.currency)}</p>
+                  </div>
                 </Link>
               ) : null}
             </div>
 
-            {/* Right: promo tiles (hidden on mobile) */}
-            <div className="hidden lg:flex flex-col gap-4">
-              {feeds.flash_deals.length > 0 && (
-                <Link to="/marketplace?sort=flash_deals" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#E53935] to-[#C62828] p-4 flex flex-col justify-between text-white transition hover:shadow-lg">
-                  <Zap className="h-6 w-6" />
-                  <div>
-                    <p className="text-lg font-bold leading-tight">{t("home.hotDeals")}</p>
-                    <p className="text-xs text-white/80 mt-1">{t("home.hotDealsDesc")}</p>
-                  </div>
-                </Link>
-              )}
-              <Link to="/marketplace?sort=newest" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#111111] to-[#333333] dark:from-[#FAF5F2] dark:to-[#EAE0D8] p-4 flex flex-col justify-between text-white dark:text-[#111111] transition hover:shadow-lg">
-                <Clock className="h-6 w-6" />
-                <div>
-                  <p className="text-lg font-bold leading-tight">{t("home.newArrivals")}</p>
-                  <p className="text-xs text-white/80 dark:text-[#111111]/70 mt-1">{t("home.newArrivalsDesc")}</p>
-                </div>
-              </Link>
-              <Link to="/auth/register" className="group flex-1 rounded-2xl bg-gradient-to-br from-[#F6C75D] to-[#E8A93D] p-4 flex flex-col justify-between text-[#111111] transition hover:shadow-lg">
-                <UserPlus className="h-6 w-6" />
-                <div>
-                  <p className="text-lg font-bold leading-tight">{t("home.joinTradibu")}</p>
-                  <p className="text-xs text-[#111111]/70 mt-1">{t("home.joinTradibuDesc")}</p>
-                </div>
-              </Link>
+          </div>
+
+          <div className="mt-4 border-t border-[#E8E8E8] pt-3 dark:border-[#333333]">
+            <div className="grid gap-3 sm:grid-cols-3 sm:items-center">
+              <div className="min-w-0 rounded-xl bg-white px-3 py-2 dark:bg-[#1A1A1A]">
+                <RegionalPreferences showLabel className="w-full justify-start px-0 py-0" />
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2 dark:bg-[#1A1A1A]">
+                <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.verifiedSellers")}</p>
+                <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.verifiedSellersDesc")}</p>
+              </div>
+              <div className="rounded-xl bg-white px-3 py-2 dark:bg-[#1A1A1A]">
+                <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.fastDelivery")}</p>
+                <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.fastDeliveryDesc")}</p>
+              </div>
             </div>
           </div>
+
         </Container>
       </div>
 
-      {/* Flash Deal Rail — real countdowns from flash_deal_end_at */}
       {feeds.flash_deals.length > 0 && (
         // content-visibility lets the browser skip laying out and painting this
         // rail until it nears the viewport, which is where the audit's ~1.1s of
