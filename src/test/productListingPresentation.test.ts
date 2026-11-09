@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { getLaptopTitleQuality, getPhoneTitleQuality, getProductListingMeta } from "@/lib/productListingPresentation";
+import { getAudioTitleQuality, getLaptopTitleQuality, getPhoneTitleQuality, getProductListingMeta } from "@/lib/productListingPresentation";
 
 describe("product listing presentation", () => {
   it("shows compact iPhone comparison signals without repeating the title", () => {
@@ -70,5 +70,20 @@ describe("product listing presentation", () => {
       brand: "Lenovo",
       variants: { productType: { key: "laptops" }, categoryAttributes: { model: "ThinkPad T14 Gen 5" } },
     })).toBeNull();
+  });
+
+  it("shows audio comparison signals and validates the model identity", () => {
+    expect(getProductListingMeta({
+      title: "Sony WH-1000XM5",
+      variants: {
+        productType: { key: "audio" },
+        categoryAttributes: { model: "WH-1000XM5", connectivity: "Bluetooth 5.2", battery: "30 hours", color: "Black" },
+      },
+    })).toEqual(["Bluetooth 5.2", "30 hours", "Black"]);
+    expect(getAudioTitleQuality({
+      title: "Wireless headphones",
+      brand: "Sony",
+      variants: { productType: { key: "audio" }, categoryAttributes: { model: "WH-1000XM5" } },
+    })).toContain("brand and model");
   });
 });

@@ -39,6 +39,11 @@ const isLaptopListing = (input: ProductListingPresentationInput) => {
   return cleanValue(variants?.productType?.key) === "laptops";
 };
 
+const isAudioListing = (input: ProductListingPresentationInput) => {
+  const variants = readVariants(input.variants);
+  return cleanValue(variants?.productType?.key) === "audio";
+};
+
 /**
  * Return the short comparison signals that belong under a catalogue price.
  *
@@ -51,10 +56,13 @@ export function getProductListingMeta(input: ProductListingPresentationInput): s
   const attributes = readVariants(input.variants)?.categoryAttributes ?? {};
   const phone = isPhoneListing(input);
   const laptop = isLaptopListing(input);
+  const audio = isAudioListing(input);
   const keys = phone
     ? ["model", "storage", "network", "connectivity", "cosmeticCondition", "condition"]
     : laptop
       ? ["model", "processor", "ram", "storage", "storageType", "screenSize", "condition"]
+      : audio
+        ? ["model", "connectivity", "battery", "color", "condition"]
     : ["model", "storage", "color", "size", "condition"];
   const title = normalize(cleanValue(input.title));
   const seen = new Set<string>();
@@ -76,7 +84,7 @@ export function getProductListingMeta(input: ProductListingPresentationInput): s
  * Seller-facing title guidance for high-consideration phone listings. This is
  * advisory: it never blocks an existing listing or changes the saved title.
  */
-function getTitleQuality(input: ProductListingPresentationInput, productLabel: "phone" | "laptop"): string | null {
+function getTitleQuality(input: ProductListingPresentationInput, productLabel: "phone" | "laptop" | "audio"): string | null {
   const title = normalize(cleanValue(input.title));
   const attributes = readVariants(input.variants)?.categoryAttributes ?? {};
   const brand = normalize(cleanValue(input.brand) || cleanValue(attributes.brand));
@@ -94,6 +102,7 @@ function getTitleQuality(input: ProductListingPresentationInput, productLabel: "
 export function getProductTitleQuality(input: ProductListingPresentationInput): string | null {
   if (isPhoneListing(input)) return getTitleQuality(input, "phone");
   if (isLaptopListing(input)) return getTitleQuality(input, "laptop");
+  if (isAudioListing(input)) return getTitleQuality(input, "audio");
   return null;
 }
 
@@ -103,4 +112,8 @@ export function getPhoneTitleQuality(input: ProductListingPresentationInput): st
 
 export function getLaptopTitleQuality(input: ProductListingPresentationInput): string | null {
   return isLaptopListing(input) ? getTitleQuality(input, "laptop") : null;
+}
+
+export function getAudioTitleQuality(input: ProductListingPresentationInput): string | null {
+  return isAudioListing(input) ? getTitleQuality(input, "audio") : null;
 }

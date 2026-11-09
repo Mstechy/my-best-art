@@ -248,7 +248,7 @@ export default function LandingPage() {
   // safe-area padding. The reservation now mirrors the bar exactly: 4rem + inset
   // below md, where the bar hides, back to the flat 4rem.
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
-    <MarketplaceNavbar showRegionalPreferences={false} categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
+    <MarketplaceNavbar showRegionalPreferences={false} showCart={false} categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <CartDrawer /><PromoBanner />
     <main className="flex flex-col pb-8">

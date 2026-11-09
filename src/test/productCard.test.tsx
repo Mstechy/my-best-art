@@ -91,4 +91,30 @@ describe("ProductCard", () => {
     expect(screen.getByText("New / sealed")).toBeInTheDocument();
     expect(screen.getByText("₦933,000")).toBeInTheDocument();
   });
+
+  it("keeps marketplace cards to the normal scan signals", () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter>
+          <ProductCard
+            product={{ ...product, meta: ["Bluetooth 5.2", "30 hours"], soldCount: 120, stockQuantity: 3 }}
+            formatPrice={(amount) => `$${amount}`}
+            sellerName="Verified store"
+            shippingLabel="Ships to Nigeria"
+            hasVariants
+            density="marketplace"
+          />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    expect(screen.getByRole("heading", { name: product.title })).toBeInTheDocument();
+    expect(screen.getByText("$120")).toBeInTheDocument();
+    expect(screen.getByText("4.6")).toBeInTheDocument();
+    expect(screen.getByText("Verified store")).toBeInTheDocument();
+    expect(screen.queryByText("Bluetooth 5.2")).not.toBeInTheDocument();
+    expect(screen.queryByText("120 sold")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ships to Nigeria")).not.toBeInTheDocument();
+    expect(screen.queryByText("Options available")).not.toBeInTheDocument();
+  });
 });

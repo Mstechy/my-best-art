@@ -1,9 +1,8 @@
 import { useRef, useState, type ChangeEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Search, Camera, MapPin, Flame, LayoutGrid, Tag, Zap, ShoppingCart, User, Heart } from "lucide-react";
+import { Search, Camera, MapPin, Flame, LayoutGrid, Tag, Zap, User, Heart } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/hooks/useAuth";
-import { useCart } from "@/hooks/useCart";
 import { cn } from "@/lib/utils";
 import { createVisualHash } from "@/lib/visualHash";
 import { analyzeVisualProductImage, readImageDataUrl } from "@/lib/visualProductSearch";
@@ -28,7 +27,6 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { totalItems, setIsOpen: openCart } = useCart();
   const [query, setQuery] = useState("");
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const [imageSearchLoading, setImageSearchLoading] = useState(false);
@@ -92,12 +90,6 @@ export function HomeHeader({ categories = [], className }: HomeHeaderProps) {
                 <Heart className="h-5 w-5" />
               </Link>
             )}
-            <button onClick={() => openCart(true)} aria-label={t("nav.openCart")} className="relative rounded-full p-2 text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#2A2A2D]">
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-[#F6C75D] text-[10px] font-bold text-[#5C3A00]">{totalItems}</span>
-              )}
-            </button>
             <Link to={user ? "/buyer/dashboard" : "/auth/login"} aria-label={t("nav.account", "Account")} className="rounded-full p-2 text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#2A2A2D]">
               <User className="h-5 w-5" />
             </Link>

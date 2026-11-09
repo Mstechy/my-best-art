@@ -70,6 +70,8 @@ type ProductCardProps = {
    * bandwidth with the pixels the shopper is actually waiting for.
    */
   priority?: boolean;
+  /** Keep catalogue cards scannable; the detail page owns full specifications. */
+  density?: "default" | "marketplace";
 };
 
 const badgeTone = {
@@ -110,6 +112,7 @@ export function ProductCard({
   removeFromWishlistLabel,
   imageAspectRatio,
   priority = false,
+  density = "default",
   className,
 }: ProductCardProps) {
   const { t } = useTranslation();
@@ -121,6 +124,7 @@ export function ProductCard({
   const unavailable = product.stockQuantity === 0;
   const lowStock = product.stockQuantity > 0 && product.stockQuantity <= 5;
   const showPurchaseActions = Boolean(onBuyNow || onAddToCart);
+  const isMarketplaceCard = density === "marketplace";
   // Reserved height of the media box. `aspect-ratio` (not a fixed height) so the
   // box tracks the column width the masonry layout gives it, and `object-fit:
   // cover` in the image means an extreme upload loses edges instead of breaking
@@ -208,7 +212,7 @@ export function ProductCard({
             />
             {product.flashDealEndAt && <FlashDealCountdown endAt={product.flashDealEndAt} className="mt-1 text-destructive" />}
           </div>
-          {product.meta && product.meta.length > 0 && (
+          {!isMarketplaceCard && product.meta && product.meta.length > 0 && (
             <p className="mt-1 flex flex-wrap items-center gap-x-1 text-[11px] text-muted-foreground">
               {product.meta.map((value, index) => (
                 <span key={`${value}-${index}`} className="inline-flex items-center gap-1">
@@ -218,8 +222,8 @@ export function ProductCard({
               ))}
             </p>
           )}
-          {product.brand && <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{product.brand}</p>}
-          {(product.soldCount ?? 0) > 0 && (
+          {!isMarketplaceCard && product.brand && <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{product.brand}</p>}
+          {!isMarketplaceCard && (product.soldCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">
               <span className="font-semibold text-foreground">
                 {product.soldCount!.toLocaleString()}{(product.soldCount ?? 0) >= 1000 ? "+" : ""}
@@ -241,7 +245,7 @@ export function ProductCard({
               {sellerVerified && <CheckCircle2 className="h-3 w-3 shrink-0 text-seller" />}
             </div>
           )}
-          {(shippingLabel || hasVariants || lowStock) && (
+          {!isMarketplaceCard && (shippingLabel || hasVariants || lowStock) && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
               {shippingLabel && (
                 <span className="inline-flex min-w-0 items-center gap-1">
@@ -262,7 +266,7 @@ export function ProductCard({
           )}
         </div>
 
-        <div className="pt-3">
+        <div className={showPurchaseActions ? "pt-3" : undefined}>
           {showPurchaseActions && (
             // `relative z-10`: these are the only controls that must win the tap
             // over the stretched card link.

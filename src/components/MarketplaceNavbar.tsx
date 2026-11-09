@@ -31,6 +31,7 @@ interface MarketplaceNavbarProps {
   selectedCategory?: string | null;
   onCategoryChange?: (value: string | null) => void;
   showRegionalPreferences?: boolean;
+  showCart?: boolean;
 }
 
 const DEFAULT_SUGGESTIONS = ["wireless earbuds", "smart watch", "fashion", "home decor"];
@@ -54,6 +55,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   selectedCategory = null,
   onCategoryChange,
   showRegionalPreferences = true,
+  showCart = true,
 }: MarketplaceNavbarProps) {
   const { t } = useTranslation();
   const { user, role, signOut } = useAuth();
@@ -424,7 +426,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           )}
 
           {/* Cart - hidden on mobile (BottomTabBar handles Cart on mobile) */}
-          <button
+          {showCart && <button
             onClick={() => openCart(true)}
             className="relative p-2.5 rounded-full hover:bg-[#F2F3F5] dark:hover:bg-[#222222] text-[#111111] dark:text-[#FAF5F2] transition-colors hidden md:inline-flex"
             aria-label={t("nav.openCart")}
@@ -435,12 +437,12 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 {totalItems}
               </span>
             )}
-          </button>
+          </button>}
 
           {/* The reference keeps cart access visible in the compact header as
               well as the bottom navigation, so a shopper never has to hunt for
               the current basket from the first viewport. */}
-          <button
+          {showCart && <button
             type="button"
             onClick={() => openCart(true)}
             className="relative grid h-10 w-10 place-items-center rounded-full text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:hidden"
@@ -452,7 +454,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 {totalItems > 99 ? "99+" : totalItems}
               </span>
             )}
-          </button>
+          </button>}
 
           {/* Hamburger drawer */}
           <Sheet>
