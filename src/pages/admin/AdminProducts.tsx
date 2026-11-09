@@ -16,6 +16,7 @@ import ProductImage from "@/components/product/ProductImage";
 import { getUserFacingErrorMessage, logError } from "@/lib/errorHandler";
 import { useAdminProducts } from "@/hooks/useAdminDashboard";
 import { useCurrency } from "@/hooks/useCurrency";
+import { getListingOfferSummary } from "@/lib/sellerListing/listingEntities";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Product {
@@ -174,8 +175,9 @@ export default function AdminProducts() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {products.map(product => (
-                      <TableRow key={product.id}>
+                    {products.map(product => {
+                      const offerSummary = getListingOfferSummary(product);
+                      return <TableRow key={product.id}>
                         <TableCell>
                           <div className="flex items-center gap-3">
                             <div className="h-10 w-10 rounded-lg bg-muted overflow-hidden shrink-0">
@@ -196,8 +198,11 @@ export default function AdminProducts() {
                             <p className="text-xs text-muted-foreground">{product.seller_email}</p>
                           </div>
                         </TableCell>
-                        <TableCell className="font-medium">{formatPrice(product.price)}</TableCell>
-                        <TableCell>{product.stock_quantity}</TableCell>
+                        <TableCell className="font-medium">
+                          {offerSummary ? `From ${formatPrice(offerSummary.lowestPrice ?? product.price)}` : formatPrice(product.price)}
+                          {offerSummary && <p className="mt-0.5 text-[10px] font-normal text-muted-foreground">{offerSummary.variantCount} SKUs · {offerSummary.optionGroupCount} options</p>}
+                        </TableCell>
+                        <TableCell>{offerSummary ? offerSummary.availableStock : product.stock_quantity}</TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
                             <Badge variant={product.status === "active" ? "default" : "secondary"} className="capitalize text-xs">
@@ -249,14 +254,15 @@ export default function AdminProducts() {
                             </Button>
                           </div>
                         </TableCell>
-                      </TableRow>
-                    ))}
+                      </TableRow>;
+                    })}
                   </TableBody>
                 </Table>
               </div>
               <div className="space-y-3 p-3 md:hidden">
-                {products.map(product => (
-                  <article key={product.id} className="rounded-xl border border-border/60 bg-background p-3">
+                {products.map(product => {
+                  const offerSummary = getListingOfferSummary(product);
+                  return <article key={product.id} className="rounded-xl border border-border/60 bg-background p-3">
                     <div className="flex min-w-0 items-start gap-3">
                       <div className="h-16 w-16 shrink-0 overflow-hidden rounded-lg bg-muted">
                         {product.primary_image ? (
@@ -277,8 +283,8 @@ export default function AdminProducts() {
                       </div>
                     </div>
                     <div className="mt-3 grid grid-cols-2 gap-2 rounded-lg bg-muted/40 p-2">
-                      <div><p className="text-[10px] text-muted-foreground">Price</p><p className="text-sm font-semibold text-foreground">{formatPrice(product.price)}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Stock</p><p className="text-sm font-semibold text-foreground">{product.stock_quantity}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Price</p><p className="text-sm font-semibold text-foreground">{offerSummary ? `From ${formatPrice(offerSummary.lowestPrice ?? product.price)}` : formatPrice(product.price)}</p>{offerSummary && <p className="text-[10px] text-muted-foreground">{offerSummary.variantCount} SKUs · {offerSummary.optionGroupCount} options</p>}</div>
+                      <div><p className="text-[10px] text-muted-foreground">Stock</p><p className="text-sm font-semibold text-foreground">{offerSummary ? offerSummary.availableStock : product.stock_quantity}</p></div>
                     </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {product.status === "active" && !product.is_approved && <Button type="button" size="sm" onClick={() => approveProduct(product.id)} className="gap-1 bg-success text-success-foreground hover:bg-success/90"><CheckCircle2 className="h-3 w-3" />Approve</Button>}
@@ -287,8 +293,8 @@ export default function AdminProducts() {
                       {product.seller_id === user?.id ? <Link to="/seller/products"><Button type="button" size="sm" variant="outline" className="gap-1"><Pencil className="h-3 w-3" />Edit</Button></Link> : <Link to={`/product/${product.id}`} target="_blank"><Button type="button" size="sm" variant="ghost" className="gap-1 text-muted-foreground">View</Button></Link>}
                       <Button type="button" size="sm" variant="outline" onClick={() => setDeleteId(product.id)} className="gap-1 text-destructive hover:text-destructive"><Trash2 className="h-3 w-3" />Delete</Button>
                     </div>
-                  </article>
-                ))}
+                  </article>;
+                })}
               </div>
               </>
             )}

@@ -30,6 +30,8 @@ interface ProductVariant {
   price: number | null;
   stock_quantity: number;
   image_url: string | null;
+  is_active?: boolean;
+  sort_order?: number;
 }
 
 interface Product {
@@ -67,6 +69,7 @@ interface Product {
   meta_description: string | null;
   low_stock_threshold: number | null;
   description_images: { url: string; alt: string | null; order: number }[] | null;
+  product_variants?: ProductVariant[] | null;
   created_at: string;
   updated_at?: string | null;
   moderation_reason?: string | null;
@@ -112,6 +115,7 @@ interface ProductRow {
   meta_description: string | null;
   low_stock_threshold: number | null;
   description_images: { url: string; alt: string | null; order: number }[] | null;
+  product_variants?: ProductVariant[] | null;
   created_at: string;
   updated_at?: string | null;
   moderation_reason?: string | null;
@@ -122,6 +126,37 @@ interface ProductRow {
 }
 
 type ListingHealthIssue = { message: string; tone: "warning" | "critical" };
+
+type ListingOfferSummary = {
+  variantCount: number;
+  optionGroupCount: number;
+  availableStock: number;
+  lowestPrice: number | null;
+};
+
+/** Derive the compact, authoritative offer facts for seller/admin listing rows. */
+function getListingOfferSummary(product: Pick<Product, "price" | "stock_quantity" | "product_variants">): ListingOfferSummary | null {
+  const variants = (product.product_variants ?? []).filter((variant) => variant.is_active !== false);
+  if (variants.length === 0) return null;
+
+  const optionGroups = new Set<string>();
+  const prices = variants
+    .map((variant) => variant.price)
+    .filter((price): price is number => typeof price === "number" && Number.isFinite(price) && price > 0);
+
+  variants.forEach((variant) => {
+    Object.keys(variant.option_values ?? {}).forEach((key) => {
+      if (variant.option_values?.[key]?.trim()) optionGroups.add(key);
+    });
+  });
+
+  return {
+    variantCount: variants.length,
+    optionGroupCount: optionGroups.size,
+    availableStock: variants.reduce((total, variant) => total + Math.max(0, Number(variant.stock_quantity) || 0), 0),
+    lowestPrice: prices.length > 0 ? Math.min(...prices) : product.price,
+  };
+}
 
 function getListingHealth(product: Product, category?: Category): ListingHealthIssue[] {
   const issues: ListingHealthIssue[] = [];
@@ -181,5 +216,5 @@ function normalizeProductRow(row: ProductRow): Product {
   };
 }
 
-export type { Category, ProductImage, ProductVariant, Product, ProductRow, ListingHealthIssue };
-export { getListingHealth, normalizeProductRow };
+export type { Category, ProductImage, ProductVariant, Product, ProductRow, ListingHealthIssue, ListingOfferSummary };
+export { getListingHealth, getListingOfferSummary, normalizeProductRow };

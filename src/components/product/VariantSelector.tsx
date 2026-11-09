@@ -10,7 +10,7 @@ interface VariantSelectorProps {
 }
 
 const NON_ATTRIBUTE_KEYS = new Set(["sku", "id", "product_id"]);
-const ATTRIBUTE_ORDER = ["storage", "color", "colour", "size", "ram", "capacity", "condition"];
+const ATTRIBUTE_ORDER = ["storage", "ram", "processor", "color", "colour", "size", "capacity", "condition"];
 
 const formatAttributeLabel = (key: string) => {
   const labels: Record<string, string> = {

@@ -29,6 +29,23 @@ describe("product listing presentation", () => {
     })).toEqual([]);
   });
 
+  it("shows laptop comparison signals in price-driving order", () => {
+    expect(getProductListingMeta({
+      title: "Lenovo ThinkPad T14 Gen 5",
+      categorySlug: "electronics",
+      variants: {
+        productType: { key: "laptops" },
+        categoryAttributes: {
+          model: "ThinkPad T14 Gen 5",
+          processor: "Intel Core Ultra 7",
+          ram: "16GB",
+          storage: "512GB",
+          storageType: "NVMe SSD",
+        },
+      },
+    })).toEqual(["Intel Core Ultra 7", "16GB", "512GB"]);
+  });
+
   it("warns sellers when an iPhone title cannot be compared reliably", () => {
     expect(getPhoneTitleQuality({
       title: "Phone for sale",

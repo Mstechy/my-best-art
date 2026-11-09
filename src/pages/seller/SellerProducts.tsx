@@ -33,7 +33,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
 
 import { MAX_PRODUCT_IMAGES, MAX_IMAGE_SIZE_BYTES, MAX_VIDEO_SIZE_BYTES, MAX_DOCUMENT_SIZE_BYTES, ACCEPTED_IMAGE_TYPES, LISTING_CURRENCIES, VARIATION_TYPES, variationTypeDetails, splitVariantValues, variantValueKey, optionColorVariantKey, deriveVariantAttributes, type UploadState, type ImageMediaItem, type DescriptionImageItem, type VideoMediaItem, type VariantDraft, type ProductFormDraft } from "@/lib/sellerListing/listingForm";
-import { getListingHealth, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
+import { getListingHealth, getListingOfferSummary, normalizeProductRow, type Category, type ProductVariant, type Product, type ProductRow } from "@/lib/sellerListing/listingEntities";
 import { formatModerationAge } from "@/lib/moderationQueue";
 import { clearListingCloudDraft, loadListingCloudDraft, saveListingCloudDraft } from "@/lib/listingCloudDraft";
 
@@ -207,7 +207,7 @@ export default function SellerProducts() {
     setLoading(true);
     let query = supabase
       .from("products")
-      .select("*, product_images(*)", { count: "exact" })
+      .select("*, product_images(*), product_variants(id, option_values, sku, price, stock_quantity, image_url, is_active, sort_order)", { count: "exact" })
       .eq("seller_id", user.id)
       .order("created_at", { ascending: false })
       .range(productPage * productPageSize, (productPage + 1) * productPageSize - 1);
@@ -2608,6 +2608,7 @@ export default function SellerProducts() {
             {filtered.map((product) => {
               const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
               const healthIssues = getListingHealth(product, categories.find((category) => category.id === product.category_id));
+              const offerSummary = getListingOfferSummary(product);
               return (
                 <Card key={product.id} className="border-border/60 overflow-hidden group">
                   <div className="aspect-video bg-muted relative">
@@ -2640,7 +2641,7 @@ export default function SellerProducts() {
                         : <Badge variant="outline" className="mt-2 border-amber-500/40 text-amber-700 dark:text-amber-300" title={googleIssues.join("; ")}>Google status: Needs fix — {googleIssues[0]}</Badge>;
                     })()}
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="font-display text-lg font-bold text-foreground">{formatPrice(product.price)}</span>
+                      <span className="font-display text-lg font-bold text-foreground">{offerSummary ? `From ${formatPrice(offerSummary.lowestPrice ?? product.price)}` : formatPrice(product.price)}</span>
                       {product.compare_at_price && (
                         <span className="text-sm text-muted-foreground line-through">{formatPrice(product.compare_at_price)}</span>
                       )}
@@ -2649,7 +2650,8 @@ export default function SellerProducts() {
                       <p className="text-xs text-muted-foreground mt-1">{product.brand} / {product.condition}</p>
                     )}
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
-                      <p className="text-xs text-muted-foreground">Stock: {product.stock_quantity}</p>
+                      <p className="text-xs text-muted-foreground">Stock: {offerSummary ? offerSummary.availableStock : product.stock_quantity}</p>
+                      {offerSummary && <Badge variant="outline" className="text-[10px]">{offerSummary.variantCount} SKUs · {offerSummary.optionGroupCount} options</Badge>}
                       {getApprovalBadge(product)}
                       <Badge variant="outline" className="gap-1 text-[10px]">
                         <Globe className="h-3 w-3" />

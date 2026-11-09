@@ -28,7 +28,15 @@ const isPhoneListing = (input: ProductListingPresentationInput) => {
   const variants = readVariants(input.variants);
   const productType = cleanValue(variants?.productType?.key);
   const category = cleanValue(input.categorySlug).toLowerCase();
-  return PHONE_PRODUCT_TYPES.has(productType) || PHONE_CATEGORIES.has(category);
+  // A broad electronics category can contain laptops, audio and appliances.
+  // Prefer the saved product type whenever it exists; only use the legacy
+  // category fallback for older listings that have no product type metadata.
+  return productType ? PHONE_PRODUCT_TYPES.has(productType) : PHONE_CATEGORIES.has(category);
+};
+
+const isLaptopListing = (input: ProductListingPresentationInput) => {
+  const variants = readVariants(input.variants);
+  return cleanValue(variants?.productType?.key) === "laptops";
 };
 
 /**
@@ -42,8 +50,11 @@ const isPhoneListing = (input: ProductListingPresentationInput) => {
 export function getProductListingMeta(input: ProductListingPresentationInput): string[] {
   const attributes = readVariants(input.variants)?.categoryAttributes ?? {};
   const phone = isPhoneListing(input);
+  const laptop = isLaptopListing(input);
   const keys = phone
     ? ["model", "storage", "network", "connectivity", "cosmeticCondition", "condition"]
+    : laptop
+      ? ["model", "processor", "ram", "storage", "storageType", "screenSize", "condition"]
     : ["model", "storage", "color", "size", "condition"];
   const title = normalize(cleanValue(input.title));
   const seen = new Set<string>();

@@ -2,7 +2,7 @@
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
-import { getListingHealth, normalizeProductRow, type ProductRow } from "@/lib/sellerListing/listingEntities";
+import { getListingHealth, normalizeProductRow, type ProductRow, type ProductVariant } from "@/lib/sellerListing/listingEntities";
 
 export interface AdminProfile {
   user_id: string;
@@ -24,6 +24,7 @@ export interface AdminProduct {
   primary_image?: string;
   category_name?: string;
   category_slug?: string;
+  product_variants?: ProductVariant[] | null;
   listing_health: { message: string; tone: "warning" | "critical" }[];
   moderation_reason?: string | null;
   moderation_next_action?: string | null;
@@ -59,7 +60,7 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
       const start = page * pageSize;
       let productsQuery = supabase
         .from("products")
-        .select("*, product_images(image_url, is_primary)", { count: "exact" })
+        .select("*, product_images(image_url, is_primary), product_variants(id, option_values, sku, price, stock_quantity, image_url, is_active, sort_order)", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(start, start + pageSize - 1);
 
@@ -112,6 +113,7 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
           seller_name: profile?.full_name || undefined,
           seller_email: profile?.email || undefined,
           primary_image: primary?.image_url,
+          product_variants: (p as any).product_variants ?? null,
           category_name: category?.name,
           category_slug: category?.slug,
           listing_health: listingHealth,
