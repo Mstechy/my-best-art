@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2, Flame, Heart, Layers3, Package, ShoppingCart, Star, Truck } from "lucide-react";
+import { Flame, Heart, Layers3, Package, ShoppingCart, Star, Truck } from "lucide-react";
 
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import ProductImage from "@/components/product/ProductImage";
@@ -36,8 +36,6 @@ export type ProductCardProduct = {
 type ProductCardProps = {
   product: ProductCardProduct;
   formatPrice: (amount: number) => string;
-  sellerName?: string;
-  sellerVerified?: boolean;
   shippingLabel?: string;
   hasVariants?: boolean;
   onProductClick?: () => void;
@@ -95,8 +93,6 @@ const safeAspectRatio = (ratio: number | undefined): number =>
 export function ProductCard({
   product,
   formatPrice,
-  sellerName,
-  sellerVerified = false,
   shippingLabel,
   hasVariants = false,
   onProductClick,
@@ -237,12 +233,6 @@ export function ProductCard({
               <span className="font-semibold text-foreground">{product.averageRating?.toFixed(1)}</span>
               <span className="text-muted-foreground/50">•</span>
               <span>{product.reviewCount ?? 0}</span>
-            </div>
-          )}
-          {sellerName && (
-            <div className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-              <span className="truncate">{sellerName}</span>
-              {sellerVerified && <CheckCircle2 className="h-3 w-3 shrink-0 text-seller" />}
             </div>
           )}
           {!isMarketplaceCard && (shippingLabel || hasVariants || lowStock) && (

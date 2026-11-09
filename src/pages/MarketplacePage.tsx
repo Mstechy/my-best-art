@@ -655,7 +655,6 @@ export default function MarketplacePage() {
                 <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {displayedProducts.map((product, index) => {
                     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
-                    const seller = sellerProfiles[product.seller_id];
                     const baseDiscount = product.compare_at_price && product.compare_at_price > product.price
                       ? Math.round((1 - product.price / product.compare_at_price) * 100) : null;
                     const flashActive = product.flash_deal_status === "active" && product.flash_deal_discount_percent && product.flash_deal_discount_percent > 0;
@@ -668,8 +667,6 @@ export default function MarketplacePage() {
                         formatPrice={formatPrice}
                         density="marketplace"
                         priority={index < 5}
-                        sellerName={seller?.full_name || undefined}
-                        sellerVerified={seller?.is_verified ?? false}
                         shippingLabel={shipsTo === "all" ? t("marketplace.shipsWorldwide") : t("marketplace.shipsToDestination", { destination: countryName(shipsTo) })}
                         hasVariants={Boolean(product.variants?.sizes?.length || product.variants?.colors?.length)}
                         onProductClick={() => {

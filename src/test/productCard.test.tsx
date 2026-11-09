@@ -26,8 +26,6 @@ describe("ProductCard", () => {
           <ProductCard
             product={product}
             formatPrice={(amount) => `$${amount}`}
-            sellerName="Verified store"
-            sellerVerified
             shippingLabel="Ships to Nigeria"
             hasVariants
           />
@@ -99,7 +97,6 @@ describe("ProductCard", () => {
           <ProductCard
             product={{ ...product, meta: ["Bluetooth 5.2", "30 hours"], soldCount: 120, stockQuantity: 3 }}
             formatPrice={(amount) => `$${amount}`}
-            sellerName="Verified store"
             shippingLabel="Ships to Nigeria"
             hasVariants
             density="marketplace"
@@ -111,7 +108,6 @@ describe("ProductCard", () => {
     expect(screen.getByRole("heading", { name: product.title })).toBeInTheDocument();
     expect(screen.getByText("$120")).toBeInTheDocument();
     expect(screen.getByText("4.6")).toBeInTheDocument();
-    expect(screen.getByText("Verified store")).toBeInTheDocument();
     expect(screen.queryByText("Bluetooth 5.2")).not.toBeInTheDocument();
     expect(screen.queryByText("120 sold")).not.toBeInTheDocument();
     expect(screen.queryByText("Ships to Nigeria")).not.toBeInTheDocument();
