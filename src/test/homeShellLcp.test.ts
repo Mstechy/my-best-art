@@ -138,7 +138,7 @@ describe("the first-paint shell", () => {
       '<div class="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">',
     );
     expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">');
-    expect(shellBody).toContain('<div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.75fr)_minmax(250px,0.75fr)]">');
+    expect(shellBody).toContain('<div class="min-w-0">');
     expect(shellBody).toContain('<div class="min-w-0">');
     // HeroSlider's pending box: base aspect 16/9 floored at 220px on phones.
     expect(shellBody).toContain(

@@ -2,7 +2,6 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Package, Flame, ArrowRight, AlertCircle, RefreshCw, Store, Truck, ShieldCheck } from "lucide-react";
-import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import PromoBanner from "@/components/PromoBanner";
@@ -135,14 +134,6 @@ export default function LandingPage() {
   const populatedCategories = useMemo(() => categories.filter(category => (counts[category.id] ?? 0) > 0), [categories, counts]);
   const visibleCategories = useMemo(() => populatedCategories.slice(0, 8), [populatedCategories]);
   const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
-  const newArrivalPreview = useMemo(() => {
-    const candidates = [
-      ...(feeds.new_arrivals ?? []),
-      ...(feeds.trending ?? []),
-      ...(feeds.best_sellers ?? []),
-    ];
-    return candidates.find((product) => product.id !== heroFallback?.id) ?? null;
-  }, [feeds, heroFallback]);
 
   // â”€â”€ Home feed: masonry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Returning from a product page re-renders the feed from the IndexedDB cache and
@@ -226,6 +217,7 @@ export default function LandingPage() {
           formatPrice={(amount) => formatPrice(amount, card.currency)}
           imageAspectRatio={getAspectRatio(card)}
           priority={state.priority}
+          density="marketplace"
         />
       );
     },
@@ -288,7 +280,7 @@ export default function LandingPage() {
       <h1 className="sr-only">{t("home.pageTitle")}</h1>
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.75fr)_minmax(250px,0.75fr)]">
+          <div className="min-w-0">
             {/* Primary hero carousel.
 
                 ONE HeroSlider instance across both states: `slides=[]` while the
@@ -323,45 +315,21 @@ export default function LandingPage() {
               ) : null}
             </div>
 
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-3">
-              <Link to={newArrivalPreview ? `/product/${newArrivalPreview.id}` : "/marketplace?sort=newest"} className="group relative min-h-[112px] overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-3 dark:border-[#333333] dark:bg-[#1A1A1A] lg:min-h-0 lg:p-4">
-                <div className="relative z-10 max-w-[70%]">
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9E6300]">{t("home.newArrivals")}</p>
-                  <p className="mt-1.5 line-clamp-2 text-[13px] font-black leading-tight text-[#111111] dark:text-[#FAF5F2] lg:mt-2 lg:text-sm">{newArrivalPreview?.title ?? t("home.newArrivalsDesc")}</p>
-                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#555550] dark:text-[#A0A0A0] lg:mt-3 lg:text-xs">{t("common.viewAll")} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
-                </div>
-                {newArrivalPreview?.product_images[0]?.image_url && <ProductImage src={newArrivalPreview.product_images[0].image_url} alt="" fit="contain" className="absolute bottom-0 right-0 h-20 w-20 transition-transform duration-300 group-hover:scale-105 lg:h-28 lg:w-28" loading="eager" />}
-              </Link>
-              <Link to="/auth/register?redirect=/seller/dashboard" className="group flex min-h-[112px] flex-col justify-between rounded-2xl bg-[#111111] p-3 text-white transition-colors hover:bg-[#242424] dark:bg-[#F6C75D] dark:text-[#111111] dark:hover:bg-[#FFD875] lg:min-h-0 lg:p-4">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#F6C75D] dark:text-[#5C3A00]">{t("home.joinTradibu")}</p>
-                  <p className="mt-1.5 text-[13px] font-black leading-tight lg:mt-2 lg:text-sm">{t("home.joinTradibuDesc")}</p>
-                </div>
-                <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-white/75 dark:text-[#5C3A00] lg:mt-3 lg:text-xs">{t("nav.sellWithUs")} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
-              </Link>
-            </div>
-
           </div>
 
-          <div className="mt-4 border-t border-[#E8E8E8] pt-3 dark:border-[#333333]">
-            <div className="flex snap-x gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:items-stretch">
-              <div className="flex min-w-[190px] snap-start items-start gap-2 rounded-xl bg-white px-3 py-3 sm:min-w-0 dark:bg-[#1A1A1A]">
+          <div className="mt-3 border-t border-[#E8E8E8] pt-3 dark:border-[#333333]">
+            <div className="flex snap-x gap-4 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:gap-3 sm:overflow-visible">
+              <div className="flex min-w-[175px] snap-start items-center gap-1.5 text-xs text-[#555550] sm:min-w-0 dark:text-[#A0A0A0]">
                 <Store className="mt-0.5 h-4 w-4 shrink-0 text-[#9E6300]" aria-hidden="true" />
-                <div><p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.verifiedSellers")}</p>
-                <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.verifiedSellersDesc")}</p>
-                </div>
+                <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.verifiedSellers")}</span>
               </div>
-              <div className="flex min-w-[190px] snap-start items-start gap-2 rounded-xl bg-white px-3 py-3 sm:min-w-0 dark:bg-[#1A1A1A]">
+              <div className="flex min-w-[175px] snap-start items-center gap-1.5 text-xs text-[#555550] sm:min-w-0 dark:text-[#A0A0A0]">
                 <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#9E6300]" aria-hidden="true" />
-                <div><p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.fastDelivery")}</p>
-                <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.fastDeliveryDesc")}</p>
-                </div>
+                <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.fastDelivery")}</span>
               </div>
-              <div className="flex min-w-[190px] snap-start items-start gap-2 rounded-xl bg-white px-3 py-3 sm:min-w-0 dark:bg-[#1A1A1A]">
+              <div className="flex min-w-[175px] snap-start items-center gap-1.5 text-xs text-[#555550] sm:min-w-0 dark:text-[#A0A0A0]">
                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#9E6300]" aria-hidden="true" />
-                <div><p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.easyReturns")}</p>
-                <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.easyReturnsDesc")}</p>
-                </div>
+                <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.easyReturns")}</span>
               </div>
             </div>
           </div>
@@ -376,45 +344,19 @@ export default function LandingPage() {
         // jumping while the real height is still unknown.
         <Container className="w-full order-2 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_600px]">
           <SectionHeader title={t("home.flashDeals")} subtitle={<span className="inline-flex items-center gap-2"><Flame className="h-4 w-4 text-destructive" />{t("home.limitedTime")}</span>} href="/marketplace?sort=flash_deals" linkLabel={t("common.viewAll")} className="mb-5" />
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            {feeds.flash_deals.slice(0, 5).map(product => {
-              const image = product.product_images.find(i => i.is_primary)?.image_url || product.product_images[0]?.image_url;
-              const discount = product.compare_at_price && product.compare_at_price > product.price
-                ? Math.round((1 - product.price / product.compare_at_price) * 100)
-                : null;
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+            {feeds.flash_deals.slice(0, 5).map((product, index) => {
+              const card = fromFeedItem(product);
+              const discount = discountLabel(card.price, card.compareAtPrice);
               return (
-                <Link
+                <ProductCard
                   key={product.id}
-                  to={`/product/${product.id}`}
-                  className="group overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white transition hover:-translate-y-0.5 hover:shadow-md dark:border-[#222222] dark:bg-[#1A1A1A]"
-                >
-                  <div className="relative aspect-square bg-[#F2F3F5] dark:bg-[#202020]">
-                    {image ? (
-                      <ProductImage src={image} alt={product.title} className="group-hover:scale-105" loading="lazy" />
-                    ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <Package className="h-8 w-8 text-[#6E6C64]" />
-                      </div>
-                    )}
-                    {discount && (
-                      <span className="absolute left-3 top-3 rounded bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">-{discount}%</span>
-                    )}
-                    {product.flash_deal_end_at && (
-                      <div className="absolute bottom-2 inset-x-2 flex justify-center">
-                        <FlashDealCountdown endAt={product.flash_deal_end_at} />
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-3">
-                    <h3 className="line-clamp-2 min-h-10 text-sm font-semibold leading-snug">{product.title}</h3>
-                    <div className="mt-2 flex items-baseline gap-2">
-                      <span className="font-bold text-destructive">{formatPrice(product.price)}</span>
-                      {product.compare_at_price && product.compare_at_price > product.price && (
-                        <span className="text-xs text-[#6E6C64] dark:text-[#A0A0A0] line-through">{formatPrice(product.compare_at_price)}</span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                  product={{ id: card.id, title: card.title, price: card.price, compareAtPrice: card.compareAtPrice, stockQuantity: card.stockQuantity, averageRating: card.averageRating, reviewCount: card.reviewCount, imageUrl: card.imageUrl, imageSmallUrl: card.imageSmallUrl, flashDealEndAt: card.flashDealEndAt, badge: discount ? { label: discount, tone: "destructive" as const } : null }}
+                  formatPrice={(amount) => formatPrice(amount, card.currency)}
+                  imageAspectRatio={clampDisplayAspectRatio(card.imageWidth, card.imageHeight)}
+                  priority={index < 4}
+                  density="marketplace"
+                />
               );
             })}
           </div>
@@ -424,40 +366,38 @@ export default function LandingPage() {
 
       {/* Shop by Category - Grid */}
       <Container className="w-full order-1 py-8 [content-visibility:auto] [contain-intrinsic-size:auto_320px]">
-        {/* No "All categories" link: the department cards below are the way into a
-            department now, and this header used to be a second route to the bare
-            /categories directory sitting right above them. */}
+        {/* Keep category discovery compact: these are navigation tokens, not
+            promotional cards. The final token opens the complete department index. */}
         <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} className="mb-5" />
         {loading ? (
-          <div className="flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-6">
+          <div className="flex snap-x gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible md:grid-cols-6 lg:grid-cols-8">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="min-w-[148px] overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 dark:border-[#222222] dark:bg-[#1A1A1A] sm:min-w-0">
-                <div className="aspect-[4/3] animate-pulse rounded-lg bg-[#F3EEE9] dark:bg-[#28282B]" />
-                <div className="pt-3"><div className="h-4 w-2/3 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /></div>
+              <div key={index} className="flex min-w-[76px] flex-col items-center gap-2 sm:min-w-0">
+                <div className="h-16 w-16 animate-pulse rounded-full bg-[#F3EEE9] dark:bg-[#28282B]" />
+                <div className="h-3 w-14 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" />
               </div>
             ))}
           </div>
         ) : visibleCategories.length ? (
-          <div className="flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-6">
+          <div className="flex snap-x gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-4 sm:overflow-visible md:grid-cols-6 lg:grid-cols-8">
             {visibleCategories.slice(0, 6).map(category => (
               <Link
                 key={category.id}
                 to={`/categories/${category.slug}`}
-                className="group min-w-[148px] overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#111111] hover:shadow-lg dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2] sm:min-w-0"
+                className="group flex min-w-[76px] snap-start flex-col items-center gap-2 text-center sm:min-w-0"
               >
-                <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F3EEE9] dark:bg-[#28282B]">
-                  {categoryImages[category.id] ? <img src={categoryImages[category.id]} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /> : <Package className="absolute inset-0 m-auto h-7 w-7 text-[#B49A75]" />}
+                <div className="relative h-16 w-16 overflow-hidden rounded-full border border-[#E8E8E8] bg-[#F3EEE9] transition group-hover:border-[#111111] group-hover:shadow-md dark:border-[#333333] dark:bg-[#28282B] dark:group-hover:border-[#FAF5F2]">
+                  {categoryImages[category.id] ? <img src={categoryImages[category.id]} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /> : <Package className="absolute inset-0 m-auto h-6 w-6 text-[#B49A75]" />}
                 </div>
-                <div className="pt-3">
-                  <p className="line-clamp-1 text-sm font-bold">{category.name}</p>
-                  <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{counts[category.id]} {counts[category.id] === 1 ? "product" : "products"}</p>
-                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-[#555550] group-hover:text-[#111111] dark:group-hover:text-white">Explore <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" /></span>
-                </div>
+                <span className="line-clamp-2 text-[11px] font-bold leading-tight">{category.name}</span>
+                <span className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{counts[category.id]}</span>
               </Link>
             ))}
-            <Link to="/categories" className="flex min-w-[148px] items-center justify-center rounded-xl border border-dashed border-[#C8C8C0] bg-white p-4 text-center text-xs font-semibold text-[#555550] transition hover:border-[#111111] hover:text-[#111111] dark:border-[#444444] dark:bg-[#1A1A1A] dark:text-[#A0A0A0] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] sm:min-w-0">
-              {t("home.allCategories")}
-              <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+            <Link to="/categories" className="group flex min-w-[76px] snap-start flex-col items-center gap-2 text-center sm:min-w-0">
+              <span className="grid h-16 w-16 place-items-center rounded-full border border-dashed border-[#C8C8C0] text-[#555550] transition group-hover:border-[#111111] dark:border-[#444444] dark:text-[#A0A0A0] dark:group-hover:border-[#FAF5F2]">
+                <ArrowRight className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <span className="text-[11px] font-bold leading-tight">{t("home.allCategories")}</span>
             </Link>
           </div>
         ) : (
