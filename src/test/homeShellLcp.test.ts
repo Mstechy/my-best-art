@@ -138,11 +138,11 @@ describe("the first-paint shell", () => {
       '<div class="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">',
     );
     expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">');
-    expect(shellBody).toContain('<div class="grid grid-cols-1 gap-4">');
+    expect(shellBody).toContain('<div class="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.75fr)_minmax(250px,0.75fr)]">');
     expect(shellBody).toContain('<div class="min-w-0">');
-    // HeroSlider's pending box: base aspect 16/9 floored at 240px on phones.
+    // HeroSlider's pending box: base aspect 16/9 floored at 220px on phones.
     expect(shellBody).toContain(
-      'class="relative aspect-[16/9] min-h-[240px] w-full animate-pulse bg-[#F3EEE9] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px] dark:bg-[#28282B]"',
+      'class="relative aspect-[16/9] min-h-[220px] w-full animate-pulse bg-[#F3EEE9] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px] dark:bg-[#28282B]"',
     );
     expect(shellBody).not.toContain("electronics-products-1600x686.webp");
   });

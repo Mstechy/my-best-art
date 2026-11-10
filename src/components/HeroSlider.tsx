@@ -142,8 +142,8 @@ function HeroCopy({
 
 const HeroSlider = memo(function HeroSlider({
   slides,
-  autoRotate = true,
-  defaultDuration = 5000,
+  autoRotate = false,
+  defaultDuration = 8000,
 }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -247,7 +247,7 @@ const HeroSlider = memo(function HeroSlider({
     >
       {/* Slides container */}
       <div
-        className="relative aspect-[16/9] min-h-[240px] w-full sm:min-h-[280px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]"
+        className="relative aspect-[16/9] min-h-[220px] w-full sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]"
         style={{ backgroundColor: "#1C1C1E" }}
       >
         {/* The pending stage reserves the final hero geometry but deliberately

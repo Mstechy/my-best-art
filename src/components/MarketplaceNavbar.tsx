@@ -32,6 +32,7 @@ interface MarketplaceNavbarProps {
   onCategoryChange?: (value: string | null) => void;
   showRegionalPreferences?: boolean;
   showCart?: boolean;
+  showPublicSecondaryNav?: boolean;
 }
 
 const DEFAULT_SUGGESTIONS = ["wireless earbuds", "smart watch", "fashion", "home decor"];
@@ -56,6 +57,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   onCategoryChange,
   showRegionalPreferences = true,
   showCart = true,
+  showPublicSecondaryNav = false,
 }: MarketplaceNavbarProps) {
   const { t } = useTranslation();
   const { user, role, signOut } = useAuth();
@@ -285,7 +287,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
           </Link>
 
           {/* Horizontal nav links */}
-          <div className="hidden shrink-0 items-center gap-4 text-xs font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85 lg:flex">
+          <div className={`${showPublicSecondaryNav ? "hidden" : "hidden lg:flex"} shrink-0 items-center gap-4 text-xs font-medium text-[#111111]/85 dark:text-[#FAF5F2]/85`}>
             <Link to="/marketplace?sort=flash_deals" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.dailyDeals")}</Link>
             <Link to="/marketplace?sort=best_sellers" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.topSellers")}</Link>
             <Link to="/marketplace?sort=newest" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("nav.newDrops")}</Link>
@@ -631,7 +633,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               </DialogContent>
             </Dialog>
 
-            <div className="mt-2 hidden flex-wrap items-center gap-2 lg:flex">
+            <div className={`${showPublicSecondaryNav ? "hidden" : "mt-2 hidden flex-wrap items-center gap-2 lg:flex"}`}>
               <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6E6C64] dark:text-[#A0A0A0]">
                 {t("nav.trending")}
               </span>
@@ -648,6 +650,29 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             </div>
           </>
           )}
+
+        {showPublicSecondaryNav && (
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto border-t border-[#E8E8E8] pt-2 text-xs dark:border-[#222222]">
+            <Link to="/categories" className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#111111] px-3 py-2 font-semibold text-white transition-colors hover:bg-[#2A2A2A] dark:bg-[#F6C75D] dark:text-[#111111]">
+              {t("nav.browseCategories")}
+            </Link>
+            <Link to="/marketplace?sort=flash_deals" className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-2 font-medium text-[#555550] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
+              {t("nav.dailyDeals")}
+            </Link>
+            <Link to="/marketplace?sort=newest" className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-2 font-medium text-[#555550] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
+              {t("nav.newDrops")}
+            </Link>
+            <Link to="/marketplace?sort=best_sellers" className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-2 font-medium text-[#555550] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
+              {t("nav.topSellers")}
+            </Link>
+            <Link to="/auth/register?redirect=/seller/dashboard" className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-2 font-medium text-[#555550] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">
+              {t("nav.sellWithUs")}
+            </Link>
+            <div className="ml-auto flex shrink-0 items-center border-l border-[#E8E8E8] pl-2 dark:border-[#333333]">
+              <RegionalPreferences showLabel />
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

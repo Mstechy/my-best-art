@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
-import { Package, Flame, ArrowRight, AlertCircle, RefreshCw } from "lucide-react";
+import { Package, Flame, ArrowRight, AlertCircle, RefreshCw, Store, Truck, ShieldCheck } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
@@ -21,7 +21,6 @@ import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import { clampDisplayAspectRatio } from "@/lib/imageHeaders";
 import { useSEO } from "@/hooks/useSEO";
 import { HOME_PAGE_SEO } from "@/lib/pageSeo";
-import RegionalPreferences from "@/components/RegionalPreferences";
 
 /**
  * The catch-all section - the one section that keeps going.
@@ -136,6 +135,14 @@ export default function LandingPage() {
   const populatedCategories = useMemo(() => categories.filter(category => (counts[category.id] ?? 0) > 0), [categories, counts]);
   const visibleCategories = useMemo(() => populatedCategories.slice(0, 8), [populatedCategories]);
   const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
+  const newArrivalPreview = useMemo(() => {
+    const candidates = [
+      ...(feeds.new_arrivals ?? []),
+      ...(feeds.trending ?? []),
+      ...(feeds.best_sellers ?? []),
+    ];
+    return candidates.find((product) => product.id !== heroFallback?.id) ?? null;
+  }, [feeds, heroFallback]);
 
   // â”€â”€ Home feed: masonry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Returning from a product page re-renders the feed from the IndexedDB cache and
@@ -248,7 +255,7 @@ export default function LandingPage() {
   // safe-area padding. The reservation now mirrors the bar exactly: 4rem + inset
   // below md, where the bar hides, back to the flat 4rem.
   return <div className="min-h-screen bg-[#FAFAFA] font-sans text-[#111111] antialiased dark:bg-[#121212] dark:text-[#FAF5F2] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
-    <MarketplaceNavbar showRegionalPreferences={false} showCart={false} categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
+    <MarketplaceNavbar showRegionalPreferences={false} showCart={false} showPublicSecondaryNav categories={populatedCategories.map(category => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <CartDrawer /><PromoBanner />
     <main className="flex flex-col pb-8">
@@ -281,11 +288,7 @@ export default function LandingPage() {
       <h1 className="sr-only">{t("home.pageTitle")}</h1>
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
-          <div className="mb-4 lg:hidden">
-            <p className="text-2xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2]">{t("home.marketplaceTitle")}</p>
-            <p className="mt-1 text-sm text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.marketplaceSubtitle")}</p>
-          </div>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.75fr)_minmax(250px,0.75fr)]">
             {/* Primary hero carousel.
 
                 ONE HeroSlider instance across both states: `slides=[]` while the
@@ -305,35 +308,60 @@ export default function LandingPage() {
                 loaded-but-empty case still falls through to the product hero. */}
             <div className="min-w-0">
               {heroLoading || heroSlides.length > 0 ? (
-                <HeroSlider slides={heroSlides} />
+                <HeroSlider slides={heroSlides} autoRotate={false} />
               ) : heroFallback ? (
-                <Link to={`/product/${heroFallback.id}`} className="group relative flex aspect-[16/9] min-h-[240px] w-full overflow-hidden rounded-2xl bg-[#F6C75D] sm:min-h-[280px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]">
+                <Link to="/marketplace?sort=newest" className="group relative flex aspect-[16/9] min-h-[220px] w-full overflow-hidden rounded-2xl bg-[#F6C75D] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]">
                   <div className="absolute inset-y-0 right-0 w-[56%] overflow-hidden">
                     {heroFallback.product_images[0]?.image_url && <ProductImage src={heroFallback.product_images[0].image_url} alt={heroFallback.title} fit="contain" className="h-full w-full p-3 transition-transform duration-500 group-hover:scale-105 md:p-6" loading="eager" />}
                   </div>
                   <div className="relative z-10 flex w-[62%] flex-col justify-center bg-gradient-to-r from-[#F6C75D] via-[#F6C75D]/95 to-transparent p-5 pr-2 text-[#111111] md:p-10">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#5C3A00]">{t("home.featuredProduct")}</p>
+                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#5C3A00]">{t("home.newArrivals")}</p>
                     <p className="line-clamp-3 text-xl font-black leading-tight md:text-4xl">{heroFallback.title}</p>
-                    <p className="mt-3 text-sm font-semibold text-[#5C3A00]">{formatPrice(heroFallback.price, heroFallback.currency)}</p>
+                    <span className="mt-4 inline-flex w-fit rounded-full bg-[#111111] px-4 py-2 text-xs font-semibold text-white">{t("common.viewAll")}</span>
                   </div>
                 </Link>
               ) : null}
             </div>
 
+            <div className="grid grid-cols-2 gap-2 lg:grid-cols-1 lg:gap-3">
+              <Link to={newArrivalPreview ? `/product/${newArrivalPreview.id}` : "/marketplace?sort=newest"} className="group relative min-h-[112px] overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white p-3 dark:border-[#333333] dark:bg-[#1A1A1A] lg:min-h-0 lg:p-4">
+                <div className="relative z-10 max-w-[70%]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#9E6300]">{t("home.newArrivals")}</p>
+                  <p className="mt-1.5 line-clamp-2 text-[13px] font-black leading-tight text-[#111111] dark:text-[#FAF5F2] lg:mt-2 lg:text-sm">{newArrivalPreview?.title ?? t("home.newArrivalsDesc")}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-[#555550] dark:text-[#A0A0A0] lg:mt-3 lg:text-xs">{t("common.viewAll")} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
+                </div>
+                {newArrivalPreview?.product_images[0]?.image_url && <ProductImage src={newArrivalPreview.product_images[0].image_url} alt="" fit="contain" className="absolute bottom-0 right-0 h-20 w-20 transition-transform duration-300 group-hover:scale-105 lg:h-28 lg:w-28" loading="eager" />}
+              </Link>
+              <Link to="/auth/register?redirect=/seller/dashboard" className="group flex min-h-[112px] flex-col justify-between rounded-2xl bg-[#111111] p-3 text-white transition-colors hover:bg-[#242424] dark:bg-[#F6C75D] dark:text-[#111111] dark:hover:bg-[#FFD875] lg:min-h-0 lg:p-4">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-[#F6C75D] dark:text-[#5C3A00]">{t("home.joinTradibu")}</p>
+                  <p className="mt-1.5 text-[13px] font-black leading-tight lg:mt-2 lg:text-sm">{t("home.joinTradibuDesc")}</p>
+                </div>
+                <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-white/75 dark:text-[#5C3A00] lg:mt-3 lg:text-xs">{t("nav.sellWithUs")} <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-1" aria-hidden="true" /></span>
+              </Link>
+            </div>
+
           </div>
 
           <div className="mt-4 border-t border-[#E8E8E8] pt-3 dark:border-[#333333]">
-            <div className="grid gap-3 sm:grid-cols-3 sm:items-center">
-              <div className="min-w-0 rounded-xl bg-white px-3 py-2 dark:bg-[#1A1A1A]">
-                <RegionalPreferences showLabel className="w-full justify-start px-0 py-0" />
-              </div>
-              <div className="rounded-xl bg-white px-3 py-2 dark:bg-[#1A1A1A]">
-                <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.verifiedSellers")}</p>
+            <div className="flex snap-x gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-3 sm:items-stretch">
+              <div className="flex min-w-[190px] snap-start items-start gap-2 rounded-xl bg-white px-3 py-3 sm:min-w-0 dark:bg-[#1A1A1A]">
+                <Store className="mt-0.5 h-4 w-4 shrink-0 text-[#9E6300]" aria-hidden="true" />
+                <div><p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.verifiedSellers")}</p>
                 <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.verifiedSellersDesc")}</p>
+                </div>
               </div>
-              <div className="rounded-xl bg-white px-3 py-2 dark:bg-[#1A1A1A]">
-                <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.fastDelivery")}</p>
+              <div className="flex min-w-[190px] snap-start items-start gap-2 rounded-xl bg-white px-3 py-3 sm:min-w-0 dark:bg-[#1A1A1A]">
+                <Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#9E6300]" aria-hidden="true" />
+                <div><p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.fastDelivery")}</p>
                 <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.fastDeliveryDesc")}</p>
+                </div>
+              </div>
+              <div className="flex min-w-[190px] snap-start items-start gap-2 rounded-xl bg-white px-3 py-3 sm:min-w-0 dark:bg-[#1A1A1A]">
+                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-[#9E6300]" aria-hidden="true" />
+                <div><p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{t("home.easyReturns")}</p>
+                <p className="mt-0.5 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("home.easyReturnsDesc")}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -395,27 +423,27 @@ export default function LandingPage() {
       )}
 
       {/* Shop by Category - Grid */}
-      <Container className="w-full order-1 py-10 [content-visibility:auto] [contain-intrinsic-size:auto_500px]">
+      <Container className="w-full order-1 py-8 [content-visibility:auto] [contain-intrinsic-size:auto_320px]">
         {/* No "All categories" link: the department cards below are the way into a
             department now, and this header used to be a second route to the bare
             /categories directory sitting right above them. */}
         <SectionHeader title={t("home.shopByCategory")} subtitle={t("home.browse")} className="mb-5" />
         {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          <div className="flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-6">
             {Array.from({ length: 8 }).map((_, index) => (
-              <div key={index} className="overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 dark:border-[#222222] dark:bg-[#1A1A1A]">
+              <div key={index} className="min-w-[148px] overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 dark:border-[#222222] dark:bg-[#1A1A1A] sm:min-w-0">
                 <div className="aspect-[4/3] animate-pulse rounded-lg bg-[#F3EEE9] dark:bg-[#28282B]" />
                 <div className="pt-3"><div className="h-4 w-2/3 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="mt-2 h-3 w-1/3 animate-pulse rounded bg-[#F2F3F5] dark:bg-[#202020]" /></div>
               </div>
             ))}
           </div>
         ) : visibleCategories.length ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-            {visibleCategories.map(category => (
+          <div className="flex snap-x gap-3 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:overflow-visible md:grid-cols-4 lg:grid-cols-6">
+            {visibleCategories.slice(0, 6).map(category => (
               <Link
                 key={category.id}
                 to={`/categories/${category.slug}`}
-                className="group overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#111111] hover:shadow-lg dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2]"
+                className="group min-w-[148px] overflow-hidden rounded-xl border border-[#E8E8E8] bg-white p-3 transition hover:-translate-y-0.5 hover:border-[#111111] hover:shadow-lg dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2] sm:min-w-0"
               >
                 <div className="relative aspect-[4/3] overflow-hidden rounded-lg bg-[#F3EEE9] dark:bg-[#28282B]">
                   {categoryImages[category.id] ? <img src={categoryImages[category.id]} alt="" className="h-full w-full object-cover transition duration-300 group-hover:scale-105" loading="lazy" /> : <Package className="absolute inset-0 m-auto h-7 w-7 text-[#B49A75]" />}
@@ -427,6 +455,10 @@ export default function LandingPage() {
                 </div>
               </Link>
             ))}
+            <Link to="/categories" className="flex min-w-[148px] items-center justify-center rounded-xl border border-dashed border-[#C8C8C0] bg-white p-4 text-center text-xs font-semibold text-[#555550] transition hover:border-[#111111] hover:text-[#111111] dark:border-[#444444] dark:bg-[#1A1A1A] dark:text-[#A0A0A0] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] sm:min-w-0">
+              {t("home.allCategories")}
+              <ArrowRight className="ml-1 h-3.5 w-3.5" aria-hidden="true" />
+            </Link>
           </div>
         ) : (
           <div className="rounded-2xl border border-dashed border-[#D8D8D2] bg-white px-5 py-10 text-center text-sm text-[#6E6C64] dark:text-[#A0A0A0] dark:border-[#333333] dark:bg-[#1A1A1A]">
