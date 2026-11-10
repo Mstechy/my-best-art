@@ -70,6 +70,8 @@ type ProductCardProps = {
   priority?: boolean;
   /** Keep catalogue cards scannable; the detail page owns full specifications. */
   density?: "default" | "marketplace";
+  /** Expose catalogue tiles as list items without imposing list semantics on other card layouts. */
+  listItem?: boolean;
 };
 
 const badgeTone = {
@@ -109,6 +111,7 @@ export function ProductCard({
   imageAspectRatio,
   priority = false,
   density = "default",
+  listItem = false,
   className,
 }: ProductCardProps) {
   const { t } = useTranslation();
@@ -136,7 +139,11 @@ export function ProductCard({
   }, [product.id, hasImpressionHandler]);
 
   return (
-    <div ref={impressionNodeRef}>
+    <div
+      ref={impressionNodeRef}
+      role={listItem ? "listitem" : undefined}
+      className={listItem ? "[content-visibility:auto] [contain-intrinsic-size:0_360px]" : undefined}
+    >
     <BrandCard className={cn("group relative flex flex-col overflow-hidden transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus-within:ring-2 focus-within:ring-primary/60 focus-within:ring-offset-1", className)}>
       {/* Media. Deliberately NOT wrapped in its own link: the stretched title link
           below covers the whole card, so the image is part of ONE generously sized
@@ -218,6 +225,11 @@ export function ProductCard({
               ))}
             </p>
           )}
+          {isMarketplaceCard && product.meta && product.meta.length > 0 && (
+            <p className="mt-1 line-clamp-1 text-[10px] text-muted-foreground" aria-label="Product details">
+              {product.meta.slice(0, 2).join(" · ")}
+            </p>
+          )}
           {!isMarketplaceCard && product.brand && <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{product.brand}</p>}
           {!isMarketplaceCard && (product.soldCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1 text-xs text-muted-foreground">
@@ -227,13 +239,19 @@ export function ProductCard({
               <span>{t("product.soldCount")}</span>
             </div>
           )}
-          {(product.averageRating ?? 0) > 0 && (
+          {(product.averageRating ?? 0) > 0 && (product.reviewCount ?? 0) > 0 && (
             <div className="my-1.5 flex items-center gap-1.5 text-xs text-muted-foreground">
               <Star className="h-3 w-3 fill-seller text-seller" />
               <span className="font-semibold text-foreground">{product.averageRating?.toFixed(1)}</span>
               <span className="text-muted-foreground/50">•</span>
               <span>{product.reviewCount ?? 0}</span>
             </div>
+          )}
+          {isMarketplaceCard && shippingLabel && (
+            <p className="mt-1 inline-flex max-w-full items-center gap-1 truncate text-[10px] font-medium text-muted-foreground">
+              <Truck aria-hidden="true" className="h-3 w-3 shrink-0 text-success" />
+              <span className="truncate">{shippingLabel}</span>
+            </p>
           )}
           {!isMarketplaceCard && (shippingLabel || hasVariants || lowStock) && (
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">

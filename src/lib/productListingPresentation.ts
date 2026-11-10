@@ -15,6 +15,8 @@ export type ProductListingPresentationInput = {
 
 const PHONE_PRODUCT_TYPES = new Set(["mobile-phones", "phones"]);
 const PHONE_CATEGORIES = new Set(["electronics", "phones-accessories", "phones-and-accessories"]);
+const WATCH_PRODUCT_TYPES = new Set(["watches", "smart-watches"]);
+const WATCH_CATEGORIES = new Set(["watches", "smart-watches"]);
 
 const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 
@@ -44,6 +46,13 @@ const isAudioListing = (input: ProductListingPresentationInput) => {
   return cleanValue(variants?.productType?.key) === "audio";
 };
 
+const isWatchListing = (input: ProductListingPresentationInput) => {
+  const variants = readVariants(input.variants);
+  const productType = cleanValue(variants?.productType?.key);
+  const category = cleanValue(input.categorySlug).toLowerCase();
+  return productType ? WATCH_PRODUCT_TYPES.has(productType) : WATCH_CATEGORIES.has(category);
+};
+
 /**
  * Return the short comparison signals that belong under a catalogue price.
  *
@@ -57,12 +66,15 @@ export function getProductListingMeta(input: ProductListingPresentationInput): s
   const phone = isPhoneListing(input);
   const laptop = isLaptopListing(input);
   const audio = isAudioListing(input);
+  const watch = isWatchListing(input);
   const keys = phone
     ? ["model", "storage", "network", "connectivity", "cosmeticCondition", "condition"]
     : laptop
       ? ["model", "processor", "ram", "storage", "storageType", "screenSize", "condition"]
       : audio
         ? ["model", "connectivity", "battery", "color", "condition"]
+        : watch
+          ? ["model", "movement", "caseMaterial", "strapMaterial", "waterResistance", "condition"]
     : ["model", "storage", "color", "size", "condition"];
   const title = normalize(cleanValue(input.title));
   const seen = new Set<string>();

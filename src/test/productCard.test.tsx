@@ -90,7 +90,7 @@ describe("ProductCard", () => {
     expect(screen.getByText("₦933,000")).toBeInTheDocument();
   });
 
-  it("keeps marketplace cards to the normal scan signals", () => {
+  it("keeps marketplace cards compact while exposing useful comparison signals", () => {
     render(
       <I18nextProvider i18n={i18n}>
         <MemoryRouter>
@@ -108,9 +108,9 @@ describe("ProductCard", () => {
     expect(screen.getByRole("heading", { name: product.title })).toBeInTheDocument();
     expect(screen.getByText("$120")).toBeInTheDocument();
     expect(screen.getByText("4.6")).toBeInTheDocument();
-    expect(screen.queryByText("Bluetooth 5.2")).not.toBeInTheDocument();
+    expect(screen.getByText("Bluetooth 5.2 · 30 hours")).toBeInTheDocument();
     expect(screen.queryByText("120 sold")).not.toBeInTheDocument();
-    expect(screen.queryByText("Ships to Nigeria")).not.toBeInTheDocument();
+    expect(screen.getByText("Ships to Nigeria")).toBeInTheDocument();
     expect(screen.queryByText("Options available")).not.toBeInTheDocument();
   });
 });

@@ -20,7 +20,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
 import { useCachedFetch, cacheKeyFor } from "@/hooks/useCachedFetch";
 import { useSEO } from "@/hooks/useSEO";
-import { usePopulatedCategories } from "@/hooks/useHomepage";
+import { useMarketplaceCategories } from "@/hooks/useHomepage";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { countryName } from "@/lib/countries";
@@ -62,10 +62,11 @@ interface Product {
   flash_deal_start_at: string | null;
   flash_deal_end_at: string | null;
   flash_deal_status: string | null;
+  sold_count?: number;
   relevance?: number;
 }
 
-interface Category { id: string; name: string; slug: string; icon: string; parent_id?: string | null; }
+interface Category { id: string; name: string; slug: string; icon?: string; parent_id?: string | null; }
 interface CatalogueCursor { relevance: number; createdAt: string; id: string; }
 const CATALOGUE_PAGE_SIZE = 24;
 
@@ -100,13 +101,11 @@ export default function MarketplacePage() {
   const isVisualSearch = visualParam === "1";
 
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [search, setSearch] = useState(searchParam ?? "");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [shipsTo, setShipsTo] = useState<string>("all");
   const [filters, setFilters] = useState<MarketplaceFiltersState>(defaultFilters);
   const [sortBy, setSortBy] = useState(() => isMarketplaceSort(sortParam) ? sortParam : "relevance");
-  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [pageCursor, setPageCursor] = useState<CatalogueCursor | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -121,8 +120,10 @@ export default function MarketplacePage() {
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
 
 
-  useEffect(() => { fetchData(); }, []);
   useEffect(() => { setShipsTo(preferredCountry || "all"); }, [preferredCountry]);
+
+  const { data: categoryData, isLoading: categoriesLoading } = useMarketplaceCategories();
+  const categories = useMemo(() => (categoryData?.categories ?? []) as Category[], [categoryData?.categories]);
 
   useEffect(() => {
     if (!categoryParam || categories.length === 0) return;
@@ -156,12 +157,6 @@ export default function MarketplacePage() {
     if (sortBy !== "relevance") next.set("sort", sortBy); else next.delete("sort");
     if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
   }, [search, selectedCategory, categories, searchParams, setSearchParams, categoryRouteSlug, sortBy]);
-
-  const fetchData = async () => {
-    const { data: categoriesData } = await (supabase as any).from("categories").select("id,name,slug,icon,parent_id,sort_order").order("sort_order");
-    if (categoriesData) setCategories(categoriesData);
-    setCategoriesLoading(false);
-  };
 
   const categoryFilterPending = Boolean(categoryParam) && (categoriesLoading || !selectedCategory);
 
@@ -369,7 +364,10 @@ export default function MarketplacePage() {
 
   // Departments with stock only. The catalogue holds 26 categories so it can grow, and
   // offering a department with nothing in it just leads to an empty grid.
-  const populatedCategories = usePopulatedCategories();
+  const populatedCategories = useMemo(
+    () => (categoryData?.categories ?? []).filter((category) => (categoryData?.counts?.[category.id] ?? 0) > 0),
+    [categoryData],
+  );
   const electronicsSubcategories = useMemo(() => {
     if (selectedCategoryRecord?.slug !== "electronics") return [];
     const supportedSlugs = new Set(["phones-accessories", "computers", "gaming", "watches", "audio"]);
@@ -628,11 +626,11 @@ export default function MarketplacePage() {
               </p>
             </div>
             {/* Keep catalogue geometry predictable while data settles. */}
-            <div>
+            <div role="list" aria-label="Product results" aria-busy={pageLoading && products.length === 0 ? "true" : "false"}>
               {pageLoading && products.length === 0 ? (
                 <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {[...Array(10)].map((_, i) => (
-                    <div key={i} className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
+                    <div key={i} role="listitem" className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
                       <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E]" />
                       <div className="p-4 space-y-1.5">
                         <div className="h-3 bg-[#E8E8E8] dark:bg-[#2A2A2D] rounded w-3/4" />
@@ -662,10 +660,11 @@ export default function MarketplacePage() {
                     return (
                       <ProductCard
                         key={product.id}
-                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, brand: product.brand, meta: getProductListingMeta({ title: product.title, brand: product.brand, categorySlug: selectedCategoryRecord?.slug, condition: product.condition, variants: product.variants }), averageRating: product.average_rating, reviewCount: product.review_count, imageUrl: primaryImage?.image_url,
+                        product={{ id: product.id, title: product.title, price: product.price, compareAtPrice: flashActive ? null : product.compare_at_price, stockQuantity: product.stock_quantity, brand: product.brand, meta: getProductListingMeta({ title: product.title, brand: product.brand, categorySlug: selectedCategoryRecord?.slug, condition: product.condition, variants: product.variants }), averageRating: product.average_rating, reviewCount: product.review_count, soldCount: product.sold_count, imageUrl: primaryImage?.image_url,
                         imageSmallUrl: primaryImage?.card_small_url ?? null, flashDealEndAt: flashActive ? product.flash_deal_end_at : null, videoUrl: getProductVideos(product.variants)[0], badge: flashActive && product.flash_deal_end_at ? { label: t("marketplace.flash"), tone: "destructive" } : discount ? { label: `-${discount}%`, tone: "destructive" } : product.stock_quantity <= 5 && product.stock_quantity > 0 ? { label: t("marketplace.labelHot"), tone: "seller" } : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? { label: t("marketplace.labelNew"), tone: "brand" } : null }}
                         formatPrice={formatPrice}
                         density="marketplace"
+                        listItem
                         priority={index < 5}
                         shippingLabel={shipsTo === "all" ? t("marketplace.shipsWorldwide") : t("marketplace.shipsToDestination", { destination: countryName(shipsTo) })}
                         hasVariants={Boolean(product.variants?.sizes?.length || product.variants?.colors?.length)}

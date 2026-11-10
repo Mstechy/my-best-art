@@ -58,6 +58,11 @@ const NO_DECIMAL = new Set(["NGN", "KES", "JPY"]);
 const CURRENCY_MANUAL_KEY = "preferred_currency_manual";
 const COUNTRY_MANUAL_KEY = "preferred_country_manual";
 
+const scheduleNonCritical = (task: () => void) => {
+  const timer = window.setTimeout(task, 1200);
+  return () => window.clearTimeout(timer);
+};
+
 const getStored = (key: string) => (typeof window === "undefined" ? null : localStorage.getItem(key));
 const saveStored = (key: string, value: string | null) => {
   if (typeof window === "undefined") return;
@@ -95,28 +100,31 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let active = true;
 
-    void (async () => {
-      const { data } = await supabase.from("currency_rates").select("code, symbol, rate_to_usd");
-      if (!active || !data?.length) return;
+    const cancel = scheduleNonCritical(() => {
+      void (async () => {
+        const { data } = await supabase.from("currency_rates").select("code, symbol, rate_to_usd");
+        if (!active || !data?.length) return;
 
-      setCurrencies((current) => {
-        const updated = { ...current };
-        (data as CurrencyRateRow[]).forEach((rate) => {
-          const normalized = rate.code?.toUpperCase();
-          if (normalized && Number(rate.rate_to_usd) > 0) {
-            updated[normalized] = {
-              code: normalized,
-              symbol: rate.symbol || normalized,
-              rate: Number(rate.rate_to_usd),
-            };
-          }
+        setCurrencies((current) => {
+          const updated = { ...current };
+          (data as CurrencyRateRow[]).forEach((rate) => {
+            const normalized = rate.code?.toUpperCase();
+            if (normalized && Number(rate.rate_to_usd) > 0) {
+              updated[normalized] = {
+                code: normalized,
+                symbol: rate.symbol || normalized,
+                rate: Number(rate.rate_to_usd),
+              };
+            }
+          });
+          return updated;
         });
-        return updated;
-      });
-    })();
+      })();
+    });
 
     return () => {
       active = false;
+      cancel();
     };
   }, []);
 
@@ -132,31 +140,34 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
       };
     }
 
-    void detectCountryFromIP().then((ipCountry) => {
-      if (!active) return;
-      setDetectedCountry(ipCountry || initialDetectedCountry);
+    const cancel = scheduleNonCritical(() => {
+      void detectCountryFromIP().then((ipCountry) => {
+        if (!active) return;
+        setDetectedCountry(ipCountry || initialDetectedCountry);
 
-      // Background detection may establish defaults, but it must never
-      // overwrite an explicitly selected delivery country or currency view.
-      const hasManualCountry = getStored(COUNTRY_MANUAL_KEY) === "true";
-      const hasCurrencyOverride = getStored(CURRENCY_MANUAL_KEY) === "true";
-      if (ipCountry && !hasManualCountry) {
-        setCountryState(ipCountry);
-        setRegionSource("ip");
-        saveStored("preferred_country", ipCountry);
+        // Background detection may establish defaults, but it must never
+        // overwrite an explicitly selected delivery country or currency view.
+        const hasManualCountry = getStored(COUNTRY_MANUAL_KEY) === "true";
+        const hasCurrencyOverride = getStored(CURRENCY_MANUAL_KEY) === "true";
+        if (ipCountry && !hasManualCountry) {
+          setCountryState(ipCountry);
+          setRegionSource("ip");
+          saveStored("preferred_country", ipCountry);
 
-        if (!hasCurrencyOverride) {
-          const mapped = countryToCurrency(ipCountry) || "NGN";
-          setCode(mapped);
-          saveStored("preferred_currency", mapped);
+          if (!hasCurrencyOverride) {
+            const mapped = countryToCurrency(ipCountry) || "NGN";
+            setCode(mapped);
+            saveStored("preferred_currency", mapped);
+          }
         }
-      }
-    }).finally(() => {
-      if (active) setIsRegionResolving(false);
+      }).finally(() => {
+        if (active) setIsRegionResolving(false);
+      });
     });
 
     return () => {
       active = false;
+      cancel();
     };
   }, [initialDetectedCountry]);
 

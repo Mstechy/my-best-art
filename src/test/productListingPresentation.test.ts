@@ -86,4 +86,22 @@ describe("product listing presentation", () => {
       variants: { productType: { key: "audio" }, categoryAttributes: { model: "WH-1000XM5" } },
     })).toContain("brand and model");
   });
+
+  it("shows watch comparison signals without repeating the title", () => {
+    expect(getProductListingMeta({
+      title: "Seiko 5 Sports Watch",
+      categorySlug: "watches",
+      variants: {
+        productType: { key: "watches" },
+        categoryAttributes: {
+          model: "5 Sports",
+          movement: "Automatic",
+          caseMaterial: "Stainless steel",
+          strapMaterial: "Leather",
+          waterResistance: "100m",
+          condition: "New",
+        },
+      },
+    })).toEqual(["Automatic", "Stainless steel", "Leather"]);
+  });
 });

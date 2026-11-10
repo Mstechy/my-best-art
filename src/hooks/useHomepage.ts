@@ -20,7 +20,7 @@ export type ProductImageRow = {
 };
 
 export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; created_at: string; product_images: ProductImageRow[] };
-export type Category = { id: string; name: string; slug: string; parent_id?: string | null };
+export type Category = { id: string; name: string; slug: string; icon?: string; parent_id?: string | null };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
@@ -60,7 +60,7 @@ export function useHomepageCategories() {
     supabaseKeys.rpc("homepage_categories"),
     async () => {
       const [categoriesRes, countsRes] = await Promise.all([
-        (supabase as any).from("categories").select("id,name,slug,parent_id").order("sort_order"),
+        (supabase as any).from("categories").select("id,name,slug,icon,parent_id").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
       ]);
       if (categoriesRes.error) throw categoriesRes.error;
@@ -109,6 +109,26 @@ export function usePopulatedCategories() {
   return useMemo(
     () => (data?.categories ?? []).filter((category) => (data?.counts?.[category.id] ?? 0) > 0),
     [data],
+  );
+}
+
+/** Lightweight category read model for catalogue navigation. */
+export function useMarketplaceCategories() {
+  return useSupabaseQuery(
+    supabaseKeys.rpc("marketplace_categories"),
+    async () => {
+      const [categoriesRes, countsRes] = await Promise.all([
+        (supabase as any).from("categories").select("id,name,slug,icon,parent_id").order("sort_order"),
+        (supabase as any).rpc("homepage_category_counts"),
+      ]);
+      if (categoriesRes.error) throw categoriesRes.error;
+      if (countsRes.error) throw countsRes.error;
+      const counts = Object.fromEntries(
+        ((countsRes.data ?? []) as any[]).map((row: any) => [row.category_id, Number(row.product_count)]),
+      ) as Record<string, number>;
+      return { categories: (categoriesRes.data ?? []) as Category[], counts };
+    },
+    { staleTime: 5 * 60 * 1000 },
   );
 }
 
