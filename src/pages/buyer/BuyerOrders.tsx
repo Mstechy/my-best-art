@@ -84,7 +84,11 @@ export default function BuyerOrders() {
   const fetchOrders = useCallback(async () => {
     if (!user) return;
     let ordersQuery = supabase
-      .from("orders").select("*").eq("buyer_id", user.id).order("created_at", { ascending: false });
+      .from("orders")
+      .select("id,status,total_amount,currency,created_at,seller_id,tracking_number,payment_reference,payment_status")
+      .eq("buyer_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(100);
     if (paymentReference) ordersQuery = ordersQuery.eq("payment_reference", paymentReference);
     const { data: ordersData } = await ordersQuery;
     if (!ordersData) { setLoading(false); return; }

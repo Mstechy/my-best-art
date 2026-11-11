@@ -55,8 +55,8 @@ export default function BuyerReports() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      supabase.from("disputes").select("*").eq("buyer_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("orders").select("id, seller_id, status, total_amount, created_at").eq("buyer_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("disputes").select("id,reason,description,status,proof_url,order_id,created_at,resolved_at").eq("buyer_id", user.id).order("created_at", { ascending: false }).limit(100),
+      supabase.from("orders").select("id, seller_id, status, total_amount, created_at").eq("buyer_id", user.id).order("created_at", { ascending: false }).limit(100),
     ]).then(([disputesRes, ordersRes]) => {
       if (disputesRes.data) setDisputes(disputesRes.data as Dispute[]);
       if (ordersRes.data) setOrders(ordersRes.data as ReportableOrder[]);
@@ -111,7 +111,7 @@ export default function BuyerReports() {
       setReason(""); setDescription(""); setSelectedOrderId(""); setProofFile(null); setDialogOpen(false);
     }
     setSaving(false);
-    const { data } = await supabase.from("disputes").select("*").eq("buyer_id", user.id).order("created_at", { ascending: false });
+    const { data } = await supabase.from("disputes").select("id,reason,description,status,proof_url,order_id,created_at,resolved_at").eq("buyer_id", user.id).order("created_at", { ascending: false }).limit(100);
     if (data) setDisputes(data as Dispute[]);
   };
 

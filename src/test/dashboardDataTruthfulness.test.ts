@@ -39,4 +39,18 @@ describe("dashboard data truthfulness", () => {
     expect(queue).toContain("Some operations could not be loaded");
     expect(queue).toContain("role=\"alert\"");
   });
+
+  it("bounds dashboard history reads and selects only fields needed by the views", () => {
+    const adminOrders = read("src/pages/admin/AdminOrders.tsx");
+    const adminDisputes = read("src/pages/admin/AdminDisputes.tsx");
+    const buyerOrders = read("src/pages/buyer/BuyerOrders.tsx");
+    const buyerTracking = read("src/pages/buyer/BuyerTracking.tsx");
+    const buyerReports = read("src/pages/buyer/BuyerReports.tsx");
+    const wishlist = read("src/pages/buyer/BuyerWishlist.tsx");
+
+    for (const source of [adminOrders, adminDisputes, buyerOrders, buyerTracking, buyerReports, wishlist]) {
+      expect(source).toContain(".limit(");
+      expect(source).not.toContain('.select("*")');
+    }
+  });
 });

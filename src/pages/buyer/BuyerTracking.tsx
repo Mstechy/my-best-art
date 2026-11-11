@@ -60,9 +60,10 @@ export default function BuyerTracking() {
     if (!user) return;
     const fetchOrders = async () => {
       const { data: ordersData } = await supabase
-        .from("orders").select("*").eq("buyer_id", user.id)
+        .from("orders").select("id,status,tracking_number,carrier,estimated_delivery,shipped_at,delivered_at,status_history,total_amount,created_at,updated_at").eq("buyer_id", user.id)
         .in("status", ["pending", "processing", "shipped", "delivered"])
-        .order("updated_at", { ascending: false });
+        .order("updated_at", { ascending: false })
+        .limit(100);
       
       if (!ordersData) {
         setOrders([]);

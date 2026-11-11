@@ -51,7 +51,7 @@ export default function BuyerWishlist() {
     const { data } = await supabase
       .from("wishlists" as any)
       .select("id, product_id, created_at, is_public, product:products(id, title, price, compare_at_price, stock_quantity, seller_id, status, category_id, product_images(image_url, is_primary))")
-      .eq("user_id", user.id).order("created_at", { ascending: false });
+      .eq("user_id", user.id).order("created_at", { ascending: false }).limit(100);
     if (data) {
       const list = data as any as WishlistItem[];
       setItems(list);

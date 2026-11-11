@@ -49,7 +49,10 @@ export default function AdminDisputes() {
   const [tab, setTab] = useState<Tab>("all");
 
   const fetchDisputes = async () => {
-    const { data } = await supabase.from("disputes").select("*").order("created_at", { ascending: false });
+    const { data } = await supabase.from("disputes")
+      .select("id,reason,description,status,buyer_id,seller_id,order_id,proof_url,admin_notes,created_at,resolved_at")
+      .order("created_at", { ascending: false })
+      .limit(200);
     if (!data) { setLoading(false); return; }
     const rows = data as Dispute[];
     const orderIds = [...new Set(rows.map(r => r.order_id).filter(Boolean) as string[])];

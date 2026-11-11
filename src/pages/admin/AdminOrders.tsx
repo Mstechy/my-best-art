@@ -46,8 +46,9 @@ export default function AdminOrders() {
     const fetchOrders = async () => {
       const { data: ordersData } = await supabase
         .from("orders")
-        .select("*")
-        .order("created_at", { ascending: false });
+        .select("id,status,total_amount,currency,created_at,tracking_number,buyer_id,seller_id")
+        .order("created_at", { ascending: false })
+        .limit(200);
 
       if (!ordersData) { setLoading(false); return; }
 
