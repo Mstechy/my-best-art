@@ -20,18 +20,14 @@ export default function SellerDashboard() {
   const [isApproved, setIsApproved] = useState<boolean>(profile?.is_approved ?? false);
   const [checkingApproval, setCheckingApproval] = useState<boolean>(profile?.is_approved === undefined);
 
-  const { products, stats, loading: dashboardLoading, error: dashboardError, orderCounts, recentOrders, weekly } = useSellerDashboard(user?.id);
+  const { products, summary, stats, loading: dashboardLoading, error: dashboardError, orderCounts, recentOrders, weekly } = useSellerDashboard(user?.id);
 
   const pendingOrdersCount = useMemo(() => (
     Number(orderCounts.byStatus.pending || 0) + Number(orderCounts.byStatus.processing || 0)
   ), [orderCounts]);
-  const activeProductCount = useMemo(() => products.filter((product) => product.status === "active").length, [products]);
-  const inventoryUnits = useMemo(() => products.reduce((total, product) => total + Math.max(0, Number(product.stock_quantity) || 0), 0), [products]);
-  const ratedProducts = useMemo(() => products.filter((product) => Number(product.review_count) > 0), [products]);
-  const averageRating = useMemo(() => {
-    if (!ratedProducts.length) return null;
-    return ratedProducts.reduce((total, product) => total + Number(product.average_rating || 0), 0) / ratedProducts.length;
-  }, [ratedProducts]);
+  const activeProductCount = Number(summary?.active_products ?? 0);
+  const inventoryUnits = Number(summary?.inventory_units ?? 0);
+  const averageRating = Number(summary?.average_rating ?? 0) > 0 ? Number(summary?.average_rating) : null;
   const orderPipeline = useMemo(() => [
     { label: "To process", value: recentOrders.filter((order) => order.status === "pending"), className: "bg-yellow-500" },
     { label: "Processing", value: recentOrders.filter((order) => order.status === "processing"), className: "bg-blue-500" },

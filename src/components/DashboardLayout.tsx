@@ -94,6 +94,14 @@ function getInitials(name: string | null | undefined) {
   return name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 }
 
+function getCurrentNavItem(pathname: string, sections: NavSection[]) {
+  for (const section of sections) {
+    const match = section.items.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`));
+    if (match) return { section: section.label, label: match.label };
+  }
+  return { section: "Workspace", label: "Dashboard" };
+}
+
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const { profile, role, signOut } = useAuth();
   const location = useLocation();
@@ -101,6 +109,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navSections = getNavSections(role);
   const unread = useUnreadMessages();
+  const currentNavItem = getCurrentNavItem(location.pathname, navSections);
 
   useEffect(() => {
     if (!sidebarOpen) return;
@@ -240,13 +249,14 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         <div
           className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Main content — offset by sidebar width on desktop */}
       <div className="flex flex-1 flex-col min-w-0 lg:pl-60">
         {/* Header */}
-        <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b border-[#E8E8E8] dark:border-[#1A1A1A] bg-white/80 dark:bg-[#111111]/80 backdrop-blur-md px-4 lg:px-6">
+        <header className="sticky top-0 z-30 flex min-h-16 items-center gap-4 border-b border-[#E8E8E8] dark:border-[#1A1A1A] bg-[#FCFBF7]/95 dark:bg-[#111111]/95 backdrop-blur-md px-4 lg:px-8">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -257,7 +267,16 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           >
             <Menu className="h-5 w-5" />
           </button>
-          <div className="flex-1" />
+          <div className="min-w-0 flex-1">
+            <div className="hidden items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#9B978D] sm:flex">
+              <span>{currentNavItem.section}</span>
+              <span aria-hidden="true" className="text-[#D3CFC4]">/</span>
+              <span className="text-[#5C3A00] dark:text-[#F6C75D]">{currentNavItem.label}</span>
+            </div>
+            <p className="truncate text-sm font-bold tracking-tight text-[#171714] dark:text-[#FAF5F2] sm:mt-0.5">
+              {currentNavItem.label}
+            </p>
+          </div>
           <NotificationBell />
           <ThemeToggle />
           <Link
@@ -268,7 +287,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </Link>
         </header>
 
-        <main className="flex-1 w-full min-w-0 overflow-x-clip p-4 lg:p-6">{children}</main>
+        <main className="flex-1 w-full min-w-0 overflow-x-clip bg-[#FCFBF7] p-4 dark:bg-[#0E0E0E] lg:p-8">{children}</main>
         <DashboardFooter />
       </div>
     </div>

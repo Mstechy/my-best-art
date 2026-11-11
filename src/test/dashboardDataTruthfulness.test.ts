@@ -10,6 +10,8 @@ describe("dashboard data truthfulness", () => {
     const dashboard = read("src/pages/seller/SellerDashboard.tsx");
 
     expect(hook).toContain("useSellerOrderCounts(userId)");
+    expect(hook).toContain('seller_dashboard_summary');
+    expect(hook).toContain('.limit(100)');
     expect(hook).toContain("orderCounts.data?.byStatus.pending ?? 0");
     expect(hook).toContain("if (error) throw error;");
     expect(dashboard).toContain("dashboardError");

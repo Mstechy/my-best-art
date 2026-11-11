@@ -1593,6 +1593,21 @@ export type Database = {
           total_users: number
         }[]
       }
+      seller_dashboard_summary: {
+        Args: { p_seller_id: string }
+        Returns: {
+          active_products: number
+          average_rating: number
+          inventory_units: number
+          low_stock: number
+          out_of_stock: number
+          pending_approval: number
+          pending_orders: number
+          processing_orders: number
+          total_products: number
+          total_revenue: number
+        }[]
+      }
       admin_revoke_seller: { Args: { _user_id: string }; Returns: undefined }
       admin_set_account_status: {
         Args: {

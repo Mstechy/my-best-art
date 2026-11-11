@@ -37,6 +37,19 @@ export interface DashboardStats {
   outOfStock: number;
 }
 
+interface SellerDashboardSummary {
+  total_products: number;
+  active_products: number;
+  pending_approval: number;
+  pending_orders: number;
+  processing_orders: number;
+  total_revenue: number;
+  inventory_units: number;
+  low_stock: number;
+  out_of_stock: number;
+  average_rating: number;
+}
+
 export function useSellerProducts(sellerId: string | undefined) {
   return useSupabaseQuery(
     [...supabaseKeys.table("products"), sellerId ?? ""],
@@ -46,7 +59,8 @@ export function useSellerProducts(sellerId: string | undefined) {
         .from("products")
         .select("id,title,price,status,is_approved,average_rating,review_count,created_at,updated_at,stock_quantity,low_stock_threshold,moderation_reason,moderation_next_action,moderation_owner_id,moderation_updated_at")
         .eq("seller_id", sellerId)
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(100);
       if (error) throw error;
       return (data ?? []) as unknown as SellerProduct[];
     },
@@ -315,31 +329,39 @@ export function useSellerOrderDetail(sellerId: string | undefined, orderId: stri
 
 export function useSellerDashboard(userId: string | undefined) {
   const products = useSellerProducts(userId);
+  const summary = useSellerDashboardSummary(userId);
   const pendingApproval = usePendingApprovalCount(userId);
   const recentOrders = useSellerRecentOrders(userId);
   const orderCounts = useSellerOrderCounts(userId);
-  const revenue = useSellerRevenue(userId);
   const weekly = useSellerWeeklyRevenue(userId);
 
   const stats = useMemo(() => {
-    const all = products.data ?? [];
-    const pending = pendingApproval.data ?? 0;
-    const pendingOrders = orderCounts.data?.byStatus.pending ?? 0;
-    const activeProducts = all.filter((product: SellerProduct) => product.status === "active");
-    const outOfStock = activeProducts.filter((product: SellerProduct) => product.stock_quantity <= 0).length;
-    const lowStock = activeProducts.filter((product: SellerProduct) => product.stock_quantity > 0 && product.stock_quantity <= (product.low_stock_threshold ?? 5)).length;
+    const row = summary.data;
     return {
-      products: all.length,
-      pendingApproval: pending,
-      pendingOrders,
-      totalRevenue: revenue.data ?? 0,
-      lowStock,
-      outOfStock,
+      products: Number(row?.total_products ?? 0),
+      pendingApproval: Number(row?.pending_approval ?? pendingApproval.data ?? 0),
+      pendingOrders: Number(row?.pending_orders ?? orderCounts.data?.byStatus.pending ?? 0),
+      totalRevenue: Number(row?.total_revenue ?? 0),
+      lowStock: Number(row?.low_stock ?? 0),
+      outOfStock: Number(row?.out_of_stock ?? 0),
     } as DashboardStats;
-  }, [products.data, pendingApproval.data, orderCounts.data, recentOrders.data, revenue.data]);
+  }, [summary.data, pendingApproval.data, orderCounts.data]);
 
-  const loading = products.isLoading || pendingApproval.isLoading || recentOrders.isLoading || orderCounts.isLoading || revenue.isLoading || weekly.isLoading;
-  const error = products.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? revenue.error ?? weekly.error ?? null;
+  const loading = products.isLoading || summary.isLoading || pendingApproval.isLoading || recentOrders.isLoading || orderCounts.isLoading || weekly.isLoading;
+  const error = products.error ?? summary.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? weekly.error ?? null;
 
-  return { products: products.data ?? [], stats, loading, error, orderCounts: orderCounts.data ?? { total: 0, byStatus: {} }, recentOrders: recentOrders.data ?? [], weekly: weekly.data ?? [] };
+  return { products: products.data ?? [], summary: summary.data, stats, loading, error, orderCounts: orderCounts.data ?? { total: 0, byStatus: {} }, recentOrders: recentOrders.data ?? [], weekly: weekly.data ?? [] };
+}
+
+export function useSellerDashboardSummary(sellerId: string | undefined) {
+  return useSupabaseQuery(
+    [...supabaseKeys.rpc("seller_dashboard_summary"), sellerId ?? ""],
+    async () => {
+      if (!sellerId) return null as SellerDashboardSummary | null;
+      const { data, error } = await (supabase as any).rpc("seller_dashboard_summary", { p_seller_id: sellerId });
+      if (error) throw error;
+      return (Array.isArray(data) ? data[0] : data) as SellerDashboardSummary | null;
+    },
+    { enabled: !!sellerId, staleTime: 2 * 60 * 1000 },
+  );
 }
