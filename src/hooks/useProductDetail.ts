@@ -63,6 +63,16 @@ export interface ReviewData {
 export interface KeywordItem { keyword: string; count: number; }
 export interface SellerMarketplaceStats { avg_rating: number; total_reviews: number; total_sold: number; }
 
+const PRODUCT_DETAIL_COLUMNS = [
+  "id", "title", "description", "price", "compare_at_price", "currency", "stock_quantity",
+  "seller_id", "category_id", "brand", "gtin", "mpn", "weight", "dimensions", "material",
+  "color", "condition", "warranty", "warranty_period", "shipping_info", "ships_to",
+  "ship_from_location", "processing_days_min", "processing_days_max", "delivery_days_min",
+  "delivery_days_max", "key_features", "tags", "average_rating", "review_count",
+  "show_sold_count", "seo_slug", "meta_description", "low_stock_threshold", "description_images",
+  "variants", "product_images(id,image_url,is_primary,alt,sort_order)",
+].join(",");
+
 /**
  * Coerce a raw Supabase products row into the Product shape.
  * DB rows can be missing/NULL for fields the generated types claim are
@@ -77,8 +87,16 @@ export function normalizeProduct(row: Record<string, unknown>): Product {
   const asString = (value: unknown, fallback = ""): string =>
     typeof value === "string" ? value : fallback;
 
-  const images = asArray<{ id: string; image_url: string; is_primary: boolean; alt?: string | null }>(row.product_images)
-    .filter(img => img && typeof img.image_url === "string");
+  const seenImageKeys = new Set<string>();
+  const images = asArray<{ id: string; image_url: string; is_primary: boolean; alt?: string | null; sort_order?: number }>(row.product_images)
+    .filter(img => img && typeof img.image_url === "string")
+    .filter((img) => {
+      const key = img.id || img.image_url.trim();
+      if (seenImageKeys.has(key)) return false;
+      seenImageKeys.add(key);
+      return true;
+    })
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
   return {
     ...(row as unknown as Product),
@@ -115,7 +133,7 @@ export function useProduct(idOrSlug: string | undefined) {
       const column = isUuid ? "id" : "seo_slug";
       const { data, error } = await supabase
         .from("products")
-        .select("*, product_images(*)")
+        .select(PRODUCT_DETAIL_COLUMNS)
         .eq(column, idOrSlug)
         .single();
       if (error) throw error;

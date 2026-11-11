@@ -1608,6 +1608,15 @@ export type Database = {
           total_revenue: number
         }[]
       }
+      seller_product_stats: {
+        Args: { p_product_ids: string[]; p_seller_id: string }
+        Returns: {
+          orders: number
+          product_id: string
+          saves: number
+          views: number
+        }[]
+      }
       admin_revoke_seller: { Args: { _user_id: string }; Returns: undefined }
       admin_set_account_status: {
         Args: {

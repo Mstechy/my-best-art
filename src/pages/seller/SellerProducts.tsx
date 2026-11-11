@@ -219,22 +219,25 @@ export default function SellerProducts() {
       return;
     }
     setProductCount(count ?? 0);
-    setProducts((data as unknown as ProductRow[] ?? []).map(normalizeProductRow));
+    const normalizedProducts = (data as unknown as ProductRow[] ?? []).map(normalizeProductRow);
+    // A listing is one catalogue entity. Deduplicate by immutable id at the
+    // view boundary so a repeated relation row can never render duplicate cards.
+    setProducts([...new Map(normalizedProducts.map((product) => [product.id, product])).values()]);
     setLoading(false);
 
     // fetch per-product stats
     const ids = (data || []).map((p) => (p as unknown as ProductRow).id);
     if (ids.length) {
-      const [viewsRes, savesRes, itemsRes] = await Promise.all([
-        supabase.from("product_views").select("product_id").in("product_id", ids),
-        supabase.from("wishlists").select("product_id").in("product_id", ids),
-        supabase.from("order_items").select("product_id").in("product_id", ids),
-      ]);
       const s: Record<string, { views: number; saves: number; orders: number }> = {};
       ids.forEach((id) => { s[id] = { views: 0, saves: 0, orders: 0 }; });
-      (viewsRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].views++; });
-      (savesRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].saves++; });
-      (itemsRes.data || []).forEach((r: { product_id: string }) => { if (s[r.product_id]) s[r.product_id].orders++; });
+      const { data: productStats, error: productStatsError } = await (supabase as any).rpc("seller_product_stats", {
+        p_seller_id: user.id,
+        p_product_ids: ids,
+      });
+      if (productStatsError) console.warn("[SellerProducts] product stats unavailable", productStatsError);
+      (productStats || []).forEach((row: { product_id: string; views: number; saves: number; orders: number }) => {
+        if (s[row.product_id]) s[row.product_id] = { views: Number(row.views) || 0, saves: Number(row.saves) || 0, orders: Number(row.orders) || 0 };
+      });
       setStats(s);
     }
   }, [user, productPage, productPageSize, search, toast]);
@@ -2646,13 +2649,13 @@ export default function SellerProducts() {
                       />
                     </div>
                   </div>
-                  <CardContent className="p-4">
+                  <CardContent className="p-3">
                     <h3 className="font-display font-semibold text-foreground truncate">{product.title}</h3>
                     {(() => {
                       const googleIssues = getGoogleIssues(product);
                       return googleIssues.length === 0
-                        ? <Badge className="mt-2 bg-success/10 text-success border-success/20">Google status: Included</Badge>
-                        : <Badge variant="outline" className="mt-2 border-amber-500/40 text-amber-700 dark:text-amber-300" title={googleIssues.join("; ")}>Google status: Needs fix — {googleIssues[0]}</Badge>;
+                        ? <p className="mt-1 text-[10px] font-medium text-success">Google eligible</p>
+                        : <p className="mt-1 truncate text-[10px] font-medium text-amber-700 dark:text-amber-300" title={googleIssues.join("; ")}>Google needs attention</p>;
                     })()}
                     <div className="flex items-center gap-2 mt-1">
                       <span className="font-display text-lg font-bold text-foreground">{offerSummary ? `From ${formatPrice(offerSummary.lowestPrice ?? product.price)}` : formatPrice(product.price)}</span>

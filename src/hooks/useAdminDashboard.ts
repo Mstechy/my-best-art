@@ -58,9 +58,9 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
     [...supabaseKeys.table("products"), "admin", page, pageSize, search, tab],
     async () => {
       const start = page * pageSize;
-      let productsQuery = supabase
+      let productsQuery = (supabase
         .from("products")
-        .select("*, product_images(image_url, is_primary), product_variants(id, option_values, sku, price, stock_quantity, image_url, is_active, sort_order)", { count: "exact" })
+        .select("id,title,price,status,is_approved,stock_quantity,created_at,seller_id,category_id,moderation_reason,moderation_next_action,moderation_owner_id,moderation_updated_at,product_images(image_url,is_primary,sort_order),product_variants(id,option_values,sku,price,stock_quantity,image_url,is_active,sort_order)", { count: "exact" }) as any)
         .order("created_at", { ascending: false })
         .range(start, start + pageSize - 1);
 
@@ -84,7 +84,7 @@ export function useAdminProducts(page: number, pageSize: number, search: string,
       }
       if (!productsData) return { products: [], total: 0, counts: { all: 0, pending: 0, approved: 0, archived: 0 } };
 
-      const sellerIds = [...new Set(productsData.map(p => p.seller_id))];
+      const sellerIds = [...new Set(productsData.map((p: { seller_id: string }) => p.seller_id))] as string[];
       const { data: profiles, error: profileError } = sellerIds.length
         ? await supabase.from("profiles").select("user_id, full_name, email").in("user_id", sellerIds)
         : { data: [], error: null };

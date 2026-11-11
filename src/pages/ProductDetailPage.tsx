@@ -156,7 +156,9 @@ export default function ProductDetailPage() {
   }, [productVariants]);
   const productDetailSpecs = useMemo(() => {
     if (!product) return null;
-    const systemKeys = new Set(["categoryGroup", "productTypeKey"]);
+    // Quick facts are the comparison layer beside the buy box. Do not repeat
+    // those same fields in the long specifications table below the description.
+    const systemKeys = new Set(["categoryGroup", "productTypeKey", "brand", "model", "storage", "color", "network", "connectivity", "operatingSystem", "condition"]);
     const productType = getProductType(product.variants);
     const productTypeConfig = findProductTypeConfig(category, productType?.key);
     const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
@@ -168,12 +170,9 @@ export default function ProductDetailPage() {
     const addDetail = (label: string, value: string | null | undefined) => {
       if (value?.trim() && !details[label]) details[label] = value.trim();
     };
-    addDetail("Brand", product.brand);
     addDetail("Material", product.material);
-    addDetail("Colour", product.color);
     addDetail("Dimensions", product.dimensions);
     addDetail("Weight", product.weight);
-    addDetail("Condition", product.condition);
     addDetail("Warranty", product.warranty || product.warranty_period);
     return Object.keys(details).length > 0 ? details : null;
   }, [category, product, variantAttributeKeys]);

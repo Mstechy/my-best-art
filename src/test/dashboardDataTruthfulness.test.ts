@@ -55,4 +55,16 @@ describe("dashboard data truthfulness", () => {
       expect(source).not.toContain('.select("*")');
     }
   });
+
+  it("aggregates seller catalogue signals without downloading event history", () => {
+    const sellerProducts = read("src/pages/seller/SellerProducts.tsx");
+    const migration = read("supabase/migrations/20261111113000_seller_product_stats.sql");
+
+    expect(sellerProducts).toContain('rpc("seller_product_stats"');
+    expect(sellerProducts).not.toContain('from("product_views").select("product_id")');
+    expect(sellerProducts).not.toContain('from("wishlists").select("product_id")');
+    expect(sellerProducts).not.toContain('from("order_items").select("product_id")');
+    expect(migration).toContain("Seller access required");
+    expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.seller_product_stats");
+  });
 });
