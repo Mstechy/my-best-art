@@ -514,6 +514,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-[#FAFAFA] pb-[calc(72px+env(safe-area-inset-bottom,0px))] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
       <MarketplaceNavbar showSearch={false} />
       <CartDrawer />
+      <main>
       <Container className="py-6">
         {loading && !product ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-pulse">
@@ -1047,6 +1048,7 @@ export default function ProductDetailPage() {
           </div>
         )}
       </Container>
+      </main>
 
       {/* Sticky mobile CTA bar - the ONLY bottom bar on this route (tab bar not mounted here): Store/Chat/Cart outline icons with labels, Add to Cart outlined pill, Buy Now brand pill */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E8E8E8] bg-white pb-[env(safe-area-inset-bottom,0px)] dark:border-[#222222] dark:bg-[#111111] md:hidden">

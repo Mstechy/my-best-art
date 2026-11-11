@@ -67,10 +67,8 @@ const PRODUCT_DETAIL_COLUMNS = [
   "id", "title", "description", "price", "compare_at_price", "currency", "stock_quantity",
   "seller_id", "category_id", "brand", "gtin", "mpn", "weight", "dimensions", "material",
   "color", "condition", "warranty", "warranty_period", "shipping_info", "ships_to",
-  "ship_from_location", "processing_days_min", "processing_days_max", "delivery_days_min",
-  "delivery_days_max", "key_features", "tags", "average_rating", "review_count",
-  "show_sold_count", "seo_slug", "meta_description", "low_stock_threshold", "description_images",
-  "variants", "product_images(id,image_url,is_primary,alt,sort_order)",
+  "key_features", "tags", "average_rating", "review_count", "show_sold_count", "variants",
+  "product_images(id,image_url,is_primary,sort_order)",
 ].join(",");
 
 /**
