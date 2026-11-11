@@ -371,6 +371,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
                 <input
                 id="marketplace-image-search-desktop"
                 name="image"
+                toolparamdescription="Optional product image used for a read-only visual product search."
                 ref={imageInputRef}
                 type="file"
                 accept="image/*"
@@ -576,6 +577,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
             <input
               id="marketplace-image-search-mobile"
               name="image"
+              toolparamdescription="Optional product image used for a read-only visual product search."
               ref={imageInputRef}
               type="file"
               accept="image/*"

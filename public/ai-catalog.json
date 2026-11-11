@@ -12,6 +12,13 @@
       "type": "application/ai-catalog+json",
       "description": "Tradibu is a multi-vendor marketplace where independent sellers list products and buyers pay securely through Paystack with buyer protection. Every listing is a browsable department page carrying the product's price in Nigerian naira (NGN), its stock, its seller and its delivery destinations.",
       "url": "https://www.tradibu.com/ai-catalog.json",
+      "access": "public-read",
+      "readOnly": true,
+      "capabilities": [
+        "search products by keyword, brand, model or department",
+        "filter and sort the public catalogue",
+        "open a product page with price, stock, seller and delivery information"
+      ],
       "representativeQueries": [
         "electronics",
         "phones and accessories",
@@ -24,6 +31,13 @@
       "type": "application/ai-catalog+json",
       "description": "The electronics department of the Tradibu marketplace, listing approved and in-stock products available to buyers in Nigeria.",
       "url": "https://www.tradibu.com/categories/electronics",
+      "access": "public-read",
+      "readOnly": true,
+      "capabilities": [
+        "browse electronics subcategories",
+        "open individual electronics product pages",
+        "compare visible price, stock and product metadata"
+      ],
       "representativeQueries": [
         "electronics",
         "consumer electronics",

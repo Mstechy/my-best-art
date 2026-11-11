@@ -250,9 +250,10 @@ export default function MarketplacePage() {
       });
       if (error) throw error;
       const parsed = typeof data === "string" ? JSON.parse(data) : data;
-      const resultProducts = await hydrateVariantMetadata((parsed?.products || []) as Product[]);
       return {
-        products: resultProducts,
+        // Variant labels are optional card enrichment. Do not make the first
+        // catalogue paint wait for a second product_variants query.
+        products: (parsed?.products || []) as Product[],
         hasMore: !!parsed?.has_more,
       };
     },
@@ -274,6 +275,14 @@ export default function MarketplacePage() {
     const last = catalogueData.products[catalogueData.products.length - 1];
     setPageCursor(last ? { relevance: last.relevance ?? 0, createdAt: last.created_at, id: last.id } : null);
     setHasMore(catalogueData.hasMore);
+
+    // Enrich after the first product rows are visible. This removes the
+    // catalogue -> variants request waterfall while keeping size/color
+    // metadata available shortly afterwards for cards and filters.
+    void hydrateVariantMetadata(catalogueData.products).then((enriched) => {
+      const byId = new Map(enriched.map((product) => [product.id, product]));
+      setProducts((current) => current.map((product) => byId.get(product.id) || product));
+    });
   }, [catalogueData]);
 
   const fetchCatalogue = useCallback(async (reset = false) => {
@@ -305,8 +314,12 @@ export default function MarketplacePage() {
       });
       if (error) throw error;
       const parsed = typeof data === "string" ? JSON.parse(data) : data;
-      const result = { products: await hydrateVariantMetadata((parsed?.products || []) as Product[]), hasMore: !!parsed?.has_more };
+      const result = { products: (parsed?.products || []) as Product[], hasMore: !!parsed?.has_more };
       setProducts(prev => [...prev, ...dedupeProducts(result.products, prev)]);
+      void hydrateVariantMetadata(result.products).then((enriched) => {
+        const byId = new Map(enriched.map((product) => [product.id, product]));
+        setProducts((current) => current.map((product) => byId.get(product.id) || product));
+      });
       const last = result.products[result.products.length - 1];
       setPageCursor(last ? { relevance: last.relevance ?? 0, createdAt: last.created_at, id: last.id } : null);
       setHasMore(result.hasMore);
@@ -642,9 +655,9 @@ export default function MarketplacePage() {
               ) : displayedProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center select-none">
                   <Package className="h-16 w-16 text-[#6E6C64]/30 dark:text-[#A0A0A0]/30 mb-4" />
-                  <h3 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
+                  <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">
                     {search || selectedCategory ? t("marketplace.noProductsMatch") : t("marketplace.noProductsListed")}
-                  </h3>
+                  </h2>
                   <p className="mt-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0] max-w-sm">
                     {search || selectedCategory ? t("marketplace.tryDifferentSearchTerms") : t("marketplace.productsWillAppear")}
                   </p>

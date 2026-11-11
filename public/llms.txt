@@ -33,9 +33,9 @@
 
 ## Policies and help
 
-- [Terms of Service](https://www.tradibu.com/legal/terms)
-- [Privacy Policy](https://www.tradibu.com/legal/privacy)
-- [Refund Policy](https://www.tradibu.com/legal/refund)
+- [Terms of Service](https://www.tradibu.com/terms)
+- [Privacy Policy](https://www.tradibu.com/privacy)
+- [Refund Policy](https://www.tradibu.com/refund-policy)
 - [Contact](https://www.tradibu.com/contact)
 
 ## Notes for automated agents

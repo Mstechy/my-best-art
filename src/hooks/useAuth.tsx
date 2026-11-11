@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, [fetchUserData]);
 
-  const signUp = async (email: string, password: string, fullName: string, selectedRole: AppRole) => {
+  const signUp = useCallback(async (email: string, password: string, fullName: string, selectedRole: AppRole) => {
     const { country, currency } = detectRegionDefaults();
     localStorage.setItem("preferred_country", country);
     localStorage.setItem("preferred_currency", currency);
@@ -159,28 +159,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) return { error: error.message };
 
     return { error: null };
-  };
+  }, []);
 
-  const signIn = async (email: string, password: string) => {
+  const signIn = useCallback(async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
     return { error: null };
-  };
+  }, []);
 
-  const refetchProfile = async () => {
+  const refetchProfile = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     await fetchUserData(user);
-  };
+  }, [fetchUserData, user]);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setProfile(null);
     setRole(null);
     setLoading(false);
-  };
+  }, []);
 
   const value = useMemo(() => ({ 
     user, 

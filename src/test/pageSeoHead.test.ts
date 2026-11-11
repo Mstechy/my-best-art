@@ -257,7 +257,10 @@ describe("injectPageHead", () => {
     // raw HTML without waiting to find that out: left in place, one of the two
     // links fires on every route and pulls a 1600px hero at fetchpriority=high
     // instead of the image that page actually shows.
-    expect(shell).toContain('as="image"');
+    // The homepage no longer ships a guessed hero preload. The live campaign
+    // is selected after its data arrives, so a static preload would recreate
+    // the old first-hero-then-swap flash.
+    expect(shell).not.toContain('as="image"');
     expect(marketplacePage).not.toContain('as="image"');
   });
 
@@ -275,7 +278,7 @@ describe("injectPageHead", () => {
     });
     expect(home).toContain(LANDING_PRELOAD_START);
     expect(home).toContain("LandingPage-ROUTE.js");
-    expect(home).toContain('as="image"');
+    expect(home).not.toContain('as="image"');
     expect(home).toContain('<link rel="canonical" href="https://www.tradibu.com/" />');
   });
 
