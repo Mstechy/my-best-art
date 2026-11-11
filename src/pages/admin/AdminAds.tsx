@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -17,14 +17,14 @@ export default function AdminAds() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<AdRow | null>(null);
 
-  const fetchAds = async () => {
+  const fetchAds = useCallback(async () => {
     const { data, error } = await supabase.from("ads").select("*").order("created_at", { ascending: false });
     if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
     else setAds((data ?? []) as AdRow[]);
     setLoading(false);
-  };
+  }, [toast]);
 
-  useEffect(() => { fetchAds(); }, []);
+  useEffect(() => { fetchAds(); }, [fetchAds]);
 
   const totalImpressions = ads.reduce((s, a) => s + (((a as any).impressions as number) ?? 0), 0);
   const totalClicks = ads.reduce((s, a) => s + (((a as any).clicks as number) ?? 0), 0);

@@ -74,7 +74,7 @@ export default function SellerAnalytics() {
       setStats({ completion, views: viewsCount, aov, repeat });
       setLoading(false);
     })();
-  }, [user?.id]);
+  }, [user]);
 
   const kpis = [
     { label: "Completion Rate", value: `${stats.completion.toFixed(1)}%`, icon: TrendingUp },

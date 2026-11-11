@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,7 +28,7 @@ export default function SellerReviews() {
   const [loading, setLoading] = useState(true);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return;
     const { data: prods } = await supabase.from("products").select("id, title").eq("seller_id", user.id);
     const ids = (prods || []).map((p) => p.id);
@@ -61,9 +61,9 @@ export default function SellerReviews() {
       reply: replyMap[r.id] || null,
     })));
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { load(); }, [user?.id]);
+  useEffect(() => { load(); }, [load]);
 
   const submitReply = async (reviewId: string) => {
     if (!user) return;
@@ -165,7 +165,7 @@ function SellerQuestionsBoard() {
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     const { data: prods } = await supabase.from("products").select("id, title").eq("seller_id", user.id);
@@ -191,8 +191,8 @@ function SellerQuestionsBoard() {
       answer: ansMap[q.id] || null,
     })));
     setLoading(false);
-  };
-  useEffect(() => { load(); }, [user?.id]);
+  }, [user]);
+  useEffect(() => { load(); }, [load]);
 
   const submit = async (qid: string) => {
     if (!user) return;
