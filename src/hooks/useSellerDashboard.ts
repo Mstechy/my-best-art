@@ -126,7 +126,9 @@ export function useSellerRevenue(userId: string | undefined) {
         .from("orders")
         .select("total_amount,status")
         .eq("seller_id", userId)
-        .eq("status", "delivered");
+        .eq("status", "delivered")
+        .order("created_at", { ascending: false })
+        .limit(2000);
       if (error) throw error;
       return ((data ?? []) as { total_amount: number }[]).reduce((s, r) => s + (r.total_amount || 0), 0);
     },
@@ -333,22 +335,25 @@ export function useSellerDashboard(userId: string | undefined) {
   const pendingApproval = usePendingApprovalCount(userId);
   const recentOrders = useSellerRecentOrders(userId);
   const orderCounts = useSellerOrderCounts(userId);
+  const revenue = useSellerRevenue(userId);
   const weekly = useSellerWeeklyRevenue(userId);
 
   const stats = useMemo(() => {
     const row = summary.data;
     return {
-      products: Number(row?.total_products ?? 0),
+      products: Number(row?.total_products ?? products.data?.length ?? 0),
       pendingApproval: Number(row?.pending_approval ?? pendingApproval.data ?? 0),
       pendingOrders: Number(row?.pending_orders ?? orderCounts.data?.byStatus.pending ?? 0),
-      totalRevenue: Number(row?.total_revenue ?? 0),
-      lowStock: Number(row?.low_stock ?? 0),
-      outOfStock: Number(row?.out_of_stock ?? 0),
+      totalRevenue: Number(row?.total_revenue ?? revenue.data ?? 0),
+      lowStock: Number(row?.low_stock ?? products.data?.filter((product) => product.status === "active" && product.stock_quantity > 0 && product.stock_quantity <= (product.low_stock_threshold ?? 5)).length ?? 0),
+      outOfStock: Number(row?.out_of_stock ?? products.data?.filter((product) => product.status === "active" && product.stock_quantity <= 0).length ?? 0),
     } as DashboardStats;
-  }, [summary.data, pendingApproval.data, orderCounts.data]);
+  }, [summary.data, products.data, pendingApproval.data, orderCounts.data, revenue.data]);
 
-  const loading = products.isLoading || summary.isLoading || pendingApproval.isLoading || recentOrders.isLoading || orderCounts.isLoading || weekly.isLoading;
-  const error = products.error ?? summary.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? weekly.error ?? null;
+  const loading = products.isLoading || summary.isLoading || pendingApproval.isLoading || recentOrders.isLoading || orderCounts.isLoading || revenue.isLoading || weekly.isLoading;
+  // The summary RPC is an optimization. Its failure must not hide the usable
+  // bounded product/order data already loaded by the dashboard.
+  const error = products.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? revenue.error ?? weekly.error ?? null;
 
   return { products: products.data ?? [], summary: summary.data, stats, loading, error, orderCounts: orderCounts.data ?? { total: 0, byStatus: {} }, recentOrders: recentOrders.data ?? [], weekly: weekly.data ?? [] };
 }

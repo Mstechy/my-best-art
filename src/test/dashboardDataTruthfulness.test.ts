@@ -13,6 +13,8 @@ describe("dashboard data truthfulness", () => {
     expect(hook).toContain('seller_dashboard_summary');
     expect(hook).toContain('.limit(100)');
     expect(hook).toContain("orderCounts.data?.byStatus.pending ?? 0");
+    expect(hook).toContain("summary RPC is an optimization");
+    expect(hook).not.toContain("summary.error ?? pendingApproval.error");
     expect(hook).toContain("if (error) throw error;");
     expect(dashboard).toContain("dashboardError");
     expect(dashboard).toContain("Seller dashboard unavailable");
