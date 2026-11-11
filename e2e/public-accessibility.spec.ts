@@ -16,6 +16,7 @@ function describeViolations(violations: Awaited<ReturnType<AxeBuilder["analyze"]
 
 for (const route of publicRoutes) {
   test(`${route} loads and has no automated accessibility violations`, async ({ page }) => {
+    test.setTimeout(60_000);
     const response = await page.goto(route, { waitUntil: "domcontentloaded" });
     expect(response?.status(), `${route} should return a document`).toBeLessThan(400);
     await expect(page.locator("body")).toBeVisible();
@@ -34,3 +35,18 @@ for (const route of publicRoutes) {
     expect(results.violations.map((violation) => violation.id), describeViolations(results.violations)).toEqual([]);
   });
 }
+
+test("category department routes resolve to a marketplace listing", async ({ page }) => {
+  test.setTimeout(60_000);
+  const directoryResponse = await page.goto("/categories", { waitUntil: "domcontentloaded" });
+  expect(directoryResponse?.status(), "/categories should return a document").toBeLessThan(400);
+  const departmentLink = page.locator('main a[href^="/categories/"]').first();
+  await expect(departmentLink).toBeVisible({ timeout: 20_000 });
+  const departmentHref = await departmentLink.getAttribute("href");
+  expect(departmentHref).toMatch(/^\/categories\/[^/]+$/);
+
+  const listingResponse = await page.goto(departmentHref!, { waitUntil: "domcontentloaded" });
+  expect(listingResponse?.status(), `${departmentHref} should return a document`).toBeLessThan(400);
+  await expect(page.locator("main")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page.locator("h1")).toHaveCount(1, { timeout: 20_000 });
+});

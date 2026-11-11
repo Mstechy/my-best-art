@@ -10,7 +10,7 @@ import { fetchCollectionsByPlacement, type EnhancedCollection } from "@/lib/coll
 import { useSEO } from "@/hooks/useSEO";
 import { CATEGORIES_PAGE_SEO } from "@/lib/pageSeo";
 
-type Category = { id: string; name: string; slug: string; icon: string | null; product_count?: number; };
+type Category = { id: string; name: string; slug: string; icon: string | null; parent_id?: string | null; product_count?: number; };
 
 /** Marketplace department hub: the complete directory of every department.
  *
@@ -69,6 +69,8 @@ export default function CategoriesPage() {
   useEffect(() => { void loadCategories(); }, [loadCategories]);
 
   const liveCategories = useMemo(() => categories.filter((category) => (category.product_count || 0) > 0).sort((a, b) => (b.product_count || 0) - (a.product_count || 0)), [categories]);
+  const popularCategories = useMemo(() => liveCategories.slice(0, 8), [liveCategories]);
+  const remainingCategories = useMemo(() => liveCategories.slice(8), [liveCategories]);
   const totalLiveProducts = useMemo(() => liveCategories.reduce((total, category) => total + (category.product_count || 0), 0), [liveCategories]);
   const submitSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,30 +86,30 @@ export default function CategoriesPage() {
     <MarketplaceNavbar showSearch={false} categories={populatedCategories.map((category) => ({ label: category.name, value: category.id }))} />
     <BottomTabBar />
     <main>
-      <section className="border-b border-[#E8E8E8] bg-[#1A1A1A] text-white dark:border-[#333333]">
-        <div className="mx-auto max-w-7xl px-4 py-10 md:px-8 md:py-14">
-          <nav aria-label="Breadcrumb" className="mb-6 text-xs text-white/60"><Link to="/" className="hover:text-white hover:underline">Home</Link><span className="mx-2">/</span><span>Departments</span></nav>
+      <section className="border-b border-[#E8E8E8] bg-white dark:border-[#333333] dark:bg-[#171717]">
+        <div className="mx-auto max-w-7xl px-4 py-7 md:px-8 md:py-9">
+          <nav aria-label="Breadcrumb" className="mb-5 text-xs text-[#6E6C64] dark:text-[#A0A0A0]"><Link to="/" className="hover:text-[#111111] hover:underline dark:hover:text-white">Home</Link><span className="mx-2">/</span><span>Departments</span></nav>
           <div className="grid gap-8 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#F6C75D]">Marketplace departments</p>
-              <h1 className="mt-3 max-w-2xl text-4xl font-black uppercase tracking-tight md:text-6xl">Find products by department</h1>
-              <p className="mt-4 max-w-xl text-sm leading-relaxed text-white/70 md:text-base">Start broad, then narrow by the details that matter — brand, size, condition, price, material, compatibility, and delivery destination.</p>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7A5200] dark:text-[#F6C75D]">Marketplace departments</p>
+              <h1 className="mt-2 text-3xl font-black tracking-tight md:text-4xl">Browse departments</h1>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-[#6E6C64] dark:text-[#A0A0A0]">Choose a department, then refine by brand, price, condition, compatibility, and delivery destination.</p>
               <form
                 onSubmit={submitSearch}
                 toolname="search_marketplace_by_department"
                 tooldescription="Search Tradibu products by department, brand, model, or keyword. This is a safe, read-only search."
                 toolautosubmit=""
-                className="mt-6 flex max-w-xl rounded-xl bg-white p-1.5 shadow-lg"
+                className="mt-6 flex max-w-2xl rounded-xl border border-[#D9D9D9] bg-[#FAFAFA] p-1.5 shadow-sm focus-within:border-[#B47B00] focus-within:ring-2 focus-within:ring-[#F6C75D]/30 dark:border-[#444444] dark:bg-[#222222]"
               >
                 <label className="sr-only" htmlFor="department-search">Search the marketplace</label>
                 <Search className="ml-3 h-5 w-5 shrink-0 self-center text-[#666666]" />
-                <input id="department-search" name="query" toolparamdescription="Product name, brand, model, or keyword to search for." value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, brands, or models" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-[#111111] outline-none" />
+                <input id="department-search" name="query" toolparamdescription="Product name, brand, model, or keyword to search for." value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products, brands, or models" className="min-w-0 flex-1 bg-transparent px-3 py-2 text-sm text-[#111111] outline-none dark:text-white" />
                 <button type="submit" className="rounded-lg bg-[#F6C75D] px-4 py-2 text-sm font-bold text-[#111111] hover:bg-[#E8A93D]">Search</button>
               </form>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl border border-white/15 bg-white/5 p-4"><p className="text-2xl font-black">{totalLiveProducts}</p><p className="mt-1 text-xs text-white/65">approved products to browse</p></div>
-              <div className="rounded-xl border border-white/15 bg-white/5 p-4"><p className="text-2xl font-black">{liveCategories.length}</p><p className="mt-1 text-xs text-white/65">departments with live inventory</p></div>
+            <div className="grid grid-cols-2 gap-3 lg:min-w-[330px]">
+              <div className="rounded-xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#333333] dark:bg-[#222222]"><p className="text-2xl font-black">{totalLiveProducts}</p><p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">products available</p></div>
+              <div className="rounded-xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#333333] dark:bg-[#222222]"><p className="text-2xl font-black">{liveCategories.length}</p><p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">live departments</p></div>
               <Link to="/marketplace?sort=newest" className="col-span-2 flex items-center justify-between rounded-xl bg-[#F6C75D] p-4 text-[#111111] transition hover:bg-[#E8A93D]"><span><Clock3 className="mb-2 h-5 w-5" /><span className="block text-sm font-bold">See new arrivals</span></span><ArrowRight className="h-5 w-5" /></Link>
             </div>
           </div>
@@ -118,7 +120,28 @@ export default function CategoriesPage() {
         {loading ? <div className="grid gap-x-6 border-y border-[#E8E8E8] sm:grid-cols-2 lg:grid-cols-3 dark:border-[#333333]">{Array.from({ length: 9 }).map((_, index) => <div key={index} className="h-14 animate-pulse border-b border-[#E8E8E8] dark:border-[#333333]" />)}</div> : loadError ? <div role="alert" className="rounded-2xl border border-amber-300 bg-amber-50 p-10 text-center text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100"><p className="font-semibold">{loadError}</p><button type="button" onClick={() => void loadCategories()} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-full border border-amber-400 px-5 py-2 text-sm font-semibold hover:bg-amber-100 dark:hover:bg-amber-900/40"><RefreshCw className="h-4 w-4" /> Try again</button></div> : categories.length === 0 ? <div className="rounded-2xl border bg-card p-10 text-center"><Package className="mx-auto mb-3 h-8 w-8 text-muted-foreground" /><p className="font-semibold">Departments are being prepared.</p><Link to="/marketplace" className="mt-3 inline-flex items-center gap-2 text-sm underline">Browse all products <ArrowRight className="h-4 w-4" /></Link></div> : <>
           {collections.length > 0 && <section className="mt-14" aria-labelledby="curated-collections"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6E6C64]">Shop by need</p><h2 id="curated-collections" className="mt-1 text-3xl font-black tracking-tight">Curated collections</h2><p className="mt-2 text-sm text-[#6E6C64]">Focused product sets for deals, seasons, brands, and specific shopping missions.</p></div><div className="grid gap-4 md:grid-cols-3">{collections.map((collection) => <Link key={collection.id} to={`/collections/${encodeURIComponent(collection.slug)}`} className="group relative min-h-44 overflow-hidden rounded-2xl bg-[#1A1A1A] p-5 text-white shadow-sm"><img src={collection.image_url || ""} alt="" className={`absolute inset-0 h-full w-full object-cover opacity-60 transition duration-300 group-hover:scale-105 ${collection.image_url ? "" : "hidden"}`} loading="lazy" /><div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10" /><div className="relative flex h-full flex-col justify-end"><span className="mb-2 text-xs font-bold uppercase tracking-wider text-[#F6C75D]">{collection.badge || "Collection"}</span><h3 className="text-xl font-bold">{collection.title}</h3><span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold">Shop now <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" /></span></div></Link>)}</div></section>}
 
-          <section className="mt-14 border-t border-[#E8E8E8] pt-10 dark:border-[#333333]" aria-labelledby="all-departments"><div className="mb-5"><p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6E6C64]">Shop by department</p><h2 id="all-departments" className="mt-1 text-3xl font-black tracking-tight">Browse departments</h2><p className="mt-2 text-sm text-[#6E6C64]">Explore departments with products available to buy now. Empty departments stay out of the buyer directory until inventory is approved.</p></div>{liveCategories.length > 0 ? <div className="grid gap-x-6 border-y border-[#E8E8E8] sm:grid-cols-2 lg:grid-cols-3 dark:border-[#333333]">{liveCategories.map((category) => <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="group flex items-center justify-between border-b border-[#E8E8E8] py-4 last:border-b-0 sm:[&:nth-last-child(2)]:border-b-0 lg:[&:nth-last-child(3)]:border-b-0 dark:border-[#333333]"><span><span className="block font-semibold group-hover:underline">{category.name}</span><span className="mt-0.5 block text-xs text-[#6E6C64]">{category.product_count} {category.product_count === 1 ? "product" : "products"}</span></span><ArrowRight className="h-4 w-4 text-[#6E6C64] transition-transform group-hover:translate-x-1 group-hover:text-[#111111] dark:group-hover:text-white" /></Link>)}</div> : <div className="rounded-2xl border border-dashed border-[#E8E8E8] p-10 text-center dark:border-[#333333]"><p className="font-semibold">Departments are being stocked.</p><p className="mt-1 text-sm text-[#6E6C64]">Browse all available products while new departments open.</p></div>}</section>
+          <section className="mt-14 border-t border-[#E8E8E8] pt-10 dark:border-[#333333]" aria-labelledby="all-departments">
+            <div className="mb-5">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#6E6C64]">Shop by department</p>
+              <h2 id="all-departments" className="mt-1 text-3xl font-black tracking-tight">Browse departments</h2>
+              <p className="mt-2 max-w-2xl text-sm text-[#6E6C64]">Start with the departments shoppers use most. Less-used departments stay behind one expandable list so the page remains easy to scan as Tradibu grows.</p>
+            </div>
+            {liveCategories.length > 0 ? <>
+              <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Popular departments">
+                {popularCategories.map((category) => <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="group flex min-w-[132px] snap-start items-center gap-3 rounded-xl border border-[#E8E8E8] bg-white px-3 py-3 transition hover:border-[#F6C75D] hover:shadow-sm dark:border-[#333333] dark:bg-[#1E1E1E]">
+                  <span className="mb-2 flex h-11 w-11 items-center justify-center rounded-full bg-[#FFF4C7] text-xl dark:bg-[#4A3A12]">{category.icon || "▦"}</span>
+                  <span className="line-clamp-2 text-sm font-bold leading-tight group-hover:underline">{category.name}</span>
+                  <span className="mt-1 text-[11px] text-[#6E6C64]">{category.product_count} {category.product_count === 1 ? "product" : "products"}</span>
+                </Link>)}
+              </div>
+              {remainingCategories.length > 0 && <details className="mt-4 rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#333333] dark:bg-[#1E1E1E]">
+                <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-bold [&::-webkit-details-marker]:hidden">More departments <span className="text-xs font-normal text-[#6E6C64]">{remainingCategories.length} more</span></summary>
+                <div className="grid gap-x-6 border-t border-[#E8E8E8] px-4 sm:grid-cols-2 lg:grid-cols-3 dark:border-[#333333]">
+                  {remainingCategories.map((category) => <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="group flex items-center justify-between border-b border-[#E8E8E8] py-3 text-sm dark:border-[#333333]"><span><span className="block font-semibold group-hover:underline">{category.name}</span><span className="mt-0.5 block text-xs text-[#6E6C64]">{category.product_count} {category.product_count === 1 ? "product" : "products"}</span></span><ArrowRight className="h-4 w-4 text-[#6E6C64]" /></Link>)}
+                </div>
+              </details>}
+            </> : <div className="rounded-2xl border border-dashed border-[#E8E8E8] p-10 text-center dark:border-[#333333]"><p className="font-semibold">Departments are being stocked.</p><p className="mt-1 text-sm text-[#6E6C64]">Browse all available products while new departments open.</p></div>}
+          </section>
 
           <div className="mt-10 flex flex-wrap gap-3"><Link to="/marketplace?sort=flash_deals" className="inline-flex items-center gap-2 rounded-full border border-[#E8E8E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#333333] dark:bg-[#1E1E1E]"><Tag className="h-4 w-4 text-[#E53935]" /> Shop deals</Link><Link to="/marketplace?sort=newest" className="inline-flex items-center gap-2 rounded-full border border-[#E8E8E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#333333] dark:bg-[#1E1E1E]"><Sparkles className="h-4 w-4 text-[#F6C75D]" /> New arrivals</Link><Link to="/marketplace" className="inline-flex items-center gap-2 rounded-full border border-[#E8E8E8] bg-white px-5 py-3 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#333333] dark:bg-[#1E1E1E]"><Search className="h-4 w-4" /> Search all products</Link></div>
         </>}
