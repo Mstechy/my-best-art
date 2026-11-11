@@ -677,6 +677,7 @@ export default function MarketplacePage() {
                         imageSmallUrl: primaryImage?.card_small_url ?? null, flashDealEndAt: flashActive ? product.flash_deal_end_at : null, videoUrl: getProductVideos(product.variants)[0], badge: flashActive && product.flash_deal_end_at ? { label: t("marketplace.flash"), tone: "destructive" } : discount ? { label: `-${discount}%`, tone: "destructive" } : product.stock_quantity <= 5 && product.stock_quantity > 0 ? { label: t("marketplace.labelHot"), tone: "seller" } : (Date.now() - new Date(product.created_at).getTime()) < 1000 * 60 * 60 * 24 * 14 ? { label: t("marketplace.labelNew"), tone: "brand" } : null }}
                         formatPrice={formatPrice}
                         density="marketplace"
+                        headingLevel="h2"
                         listItem
                         priority={index < 5}
                         shippingLabel={shipsTo === "all" ? t("marketplace.shipsWorldwide") : t("marketplace.shipsToDestination", { destination: countryName(shipsTo) })}

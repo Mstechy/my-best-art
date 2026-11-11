@@ -38,7 +38,6 @@ export default function RegionalPreferences({ showLabel = false, className = "" 
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          aria-label={`${t("nav.deliveryTo")} ${destinationLabel}, ${currency.code}`}
           className={`flex items-center gap-1.5 rounded-full px-2 py-2 text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:text-[#FAF5F2] dark:hover:bg-[#222222] ${className}`}
         >
           <LocationIcon className="h-4 w-4 shrink-0" aria-hidden="true" />

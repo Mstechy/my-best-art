@@ -72,6 +72,8 @@ type ProductCardProps = {
   density?: "default" | "marketplace";
   /** Expose catalogue tiles as list items without imposing list semantics on other card layouts. */
   listItem?: boolean;
+  /** Use the page's next heading level when cards are rendered under an h1. */
+  headingLevel?: "h2" | "h3";
 };
 
 const badgeTone = {
@@ -112,6 +114,7 @@ export function ProductCard({
   priority = false,
   density = "default",
   listItem = false,
+  headingLevel = "h3",
   className,
 }: ProductCardProps) {
   const { t } = useTranslation();
@@ -201,7 +204,11 @@ export function ProductCard({
             onClick={onProductClick}
             className="block rounded-md outline-none after:absolute after:inset-0 after:z-0 after:rounded-card after:bg-transparent after:content-[''] hover:after:bg-foreground/[0.03] active:after:bg-foreground/[0.07] focus-visible:after:ring-2 focus-visible:after:ring-primary"
           >
-            <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h3>
+            {headingLevel === "h2" ? (
+              <h2 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h2>
+            ) : (
+              <h3 className="line-clamp-2 text-sm font-semibold leading-snug text-foreground group-hover:underline">{product.title}</h3>
+            )}
           </Link>
           {/* Price is the first comparison signal after the product name. Optional
               metadata follows it and can disappear without pushing the price into
