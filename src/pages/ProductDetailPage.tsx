@@ -173,7 +173,8 @@ export default function ProductDetailPage() {
     addDetail("Material", product.material);
     addDetail("Dimensions", product.dimensions);
     addDetail("Weight", product.weight);
-    addDetail("Warranty", product.warranty || product.warranty_period);
+    // Warranty is presented once in the purchase-service policy rows above;
+    // do not repeat it in the long specification table.
     return Object.keys(details).length > 0 ? details : null;
   }, [category, product, variantAttributeKeys]);
   const productQuickFacts = useMemo(() => {
@@ -187,8 +188,8 @@ export default function ProductDetailPage() {
       topLevel: { brand: product.brand, color: product.color, condition: product.condition },
       labels,
       keys: isPhone
-        ? ["brand", "model", "storage", "color", "network", "connectivity", "operatingSystem", "condition"]
-        : ["brand", "model", "storage", "color", "condition"],
+        ? ["brand", "model", "storage", "color", "network", "connectivity", "operatingSystem"]
+        : ["brand", "model", "storage", "color"],
     });
   }, [category, product]);
   const selectedVariant = hasProductVariants
