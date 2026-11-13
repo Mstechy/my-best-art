@@ -33,7 +33,12 @@ export default function ProductImage({
   const cardSrc = useMemo(
     () => {
       if (!originalSrc) return null;
-      return variant === "card" || variant === "thumb" ? getProductCardImageUrl(originalSrc) ?? originalSrc : originalSrc;
+      // Product detail slots are usually about 600px wide. Start with the
+      // generated WebP derivative so the first paint is fast, then fall back
+      // to the original upload if the derivative is unavailable.
+      return variant === "card" || variant === "thumb" || variant === "detail"
+        ? getProductCardImageUrl(originalSrc) ?? originalSrc
+        : originalSrc;
     },
     [originalSrc, variant],
   );
@@ -110,7 +115,7 @@ export default function ProductImage({
       src={currentSrc}
       alt={alt}
       loading={loading}
-      fetchPriority={fetchPriority}
+      {...({ fetchpriority: fetchPriority } as Record<string, string>)}
       decoding="async"
       width={900}
       height={900}

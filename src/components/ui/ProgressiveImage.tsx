@@ -156,6 +156,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
           width={width}
           height={height}
           loading={loading}
+          {...({ fetchpriority: fetchPriority } as Record<string, string>)}
           decoding={decoding}
           onLoad={handleLoad}
           onError={handleError}

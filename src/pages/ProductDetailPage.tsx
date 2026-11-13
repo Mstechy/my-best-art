@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, ChevronRight, Flame, Store, ShoppingCart } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, ChevronLeft, ChevronRight, Flame, Store, ShoppingCart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -511,9 +511,24 @@ export default function ProductDetailPage() {
     completePurchase(action);
   }, [product, user, requiresOptionSelection, completePurchase]);
 
+  const shareProduct = useCallback(async () => {
+    if (!product) return;
+    const url = window.location.href;
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: product.title, url });
+      } else {
+        await navigator.clipboard?.writeText(url);
+        toast.success("Product link copied");
+      }
+    } catch (error) {
+      if ((error as DOMException)?.name !== "AbortError") toast.error("Could not share this product");
+    }
+  }, [product]);
+
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-[calc(72px+env(safe-area-inset-bottom,0px))] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
-      <MarketplaceNavbar showSearch={false} />
+      <MarketplaceNavbar />
       <CartDrawer />
       <main>
       <Container className="py-6">
@@ -576,7 +591,7 @@ export default function ProductDetailPage() {
                             </div>
                           ) : (
                             <>
-                              <ProductImage src={item.url} alt={product.title} className="group-hover:scale-105" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "auto"} />
+                              <ProductImage variant="detail" src={item.url} alt={product.title} className="group-hover:scale-105" loading={index === 0 ? "eager" : "lazy"} fetchPriority={index === 0 ? "high" : "auto"} />
                               <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                                 <ZoomIn className="h-6 w-6 text-white drop-shadow-lg" />
                               </div>
@@ -596,6 +611,16 @@ export default function ProductDetailPage() {
                       </CarouselItem>
                     ))}
                   </CarouselContent>
+                  {mediaItems.length > 1 && (
+                    <>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); carouselApi?.scrollPrev(); }} className="absolute left-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#111111] shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#1E1E1E]/90 dark:text-[#FAF5F2] dark:hover:bg-[#2A2A2A]" aria-label="Previous product image">
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <button type="button" onClick={(event) => { event.stopPropagation(); carouselApi?.scrollNext(); }} className="absolute right-3 top-1/2 z-10 grid h-10 w-10 -translate-y-1/2 place-items-center rounded-full bg-white/90 text-[#111111] shadow-sm backdrop-blur transition hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#1E1E1E]/90 dark:text-[#FAF5F2] dark:hover:bg-[#2A2A2A]" aria-label="Next product image">
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </>
+                  )}
                 </Carousel>
               )}
               {mediaItems.length > 1 && (
@@ -616,7 +641,7 @@ export default function ProductDetailPage() {
                           <Play className="h-4 w-4 text-[#6E6C64]" />
                         </div>
                       ) : (
-                        <ProductImage src={item.url} alt={`${product.title} image ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
+                        <ProductImage variant="thumb" src={item.url} alt={`${product.title} image ${idx + 1}`} className="w-full h-full object-cover" loading="lazy" />
                       )}
                     </button>
                   ))}
@@ -624,7 +649,7 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <div className="space-y-5">
+            <div className="space-y-5 rounded-2xl border border-[#E8E8E8] bg-white p-5 shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A] md:p-6">
               <div>
                 {/* Condition pill + title (2-line clamp with expand) */}
                 {product.condition && (
@@ -632,7 +657,12 @@ export default function ProductDetailPage() {
                     {product.condition}
                   </span>
                 )}
-                <h1 className={`text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title || "Untitled product"}</h1>
+                <div className="flex items-start gap-3">
+                  <h1 className={`min-w-0 flex-1 text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title || "Untitled product"}</h1>
+                  <button type="button" onClick={() => void shareProduct()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2]" aria-label="Share product">
+                    <Share2 className="h-4 w-4" />
+                  </button>
+                </div>
                 {(product.title ?? "").length > 90 && (
                   <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] underline">
                     {titleExpanded ? "Less" : "More"}
@@ -684,14 +714,14 @@ export default function ProductDetailPage() {
                         <Flame className="h-3 w-3" />
                         Limited Offer
                       </span>
-                      <span className="text-[10px] font-bold text-[#6E6C64]">
+                      <span className="text-[10px] font-bold text-[#D4D4D4]">
                         Save {Math.round((1 - product.price / product.compare_at_price) * 100)}%
                       </span>
                     </div>
                     <div className="flex flex-wrap items-baseline gap-2 mt-2">
                       <span className="text-3xl font-black text-white">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
-                      <span className="text-base text-[#6E6C64] line-through">{formatPrice(product.compare_at_price)}</span>
-                      <span className="text-xs font-bold text-[#E53935] bg-[#E53935]/20 px-2 py-0.5 rounded-full">
+                      <span className="text-base text-[#D4D4D4] line-through">{formatPrice(product.compare_at_price)}</span>
+                      <span className="rounded-full bg-[#8F2B25] px-2 py-0.5 text-xs font-bold text-white">
                         -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
                       </span>
                     </div>
@@ -867,8 +897,13 @@ export default function ProductDetailPage() {
 
             {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
-          </div>
-          </>
+           </div>
+           <nav aria-label="Product information" className="mt-8 flex snap-x gap-2 overflow-x-auto border-y border-[#E8E8E8] bg-[#FAFAFA] py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-[#2A2A2A] dark:bg-[#171717]">
+             <a href="#product-details" className="min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">Details</a>
+             <a href="#product-reviews" className="min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">Reviews{product.review_count > 0 ? ` (${product.review_count})` : ""}</a>
+             <a href="#qa" className="min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">Questions & Answers</a>
+           </nav>
+           </>
         )}
 
         <Sheet open={verifiedSellerOpen} onOpenChange={setVerifiedSellerOpen}>
@@ -897,7 +932,7 @@ export default function ProductDetailPage() {
         </Sheet>
 
         {product && (
-          <div className="mt-12 space-y-6">
+          <div id="product-details" className="mt-12 space-y-6 scroll-mt-24">
             {product.key_features && product.key_features.length > 0 && (
               <Collapsible open={specsOpen} onOpenChange={setSpecsOpen}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-3 border-b border-[#E8E8E8] dark:border-[#222222] text-sm font-bold">
@@ -936,7 +971,8 @@ export default function ProductDetailPage() {
               </section>
             )}
 
-            <div ref={reviewsRef}>
+            <div id="product-reviews" ref={reviewsRef} className="scroll-mt-24">
+              <h2 className="mb-3 text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Customer reviews</h2>
               {reviewsQuery.isLoading && <div className="space-y-3 animate-pulse"><div className="h-5 w-24 rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="h-20 rounded-xl bg-[#F2F3F5] dark:bg-[#202020]" /></div>}
               {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><h2 className="text-base font-bold">Reviews</h2><p className="text-xs text-[#6E6C64]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
               {reviews.length > 0 && <ReviewSummary
@@ -1145,7 +1181,7 @@ export default function ProductDetailPage() {
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setZoomedImage(null)}>
           <div className="relative max-w-4xl max-h-[90vh]" onClick={e => e.stopPropagation()}>
-            <ProductImage src={zoomedImage} alt="Zoomed product image" className="max-w-full max-h-[85vh] object-contain rounded-2xl" style={{ transform: `scale(${zoomScale})` }} />
+            <ProductImage variant="detail" src={zoomedImage} alt="Zoomed product image" className="max-w-full max-h-[85vh] object-contain rounded-2xl" style={{ transform: `scale(${zoomScale})` }} />
             <div className="absolute top-4 right-4 flex gap-2">
               <button onClick={() => setZoomScale(s => Math.min(3, s + 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom in"><ZoomIn className="h-5 w-5" /></button>
               <button onClick={() => setZoomScale(s => Math.max(1, s - 0.5))} className="h-10 w-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white hover:bg-white/30 transition-colors" aria-label="Zoom out"><ZoomOut className="h-5 w-5" /></button>
