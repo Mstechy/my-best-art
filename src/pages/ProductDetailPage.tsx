@@ -155,6 +155,18 @@ export default function ProductDetailPage() {
     });
     return keys;
   }, [productVariants]);
+  const inStockVariants = useMemo(
+    () => productVariants.filter((variant) => variant.is_active && variant.stock_quantity > 0),
+    [productVariants],
+  );
+  const variantChoiceKeys = useMemo(() => {
+    const keys = new Set<string>();
+    [...variantAttributeKeys].forEach((key) => {
+      const values = new Set(inStockVariants.map((variant) => variant.option_values[key]).filter(Boolean));
+      if (values.size > 1) keys.add(key);
+    });
+    return keys;
+  }, [inStockVariants, variantAttributeKeys]);
   const productDetailSpecs = useMemo(() => {
     if (!product) return null;
     // Quick facts are the comparison layer beside the buy box. Do not repeat
@@ -184,32 +196,40 @@ export default function ProductDetailPage() {
     const productTypeConfig = findProductTypeConfig(category, productType?.key);
     const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
     const isPhone = productType?.key === "mobile-phones" || productType?.key === "phones" || category?.slug === "phones-accessories";
+    const choiceKeys = new Set([...variantChoiceKeys].map((key) => key.toLowerCase()));
+    const isChoiceKey = (key: string) => {
+      const normalized = key.toLowerCase();
+      return choiceKeys.has(normalized)
+        || (normalized === "color" && choiceKeys.has("colour"))
+        || (normalized === "colour" && choiceKeys.has("color"));
+    };
+    const keys = isPhone
+      ? ["brand", "model", "storage", "color", "network", "connectivity", "operatingSystem"]
+      : ["brand", "model", "storage", "color"];
     return getProductFactEntries({
       attributes: getCategoryAttributes(product.variants),
       topLevel: { brand: product.brand, color: product.color, condition: product.condition },
       labels,
-      keys: isPhone
-        ? ["brand", "model", "storage", "color", "network", "connectivity", "operatingSystem"]
-        : ["brand", "model", "storage", "color"],
+      // A dimension with multiple SKU values belongs in the purchase sheet,
+      // not in the product facts. Common facts such as 5G remain visible.
+      keys: keys.filter((key) => !isChoiceKey(key)),
     });
-  }, [category, product]);
+  }, [category, product, variantChoiceKeys]);
   const selectedVariant = hasProductVariants
     ? (variantAttributeKeys.size > 0 && [...variantAttributeKeys].every((key) => selectedVariantOptions[key])
       ? productVariants.find((variant) =>
           variant.is_active &&
           [...variantAttributeKeys].every((key) => variant.option_values[key] === selectedVariantOptions[key]),
         ) ?? null
-      : null)
+      : variantChoiceKeys.size === 0
+        ? inStockVariants[0] ?? productVariants.find((variant) => variant.is_active) ?? null
+        : null)
     : (productVariants.find(variant =>
         variant.is_active &&
         (!selectedSize || variant.option_values.size === selectedSize) &&
         (!selectedColor || variant.option_values.color === selectedColor) &&
         (!variant.option_values.size || !!selectedSize) && (!variant.option_values.color || !!selectedColor)
       ) ?? null);
-  const inStockVariants = useMemo(
-    () => productVariants.filter((variant) => variant.is_active && variant.stock_quantity > 0),
-    [productVariants],
-  );
   const hasInStockVariant = inStockVariants.length > 0;
   const purchasableStock = selectedVariant
     ? selectedVariant.stock_quantity
@@ -376,7 +396,10 @@ export default function ProductDetailPage() {
   }, [product?.id]);
 
   useEffect(() => {
-    if (!hasProductVariants || variantAttributeKeys.size === 0) return;
+    // Keep an explicitly shared SKU link reproducible, but do not silently
+    // choose a colour/storage combination on a normal product visit. Buyers
+    // should see the parent product first and choose the exact SKU at purchase.
+    if (!hasProductVariants || variantAttributeKeys.size === 0 || !searchParams.get("variant")) return;
     const requestedVariantId = searchParams.get("variant");
     const requestedVariant = requestedVariantId
       ? productVariants.find((variant) => variant.id === requestedVariantId && variant.is_active)
@@ -502,9 +525,8 @@ export default function ProductDetailPage() {
       toast.error("Sellers cannot purchase their own products.");
       return;
     }
-    // The page already exposes the complete selector on desktop. Once a
-    // purchasable SKU is selected, a second picker would be needless friction.
-    // Keep the sheet only as a guard when options are still incomplete.
+    // Keep the exact-SKU picker behind the purchase action. Once a purchasable
+    // SKU is selected, the same action completes without reopening the sheet.
     if (requiresOptionSelection) {
       setPurchaseAction(action);
       return;
@@ -529,7 +551,49 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pb-[calc(72px+env(safe-area-inset-bottom,0px))] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2] md:pb-24">
-      <MarketplaceNavbar />
+      <div className="hidden md:block">
+        <MarketplaceNavbar showTrending={false} />
+      </div>
+      <header className="sticky top-0 z-50 flex items-center justify-between border-b border-[#E8E8E8] bg-white/95 px-4 py-3 backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/95 md:hidden">
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          aria-label="Go back"
+          className="grid h-10 w-10 place-items-center rounded-full text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+        >
+          <ArrowLeft className="h-5 w-5" />
+        </button>
+        <Link to="/" aria-label="Tradibu home" className="select-none text-lg font-black tracking-tighter">
+          tradi<span className="text-[#9E6300] dark:text-[#F6C75D]">bu</span>
+        </Link>
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => product && toggleWishlist(product.id)}
+            aria-label={product && isWishlisted(product.id) ? "Remove from wishlist" : "Add to wishlist"}
+            className={`grid h-10 w-10 place-items-center rounded-full transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222] ${product && isWishlisted(product.id) ? "text-[#E53935]" : "text-[#111111] dark:text-[#FAF5F2]"}`}
+          >
+            <Heart className={`h-5 w-5 ${product && isWishlisted(product.id) ? "fill-current" : ""}`} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void shareProduct()}
+            aria-label="Share product"
+            className="grid h-10 w-10 place-items-center rounded-full text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+          >
+            <Share2 className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setCartOpen(true)}
+            aria-label={`Open cart${totalItems > 0 ? `, ${totalItems} items` : ""}`}
+            className="relative grid h-10 w-10 place-items-center rounded-full text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+          >
+            <ShoppingCart className="h-5 w-5" />
+            {totalItems > 0 && <span className="absolute right-0 top-0 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#E53935] px-1 text-[9px] font-bold text-white">{totalItems > 99 ? "99+" : totalItems}</span>}
+          </button>
+        </div>
+      </header>
       <CartDrawer />
       <main>
       <Container className="py-6">
@@ -660,7 +724,7 @@ export default function ProductDetailPage() {
                 )}
                 <div className="flex items-start gap-3">
                   <h1 className={`min-w-0 flex-1 text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title || "Untitled product"}</h1>
-                  <button type="button" onClick={() => void shareProduct()} className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2]" aria-label="Share product">
+                  <button type="button" onClick={() => void shareProduct()} className="hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] md:grid" aria-label="Share product">
                     <Share2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -692,7 +756,7 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   {product.show_sold_count !== false && soldCount > 0 && <span>{soldCount} sold</span>}
-                  {purchasableStock === 0 && <span className="font-semibold text-[#E53935]">Out of stock</span>}
+                  {(!inventoryAvailable || (Boolean(selectedVariant) && purchasableStock === 0)) && <span className="font-semibold text-[#E53935]">Out of stock</span>}
                 </div>
 
                 {productQuickFacts.length > 0 && (
@@ -708,7 +772,7 @@ export default function ProductDetailPage() {
 
                 {/* The quantity control stays in the main buy box for every SKU type. */}
                 {/* Promo pricing banner (MarketHub-adapted) */}
-                {product.compare_at_price && product.compare_at_price > product.price ? (
+                {product.compare_at_price && product.compare_at_price > product.price && !hasProductVariants ? (
                   <div className="mt-4 rounded-2xl bg-[#1A1A1A] dark:bg-[#252525] text-white px-4 py-3">
                     <div className="flex items-center justify-between">
                       <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#F6C75D]">
@@ -739,27 +803,33 @@ export default function ProductDetailPage() {
 
             {hasProductVariants && (
               <section className="rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#222222] dark:bg-[#181818]" aria-label="Product options">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <h2 className="text-sm font-bold">Choose your options</h2>
-                    <p className="mt-1 text-xs text-[#6E6C64]">Select storage, colour, or another option to see its exact price and availability.</p>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-sm font-bold">Choose options at purchase</h2>
+                    <p className="mt-1 text-xs leading-5 text-[#6E6C64]">Select the exact storage, colour, model, or configuration to see its price, stock, and matching image.</p>
                   </div>
-                  {Object.keys(selectedVariantOptions).length > 0 && (
-                    <button type="button" onClick={() => setSelectedVariantOptions({})} className="shrink-0 text-xs font-semibold underline text-[#666666] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]">
-                      Clear selection
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setPurchaseAction("cart")}
+                    disabled={!inventoryAvailable}
+                    className="shrink-0 rounded-full bg-[#111111] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#2A2A2A] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#FAF5F2] dark:text-[#111111]"
+                  >
+                    {selectedVariant ? "Change" : "Choose"}
+                  </button>
                 </div>
-                <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
                 <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#F2F3F5] px-3 py-2.5 text-xs dark:bg-[#222222]" aria-live="polite">
-                  {selectedVariant ? (
-                    <>
-                      <span className="min-w-0"><span className="block text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">Selected configuration</span><span className="mt-0.5 block truncate font-bold">{Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" / ")}</span></span>
-                      <span className="shrink-0 text-right"><span className="block font-bold">{formatPrice(purchasablePrice)}</span><span className="font-semibold text-[#16803C] dark:text-[#5EE38B]">{purchasableStock} available</span></span>
-                    </>
-                  ) : (
-                    <span className="font-medium text-[#666666] dark:text-[#A0A0A0]">Choose every option to see the exact price, stock, and matching product image.</span>
-                  )}
+                  <span className="min-w-0">
+                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{selectedVariant ? "Selected configuration" : "Configuration"}</span>
+                    <span className="mt-0.5 block truncate font-bold">
+                      {selectedVariant
+                        ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" / ")
+                        : "Choose options to continue"}
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right">
+                    <span className="block font-bold">{selectedVariant ? formatPrice(purchasablePrice) : `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}`}</span>
+                    {selectedVariant && <span className="font-semibold text-[#16803C] dark:text-[#5EE38B]">{purchasableStock} available</span>}
+                  </span>
                 </div>
               </section>
             )}
@@ -1150,11 +1220,25 @@ export default function ProductDetailPage() {
             <SheetTitle>Select options</SheetTitle>
             <SheetDescription>Choose a complete in-stock combination to see its exact price.</SheetDescription>
           </SheetHeader>
+          {mediaItems.find((item) => item.type === "image")?.url && (
+            <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-3 dark:border-[#222222] dark:bg-[#181818]">
+              <ProductImage
+                variant="thumb"
+                src={mediaItems.find((item) => item.type === "image")?.url || ""}
+                alt={product?.title || "Product"}
+                className="h-16 w-16 rounded-xl object-cover"
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">{product?.title}</p>
+                <p className="mt-1 text-xs text-[#6E6C64]">The image, price, and stock update for the exact SKU you choose.</p>
+              </div>
+            </div>
+          )}
           <div className="mt-5 space-y-5">
             <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
             <div className="flex items-center justify-between rounded-2xl bg-[#F2F3F5] px-4 py-3 dark:bg-[#1E1E1E]">
               <div>
-                <p className="text-xs text-[#6E6C64]">{selectedVariant ? "Selected SKU" : "Select every option"}</p>
+                <p className="text-xs text-[#6E6C64]">{selectedVariant ? "Selected SKU" : variantChoiceKeys.size === 1 ? "Select an option" : "Select every option"}</p>
                 <p className="mt-1 text-lg font-black">{selectedVariant ? formatPrice(purchasablePrice) : `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}`}</p>
               </div>
               <div className="text-right text-xs font-semibold text-[#6E6C64]">

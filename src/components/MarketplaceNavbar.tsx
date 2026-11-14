@@ -33,6 +33,7 @@ interface MarketplaceNavbarProps {
   showRegionalPreferences?: boolean;
   showCart?: boolean;
   showPublicSecondaryNav?: boolean;
+  showTrending?: boolean;
 }
 
 const DEFAULT_SUGGESTIONS = ["wireless earbuds", "smart watch", "fashion", "home decor"];
@@ -58,6 +59,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   showRegionalPreferences = true,
   showCart = true,
   showPublicSecondaryNav = false,
+  showTrending = true,
 }: MarketplaceNavbarProps) {
   const { t } = useTranslation();
   const { user, role, signOut } = useAuth();
@@ -635,21 +637,23 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
               </DialogContent>
             </Dialog>
 
-            <div className={`${showPublicSecondaryNav ? "hidden" : "mt-2 hidden flex-wrap items-center gap-2 lg:flex"}`}>
-              <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6E6C64] dark:text-[#A0A0A0]">
-                {t("nav.trending")}
-              </span>
-              {primarySuggestions.map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => handleQuickChip(item)}
-                  className="rounded-full border border-[#E8E8E8] bg-white px-3 py-1.5 text-xs font-medium text-[#111111] transition-colors hover:border-[#111111] hover:bg-[#F8F8F8] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] dark:hover:border-[#FAF5F2] dark:hover:bg-[#202020]"
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
+            {showTrending && (
+              <div className={`${showPublicSecondaryNav ? "hidden" : "mt-2 hidden flex-wrap items-center gap-2 lg:flex"}`}>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[#6E6C64] dark:text-[#A0A0A0]">
+                  {t("nav.trending")}
+                </span>
+                {primarySuggestions.map((item) => (
+                  <button
+                    key={item.value}
+                    type="button"
+                    onClick={() => handleQuickChip(item)}
+                    className="rounded-full border border-[#E8E8E8] bg-white px-3 py-1.5 text-xs font-medium text-[#111111] transition-colors hover:border-[#111111] hover:bg-[#F8F8F8] dark:border-[#333333] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] dark:hover:border-[#FAF5F2] dark:hover:bg-[#202020]"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </>
           )}
 

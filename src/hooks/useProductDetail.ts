@@ -63,12 +63,12 @@ export interface ReviewData {
 export interface KeywordItem { keyword: string; count: number; }
 export interface SellerMarketplaceStats { avg_rating: number; total_reviews: number; total_sold: number; }
 
-const PRODUCT_DETAIL_COLUMNS = [
+export const PRODUCT_DETAIL_COLUMNS = [
   "id", "title", "description", "price", "compare_at_price", "currency", "stock_quantity",
   "seller_id", "category_id", "brand", "gtin", "mpn", "weight", "dimensions", "material",
   "color", "condition", "warranty", "warranty_period", "shipping_info", "ships_to",
   "key_features", "tags", "average_rating", "review_count", "show_sold_count", "variants",
-  "product_images(id,image_url,is_primary,sort_order)",
+  "description_images", "product_images(id,image_url,is_primary,sort_order,alt)",
 ].join(",");
 
 /**

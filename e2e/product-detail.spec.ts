@@ -24,8 +24,20 @@ for (const viewport of [
     const heroImage = page.locator(`img[alt="${"Apple iPhone 17 Unlocked"}"]`).first();
     await expect(heroImage).toBeVisible({ timeout: 20_000 });
     await expect.poll(() => heroImage.evaluate((image) => (image as HTMLImageElement).naturalWidth), { timeout: 20_000 }).toBeGreaterThan(0);
+    const descriptionImages = page.locator('main img[alt="Product detail description graphic"]');
+    expect(await descriptionImages.count(), "seller-uploaded product detail images should render").toBeGreaterThan(0);
+    await descriptionImages.first().scrollIntoViewIfNeeded();
+    await expect.poll(() => descriptionImages.first().evaluate((image) => (image as HTMLImageElement).naturalWidth), { timeout: 20_000 }).toBeGreaterThan(0);
     await expect(page.getByRole("navigation", { name: "Product information" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Share product" })).toBeVisible();
+
+    if (viewport.name === "mobile") {
+      const chooseButton = page.getByRole("button", { name: "Choose" }).first();
+      await expect(chooseButton).toBeVisible();
+      await chooseButton.click();
+      await expect(page.getByRole("dialog").getByText("Select options")).toBeVisible();
+      await expect(page.getByRole("dialog").locator("img")).toHaveCount(1);
+    }
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);
     expect(overflow, "product page must not overflow horizontally").toBe(false);

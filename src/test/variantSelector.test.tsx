@@ -39,4 +39,27 @@ describe("VariantSelector", () => {
       storage: "256GB",
     });
   });
+
+  it("resolves a dependent dimension when a choice has only one valid SKU value", () => {
+    const onChange = vi.fn();
+    render(
+      <VariantSelector
+        variants={[
+          { id: "blue-128", option_values: { storage: "128GB", color: "Blue" }, price: 1, stock_quantity: 2, is_active: true, image_url: null },
+          { id: "red-256", option_values: { storage: "256GB", color: "Red" }, price: 2, stock_quantity: 2, is_active: true, image_url: null },
+        ]}
+        selectedOptions={{}}
+        onChange={onChange}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Storage: 128GB, available" }));
+    expect(onChange).toHaveBeenCalledWith({ storage: "128GB", color: "Blue" });
+  });
+
+  it("disables values that are unavailable for the selected dimension", () => {
+    render(<VariantSelector variants={variants} selectedOptions={{ storage: "128GB" }} onChange={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "Colour: Yellow, unavailable" })).toBeDisabled();
+  });
 });

@@ -43,12 +43,33 @@ export default function VariantSelector({ variants, selectedOptions, onChange }:
   if (attributeKeys.length === 0) return null;
 
   const isOptionAvailable = (key: string, value: string) => variants.some((variant) =>
-    variant.is_active && variant.stock_quantity > 0 && variant.option_values[key] === value,
+    variant.is_active &&
+    variant.stock_quantity > 0 &&
+    variant.option_values[key] === value &&
+    Object.entries(selectedOptions).every(([selectedKey, selectedValue]) =>
+      selectedKey === key || variant.option_values[selectedKey] === selectedValue,
+    ),
   );
+
+  const selectableKeys = attributeKeys.filter((key) => {
+    const values = new Set(variants
+      .filter((variant) => variant.is_active && variant.stock_quantity > 0)
+      .map((variant) => variant.option_values[key])
+      .filter(Boolean));
+    return values.size > 1;
+  });
+
+  if (selectableKeys.length === 0) {
+    return (
+      <p className="rounded-xl bg-[#F2F3F5] px-3 py-2.5 text-xs font-medium text-[#666666] dark:bg-[#222222] dark:text-[#A0A0A0]">
+        This product has one available configuration.
+      </p>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      {attributeKeys.map((key) => {
+      {selectableKeys.map((key) => {
         const values = [...new Set(variants.map((variant) => variant.option_values[key]).filter(Boolean))];
         const selectedValue = selectedOptions[key] || "";
 
