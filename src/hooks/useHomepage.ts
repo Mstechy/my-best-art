@@ -1,8 +1,13 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSupabaseQuery, supabaseKeys } from "./useSupabaseQuery";
 import { fetchHeroCollections } from "@/lib/collectionResolver";
 import type { EnhancedCollection } from "@/lib/collectionResolver";
+import {
+  HERO_COLLECTIONS_CHANGED_EVENT,
+  HERO_COLLECTIONS_CHANGED_STORAGE_KEY,
+} from "@/lib/heroRefresh";
 
 // ── Types ────────────────────────────────────────────────────────────────
 export type ProductImageRow = {
@@ -44,14 +49,35 @@ export const FEEDS: { key: FeedName; titleKey: string; subtitleKey: string; href
 
 /** Hero collections (campaign slides) */
 export function useHeroCollections() {
-  return useSupabaseQuery(
+  const queryClient = useQueryClient();
+  const query = useSupabaseQuery(
     supabaseKeys.rpc("hero_collections"),
     async () => {
       const result = await fetchHeroCollections();
       return result as EnhancedCollection[];
     },
-    { staleTime: 10 * 60 * 1000 }, // 10 min — hero rarely changes
+    { staleTime: 60 * 1000, refetchOnWindowFocus: true, refetchOnMount: true, retry: 1 },
   );
+
+  useEffect(() => {
+    const invalidate = () => {
+      void queryClient.invalidateQueries({ queryKey: supabaseKeys.rpc("hero_collections") });
+    };
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === HERO_COLLECTIONS_CHANGED_STORAGE_KEY) invalidate();
+    };
+
+    window.addEventListener(HERO_COLLECTIONS_CHANGED_EVENT, invalidate);
+    window.addEventListener("storage", onStorage);
+    const refreshTimer = window.setInterval(invalidate, 60 * 1000);
+    return () => {
+      window.removeEventListener(HERO_COLLECTIONS_CHANGED_EVENT, invalidate);
+      window.removeEventListener("storage", onStorage);
+      window.clearInterval(refreshTimer);
+    };
+  }, [queryClient]);
+
+  return query;
 }
 
 /** Categories with their product counts */
@@ -184,12 +210,14 @@ export function useHomepageSnapshotData() {
   }, [snapshot.data]);
 
   const retrySnapshot = async () => {
-    await Promise.all([snapshot.refetch(), categories.refetch()]);
+    await Promise.all([hero.refetch(), snapshot.refetch(), categories.refetch()]);
   };
 
   return {
     heroSlides: hero.data ?? [],
     heroLoading: hero.isLoading,
+    heroFetching: hero.isFetching,
+    heroError: hero.error,
     categories: categories.data?.categories ?? [],
     counts: categories.data?.counts ?? {},
     categoryImages: categories.data?.imageByCategory ?? {},

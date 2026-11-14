@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { User, MapPin, Lock, Plus, Trash2, Loader2 } from "lucide-react";
+import { User, MapPin, Lock, Plus, Trash2, Loader2, ShieldCheck, History, ShoppingCart, Database } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
 import { COUNTRIES } from "@/lib/countries";
 import { detectRegionDefaults } from "@/lib/region";
 import { useCurrency } from "@/hooks/useCurrency";
+import { supabaseKeys } from "@/hooks/useSupabaseQuery";
+import i18n from "@/lib/i18n/config";
+import { applyTheme, getPreferredTheme } from "@/lib/theme";
+import {
+  clearGuestCart,
+  clearLocalBrowsingHistory,
+  clearLocalCatalogueCache,
+  resetLocalPreferences,
+} from "@/lib/localDataControls";
 
 interface Address {
   id: string;
@@ -49,9 +59,49 @@ function FieldInput({ label, ...props }: { label: string } & React.InputHTMLAttr
   );
 }
 
+function DataControlRow({
+  icon: Icon,
+  title,
+  description,
+  actionLabel,
+  busy,
+  onAction,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  actionLabel: string;
+  busy: boolean;
+  onAction: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-xl border border-[#F2F3F5] bg-[#FAFAFA] p-3.5 dark:border-[#1E1E1E] dark:bg-[#111111] sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex min-w-0 items-start gap-3">
+        <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white dark:bg-[#1A1A1A]">
+          <Icon className="h-3.5 w-3.5 text-[#6E6C64] dark:text-[#A0A0A0]" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{title}</p>
+          <p className="mt-0.5 text-[10px] leading-relaxed text-[#6E6C64] dark:text-[#A0A0A0]">{description}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onAction}
+        disabled={busy}
+        className="inline-flex min-h-9 shrink-0 items-center justify-center gap-1.5 self-start rounded-full border border-[#E8E8E8] px-3 text-[10px] font-semibold text-[#111111] transition-colors hover:bg-white disabled:cursor-wait disabled:opacity-50 dark:border-[#2A2A2A] dark:text-[#FAF5F2] dark:hover:bg-[#1A1A1A] sm:self-auto"
+      >
+        {busy && <Loader2 className="h-3 w-3 animate-spin" />}
+        {actionLabel}
+      </button>
+    </div>
+  );
+}
+
 export default function BuyerProfile() {
   const { user, profile } = useAuth();
   const { setCountry: setCountryPreference } = useCurrency();
+  const queryClient = useQueryClient();
   const defaults = detectRegionDefaults();
   const [fullName, setFullName] = useState("");
   const [country, setCountry] = useState(defaults.country);
@@ -62,6 +112,7 @@ export default function BuyerProfile() {
   const [newAddr, setNewAddr] = useState<Partial<Address>>({ country: defaults.country, is_default: false });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [clearingData, setClearingData] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile) return;
@@ -133,6 +184,37 @@ export default function BuyerProfile() {
     loadAddresses();
   };
 
+  const runDataAction = async (action: "history" | "cart" | "cache" | "preferences") => {
+    setClearingData(action);
+    try {
+      if (action === "history") {
+        clearLocalBrowsingHistory();
+        toast.success("Local browsing history cleared");
+      } else if (action === "cart") {
+        await clearGuestCart();
+        toast.success("Guest cart data cleared");
+      } else if (action === "cache") {
+        clearLocalCatalogueCache();
+        await Promise.all([
+          queryClient.removeQueries({ queryKey: supabaseKeys.table("products") }),
+          queryClient.removeQueries({ queryKey: supabaseKeys.rpc("homepage_categories") }),
+          queryClient.removeQueries({ queryKey: supabaseKeys.rpc("marketplace_categories") }),
+          queryClient.removeQueries({ queryKey: supabaseKeys.rpcWithArgs("homepage_snapshot", { limit: 24 }) }),
+          queryClient.removeQueries({ queryKey: supabaseKeys.rpc("hero_collections") }),
+        ]);
+        toast.success("Local catalogue cache cleared");
+      } else {
+        resetLocalPreferences();
+        setCountryPreference(null);
+        await i18n.changeLanguage("en");
+        applyTheme(getPreferredTheme());
+        toast.success("Local preferences reset");
+      }
+    } finally {
+      setClearingData(null);
+    }
+  };
+
   const getInitials = (name: string) => name.split(" ").map(n => n[0]).join("").toUpperCase().slice(0, 2);
 
   return (
@@ -192,6 +274,49 @@ export default function BuyerProfile() {
             className="flex items-center gap-2 px-4 py-2 rounded-full border border-[#E8E8E8] dark:border-[#222222] text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors disabled:opacity-50">
             {savingPassword ? <><Loader2 className="h-3 w-3 animate-spin" /> Updating…</> : "Update Password"}
           </button>
+        </div>
+      </SectionCard>
+
+      {/* Privacy & Data */}
+      <SectionCard icon={ShieldCheck} title="Privacy & Data">
+        <div className="space-y-4">
+          <p className="text-xs leading-relaxed text-[#6E6C64] dark:text-[#A0A0A0]">
+            These controls affect this browser only. They do not delete orders, saved addresses, wishlist items, seller listings, your account, or server-side analytics.
+          </p>
+          <div className="space-y-2">
+            <DataControlRow
+              icon={History}
+              title="Browsing history"
+              description="Remove recently viewed products and local view de-duplication."
+              actionLabel="Clear history"
+              busy={clearingData === "history"}
+              onAction={() => void runDataAction("history")}
+            />
+            <DataControlRow
+              icon={ShoppingCart}
+              title="Guest cart"
+              description="Remove the cart saved on this device. Your signed-in server cart is not changed."
+              actionLabel="Clear guest cart"
+              busy={clearingData === "cart"}
+              onAction={() => void runDataAction("cart")}
+            />
+            <DataControlRow
+              icon={Database}
+              title="Catalogue cache"
+              description="Remove cached catalogue responses so the next view fetches fresh data."
+              actionLabel="Clear cache"
+              busy={clearingData === "cache"}
+              onAction={() => void runDataAction("cache")}
+            />
+            <DataControlRow
+              icon={ShieldCheck}
+              title="Local preferences"
+              description="Reset country, currency override, language, theme, consent choice and anonymous browser ID."
+              actionLabel="Reset preferences"
+              busy={clearingData === "preferences"}
+              onAction={() => void runDataAction("preferences")}
+            />
+          </div>
         </div>
       </SectionCard>
 

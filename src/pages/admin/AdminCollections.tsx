@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 import { Layers3, Pencil, Plus, Search, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -11,6 +12,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadCollectionBanner } from "@/lib/collectionBanners";
+import { supabaseKeys } from "@/hooks/useSupabaseQuery";
+import { notifyHeroCollectionsChanged } from "@/lib/heroRefresh";
 
 type Collection = {
   id: string; slug: string; title: string; description: string | null;
@@ -76,6 +79,7 @@ const toSlug = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+
 
 export default function AdminCollections() {
   const { toast } = useToast(); const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [open, setOpen] = useState(false); const [editing, setEditing] = useState<Collection | null>(null);
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -311,6 +315,8 @@ export default function AdminCollections() {
 
     setSaving(false);
     toast({ title: editing ? "Collection updated" : "Collection saved" });
+    notifyHeroCollectionsChanged();
+    await queryClient.invalidateQueries({ queryKey: supabaseKeys.rpc("hero_collections") });
     setOpen(false);
     fetchCollections();
   };
@@ -319,7 +325,12 @@ export default function AdminCollections() {
     if (!confirm(`Delete "${collection.title}"?`)) return;
     const { error } = await supabase.from("marketplace_collections").delete().eq("id", collection.id);
     if (error) toast({ title: "Could not delete collection", description: error.message, variant: "destructive" });
-    else { toast({ title: "Collection deleted" }); fetchCollections(); }
+    else {
+      toast({ title: "Collection deleted" });
+      notifyHeroCollectionsChanged();
+      await queryClient.invalidateQueries({ queryKey: supabaseKeys.rpc("hero_collections") });
+      fetchCollections();
+    }
   };
 
   return (

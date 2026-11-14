@@ -9,6 +9,9 @@ interface HeroSliderProps {
   slides: EnhancedCollection[];
   autoRotate?: boolean;
   defaultDuration?: number;
+  isLoading?: boolean;
+  error?: unknown;
+  onRetry?: () => void;
 }
 
 /**
@@ -146,6 +149,9 @@ const HeroSlider = memo(function HeroSlider({
   slides,
   autoRotate = false,
   defaultDuration = 8000,
+  isLoading,
+  error,
+  onRetry,
 }: HeroSliderProps) {
   const [current, setCurrent] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -228,6 +234,8 @@ const HeroSlider = memo(function HeroSlider({
   // campaign visible until the CMS result arrives instead of blocking the rest
   // of the storefront behind an empty hero skeleton.
   const pending = len === 0;
+  const loading = isLoading ?? pending;
+  const showFallbackError = pending && Boolean(error) && !loading;
   const activeIndex = current < len ? current : 0;
   const slide = pending ? null : slides[activeIndex];
   const overlayOpacity = slide?.hero_overlay_opacity ?? 0.45;
@@ -243,7 +251,7 @@ const HeroSlider = memo(function HeroSlider({
       role="region"
       aria-roledescription="carousel"
       aria-label="Featured collections"
-      aria-busy={pending ? "true" : "false"}
+      aria-busy={loading ? "true" : "false"}
     >
       {/* Slides container */}
       <div
@@ -335,6 +343,24 @@ const HeroSlider = memo(function HeroSlider({
           );
         })}
       </div>
+
+      {showFallbackError && (
+        <div
+          role="alert"
+          className="absolute right-3 top-3 z-10 flex max-w-[min(24rem,calc(100%-1.5rem))] items-center gap-2 rounded-lg border border-white/20 bg-black/65 px-3 py-2 text-[11px] text-white shadow-lg backdrop-blur-sm"
+        >
+          <span className="min-w-0">Featured campaign unavailable. Showing the default hero.</span>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="shrink-0 rounded-md bg-white px-2 py-1 font-semibold text-[#111111] transition hover:bg-[#F6C75D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D]"
+            >
+              Try again
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Navigation arrows */}
       {hasMultiple && (

@@ -136,7 +136,7 @@ export interface EnhancedCollection {
  */
 export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
   const now = new Date().toISOString();
-  const { data } = await (supabase
+  const { data, error } = await (supabase
     .from("marketplace_collections") as any)
     .select("*")
     .is("seller_id", null)
@@ -146,6 +146,8 @@ export async function fetchHeroCollections(): Promise<EnhancedCollection[]> {
     .or(`ends_at.is.null,ends_at.gt.${now}`)
     .order("hero_order")
     .order("sort_order");
+
+  if (error) throw error;
 
   return ((data || []) as EnhancedCollection[]).map(normalizeHeroCollectionCopy);
 }

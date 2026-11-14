@@ -113,7 +113,7 @@ function fromPageItem(product: CatalogueFeedItem): FeedCard {
 
 
 export default function LandingPage() {
-  const { categories, counts, categoryImages, heroSlides, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
+  const { categories, counts, categoryImages, heroSlides, heroLoading, heroError, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
 
@@ -299,7 +299,13 @@ export default function LandingPage() {
                 when the query resolves; there is no blank interval or random
                 product-to-banner swap. */}
             <div className="min-w-0">
-              <HeroSlider slides={heroSlides} autoRotate={false} />
+              <HeroSlider
+                slides={heroSlides}
+                autoRotate={false}
+                isLoading={heroLoading}
+                error={heroError}
+                onRetry={() => void retrySnapshot()}
+              />
             </div>
 
           </div>
