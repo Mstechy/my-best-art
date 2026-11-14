@@ -11,11 +11,10 @@
  * `slides=[]` (its pending stage) and is supposed to be PATCHED in place when
  * slide 0 arrives: same key ("lead"), same props, same resolved src.
  *
- * This test pins that contract at the DOM level: the <img> element painted
- * during the pending state must be the SAME NODE after the campaign slides
- * arrive. If React ever reconciles the two states into different nodes (a
- * changed key, a changed children slot shape, a changed element type), this
- * fails - and so would LCP, silently, in the field.
+ * This test pins that contract at the DOM level: the verified bundled <img>
+ * element painted during the pending state must be the SAME NODE after the
+ * campaign slides arrive. If React ever reconciles the two states into
+ * different nodes, this fails - and so would LCP, silently, in the field.
  */
 import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
@@ -161,27 +160,28 @@ describe("hero LCP node stability", () => {
 
   it("reserves the hero without painting an unverified campaign", () => {
     render(tree());
-    expect(heroImg()).toBeNull();
+    expect(heroImg()).not.toBeNull();
     expect(document.querySelector('section[aria-label="Featured collections"]')).not.toBeNull();
-    expect(document.querySelector('section[aria-label="Featured collections"]')?.querySelector("img")).toBeNull();
+    expect(document.querySelector('section[aria-label="Featured collections"]')?.getAttribute("aria-busy")).toBe("true");
   });
 
-  it("renders the live artwork only after the campaign arrives", () => {
+  it("keeps the verified artwork node when the campaign arrives", () => {
     const { rerender } = render(tree());
-    expect(heroImg()).toBeNull();
+    const before = heroImg();
+    expect(before).not.toBeNull();
 
     home.heroLoading = false;
     home.heroSlides = [campaignSlide];
     rerender(tree());
 
     const after = heroImg();
-    expect(after).not.toBeNull();
+    expect(after).toBe(before);
   });
 
-  it("drops the pending aria-hidden once the carousel is real", () => {
+  it("drops the pending aria-busy state once the carousel is real", () => {
     const { rerender } = render(tree());
     const section = document.querySelector('section[aria-label="Featured collections"]');
-    expect(section?.getAttribute("aria-hidden")).toBe("true");
+    expect(section?.getAttribute("aria-busy")).toBe("true");
 
     home.heroLoading = false;
     home.heroSlides = [campaignSlide];
@@ -189,21 +189,21 @@ describe("hero LCP node stability", () => {
 
     const live = document.querySelector('section[aria-label="Featured collections"]');
     expect(live).not.toBeNull();
-    expect(live?.getAttribute("aria-hidden")).toBeNull();
+    expect(live?.getAttribute("aria-busy")).toBe("false");
   });
 
-  it("does not paint campaign copy while the hero query is pending", () => {
+  it("paints truthful bundled copy while the hero query is pending", () => {
     render(tree());
     const section = document.querySelector('section[aria-label="Featured collections"]');
     expect(section).not.toBeNull();
-    expect(section?.querySelector("h2")).toBeNull();
-    expect(section?.querySelector("a")).toBeNull();
+    expect(section?.querySelector("h2")).toHaveTextContent("Electronics products");
+    expect(section?.querySelector("a")).not.toBeNull();
   });
 
   it("shows resolved campaign copy after the hero query completes", () => {
     const { rerender } = render(tree());
     const section = () => document.querySelector('section[aria-label="Featured collections"]');
-    expect(section()?.querySelector("h2")).toBeNull();
+    expect(section()?.querySelector("h2")).toHaveTextContent("Electronics products");
 
     home.heroLoading = false;
     home.heroSlides = [campaignSlide];

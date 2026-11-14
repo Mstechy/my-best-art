@@ -24,15 +24,15 @@ export default function SiteFooter() {
             <ul className="space-y-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               <li><Link to="/auth/register" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.becomeVendor")}</Link></li>
               <li><Link to="/auth/login" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.merchantDashboard")}</Link></li>
-              <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.sellerGuidelines")}</Link></li>
+              <li><Link to="/seller-agreement" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.sellerGuidelines")}</Link></li>
             </ul>
           </div>
           <div>
             <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.support")}</h2>
             <ul className="space-y-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               <li><Link to="/auth/login" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.buyerCenter")}</Link></li>
-              <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.shippingDelivery")}</Link></li>
-              <li><Link to="/terms" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.paymentPolicy")}</Link></li>
+              <li><Link to="/shipping" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.shippingDelivery")}</Link></li>
+              <li><Link to="/payment" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.paymentPolicy")}</Link></li>
               <li><Link to="/contact" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.contactSupport")}</Link></li>
             </ul>
           </div>

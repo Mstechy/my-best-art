@@ -110,7 +110,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
     ? {
         background: `linear-gradient(90deg, ${placeholderColor} 25%, #E8E8E8 50%, ${placeholderColor} 75%)`,
         backgroundSize: "200% 100%",
-        animation: "shimmer 1.5s ease-in-out infinite",
       }
     : {};
   const imageFitClass = fit === "contain" ? "object-contain" : "object-cover";
@@ -150,7 +149,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
           srcSet={srcSet}
           sizes={sizes}
           alt={alt}
-          className={`absolute inset-0 w-full h-full ${imageFitClass} transition-opacity duration-500 ${
+          className={`absolute inset-0 w-full h-full ${imageFitClass} progressive-image-shimmer transition-opacity duration-500 ${
             loaded ? "opacity-100" : "opacity-0"
           } ${className}`}
           width={width}
@@ -182,12 +181,6 @@ const ProgressiveImage = memo(function ProgressiveImage({
         </div>
       )}
 
-      <style>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
     </div>
   );
 });

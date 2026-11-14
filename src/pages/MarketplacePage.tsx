@@ -124,6 +124,13 @@ export default function MarketplacePage() {
 
   const { data: categoryData, isLoading: categoriesLoading } = useMarketplaceCategories();
   const categories = useMemo(() => (categoryData?.categories ?? []) as Category[], [categoryData?.categories]);
+  const categoryFromRoute = useMemo(
+    () => categoryParam ? categories.find((category) => category.slug === categoryParam || category.id === categoryParam) ?? null : null,
+    [categoryParam, categories],
+  );
+  const categoryRouteNotFound = Boolean(
+    categoryRouteSlug && !categoriesLoading && categories.length > 0 && !categoryFromRoute,
+  );
 
   useEffect(() => {
     if (!categoryParam || categories.length === 0) return;
@@ -158,9 +165,11 @@ export default function MarketplacePage() {
     if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true });
   }, [search, selectedCategory, categories, searchParams, setSearchParams, categoryRouteSlug, sortBy]);
 
-  const categoryFilterPending = Boolean(categoryParam) && (categoriesLoading || !selectedCategory);
+  const categoryFilterPending = Boolean(categoryParam) && (
+    categoriesLoading || Boolean(categoryFromRoute && !selectedCategory)
+  );
 
-  const catalogueCacheKey = useMemo(() => categoryFilterPending ? null : cacheKeyFor("marketplace_catalogue", {
+  const catalogueCacheKey = useMemo(() => categoryFilterPending || categoryRouteNotFound ? null : cacheKeyFor("marketplace_catalogue", {
     search: search.trim() || null,
     category: selectedCategory || null,
     shipsTo: shipsTo === "all" ? null : shipsTo,
@@ -174,7 +183,7 @@ export default function MarketplacePage() {
     seed: sortBy === "random" ? pageSeed : null,
     visualHash: visualHashParam || null,
     pageSize: CATALOGUE_PAGE_SIZE,
-  }), [categoryFilterPending, search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
+  }), [categoryFilterPending, categoryRouteNotFound, search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
 
   const {
     data: catalogueData,
@@ -372,7 +381,7 @@ export default function MarketplacePage() {
     return baseProducts;
   }, [filtered, visualFallbackProducts]);
 
-  const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || null;
+  const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || categoryFromRoute;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
 
   // Departments with stock only. The catalogue holds 26 categories so it can grow, and
@@ -381,11 +390,18 @@ export default function MarketplacePage() {
     () => (categoryData?.categories ?? []).filter((category) => (categoryData?.counts?.[category.id] ?? 0) > 0),
     [categoryData],
   );
-  const electronicsSubcategories = useMemo(() => {
-    if (selectedCategoryRecord?.slug !== "electronics") return [];
-    const supportedSlugs = new Set(["phones-accessories", "computers", "gaming", "watches", "audio"]);
-    return populatedCategories.filter((category) => supportedSlugs.has(category.slug));
-  }, [populatedCategories, selectedCategoryRecord?.slug]);
+  const departmentChildren = useMemo(
+    () => selectedCategoryRecord
+      ? populatedCategories.filter((category) => category.parent_id === selectedCategoryRecord.id)
+      : [],
+    [populatedCategories, selectedCategoryRecord],
+  );
+  const parentCategory = useMemo(
+    () => selectedCategoryRecord?.parent_id
+      ? categories.find((category) => category.id === selectedCategoryRecord.parent_id) ?? null
+      : null,
+    [categories, selectedCategoryRecord],
+  );
 
   // The catalogue rendered no SEO at all, so every /categories/<slug> URL shared the
   // static title from index.html and Google could not tell 26 departments apart. A
@@ -501,6 +517,33 @@ export default function MarketplacePage() {
     // Avoid sending a page-level mass impression event that could duplicate product views.
   }, [displayedProducts, pageLoading]);
 
+  if (categoryRouteNotFound) {
+    return (
+      <div className="min-h-screen bg-[#FAFAFA] text-[#111111] dark:bg-[#121212] dark:text-[#FAF5F2]">
+        <MarketplaceNavbar
+          categories={populatedCategories.map((category) => ({ label: category.name, value: category.id }))}
+          showRegionalPreferences={false}
+        />
+        <CartDrawer />
+        <main className="min-h-[60vh] pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
+          <Container className="flex min-h-[55vh] flex-col items-center justify-center py-16 text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#7A5200] dark:text-[#F6C75D]">Marketplace department</p>
+            <h1 className="mt-3 text-3xl font-black tracking-tight">Department not found</h1>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-[#6E6C64] dark:text-[#A0A0A0]">
+              This department is not available. Browse the live departments or search the full marketplace instead.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link to="/categories" className="inline-flex min-h-11 items-center rounded-full bg-[#F6C75D] px-5 text-sm font-bold text-[#111111] hover:bg-[#E8A93D]">Browse departments</Link>
+              <Link to="/marketplace" className="inline-flex min-h-11 items-center rounded-full border border-[#D9D9D9] bg-white px-5 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#444444] dark:bg-[#1E1E1E]">Search products</Link>
+            </div>
+          </Container>
+        </main>
+        <SiteFooter />
+        <BottomTabBar />
+      </div>
+    );
+  }
+
   // A real <main> landmark, not a div: axe's landmark-one-main audit and the
   // skip link's fragment target both resolve to it, and without one the page
   // failed both ("Document does not have a main landmark" and "No skip link
@@ -542,12 +585,17 @@ export default function MarketplacePage() {
                 <nav aria-label={t("marketplace.breadcrumbAria") || "Breadcrumb"} className="mb-2 text-xs text-[#6E6C64]">
                   <Link to="/" className="hover:underline">{t("marketplace.breadcrumbHome")}</Link>
                   <span className="mx-2">/</span>
-                  <Link to="/categories" className="hover:underline">{t("marketplace.breadcrumbCategories")}</Link>
+                  {parentCategory ? (
+                    <>
+                      <Link to={`/categories/${encodeURIComponent(parentCategory.slug)}`} className="hover:underline">{parentCategory.name}</Link>
+                      <span className="mx-2">/</span>
+                    </>
+                  ) : <Link to="/categories" className="hover:underline">{t("marketplace.breadcrumbCategories")}</Link>}
                   <span className="mx-2">/</span>
                   <span>{selectedCategoryRecord.name}</span>
                 </nav>
               )}
-              <h1 className="text-3xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] uppercase leading-[1.05] font-sans mb-2">
+              <h1 className="text-2xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] leading-[1.1] font-sans mb-2 sm:text-3xl">
                 {selectedCategoryRecord?.name || t("marketplace.title")}
               </h1>
               <p className="text-[13px] text-[#6E6C64] dark:text-[#A0A0A0] mb-4">
@@ -557,19 +605,20 @@ export default function MarketplacePage() {
                     ? t("marketplace.categoryDescription", { category: selectedCategoryRecord.name })
                     : t("marketplace.defaultDescription")}
               </p>
-              {electronicsSubcategories.length > 0 && (
-                <section className="mb-6" aria-labelledby="electronics-types">
+              {departmentChildren.length > 0 && (
+                <section className="mb-6" aria-labelledby="department-types">
                   <div className="mb-3 flex items-end justify-between gap-3">
                     <div>
-                      <h2 id="electronics-types" className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Shop Electronics by type</h2>
-                      <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Jump to a stocked product listing, then filter and compare.</p>
+                      <h2 id="department-types" className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Explore {selectedCategoryRecord.name} by type</h2>
+                      <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Start with a focused department, then filter and compare real listings.</p>
                     </div>
                     <Link to="/categories" className="shrink-0 text-xs font-semibold underline underline-offset-4">All departments</Link>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {electronicsSubcategories.map((category) => (
-                      <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="rounded-xl border border-[#E8E8E8] bg-white px-3 py-3 text-xs font-semibold transition hover:border-[#111111] dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#FAF5F2]">
-                        {category.name}
+                  <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {departmentChildren.map((category) => (
+                      <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="flex min-w-[138px] snap-start items-center gap-2 rounded-xl border border-[#E8E8E8] bg-white px-3 py-3 text-xs font-semibold transition hover:border-[#F6C75D] hover:shadow-sm dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#F6C75D]">
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF4C7] text-base dark:bg-[#4A3A12]">{category.icon || "•"}</span>
+                        <span className="min-w-0"><span className="block truncate">{category.name}</span><span className="mt-0.5 block text-[10px] font-normal text-[#6E6C64] dark:text-[#A0A0A0]">{categoryData?.counts?.[category.id] ?? 0} products</span></span>
                       </Link>
                     ))}
                   </div>
@@ -639,9 +688,9 @@ export default function MarketplacePage() {
               </p>
             </div>
             {/* Keep catalogue geometry predictable while data settles. */}
-            <div role="list" aria-label="Product results" aria-busy={pageLoading && products.length === 0 ? "true" : "false"}>
+            <div>
               {pageLoading && products.length === 0 ? (
-                <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div role="list" aria-label="Product results" aria-busy="true" className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {[...Array(10)].map((_, i) => (
                     <div key={i} role="listitem" className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
                       <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E]" />
@@ -663,7 +712,7 @@ export default function MarketplacePage() {
                   </p>
                 </div>
               ) : (
-                <div className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div role="list" aria-label="Product results" aria-busy="false" className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {displayedProducts.map((product, index) => {
                     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
                     const baseDiscount = product.compare_at_price && product.compare_at_price > product.price

@@ -20,9 +20,9 @@ import { CORE_NAV_LINKS } from "@/lib/prerenderBody";
  *      that matches how the resource is actually fetched, ordered before every
  *      fetchable resource.
  *
- *   2. The shell must not preload an unverified campaign. The live homepage
- *      query owns the hero image; a hard-coded preload would paint one campaign
- *      and then replace it when the query resolves.
+ *   2. The shell must preload only the bundled launch artwork. The live
+ *      homepage query starts from the same verified artwork, so the preload is
+ *      useful instead of causing a campaign image swap.
  */
 
 /** The real shell, comments stripped so prose about <link> cannot match as markup. */
@@ -55,14 +55,13 @@ describe("homepage shell LCP plumbing", () => {
     // already opening while it is scanned.
     const fontsAt = shell.indexOf('href="https://fonts.googleapis.com" />');
     expect(fontsAt).toBeGreaterThan(-1);
-    expect(imagePreloads).toHaveLength(0);
+    expect(imagePreloads).toHaveLength(2);
     expect(shell.indexOf("fonts.googleapis.com/css2")).toBeGreaterThan(fontsAt);
   });
 
-  it("leaves campaign artwork to the live hero query", () => {
-    expect(imagePreloads).toHaveLength(0);
-    expect(shell).not.toContain("electronics-products-1600x686.webp");
-    expect(shell).not.toContain("electronics-products-480x270.webp");
+  it("preloads the same verified launch artwork used by the live hero", () => {
+    expect(shell).toContain('href="/images/electronics-products-1600x686.webp"');
+    expect(shell).toContain('imagesrcset="/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x"');
   });
 });
 
@@ -73,11 +72,10 @@ describe("homepage shell LCP plumbing", () => {
  *
  * Three contracts are pinned here:
  *
- *  1. Placement. The shell sits between markers INSIDE `#root`, because React
- *     18's createRoot().render() calls clearContainer() on its first commit -
- *     the shell must be something React is allowed to delete, so the swap needs
- *     no handoff script and cannot race. The last test proves that behavior
- *     against the real react-dom rather than asserting it in a comment.
+ *  1. Placement. The shell sits between markers OUTSIDE `#root`, because the
+ *     lazy landing route must not remove painted nodes during its first commit.
+ *     LandingPage hides the fixed shell after mounting; the real root remains
+ *     the only interactive tree.
  *
  *  2. Geometry. The mirrored navbar and hero box must match what
  *     `MarketplaceNavbar` and `HeroSlider`'s pending stage render in that first
@@ -96,27 +94,26 @@ describe("the first-paint shell", () => {
   const end = rawShell.indexOf(HOME_SHELL_END);
   const shellBody = rawShell.slice(start, end + HOME_SHELL_END.length);
 
-  it("sits between markers inside #root, so React's first commit wipes it for free", () => {
+  it("sits outside #root, so React can mount without removing painted nodes", () => {
     expect(start).toBeGreaterThan(-1);
     expect(end).toBeGreaterThan(start);
     expect(rawShell.split(HOME_SHELL_START).length - 1).toBe(1);
     expect(rawShell.split(HOME_SHELL_END).length - 1).toBe(1);
-    const rootOpen = rawShell.indexOf('<div id="root">');
+    const rootOpen = rawShell.indexOf('<div id="root"></div>');
     expect(rootOpen).toBeGreaterThan(-1);
-    expect(rootOpen).toBeLessThan(start);
-    // Nothing but the closing tag follows the end marker inside #root, so a
-    // stripped route ends up byte-identical to a shell-less document.
-    expect(rawShell.slice(end + HOME_SHELL_END.length, end + HOME_SHELL_END.length + 6)).toBe("</div>");
+    expect(rootOpen).toBeGreaterThan(end);
+    // The mount point follows the shell, so stripping it leaves the root intact.
+    expect(rawShell.slice(rootOpen, rootOpen + '<div id="root"></div>'.length)).toBe('<div id="root"></div>');
 
     const stripped = stripHomeShell(rawShell);
     expect(stripped).toContain('<div id="root"></div>');
-    expect(stripped).not.toContain("first-paint-shell");
+    expect(stripped).not.toContain('id="first-paint-shell"');
     expect(stripped).not.toContain(HOME_SHELL_START);
     expect(stripHomeShell(stripped)).toBe(stripped);
   });
   it("mirrors the navbar height the first React commit paints", () => {
     expect(shellBody).toContain(
-      '<nav class="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2]">',
+      '<nav class="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2] lg:min-h-[140px]">',
     );
     expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-3">');
     // Below md the right side collapses to the hamburger (p-2.5 + h-5 = 40px),
@@ -131,7 +128,7 @@ describe("the first-paint shell", () => {
     expect(shellBody).toContain('class="h-11 w-full border-0 bg-transparent');
   });
 
-  it("mirrors the public hero-first geometry without a guessed campaign", () => {
+  it("mirrors the public hero-first geometry with the verified launch campaign", () => {
     expect(shellBody).toContain('<h1 class="sr-only">');
     expect(shellBody).toContain('<main class="flex flex-col pb-8">');
     expect(shellBody).toContain(
@@ -140,11 +137,13 @@ describe("the first-paint shell", () => {
     expect(shellBody).toContain('<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">');
     expect(shellBody).toContain('<div class="min-w-0">');
     expect(shellBody).toContain('<div class="min-w-0">');
-    // HeroSlider's pending box: base aspect 16/9 floored at 220px on phones.
+    // HeroSlider's real artwork box: base aspect 16/9 floored at 220px on
+    // phones, with the desktop 21/9 marketplace banner shape.
     expect(shellBody).toContain(
-      'class="relative aspect-[16/9] min-h-[220px] w-full animate-pulse bg-[#F3EEE9] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px] dark:bg-[#28282B]"',
+      'class="relative aspect-[16/9] min-h-[220px] w-full bg-[#1C1C1E] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]"',
     );
-    expect(shellBody).not.toContain("electronics-products-1600x686.webp");
+    expect(shellBody).toContain("electronics-products-1600x686.webp");
+    expect(shellBody).toContain("Shop collection");
   });
   it("states the same English copy the first React commit resolves from t()", () => {
     const en = JSON.parse(
@@ -158,10 +157,9 @@ describe("the first-paint shell", () => {
     expect(shellBody).not.toContain("animate-[marquee");
   });
 
-  it("keeps unverified campaign copy out of the static shell", () => {
-    expect(shellBody).not.toContain("Electronics products");
-    expect(shellBody).not.toContain("Shop collection");
-    expect(shellBody).toContain("animate-pulse");
+  it("keeps the first-paint shell out of normal document flow", () => {
+    expect(rawShell).toContain(".js #first-paint-shell { position: fixed; inset: 0; z-index: 10; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }");
+    expect(shellBody).toContain('id="first-paint-shell" aria-hidden="true"');
   });
 
   it("links the crawl graph from the static homepage", () => {
@@ -169,7 +167,7 @@ describe("the first-paint shell", () => {
     // linked only to marketplace query-string URLs, so a crawler that never
     // executes JavaScript had no path from / to /categories, the legal pages or
     // anything deep. shellBody is the marker slice, so anything found here is
-    // inside the shell - wiped by React's first commit like the rest of it.
+    // inside the shell - hidden after the real landing route mounts.
     expect(shellBody).toContain('<nav aria-label="Footer"');
     for (const link of CORE_NAV_LINKS) {
       expect(shellBody, link.href).toContain(`href="${link.href}"`);
@@ -197,13 +195,12 @@ describe("the first-paint shell", () => {
     expect(shellBody).not.toContain("<button");
   });
 
-  it("is wiped by React 18's first commit - the handoff needs no script", async () => {
-    // The architecture, executed: mount a REAL root over the REAL shell markup
-    // and watch clearContainer remove it in the same commit that inserts the
-    // app. If React ever stopped clearing its container, the shell and the app
-    // would stack, and this fails before any user sees the doubled page.
+  it("keeps the shell outside React's mount point during the handoff", async () => {
+    // The architecture, executed: mount a REAL root beside the shell markup.
+    // The shell is fixed and hidden by LandingPage after the route mounts; it
+    // must never become a second React tree or be cleared as part of root boot.
     const host = document.createElement("div");
-    host.innerHTML = `<div id="root">${shellBody}</div>`;
+    host.innerHTML = `${shellBody}<div id="root"></div>`;
     document.body.appendChild(host);
     const mountPoint = host.querySelector("#root");
     if (!mountPoint) throw new Error("fixture malformed");
@@ -214,14 +211,12 @@ describe("the first-paint shell", () => {
       });
       expect(mountPoint.children.length).toBe(1);
       expect(mountPoint.textContent).toBe("landing");
-      expect(mountPoint.innerHTML).not.toContain("first-paint-shell");
+      expect(host.querySelector("#first-paint-shell")).not.toBeNull();
 
-      // React never restores what clearContainer removed: the shell is
-      // one-shot, which is why nothing outside this document may depend on it.
       await act(async () => {
         root.unmount();
       });
-      expect(mountPoint.innerHTML).not.toContain("first-paint-shell");
+      expect(host.querySelector("#first-paint-shell")).not.toBeNull();
     } finally {
       host.remove();
     }

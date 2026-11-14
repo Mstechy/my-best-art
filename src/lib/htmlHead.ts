@@ -160,23 +160,21 @@ export function stripLandingPreloads(html: string): string {
 }
 
 /**
- * Delimiters around the homepage first-paint shell, inside `<div id="root">`.
+ * Delimiters around the homepage first-paint shell, outside `<div id="root">`.
  *
  * FCP on a throttled phone waited on the whole JS graph because `#root`
  * shipped empty; index.html now writes the landing page's above-the-fold DOM
  * (navbar, promo marquee, hero `<picture>`) as static HTML between these
  * markers so the browser paints before any script runs. React 18's
- * createRoot().render() calls clearContainer() on its first commit, which
- * REPLACES the shell atomically with the real LandingPage - no handoff script,
- * no extra paint - but every other route served from the same document must
- * not flash the homepage. That is what this strip is for: both head writers
- * run on prerendered copies of that one document, and the guard script inside
- * the markers covers non-prerendered paths in the browser.
+ * The shell is fixed and hidden after LandingPage mounts, rather than being a
+ * child of the React root. That avoids removing painted nodes during the lazy
+ * route handoff, which would register a large CLS event. Every other route
+ * served from the same document must not flash the homepage; the guard script
+ * inside the markers and this build-time strip cover that case.
  *
- * Because the markers sit directly inside `#root`, removing the marked block
- * leaves the opening tag and `</div>` adjacent, so a stripped route ends up
- * byte-identical to a document that never carried a shell. Idempotent by
- * construction: the second call finds no start marker and returns the input.
+ * The root mount point follows the closing marker, so removing the marked
+ * block leaves `<div id="root"></div>` intact. Idempotent by construction: the
+ * second call finds no start marker and returns the input.
  */
 export const HOME_SHELL_START = "<!--tradibu:home-shell:start-->";
 export const HOME_SHELL_END = "<!--tradibu:home-shell:end-->";

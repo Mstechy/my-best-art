@@ -9,10 +9,10 @@
  *
  * Two halves are pinned here:
  *
- *   1. On a cold load the hero geometry IS in the first render, but campaign
- *      artwork waits for the live hero query so an unverified image cannot flash
- *      before the real campaign. The feed Container is present as a DIRECT child
- *      of <main> with loading skeletons.
+ *   1. On a cold load the hero geometry and verified bundled launch campaign
+ *      are in the first render, so no blank/neutral hero can flash while the
+ *      live hero query is pending. The feed Container is present as a DIRECT
+ *      child of <main> with loading skeletons.
  *
  *   2. On a client-side navigation nothing is held back, so the feed never
  *      appears empty mid-session.
@@ -92,10 +92,10 @@ describe("landing first-commit contract", () => {
   it("paints the stable hero stage and feed skeleton immediately", () => {
     renderLanding();
 
-    // The hero box is in the FIRST render, but no campaign image is shown until
-    // the authoritative hero query resolves.
+    // The verified launch campaign is painted in the FIRST render while the
+    // authoritative hero query resolves in the background.
     expect(document.querySelector('section[aria-label="Featured collections"]')).not.toBeNull();
-    expect(document.querySelector('section[aria-label="Featured collections"] img')).toBeNull();
+    expect(document.querySelector('section[aria-label="Featured collections"] img')).not.toBeNull();
 
     // A slow window load must not hide products. The feed is present immediately
     // and its grid owns the loading skeleton while data is pending.

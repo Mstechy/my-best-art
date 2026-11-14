@@ -53,10 +53,10 @@ export default function CookieConsent() {
           </div>
 
           <div className="flex-1 min-w-0">
-            <h2 id="cookie-consent-title" className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">We use cookies</h2>
-            <p id="cookie-consent-description" className="mt-1 text-[11px] text-[#4A4944] dark:text-[#BEB8B2] leading-relaxed">
+            <h2 id="cookie-consent-title" className="bg-white text-sm font-bold text-[#111111] dark:bg-[#1A1A1A] dark:text-[#FAF5F2]">We use cookies</h2>
+            <p id="cookie-consent-description" className="mt-1 bg-white text-[11px] text-[#4A4944] dark:bg-[#1A1A1A] dark:text-[#BEB8B2] leading-relaxed">
               Essential cookies keep Tradibu running. Optional analytics cookies help us understand how the marketplace is used.{" "}
-              <Link to="/cookies" className="text-[#111111] dark:text-[#FAF5F2] font-semibold underline underline-offset-2 hover:text-[#F6C75D] transition-colors">
+              <Link to="/cookies" className="bg-white text-[#111111] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] font-semibold underline underline-offset-2 hover:text-[#F6C75D] transition-colors">
                 Cookie Policy
               </Link>
             </p>
@@ -72,7 +72,7 @@ export default function CookieConsent() {
               <button
                 type="button"
                 onClick={() => decide("declined")}
-                className="min-h-11 flex-1 px-3 py-1.5 rounded-full border border-[#B8B7B2] dark:border-[#555555] text-[11px] font-semibold text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors"
+                className="min-h-11 flex-1 rounded-full border border-[#B8B7B2] bg-white px-3 py-1.5 text-[11px] font-semibold text-[#111111] dark:border-[#555555] dark:bg-[#1A1A1A] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#111111] transition-colors"
               >
                 Decline
               </button>

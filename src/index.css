@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shared image loading treatment. Keeping this in the stylesheet prevents
+   every product image from injecting a <style> element and leaking animation
+   source text into the page's accessible/agent-readable DOM. */
+@keyframes progressive-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.progressive-image-shimmer {
+  animation: progressive-shimmer 1.5s ease-in-out infinite;
+}
+
 /* Shared responsive safety for phone, tablet, and desktop viewports. */
 @layer base {
   html {

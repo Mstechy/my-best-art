@@ -15,13 +15,13 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import SiteAnalyticsTracker from "@/components/SiteAnalyticsTracker";
 import SkipLink from "@/components/SkipLink";
 import RouteLoadingFallback from "@/components/RouteLoadingFallback";
+import LandingPage from "@/pages/LandingPage";
 
 // Public pages - lazy load all for billion-scale bundle splitting
 // Dashboard shell is route-only; loading it with the public app would pull
 // dashboard navigation primitives and analytics pages into the first paint.
 const DashboardLayout = lazy(() => import("@/components/DashboardLayout"));
 
-const LandingPage = lazy(() => import("@/pages/LandingPage"));
 const MarketplacePage = lazy(() => import("@/pages/MarketplacePage"));
 const ProductDetailPage = lazy(() => import("@/pages/ProductDetailPage"));
 const SellerStorePage = lazy(() => import("@/pages/SellerStorePage"));

@@ -19,7 +19,7 @@ for (const viewport of [
 
     const response = await page.goto(PRODUCT_PATH, { waitUntil: "domcontentloaded" });
     expect(response?.status(), "product route should return a document").toBeLessThan(400);
-    await expect(page.locator("main")).toHaveCount(1, { timeout: 45_000 });
+    await expect(page.locator("main:visible")).toHaveCount(1, { timeout: 45_000 });
     await expect(page.locator("h1")).toHaveCount(1, { timeout: 45_000 });
     const heroImage = page.locator(`img[alt="${"Apple iPhone 17 Unlocked"}"]`).first();
     await expect(heroImage).toBeVisible({ timeout: 20_000 });

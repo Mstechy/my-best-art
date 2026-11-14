@@ -1,9 +1,24 @@
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
+import { useLocation, useNavigationType } from "react-router-dom";
 
 const SCROLL_KEY = "marketplace_scroll_position";
 
 export function useScrollRestoration() {
+  const location = useLocation();
+  const navigationType = useNavigationType();
+
   useEffect(() => {
+    // A fresh visit to the storefront must always open at the merchandising
+    // entry point. Restore only for a real browser Back/Forward navigation with
+    // a non-default history entry; the old global restore ran after every mount
+    // and could reopen `/` halfway down the feed, hiding the hero entirely.
+    const canRestore = navigationType === "POP" && location.key !== "default";
+    if (!canRestore) {
+      sessionStorage.removeItem(SCROLL_KEY);
+      window.scrollTo(0, 0);
+    }
+
+    if (!canRestore) return;
     const saved = sessionStorage.getItem(SCROLL_KEY);
     if (!saved) return;
     // Read once, then clear: a saved offset is a one-shot intent, and leaving it
@@ -53,7 +68,7 @@ export function useScrollRestoration() {
       cancelAnimationFrame(frame);
       observer?.disconnect();
     };
-  }, []);
+  }, [location.key, navigationType]);
 
   const saveScroll = () => {
     sessionStorage.setItem(SCROLL_KEY, String(window.scrollY));

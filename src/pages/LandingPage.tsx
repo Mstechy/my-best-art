@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { Package, Flame, ArrowRight, AlertCircle, RefreshCw, Store, Truck, ShieldCheck } from "lucide-react";
@@ -6,7 +6,6 @@ import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import PromoBanner from "@/components/PromoBanner";
 import SiteFooter from "@/components/SiteFooter";
-import ProductImage from "@/components/product/ProductImage";
 import { ProductCard } from "@/components/product/ProductCard";
 import { MasonryFeedGrid } from "@/components/product/MasonryFeedGrid";
 import HeroSlider from "@/components/HeroSlider";
@@ -114,9 +113,17 @@ function fromPageItem(product: CatalogueFeedItem): FeedCard {
 
 
 export default function LandingPage() {
-  const { categories, counts, categoryImages, heroSlides, heroLoading, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
+  const { categories, counts, categoryImages, heroSlides, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
+
+  // The HTML launch shell is an out-of-flow first-paint layer. Keep it visible
+  // until this route actually mounts, then reveal the real interactive tree
+  // without removing the shell's nodes from the document (which would register
+  // a large layout shift in Chrome's CLS observer).
+  useEffect(() => {
+    document.documentElement.classList.add("app-ready");
+  }, []);
 
   // Copy lives in HOME_PAGE_SEO so index.html's static <head> and this render
   // cannot describe `/` differently. src/test/pageSeoHead.test.ts fails if the
@@ -133,7 +140,6 @@ export default function LandingPage() {
   // actually buy from - an empty department is a dead end that reads as a broken site.
   const populatedCategories = useMemo(() => categories.filter(category => (counts[category.id] ?? 0) > 0), [categories, counts]);
   const visibleCategories = useMemo(() => populatedCategories.slice(0, 8), [populatedCategories]);
-  const heroFallback = useMemo(() => [feeds.flash_deals, ...FEEDS.map((feed) => feeds[feed.key])].flat().find(Boolean), [feeds]);
 
   // â”€â”€ Home feed: masonry â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   // Returning from a product page re-renders the feed from the IndexedDB cache and
@@ -227,7 +233,14 @@ export default function LandingPage() {
   const visibleFeeds = useMemo(
     () =>
       FEEDS.filter((feed) => {
-        if (loading) return true;
+        if (loading) {
+          // Reserve one honest catalogue rail while the snapshot is pending.
+          // Rendering skeletons for every possible merchandising rail and then
+          // removing empty rails when the response arrives moves the catch-all
+          // section under the shopper's viewport on mobile. The resolved state
+          // adds evidence-backed rails only after it knows they have products.
+          return feed.key === CATCH_ALL_FEED;
+        }
         // The rails still hide when they have nothing to say - a heading over an
         // empty rail tells the shopper nothing.
         if (feed.key !== CATCH_ALL_FEED) return (railCards.get(feed.key)?.length ?? 0) > 0;
@@ -281,38 +294,12 @@ export default function LandingPage() {
       <div className="border-b border-[#E8E8E8] bg-[#F8F3F0] dark:border-[#222222] dark:bg-[#1C1C1E]">
         <Container className="py-4">
           <div className="min-w-0">
-            {/* Primary hero carousel.
-
-                ONE HeroSlider instance across both states: `slides=[]` while the
-                hero query is in flight (the slider paints a neutral pending stage),
-                then live slides the moment they arrive.
-
-                The previous shape swapped a placeholder <div> for the slider on
-                data arrival, which REPLACED the <picture>/<img> DOM nodes and
-                repainted the identical box. A same-size repaint is a new Largest
-                Contentful Paint candidate, so LCP tracked the QUERY (~4.6s on the
-                throttled phone) even though the image bytes were ready before
-                first paint. One instance lets React patch slide 0 onto the
-                pending stage in place - same key, same props, same src - so the
-                <img> never repaints and LCP lands with the first commit.
-
-                `heroLoading ||` is checked alongside length so the
-                loaded-but-empty case still falls through to the product hero. */}
+            {/* One stable hero instance. It paints the bundled launch campaign
+                immediately and patches the CMS campaign into the same slide only
+                when the query resolves; there is no blank interval or random
+                product-to-banner swap. */}
             <div className="min-w-0">
-              {heroLoading || heroSlides.length > 0 ? (
-                <HeroSlider slides={heroSlides} autoRotate={false} />
-              ) : heroFallback ? (
-                <Link to="/marketplace?sort=newest" className="group relative flex aspect-[16/9] min-h-[220px] w-full overflow-hidden rounded-2xl bg-[#F6C75D] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]">
-                  <div className="absolute inset-y-0 right-0 w-[56%] overflow-hidden">
-                    {heroFallback.product_images[0]?.image_url && <ProductImage src={heroFallback.product_images[0].image_url} alt={heroFallback.title} fit="contain" className="h-full w-full p-3 transition-transform duration-500 group-hover:scale-105 md:p-6" loading="eager" />}
-                  </div>
-                  <div className="relative z-10 flex w-[62%] flex-col justify-center bg-gradient-to-r from-[#F6C75D] via-[#F6C75D]/95 to-transparent p-5 pr-2 text-[#111111] md:p-10">
-                    <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.2em] text-[#5C3A00]">{t("home.newArrivals")}</p>
-                    <p className="line-clamp-3 text-xl font-black leading-tight md:text-4xl">{heroFallback.title}</p>
-                    <span className="mt-4 inline-flex w-fit rounded-full bg-[#111111] px-4 py-2 text-xs font-semibold text-white">{t("common.viewAll")}</span>
-                  </div>
-                </Link>
-              ) : null}
+              <HeroSlider slides={heroSlides} autoRotate={false} />
             </div>
 
           </div>
@@ -423,7 +410,12 @@ export default function LandingPage() {
           request cannot leave the mobile page with a blank region waiting for the
           window `load` event. CSS content-visibility still defers expensive
           off-screen painting without deferring the DOM or its loading state. */}
-      <Container className="w-full order-4 [content-visibility:auto] [contain-intrinsic-size:auto_1600px]">
+      {/* Keep the feed's outer flow in normal layout. Applying content-visibility
+          to this wrapper made the browser replace its 1600px intrinsic placeholder
+          with the resolved masonry height several seconds after mobile paint,
+          which produced a visible CLS burst. MasonryFeedGrid still windows each
+          resolved tile individually, so long catalogues keep the paint savings. */}
+      <Container className="w-full order-4">
           {visibleFeeds.map(feed => {
             const isCatchAll = feed.key === CATCH_ALL_FEED;
             const cards = isCatchAll ? catchAllCards : railCards.get(feed.key) ?? [];

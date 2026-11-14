@@ -11,6 +11,7 @@ import { useCurrency } from "@/hooks/useCurrency";
 import { useProductDetailData, useCanReview, type Product, type ProductDoc, type ProductVariant, type ReviewData, type KeywordItem } from "@/hooks/useProductDetail";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
+import SiteFooter from "@/components/SiteFooter";
 import { Carousel, CarouselContent, CarouselItem, type CarouselApi } from "@/components/ui/carousel";
 import { Container } from "@/components/ui/Container";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -1086,6 +1087,7 @@ export default function ProductDetailPage() {
         )}
       </Container>
       </main>
+      <SiteFooter />
 
       {/* Sticky mobile CTA bar - the ONLY bottom bar on this route (tab bar not mounted here): Store/Chat/Cart outline icons with labels, Add to Cart outlined pill, Buy Now brand pill */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#E8E8E8] bg-white pb-[env(safe-area-inset-bottom,0px)] dark:border-[#222222] dark:bg-[#111111] md:hidden">

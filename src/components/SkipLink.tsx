@@ -53,17 +53,22 @@ export default function SkipLink() {
   }, []);
 
   return (
-    <a
-      href="#main-content"
-      onClick={(event) => {
-        const main = adoptMainTarget();
-        if (!main) return;
-        event.preventDefault();
-        main.focus();
-      }}
-      className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[#111111] focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg dark:focus:bg-[#FAF5F2] dark:focus:text-[#111111]"
+    <header
+      aria-label="Accessibility shortcuts"
+      className="absolute left-0 top-0 z-[100] h-0 w-0 overflow-visible"
     >
-      Skip to main content
-    </a>
+      <a
+        href="#main-content"
+        onClick={(event) => {
+          const main = adoptMainTarget();
+          if (!main) return;
+          event.preventDefault();
+          main.focus();
+        }}
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[#111111] focus:px-5 focus:py-3 focus:text-sm focus:font-bold focus:text-white focus:shadow-lg dark:focus:bg-[#FAF5F2] dark:focus:text-[#111111]"
+      >
+        Skip to main content
+      </a>
+    </header>
   );
 }

@@ -24,7 +24,22 @@
       html, body { overflow-x: clip; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
       body { margin: 0; }
       *, *::before, *::after { box-sizing: border-box; }
+      /* Keep the first-paint shell visible while the lazy landing route boots,
+         but take it out of document flow. React can then remove it without
+         moving the real page underneath it or creating CLS. */
+      /* The shell is a fixed first-paint layer. Its critical geometry is kept
+         here because the full utility stylesheet arrives after HTML; matching
+         the real navbar/hero box prevents a transient desktop layout shift. */
+      .js #first-paint-shell { position: fixed; inset: 0; z-index: 10; width: 100%; height: 100%; overflow: hidden; pointer-events: none; }
+      .js.app-ready #first-paint-shell { visibility: hidden; }
+      #first-paint-shell nav { height: 140px; min-height: 140px; }
+      #first-paint-shell main { height: 631px; min-height: 631px; overflow: hidden; }
+      @media (max-width: 1023px) {
+        #first-paint-shell nav { height: 186px; min-height: 186px; }
+        #first-paint-shell main { height: 330px; min-height: 330px; }
+      }
     </style>
+    <script>document.documentElement.classList.add('js');</script>
     <meta name="google-site-verification" content="89XTJNqWIy_z32sTfKF8xTzfMffRswBFJPceIi4NVFM" />
     <!-- The homepage head is what src/lib/pageSeo.ts publishes as HOME_PAGE_SEO,
          written the way LandingPage renders it after mount rather than the other
@@ -34,9 +49,12 @@
          src/test/pageSeoHead.test.ts fails if this drifts from the constant. -->
     <title>Online Marketplace for Trusted Shopping | Tradibu</title>
     
-    <!-- Campaign artwork is loaded only after the homepage campaign query
-         resolves. Preloading a hard-coded hero here made the public page paint
-         one campaign and then replace it with the live campaign. -->
+    <!-- The bundled launch campaign is the stable first-paint hero. The React
+         slider uses the same URL while the CMS campaign query resolves, so the
+         browser can discover the LCP image from HTML without a product/banner
+         swap or a late image request. -->
+    <link rel="preload" as="image" href="/images/electronics-products-1600x686.webp" media="(min-width: 641px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/images/electronics-products-480x270.webp" imagesrcset="/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x" media="(max-width: 640px)" fetchpriority="high" />
     <!--
       Inter 800 is REQUIRED: the Tradibu design uses font-weight:800 for the
       logo, hero h1, section headings, price and badges. Without it the browser
@@ -137,17 +155,16 @@
   </head>
 
   <body>
-    <div id="root"><!--tradibu:home-shell:start-->
+    <!--tradibu:home-shell:start-->
       <!--
         First-paint shell: the landing page's above-the-fold DOM as static HTML.
 
         FCP on a throttled phone was ~5.2s because this container stayed empty
-        until the whole JS graph ran. React 18's createRoot().render() calls
-        clearContainer() on its first commit, which REPLACES everything between
-        the two markers with the real LandingPage in the same tick - no handoff
-        script, no second paint. The two trees must therefore match in geometry
-        (navbar height, element order, hero box) or the swap shifts layout;
-        src/test/homeShellLcp.test.ts pins both sides.
+        until the whole JS graph ran. The shell remains useful when JavaScript
+        is disabled and acts as an out-of-flow paint layer while the lazy route
+        boots. JavaScript hides this fixed shell after the eager LandingPage
+        mounts, while the explicit hero preload warms the same artwork for the
+        real tree.
 
         Every non-`/` route is served this same document when no prerendered
         copy exists, so the guard script at the end drops the shell for those
@@ -160,7 +177,7 @@
              max(logo 28px, hamburger p-2.5 + h-5 = 40px), plus the `mt-3 lg:hidden`
              search field (h-11); at lg the desktop form's 48px field + 2px border
              drives the row. React must swap in at exactly the same height. -->
-        <nav class="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2]">
+        <nav class="sticky top-0 z-50 w-full border-b border-[#E8E8E8] bg-white/90 text-[#111111] backdrop-blur-md dark:border-[#222222] dark:bg-[#111111]/90 dark:text-[#FAF5F2] lg:min-h-[140px]">
           <div class="mx-auto max-w-7xl px-4 py-3 lg:px-8 lg:py-3">
             <div class="flex items-center gap-2 lg:gap-3">
               <a href="/" aria-label="Tradibu home" class="flex items-baseline shrink-0 select-none" tabindex="-1">
@@ -219,15 +236,25 @@
             <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
               <div class="min-w-0">
                 <div class="min-w-0">
-                  <!-- HeroSlider pending stage, mirrored: same section shape, same
-                       slides-container box, and byte-for-byte the <picture> whose
-                       file index.html preloads - so the LCP element exists at first
-                       paint and the React swap repaints the identical box. -->
+                  <!-- HeroSlider pending stage, mirrored: same section shape and
+                       responsive picture as HeroArtwork. -->
                   <section class="relative w-full overflow-hidden bg-[#111111]">
-                    <div class="relative aspect-[16/9] min-h-[220px] w-full animate-pulse bg-[#F3EEE9] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px] dark:bg-[#28282B]">
-                      <div class="absolute inset-y-0 left-0 w-2/3 bg-gradient-to-r from-[#F6C75D]/45 via-[#F6C75D]/15 to-transparent"></div>
-                      <div class="absolute inset-x-6 bottom-8 h-3 max-w-xs rounded-full bg-black/10 dark:bg-white/10"></div>
-                      <div class="absolute inset-x-6 bottom-14 h-8 max-w-md rounded-lg bg-black/10 dark:bg-white/10"></div>
+                    <div class="relative aspect-[16/9] min-h-[220px] w-full bg-[#1C1C1E] sm:min-h-[260px] md:aspect-[21/9] md:min-h-[320px] lg:min-h-[340px]">
+                      <picture class="block h-full w-full">
+                        <source media="(max-width: 640px)" srcset="/images/electronics-products-480x270.webp 1x, /images/electronics-products-960x540.webp 2x" width="960" height="540" type="image/webp">
+                        <img src="/images/electronics-products-1600x686.webp" width="1600" height="686" alt="Electronics products on Tradibu" class="h-full w-full object-cover" loading="eager" fetchpriority="high" decoding="async">
+                      </picture>
+                      <div class="absolute inset-0 bg-gradient-to-r from-black/60 via-black/40 to-black/20"></div>
+                      <div class="absolute inset-0 flex items-center overflow-hidden">
+                        <div class="mx-auto w-full max-w-7xl px-4 py-4 sm:px-8 md:px-12">
+                          <div class="max-w-xl">
+                            <span class="mb-2 inline-block min-h-[18px] rounded-full bg-[#F6C75D] px-2.5 py-0.5 text-[10px] font-bold text-[#5C3A00] sm:mb-3 sm:min-h-[28px] sm:px-3 sm:py-1 sm:text-xs">SHOP ELECTRONICS ON TRADIBU</span>
+                            <h2 class="min-h-[2.16em] font-black uppercase tracking-tight text-white" style="font-size:clamp(1.375rem,2.5vw + 1rem,3.75rem);line-height:1.08">ELECTRONICS PRODUCTS</h2>
+                            <p class="mt-2 min-h-[4.5rem] max-w-md text-xs leading-relaxed text-white/80 sm:mt-3 sm:max-w-lg sm:text-sm md:text-base">Discover products from independent sellers on Tradibu. Start with electronics, then explore more categories as they grow.</p>
+                            <a href="/collections/electronics-products" class="mt-3 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-xs font-semibold text-[#111111] sm:mt-5 sm:px-6 sm:py-3 sm:text-sm" tabindex="-1">Shop collection</a>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </section>
                 </div>
@@ -246,10 +273,10 @@
              marketplace query-string URLs, so a crawler that never executes
              JavaScript had no path from / to /categories, the legal pages or
              any deep route - the mechanism behind "~130 pages, 2 indexed".
-             Part of the shell, so React's first commit wipes it with the rest;
-             tabindex="-1" keeps it out of the tab order while it is a
-             decorative placeholder. -->
-        <nav aria-label="Footer" class="border-t border-[#E8E8E8] bg-white px-4 py-6 dark:border-[#222222] dark:bg-[#121212]">
+             Part of the shell, so the same fixed paint layer hides it after the
+             real route mounts. It is out of flow and tabindex="-1" keeps it out
+             of the tab order. -->
+        <nav aria-label="Footer" class="sr-only">
           <ul class="mx-auto flex max-w-7xl flex-wrap gap-x-6 gap-y-2 text-sm font-medium text-[#111111] dark:text-[#FAF5F2]">
             <li><a href="/marketplace" class="hover:underline underline-offset-4" tabindex="-1">Marketplace</a></li>
             <li><a href="/categories" class="hover:underline underline-offset-4" tabindex="-1">Categories</a></li>
@@ -271,7 +298,8 @@
           if (path !== "/" && path !== "/index.html") shell.parentNode.removeChild(shell);
         })();
       </script>
-    <!--tradibu:home-shell:end--></div>
+    <!--tradibu:home-shell:end-->
+    <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
