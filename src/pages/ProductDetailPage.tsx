@@ -8,7 +8,7 @@ import { useCart } from "@/hooks/useCart";
 import { useWishlist } from "@/hooks/useWishlist";
 import { useAuth } from "@/hooks/useAuth";
 import { useCurrency } from "@/hooks/useCurrency";
-import { useProductDetailData, useCanReview, type Product, type ProductDoc, type ProductVariant, type ReviewData, type KeywordItem } from "@/hooks/useProductDetail";
+import { useProductDetailData, useCanReview, isProductNotFoundError, type Product, type ProductDoc, type ProductVariant, type ReviewData, type KeywordItem } from "@/hooks/useProductDetail";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import SiteFooter from "@/components/SiteFooter";
@@ -83,6 +83,8 @@ export default function ProductDetailPage() {
     sellerFollowerCount: sellerFollowerQuery,
     sellerAvgRating,
     sellerTotalSold,
+    error: productDetailError,
+    retry: retryProductDetail,
     loading,
   } = useProductDetailData(id);
 
@@ -604,6 +606,31 @@ export default function ProductDetailPage() {
               <div className="h-6 bg-[#F2F3F5] dark:bg-[#202020] rounded w-3/4" />
               <div className="h-8 bg-[#F2F3F5] dark:bg-[#202020] rounded w-1/3" />
               <div className="h-20 bg-[#F2F3F5] dark:bg-[#202020] rounded" />
+            </div>
+          </div>
+        ) : productDetailError && !product && !isProductNotFoundError(productDetailError) ? (
+          <div className="mx-auto max-w-xl py-20 text-center" role="alert">
+            <div className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-full bg-[#FFF4E8] text-[#C2410C] dark:bg-[#3A2112] dark:text-[#FDBA74]">
+              <Package className="h-7 w-7" aria-hidden="true" />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight">This product is temporarily unavailable</h2>
+            <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-[#6E6C64] dark:text-[#A0A0A0]">
+              We could not load the latest product information. Your account and order data were not changed.
+            </p>
+            <div className="mt-7 flex flex-wrap justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => void retryProductDetail()}
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#111111] px-5 text-sm font-semibold text-white transition hover:bg-[#2D2D2D] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#FAF5F2] dark:text-[#111111]"
+              >
+                Try again
+              </button>
+              <Link
+                to="/marketplace"
+                className="inline-flex min-h-11 items-center justify-center rounded-full border border-[#D9D6D0] bg-white px-5 text-sm font-semibold text-[#111111] transition hover:bg-[#F8F3F0] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#3B3B3B] dark:bg-transparent dark:text-[#FAF5F2] dark:hover:bg-[#1E1E1E]"
+              >
+                Browse marketplace
+              </Link>
             </div>
           </div>
         ) : !product ? (

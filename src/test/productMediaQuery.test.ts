@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { normalizeProduct, PRODUCT_DETAIL_COLUMNS } from "@/hooks/useProductDetail";
+import { isProductNotFoundError, normalizeProduct, PRODUCT_DETAIL_COLUMNS } from "@/hooks/useProductDetail";
 
 describe("product detail media contract", () => {
+  it("distinguishes a missing row from a failed product request", () => {
+    expect(isProductNotFoundError({ code: "PGRST116", message: "The result contains 0 rows" })).toBe(true);
+    expect(isProductNotFoundError(new Error("Failed to fetch"))).toBe(false);
+  });
+
   it("selects seller-uploaded description and gallery alt media", () => {
     expect(PRODUCT_DETAIL_COLUMNS).toContain("description_images");
     expect(PRODUCT_DETAIL_COLUMNS).toContain("product_images(id,image_url,is_primary,sort_order,alt)");

@@ -113,17 +113,19 @@ function fromPageItem(product: CatalogueFeedItem): FeedCard {
 
 
 export default function LandingPage() {
-  const { categories, counts, categoryImages, heroSlides, heroLoading, heroError, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
+  const { categories, counts, categoryImages, heroSlides, heroLoading, heroReady, heroError, feeds, loading, snapshotError, retrySnapshot, snapshotFetching } = useHomepageSnapshotData();
   const { t } = useTranslation();
   const { formatPrice } = useCurrency();
 
   // The HTML launch shell is an out-of-flow first-paint layer. Keep it visible
-  // until this route actually mounts, then reveal the real interactive tree
+  // until the hero request settles, then reveal the real interactive tree
   // without removing the shell's nodes from the document (which would register
-  // a large layout shift in Chrome's CLS observer).
+  // a large layout shift in Chrome's CLS observer). This also prevents the
+  // default bundled hero from flashing before the CMS hero is ready.
   useEffect(() => {
+    if (!heroReady) return;
     document.documentElement.classList.add("app-ready");
-  }, []);
+  }, [heroReady]);
 
   // Copy lives in HOME_PAGE_SEO so index.html's static <head> and this render
   // cannot describe `/` differently. src/test/pageSeoHead.test.ts fails if the

@@ -1,8 +1,8 @@
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import AfterFirstPaint from "@/components/AfterFirstPaint";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import { CurrencyProvider } from "@/hooks/useCurrency";
@@ -127,6 +127,21 @@ function RouteSuspense({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * The first-paint shell is only valid for the homepage. If a visitor leaves
+ * `/` before the homepage hero request settles, the shell must be hidden on
+ * that client-side transition as well as on a full-page navigation.
+ */
+function FirstPaintShellGate() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (pathname !== "/") document.documentElement.classList.add("app-ready");
+  }, [pathname]);
+
+  return null;
+}
+
 function AppRoutes() {
   useOverlayLockWatchdog();
   return (
@@ -214,6 +229,7 @@ const App = () => (
         </Suspense>
       </AfterFirstPaint>
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <FirstPaintShellGate />
         {/* Rendered before any route so the WCAG 2.4.1 bypass block is the
              first focusable element on every page of the SPA. */}
         <SkipLink />

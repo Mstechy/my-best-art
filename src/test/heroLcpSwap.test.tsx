@@ -47,6 +47,7 @@ vi.mock("@/hooks/useHomepage", () => ({
     categoryImages: {},
     heroSlides: home.heroSlides,
     heroLoading: home.heroLoading,
+    heroReady: !home.heroLoading,
     feeds: { flash_deals: [], new_arrivals: [] },
     sellers: new Map(),
     snapshotError: home.snapshotError,

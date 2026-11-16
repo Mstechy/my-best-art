@@ -216,6 +216,10 @@ export function useHomepageSnapshotData() {
   return {
     heroSlides: hero.data ?? [],
     heroLoading: hero.isLoading,
+    // The launch shell should stay in place until the hero request has either
+    // produced slides or settled with an error. This prevents a bundled hero
+    // from flashing briefly before CMS content replaces it.
+    heroReady: !hero.isLoading,
     heroFetching: hero.isFetching,
     heroError: hero.error,
     categories: categories.data?.categories ?? [],

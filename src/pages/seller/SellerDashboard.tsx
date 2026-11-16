@@ -20,7 +20,7 @@ export default function SellerDashboard() {
   const [isApproved, setIsApproved] = useState<boolean>(profile?.is_approved ?? false);
   const [checkingApproval, setCheckingApproval] = useState<boolean>(profile?.is_approved === undefined);
 
-  const { products, summary, stats, loading: dashboardLoading, error: dashboardError, orderCounts, recentOrders, weekly } = useSellerDashboard(user?.id);
+  const { products, summary, stats, loading: dashboardLoading, error: dashboardError, partialErrors, orderCounts, recentOrders, weekly } = useSellerDashboard(user?.id);
 
   const pendingOrdersCount = useMemo(() => (
     Number(orderCounts.byStatus.pending || 0) + Number(orderCounts.byStatus.processing || 0)
@@ -169,6 +169,18 @@ export default function SellerDashboard() {
 
   return (
     <div className="space-y-8">
+      {partialErrors.length > 0 && (
+        <div className="rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-sm text-foreground" role="status" aria-live="polite">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
+            <div>
+              <p className="font-medium">Some dashboard details are temporarily unavailable</p>
+              <p className="mt-1 text-xs text-muted-foreground">Core store totals remain visible. Try refreshing later to restore the remaining details.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <AnimatedSection variant="fade-up">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>

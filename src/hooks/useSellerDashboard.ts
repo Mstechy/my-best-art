@@ -99,10 +99,12 @@ export function useSellerRecentOrders(userId: string | undefined) {
       if (error) throw error;
       const rows = data as unknown as Array<{ id: string; status: string; total_amount: number | string; created_at: string; buyer_id: string }>;
       const buyerIds = [...new Set(rows.map((row) => row.buyer_id).filter(Boolean))];
-      const { data: buyers, error: buyersError } = buyerIds.length
+      const { data: buyers } = buyerIds.length
         ? await supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds)
-        : { data: [] as Array<{ user_id: string; full_name: string | null }>, error: null };
-      if (buyersError) throw buyersError;
+        : { data: [] as Array<{ user_id: string; full_name: string | null }> };
+      // Buyer names are an optional enrichment. A seller can still see the
+      // order timeline when profile visibility is restricted or this lookup
+      // is temporarily unavailable, so never fail the whole dashboard here.
       const buyerNames = new Map((buyers ?? []).map((buyer) => [buyer.user_id, buyer.full_name]));
       return rows.map((row) => ({
         id: row.id,
@@ -219,12 +221,13 @@ export function useSellerOrders(sellerId: string | undefined) {
       if (!orders.length) return [] as SellerOrder[];
       const ids = orders.map((order) => order.id);
       const buyerIds = [...new Set(orders.map((order) => order.buyer_id))];
-      const [{ data: itemRows, error: itemError }, { data: profiles, error: profileError }] = await Promise.all([
+      const [{ data: itemRows, error: itemError }, { data: profiles }] = await Promise.all([
         supabase.from("order_items").select("id,order_id,product_id,product_variant_id,title,image_url,variant,quantity,unit_price,total_price").in("order_id", ids),
         supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds),
       ]);
       if (itemError) throw itemError;
-      if (profileError) throw profileError;
+      // Buyer display names are optional enrichment. Keep the seller's order
+      // and fulfilment data available when profile visibility is restricted.
       const names = new Map((profiles ?? []).map((profile) => [profile.user_id, profile.full_name]));
       const items = new Map<string, SellerOrderItem[]>();
       (itemRows ?? []).forEach((item) => {
@@ -286,12 +289,13 @@ export function useSellerOrdersPage(sellerId: string | undefined, page: number, 
       if (!orders.length) return [] as SellerOrder[];
       const ids = orders.map((order) => order.id);
       const buyerIds = [...new Set(orders.map((order) => order.buyer_id))];
-      const [{ data: itemRows, error: itemError }, { data: profiles, error: profileError }] = await Promise.all([
+      const [{ data: itemRows, error: itemError }, { data: profiles }] = await Promise.all([
         supabase.from("order_items").select("id,order_id,product_id,product_variant_id,title,image_url,variant,quantity,unit_price,total_price").in("order_id", ids),
         supabase.from("profiles").select("user_id,full_name").in("user_id", buyerIds),
       ]);
       if (itemError) throw itemError;
-      if (profileError) throw profileError;
+      // A profile lookup must not turn a valid order page into an error state.
+      // The order remains actionable and can safely fall back to the buyer id.
       const names = new Map((profiles ?? []).map((profile) => [profile.user_id, profile.full_name]));
       const items = new Map<string, SellerOrderItem[]>();
       (itemRows ?? []).forEach((item) => {
@@ -351,11 +355,28 @@ export function useSellerDashboard(userId: string | undefined) {
   }, [summary.data, products.data, pendingApproval.data, orderCounts.data, revenue.data]);
 
   const loading = products.isLoading || summary.isLoading || pendingApproval.isLoading || recentOrders.isLoading || orderCounts.isLoading || revenue.isLoading || weekly.isLoading;
+  const queryStates = [products, summary, pendingApproval, recentOrders, orderCounts, revenue, weekly];
+  const queryErrors = queryStates.map((query) => query.error).filter(Boolean);
+  const hasUsableQuery = queryStates.some((query) => query.isSuccess);
   // The summary RPC is an optimization. Its failure must not hide the usable
-  // bounded product/order data already loaded by the dashboard.
-  const error = products.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? revenue.error ?? weekly.error ?? null;
+  // bounded product/order data already loaded by the dashboard. Likewise, a
+  // failed optional chart/enrichment query should not blank the seller's
+  // operational workspace. Only show the blocking state when every query has
+  // failed before producing usable data.
+  const error = hasUsableQuery ? null : (products.error ?? pendingApproval.error ?? recentOrders.error ?? orderCounts.error ?? revenue.error ?? weekly.error ?? summary.error ?? null);
+  const partialErrors = hasUsableQuery ? queryErrors : [];
 
-  return { products: products.data ?? [], summary: summary.data, stats, loading, error, orderCounts: orderCounts.data ?? { total: 0, byStatus: {} }, recentOrders: recentOrders.data ?? [], weekly: weekly.data ?? [] };
+  return {
+    products: products.data ?? [],
+    summary: summary.data,
+    stats,
+    loading,
+    error,
+    partialErrors,
+    orderCounts: orderCounts.data ?? { total: 0, byStatus: {} },
+    recentOrders: recentOrders.data ?? [],
+    weekly: weekly.data ?? [],
+  };
 }
 
 export function useSellerDashboardSummary(sellerId: string | undefined) {

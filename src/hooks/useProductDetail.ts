@@ -63,6 +63,16 @@ export interface ReviewData {
 export interface KeywordItem { keyword: string; count: number; }
 export interface SellerMarketplaceStats { avg_rating: number; total_reviews: number; total_sold: number; }
 
+/**
+ * A missing product and a failed product request are different buyer states.
+ * Keep the distinction at the data boundary so the page never tells a buyer
+ * that an existing listing was deleted just because Supabase was unavailable.
+ */
+export function isProductNotFoundError(error: unknown): boolean {
+  const candidate = error as { code?: string; message?: string } | null | undefined;
+  return candidate?.code === "PGRST116" || /no rows|not found/i.test(candidate?.message ?? "");
+}
+
 export const PRODUCT_DETAIL_COLUMNS = [
   "id", "title", "description", "price", "compare_at_price", "currency", "stock_quantity",
   "seller_id", "category_id", "brand", "gtin", "mpn", "weight", "dimensions", "material",
@@ -151,8 +161,18 @@ export function useProductSeller(sellerId: string | undefined) {
         .from("seller_profiles_public")
         .select("user_id, full_name, is_verified, avatar_url")
         .eq("user_id", sellerId)
-        .single();
-      return data as SellerInfo | null;
+        .maybeSingle();
+
+      // A public seller profile can be missing while the product remains a
+      // valid approved listing (for example during seller onboarding or after
+      // a profile cleanup). Product detail must not disappear because an
+      // optional trust surface has no row.
+      return (data as SellerInfo | null) ?? {
+        user_id: sellerId,
+        full_name: null,
+        is_verified: false,
+        avatar_url: null,
+      };
     },
     { enabled: !!sellerId, staleTime: 10 * 60 * 1000 },
   );
@@ -379,6 +399,11 @@ export function useProductDetailData(productId: string | undefined) {
   // secondary sections; keeping them out of this gate lets the buy surface
   // render while those sections resolve independently.
   const loading = product.isLoading || seller.isLoading || variants.isLoading;
+  const error = product.error ?? seller.error ?? variants.error ?? null;
+
+  const retry = async () => {
+    await Promise.all([product.refetch(), seller.refetch(), variants.refetch()]);
+  };
 
   return {
     product,
@@ -392,6 +417,8 @@ export function useProductDetailData(productId: string | undefined) {
     sellerFollowerCount,
     sellerAvgRating,
     sellerTotalSold: sellerStats.data?.total_sold ?? 0,
+    error,
+    retry,
     loading,
   };
 }
