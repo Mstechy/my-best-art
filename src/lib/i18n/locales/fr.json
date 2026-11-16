@@ -185,6 +185,8 @@
     "loadMoreProducts": "Charger plus de produits",
     "noProductsMatch": "Aucun produit ne correspond à vos filtres",
     "noProductsListed": "Aucun produit répertorié pour le moment",
+    "loadErrorTitle": "Impossible de charger les produits",
+    "loadErrorDescription": "Nous ne pouvons pas actualiser la marketplace pour le moment. Vos filtres sont conservés ; réessayez dans un instant.",
     "tryDifferentSearchTerms": "Essayez des termes de recherche ou des catégories différents",
     "productsWillAppear": "Les produits apparaîtront ici au fur et à mesure que les vendeurs les mettront en ligne.",
     "deliveryDestination": "Destination de livraison",

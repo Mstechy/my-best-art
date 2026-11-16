@@ -191,6 +191,8 @@
     "loadMoreProducts": "Load more products",
     "noProductsMatch": "No products match your filters",
     "noProductsListed": "No products listed yet",
+    "loadErrorTitle": "Products could not be loaded",
+    "loadErrorDescription": "We could not refresh the marketplace right now. Your filters are still preserved—try again in a moment.",
     "tryDifferentSearchTerms": "Try different search terms or categories",
     "productsWillAppear": "Products will appear here as sellers list them.",
     "deliveryDestination": "Delivery Destination",

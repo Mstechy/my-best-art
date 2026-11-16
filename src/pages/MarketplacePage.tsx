@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link, useParams, useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Menu, Package } from "lucide-react";
+import { AlertCircle, Menu, Package } from "lucide-react";
 import FlashDealCountdown from "@/components/FlashDealCountdown";
 import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
@@ -358,7 +358,10 @@ export default function MarketplacePage() {
     void fetchSellerProfiles();
   }, [products]);
 
-  const pageLoading = catalogueLoading || categoriesLoading;
+  // Category metadata is useful for filters, but it must not block the main
+  // product feed. Buyers should see catalogue results as soon as that query
+  // settles, even if the optional department tree is slower.
+  const pageLoading = catalogueLoading;
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
@@ -684,7 +687,11 @@ export default function MarketplacePage() {
             </div>
             <div className="mb-4 flex min-h-5 items-center" aria-live="polite">
               <p className="text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0]">
-                {t("marketplace.showingProducts", { count: displayedProducts.length })}
+                {catalogueLoading
+                  ? t("marketplace.loadingProducts")
+                  : catalogueError
+                    ? t("marketplace.loadErrorTitle")
+                    : t("marketplace.showingProducts", { count: displayedProducts.length })}
               </p>
             </div>
             {/* Keep catalogue geometry predictable while data settles. */}
@@ -700,6 +707,15 @@ export default function MarketplacePage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : catalogueError ? (
+                <div className="flex flex-col items-center justify-center rounded-2xl border border-destructive/20 bg-destructive/5 px-6 py-16 text-center" role="alert">
+                  <AlertCircle className="mb-4 h-12 w-12 text-destructive/70" aria-hidden="true" />
+                  <h2 className="text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">{t("marketplace.loadErrorTitle")}</h2>
+                  <p className="mt-2 max-w-sm text-xs text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.loadErrorDescription")}</p>
+                  <Button type="button" variant="outline" className="mt-5 rounded-full" onClick={() => void refetchCatalogue(true)}>
+                    {t("common.retry")}
+                  </Button>
                 </div>
               ) : displayedProducts.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center select-none">
