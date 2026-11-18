@@ -64,6 +64,8 @@ export default function BuyerOrders() {
   const pendingPurchaseRef = React.useRef<Parameters<typeof trackVerifiedPurchase>[0] | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadWarning, setLoadWarning] = useState(false);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<Tab>("all");
   const [reviewedProducts, setReviewedProducts] = useState<Set<string>>(new Set());
@@ -82,81 +84,113 @@ export default function BuyerOrders() {
   const [reviewLoading, setReviewLoading] = useState(false);
 
   const fetchOrders = useCallback(async () => {
-    if (!user) return;
-    let ordersQuery = supabase
-      .from("orders")
-      .select("id,status,total_amount,currency,created_at,seller_id,tracking_number,payment_reference,payment_status")
-      .eq("buyer_id", user.id)
-      .order("created_at", { ascending: false })
-      .limit(100);
-    if (paymentReference) ordersQuery = ordersQuery.eq("payment_reference", paymentReference);
-    const { data: ordersData } = await ordersQuery;
-    if (!ordersData) { setLoading(false); return; }
-
-    const sellerIds = [...new Set(ordersData.map(o => o.seller_id))];
-    const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", sellerIds);
-    const sellerMap: Record<string, string> = {};
-    profiles?.forEach(p => { sellerMap[p.user_id] = p.full_name || "Unknown Seller"; });
-
-    const orderIds = ordersData.map(o => o.id);
-    const { data: itemsData } = await supabase.from("order_items").select("id, order_id, quantity, unit_price, product_id").in("order_id", orderIds);
-
-    const productIds = [...new Set((itemsData || []).filter(i => i.product_id).map(i => i.product_id!))];
-    const productMap: Record<string, { title: string; image: string | null }> = {};
-    if (productIds.length > 0) {
-      const { data: products } = await supabase.from("products").select("id, title").in("id", productIds);
-      const { data: images } = await supabase.from("product_images").select("product_id, image_url, is_primary").in("product_id", productIds);
-      products?.forEach(p => {
-        const img = images?.find(i => i.product_id === p.id && i.is_primary) || images?.find(i => i.product_id === p.id);
-        productMap[p.id] = { title: p.title, image: img?.image_url || null };
-      });
+    if (!user) {
+      setOrders([]);
+      setLoading(false);
+      return;
     }
 
-    const itemsByOrder: Record<string, OrderItem[]> = {};
-    itemsData?.forEach(item => {
-      if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
-      const product = item.product_id ? productMap[item.product_id] : null;
-      itemsByOrder[item.order_id].push({
-        id: item.id, product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price,
-        product_title: product?.title || "Unknown Product", product_image: product?.image || null,
-      });
-    });
+    setLoading(true);
+    setLoadError(false);
+    setLoadWarning(false);
 
-    if (paymentReference) {
-      const paidOrders = ordersData.filter(
-        (order) => order.payment_reference === paymentReference && order.payment_status === "paid",
-      );
-      if (paidOrders.length > 0) {
-        const paidOrderIds = new Set(paidOrders.map((order) => order.id));
-        const purchaseItems = (itemsData ?? [])
-          .filter((item) => paidOrderIds.has(item.order_id))
-          .map((item) => ({
-            item_id: item.product_id || item.id,
-            item_name: item.product_id ? productMap[item.product_id]?.title || "Product" : "Product",
-            price: Number(item.unit_price),
-            quantity: item.quantity,
-          }));
-        const purchase = {
-          transaction_id: paymentReference,
-          value: paidOrders.reduce((total, order) => total + Number(order.total_amount), 0),
-          currency: paidOrders[0].currency || "NGN",
-          items: purchaseItems,
-        };
-        pendingPurchaseRef.current = purchase;
-        trackVerifiedPurchase(purchase);
+    try {
+      let ordersQuery = supabase
+        .from("orders")
+        .select("id,status,total_amount,currency,created_at,seller_id,tracking_number,payment_reference,payment_status")
+        .eq("buyer_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (paymentReference) ordersQuery = ordersQuery.eq("payment_reference", paymentReference);
+      const { data: ordersData, error: ordersError } = await ordersQuery;
+      if (ordersError) throw ordersError;
+      if (!ordersData) throw new Error("Orders response was empty");
+
+      let hasEnrichmentWarning = false;
+      const sellerIds = [...new Set(ordersData.map(o => o.seller_id))];
+      const { data: profiles, error: profilesError } = sellerIds.length > 0
+        ? await supabase.from("profiles").select("user_id, full_name").in("user_id", sellerIds)
+        : { data: [], error: null };
+      if (profilesError) hasEnrichmentWarning = true;
+      const sellerMap: Record<string, string> = {};
+      profiles?.forEach(p => { sellerMap[p.user_id] = p.full_name || "Unknown Seller"; });
+
+      const orderIds = ordersData.map(o => o.id);
+      const { data: itemsData, error: itemsError } = orderIds.length > 0
+        ? await supabase.from("order_items").select("id, order_id, quantity, unit_price, product_id").in("order_id", orderIds)
+        : { data: [], error: null };
+      // Without order items the page cannot accurately describe what was
+      // purchased, so treat this as a recoverable page failure instead of
+      // showing incomplete order cards.
+      if (itemsError) throw itemsError;
+
+      const productIds = [...new Set((itemsData || []).filter(i => i.product_id).map(i => i.product_id!))];
+      const productMap: Record<string, { title: string; image: string | null }> = {};
+      if (productIds.length > 0) {
+        const [{ data: products, error: productsError }, { data: images, error: imagesError }] = await Promise.all([
+          supabase.from("products").select("id, title").in("id", productIds),
+          supabase.from("product_images").select("product_id, image_url, is_primary").in("product_id", productIds),
+        ]);
+        if (productsError || imagesError) hasEnrichmentWarning = true;
+        products?.forEach(p => {
+          const img = images?.find(i => i.product_id === p.id && i.is_primary) || images?.find(i => i.product_id === p.id);
+          productMap[p.id] = { title: p.title, image: img?.image_url || null };
+        });
       }
+
+      const itemsByOrder: Record<string, OrderItem[]> = {};
+      itemsData?.forEach(item => {
+        if (!itemsByOrder[item.order_id]) itemsByOrder[item.order_id] = [];
+        const product = item.product_id ? productMap[item.product_id] : null;
+        itemsByOrder[item.order_id].push({
+          id: item.id, product_id: item.product_id, quantity: item.quantity, unit_price: item.unit_price,
+          product_title: product?.title || "Product details unavailable", product_image: product?.image || null,
+        });
+      });
+
+      if (paymentReference) {
+        const paidOrders = ordersData.filter(
+          (order) => order.payment_reference === paymentReference && order.payment_status === "paid",
+        );
+        if (paidOrders.length > 0) {
+          const paidOrderIds = new Set(paidOrders.map((order) => order.id));
+          const purchaseItems = (itemsData ?? [])
+            .filter((item) => paidOrderIds.has(item.order_id))
+            .map((item) => ({
+              item_id: item.product_id || item.id,
+              item_name: item.product_id ? productMap[item.product_id]?.title || "Product" : "Product",
+              price: Number(item.unit_price),
+              quantity: item.quantity,
+            }));
+          const purchase = {
+            transaction_id: paymentReference,
+            value: paidOrders.reduce((total, order) => total + Number(order.total_amount), 0),
+            currency: paidOrders[0].currency || "NGN",
+            items: purchaseItems,
+          };
+          pendingPurchaseRef.current = purchase;
+          trackVerifiedPurchase(purchase);
+        }
+      }
+
+      setOrders(ordersData.map(o => ({
+        id: o.id, status: o.status, total_amount: o.total_amount, currency: o.currency,
+        created_at: o.created_at, seller_id: o.seller_id,
+        seller_name: sellerMap[o.seller_id] || "Seller details unavailable",
+        tracking_number: o.tracking_number, items: itemsByOrder[o.id] || [],
+      })));
+
+      const { data: reviews, error: reviewsError } = await supabase.from("reviews").select("product_id").eq("buyer_id", user.id);
+      if (reviewsError) hasEnrichmentWarning = true;
+      setReviewedProducts(new Set((reviews || []).map(r => r.product_id)));
+      setLoadWarning(hasEnrichmentWarning);
+    } catch {
+      // Keep an already rendered order list during background refresh failures;
+      // only replace the empty state when the first load actually failed.
+      setLoadError(true);
+    } finally {
+      setLoading(false);
     }
-
-    setOrders(ordersData.map(o => ({
-      id: o.id, status: o.status, total_amount: o.total_amount, currency: o.currency,
-      created_at: o.created_at, seller_id: o.seller_id,
-      seller_name: sellerMap[o.seller_id] || "Unknown Seller",
-      tracking_number: o.tracking_number, items: itemsByOrder[o.id] || [],
-    })));
-
-    const { data: reviews } = await supabase.from("reviews").select("product_id").eq("buyer_id", user.id);
-    setReviewedProducts(new Set((reviews || []).map(r => r.product_id)));
-    setLoading(false);
   }, [user, paymentReference]);
 
   useEffect(() => {
@@ -180,7 +214,7 @@ export default function BuyerOrders() {
     if (!cancelOrder || !user) return;
     if (cancelReason.trim().length < 3) { toast.error("Please choose or describe a reason"); return; }
     setCancelLoading(true);
-    const { error: cancelErr } = await (supabase as any).rpc("request_buyer_order_cancellation", {
+    const { error: cancelErr } = await supabase.rpc("request_buyer_order_cancellation", {
       p_order_id: cancelOrder.id,
       p_reason: cancelReason.trim(),
       p_note: cancelNote.trim() || null,
@@ -290,6 +324,18 @@ export default function BuyerOrders() {
       })()}
 
       {/* Search */}
+      {loadError && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#F3D7A6] bg-[#FFF8E8] px-4 py-3 text-xs text-[#7C4A03] dark:border-[#5B421B] dark:bg-[#2A2111] dark:text-[#F8D48A]" role="alert">
+          <span>We could not load the latest order information. Your orders have not been changed.</span>
+          <button type="button" onClick={() => void fetchOrders()} className="min-h-10 rounded-full border border-current px-4 font-semibold transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-white/5">Try again</button>
+        </div>
+      )}
+      {loadWarning && !loadError && (
+        <div className="rounded-xl border border-[#E8E8E8] bg-white px-4 py-3 text-xs text-[#6E6C64] dark:border-[#2A2A2A] dark:bg-[#1A1A1A] dark:text-[#A0A0A0]" role="status">
+          Some seller or product details are temporarily unavailable. Your order status and totals are still shown from the latest successful order data.
+        </div>
+      )}
+
       <AnimatedSection variant="fade-up" delay={50}>
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#6E6C64]" />
@@ -321,6 +367,19 @@ export default function BuyerOrders() {
         {loading ? (
           <div className="flex justify-center py-16">
             <Loader2 className="h-5 w-5 animate-spin text-[#6E6C64]" />
+          </div>
+        ) : loadError && orders.length === 0 ? (
+          <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] py-16" role="alert">
+            <div className="flex flex-col items-center justify-center text-center gap-3 px-6">
+              <div className="h-14 w-14 rounded-2xl bg-[#FFF4E8] dark:bg-[#2A2111] flex items-center justify-center">
+                <Package className="h-6 w-6 text-[#C2410C] dark:text-[#FDBA74]" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Orders are temporarily unavailable</p>
+                <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Try again to load your order history.</p>
+              </div>
+              <button type="button" onClick={() => void fetchOrders()} className="flex min-h-11 items-center gap-2 rounded-full bg-[#111111] px-5 text-xs font-semibold text-white transition-colors hover:bg-[#2A2A2A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#FAF5F2] dark:text-[#111111]">Try again</button>
+            </div>
           </div>
         ) : filtered.length === 0 ? (
           <div className="bg-white dark:bg-[#1A1A1A] rounded-2xl border border-[#E8E8E8] dark:border-[#222222] py-16">

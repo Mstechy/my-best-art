@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import AnimatedSection from "@/components/AnimatedSection";
 import OffersSentCard from "@/components/OffersSentCard";
 import { Link } from "react-router-dom";
@@ -10,17 +10,9 @@ import {
   Loader2
 } from "lucide-react";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  PieChart, Pie, Cell, Legend
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid
 } from "recharts";
 import { useCurrency } from "@/hooks/useCurrency";
-
-interface CategoryData {
-  name: string;
-  value: number;
-}
-
-const COLORS = ["#F6C75D", "#3B82F6", "#10B981", "#8B5CF6", "#EC4899", "#3F3F46"];
 
 export default function BuyerDashboard() {
   const { formatPrice } = useCurrency();
@@ -28,9 +20,9 @@ export default function BuyerDashboard() {
   const [stats, setStats] = useState({ activeOrders: 0, inTransit: 0, totalSpent: 0 });
   const [recentOrders, setRecentOrders] = useState<any[]>([]);
   const [spendData, setSpendData] = useState<{ month: string; total: number }[]>([]);
-  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
   const [activeTrackingOrder, setActiveTrackingOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   // Status badge styles
   const statusStyle: Record<string, { bg: string; text: string; label: string }> = {
@@ -41,107 +33,66 @@ export default function BuyerDashboard() {
     cancelled: { bg: "bg-red-50 dark:bg-red-900/20", text: "text-red-500 dark:text-red-400", label: "Cancelled" },
   };
 
-  useEffect(() => {
-    if (!user) return;
-    const fetchData = async () => {
-      // 1. Fetch Orders
-      const { data: orders } = await supabase
-        .from("orders")
-        .select("id, status, total_amount, created_at, seller_id, tracking_number, carrier, estimated_delivery")
-        .eq("buyer_id", user.id)
-        .order("created_at", { ascending: false });
-
-      if (orders) {
-        const active = orders.filter(o => o.status !== "delivered" && o.status !== "cancelled").length;
-        const transit = orders.filter(o => o.status === "shipped").length;
-        const spent = orders.reduce((sum, o) => sum + (Number(o.total_amount) || 0), 0);
-        setStats({ activeOrders: active, inTransit: transit, totalSpent: spent });
-
-        // Get most recent active order for tracking timeline
-        const latestActive = orders.find(o => o.status !== "delivered" && o.status !== "cancelled");
-        if (latestActive) {
-          setActiveTrackingOrder(latestActive);
-        }
-
-        // Get recent 3 orders
-        const recent = orders.slice(0, 3);
-        if (recent.length > 0) {
-          const sellerIds = [...new Set(recent.map(o => o.seller_id))];
-          const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", sellerIds);
-          const map: Record<string, string> = {};
-          profiles?.forEach(p => { map[p.user_id] = p.full_name || "Unknown Seller"; });
-          setRecentOrders(recent.map(o => ({ ...o, seller_name: map[o.seller_id] || "Unknown Seller" })));
-        }
-
-        // 6-month spend trend
-        const now = new Date();
-        const months: { key: string; month: string; total: number }[] = [];
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          months.push({ key, month: d.toLocaleString("en-US", { month: "short" }), total: 0 });
-        }
-        orders.forEach(o => {
-          const d = new Date(o.created_at);
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-          const m = months.find(mm => mm.key === key);
-          if (m) m.total += Number(o.total_amount) || 0;
-        });
-        setSpendData(months.map(({ month, total }) => ({ month, total: Math.round(total * 100) / 100 })));
-
-        // 2. Fetch Order Items & Products to build Category Spend Breakdown
-        const orderIds = orders.map(o => o.id);
-        if (orderIds.length > 0) {
-          const { data: items } = await supabase
-            .from("order_items")
-            .select("quantity, unit_price, product_id")
-            .in("order_id", orderIds);
-
-          const productIds = [...new Set((items || []).filter(i => i.product_id).map(i => i.product_id!))];
-          if (productIds.length > 0) {
-            const { data: products } = await supabase
-              .from("products")
-              .select("id, category_id")
-              .in("id", productIds);
-
-            const catIds = [...new Set((products || []).filter(p => p.category_id).map(p => p.category_id!))];
-            const catMap: Record<string, string> = {};
-            if (catIds.length > 0) {
-              const { data: categories } = await supabase
-                .from("categories")
-                .select("id, name")
-                .in("id", catIds);
-              categories?.forEach(c => { catMap[c.id] = c.name; });
-            }
-
-            const prodToCat: Record<string, string> = {};
-            products?.forEach(p => {
-              if (p.category_id) {
-                prodToCat[p.id] = catMap[p.category_id] || "Other";
-              }
-            });
-
-            const spendByCat: Record<string, number> = {};
-            items?.forEach(it => {
-              if (!it.product_id) return;
-              const catName = prodToCat[it.product_id] || "Other";
-              const cost = (Number(it.unit_price) || 0) * (it.quantity || 1);
-              spendByCat[catName] = (spendByCat[catName] || 0) + cost;
-            });
-
-            const formattedCats = Object.entries(spendByCat).map(([name, value]) => ({
-              name,
-              value: Math.round(value * 100) / 100
-            })).sort((a, b) => b.value - a.value);
-
-            setCategoryData(formattedCats);
-          }
-        }
-      }
+  const fetchData = useCallback(async () => {
+    if (!user) {
       setLoading(false);
-    };
-    fetchData();
+      return;
+    }
+
+    setLoading(true);
+    setLoadError(false);
+    try {
+      const [{ data: summaryData, error: summaryError }, { data: orders, error: ordersError }] = await Promise.all([
+        supabase.rpc("buyer_dashboard_summary"),
+        supabase
+          .from("orders")
+          .select("id, status, total_amount, created_at, seller_id, tracking_number, carrier, estimated_delivery")
+          .eq("buyer_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(3),
+      ]);
+      if (summaryError) throw summaryError;
+      if (ordersError) throw ordersError;
+
+      const summary = (Array.isArray(summaryData) ? summaryData[0] : summaryData) as {
+        active_orders?: number;
+        in_transit?: number;
+        total_spent?: number;
+        spend_timeline?: Array<{ month?: string; total?: number }>;
+      } | null;
+      setStats({
+        activeOrders: Number(summary?.active_orders ?? 0),
+        inTransit: Number(summary?.in_transit ?? 0),
+        totalSpent: Number(summary?.total_spent ?? 0),
+      });
+      setSpendData((summary?.spend_timeline ?? []).map((point) => ({
+        month: point.month ?? "",
+        total: Number(point.total ?? 0),
+      })));
+
+      const recent = orders ?? [];
+      const latestActive = recent.find(o => o.status !== "delivered" && o.status !== "cancelled");
+      setActiveTrackingOrder(latestActive ?? null);
+      if (recent.length === 0) {
+        setRecentOrders([]);
+        return;
+      }
+
+      const sellerIds = [...new Set(recent.map(o => o.seller_id))];
+      const { data: profiles } = await supabase.from("profiles").select("user_id, full_name").in("user_id", sellerIds);
+      const map: Record<string, string> = {};
+      profiles?.forEach(p => { map[p.user_id] = p.full_name || "Seller"; });
+      setRecentOrders(recent.map(o => ({ ...o, seller_name: map[o.seller_id] || "Seller" })));
+    } catch {
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   const statCards = [
     {
@@ -196,6 +147,13 @@ export default function BuyerDashboard() {
           </Link>
         </div>
       </AnimatedSection>
+
+      {loadError && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#F3D7A6] bg-[#FFF8E8] px-4 py-3 text-xs text-[#7C4A03] dark:border-[#5B421B] dark:bg-[#2A2111] dark:text-[#F8D48A]" role="alert">
+          <span>We could not load your latest dashboard summary. Your orders and account data have not been changed.</span>
+          <button type="button" onClick={() => void fetchData()} className="min-h-10 rounded-full border border-current px-4 font-semibold transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-white/5">Try again</button>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-3">

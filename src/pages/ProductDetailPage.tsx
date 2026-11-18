@@ -84,12 +84,22 @@ export default function ProductDetailPage() {
     sellerAvgRating,
     sellerTotalSold,
     error: productDetailError,
+    secondaryError: productDetailSecondaryError,
     retry: retryProductDetail,
     loading,
   } = useProductDetailData(id);
 
   const product = productQuery.data ?? null;
-  const seller = sellerQuery.data ?? null;
+  // Seller profile data enriches the buy box but is not required to render or
+  // purchase an approved product. Keep a neutral identity fallback when that
+  // optional profile request is unavailable; never invent a seller name or
+  // verification state.
+  const seller = sellerQuery.data ?? (product ? {
+    user_id: product.seller_id,
+    full_name: null,
+    is_verified: false,
+    avatar_url: null,
+  } : null);
   const category = categoryQuery.data ?? null;
   const soldCount = soldCountQuery.data ?? 0;
   const productDocs = docsQuery.data ?? [];
@@ -599,6 +609,18 @@ export default function ProductDetailPage() {
       <CartDrawer />
       <main>
       <Container className="py-6">
+        {product && productDetailSecondaryError && (
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#F3D7A6] bg-[#FFF8E8] px-4 py-3 text-xs text-[#7C4A03] dark:border-[#5B421B] dark:bg-[#2A2111] dark:text-[#F8D48A]" role="status">
+            <span>Some seller or option details are temporarily unavailable. The product can still be viewed; retry to refresh them.</span>
+            <button
+              type="button"
+              onClick={() => void retryProductDetail()}
+              className="min-h-10 rounded-full border border-current px-4 font-semibold transition hover:bg-black/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-white/5"
+            >
+              Retry details
+            </button>
+          </div>
+        )}
         {loading && !product ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-pulse">
             <div className="aspect-square bg-[#F2F3F5] dark:bg-[#202020] rounded-2xl" />

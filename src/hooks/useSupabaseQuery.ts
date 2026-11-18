@@ -3,6 +3,28 @@ import { supabase } from "@/integrations/supabase/client";
 import type { PostgrestError } from "@supabase/supabase-js";
 
 /**
+ * A stalled network request must eventually become a recoverable UI state.
+ * Without a bound, a product or dashboard page can keep its skeleton forever
+ * when the browser loses the Supabase connection mid-request.
+ */
+const SUPABASE_QUERY_TIMEOUT_MS = 20_000;
+
+async function runWithTimeout<T>(queryFn: () => Promise<T>): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`Supabase request timed out after ${SUPABASE_QUERY_TIMEOUT_MS / 1000} seconds`));
+    }, SUPABASE_QUERY_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([queryFn(), timeout]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+/**
  * React Query key factory for Supabase resources.
  * Provides consistent, structured cache keys for invalidation.
  */
@@ -41,7 +63,7 @@ export function useSupabaseQuery<TData = unknown>(
 ) {
   return useQuery<TData, PostgrestError>({
     queryKey,
-    queryFn,
+    queryFn: () => runWithTimeout(queryFn),
     staleTime: 5 * 60 * 1000, // 5 min – avoids refetch on every mount
     gcTime: 10 * 60 * 1000,   // 10 min – keep in memory cache
     refetchOnWindowFocus: false,

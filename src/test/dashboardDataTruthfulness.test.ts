@@ -54,6 +54,9 @@ describe("dashboard data truthfulness", () => {
       expect(source).toContain(".limit(");
       expect(source).not.toContain('.select("*")');
     }
+    expect(buyerOrders).toContain("setLoadError(false)");
+    expect(buyerOrders).toContain("Orders are temporarily unavailable");
+    expect(buyerOrders).toContain("Your orders have not been changed");
   });
 
   it("aggregates seller catalogue signals without downloading event history", () => {
@@ -66,5 +69,28 @@ describe("dashboard data truthfulness", () => {
     expect(sellerProducts).not.toContain('from("order_items").select("product_id")');
     expect(migration).toContain("Seller access required");
     expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.seller_product_stats");
+  });
+
+  it("keeps the buyer dashboard aggregate and recent feed bounded", () => {
+    const dashboard = read("src/pages/buyer/BuyerDashboard.tsx");
+    const migration = read("supabase/migrations/20261116100000_buyer_dashboard_summary.sql");
+
+    expect(dashboard).toContain('rpc("buyer_dashboard_summary")');
+    expect(dashboard).toContain(".limit(3)");
+    expect(dashboard).not.toContain('from("order_items")');
+    expect(dashboard).toContain("Your orders and account data have not been changed");
+    expect(migration).toContain("WHERE buyer_id = auth.uid()");
+    expect(migration).toContain("SECURITY DEFINER");
+    expect(migration).toContain("GRANT EXECUTE ON FUNCTION public.buyer_dashboard_summary() TO authenticated");
+  });
+
+  it("retries payment against the existing orders instead of creating duplicates", () => {
+    const checkout = read("src/pages/CheckoutPage.tsx");
+
+    expect(checkout).toContain("pendingPaymentOrderIdsRef");
+    expect(checkout).toContain("checkoutIdempotencyKeyRef.current ?? generateIdempotencyKey()");
+    expect(checkout).toContain("Retry Payment");
+    expect(checkout).toContain("without creating another order");
+    expect(checkout).toContain("initializeMarketplacePayment(");
   });
 });

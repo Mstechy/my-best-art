@@ -37,6 +37,8 @@ describe("CookieConsent", () => {
     expect(screen.getByRole("link", { name: "Cookie Policy" })).toHaveAttribute("href", "/cookies");
     expect(screen.getByRole("button", { name: "Accept all" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Decline cookie consent" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "We use cookies" }).className).toContain("z-40");
+    expect(screen.getByRole("region", { name: "We use cookies" }).className).not.toContain("z-[60]");
   });
 
   it("persists the selected consent and removes the banner", () => {

@@ -18,6 +18,7 @@ interface Category {
 interface ProductImage {
   id: string;
   image_url: string;
+  card_small_url?: string | null;
   is_primary: boolean;
   sort_order?: number;
   alt?: string | null;

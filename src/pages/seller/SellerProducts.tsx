@@ -45,6 +45,18 @@ const LISTING_STEPS = [
   { value: "preview", label: "Review", nextLabel: "Submit" },
 ] as const;
 
+const SELLER_PRODUCTS_QUERY_TIMEOUT_MS = 20_000;
+
+function withSellerProductsTimeout<T>(promiseLike: PromiseLike<T>, timeoutMs = SELLER_PRODUCTS_QUERY_TIMEOUT_MS): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => reject(new Error("The product list took too long to respond.")), timeoutMs);
+  });
+  return Promise.race([Promise.resolve(promiseLike), timeout]).finally(() => {
+    if (timeoutId) clearTimeout(timeoutId);
+  });
+}
+
 /**
  * Apply the vendor upload rules to picked files.
  *
@@ -122,6 +134,8 @@ export default function SellerProducts() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [statsWarning, setStatsWarning] = useState(false);
   const [search, setSearch] = useState("");
   const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -205,6 +219,7 @@ export default function SellerProducts() {
   const fetchProducts = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+    setLoadError(null);
     let query = supabase
       .from("products")
       .select("*, product_images(*), product_variants(id, option_values, sku, price, stock_quantity, image_url, is_active, sort_order)", { count: "exact" })
@@ -212,12 +227,36 @@ export default function SellerProducts() {
       .order("created_at", { ascending: false })
       .range(productPage * productPageSize, (productPage + 1) * productPageSize - 1);
     if (search.trim()) query = query.ilike("title", `%${search.trim()}%`);
-    const { data, error, count } = await query;
+    let response: {
+      data: ProductRow[] | null;
+      error: { message: string } | null;
+      count: number | null;
+    };
+    try {
+      response = await withSellerProductsTimeout<{
+        data: ProductRow[] | null;
+        error: { message: string } | null;
+        count: number | null;
+      }>(query as unknown as PromiseLike<{
+        data: ProductRow[] | null;
+        error: { message: string } | null;
+        count: number | null;
+      }>);
+    } catch (caught) {
+      const message = caught instanceof Error ? caught.message : "The product list could not be loaded.";
+      setLoadError(message);
+      toast({ title: "Could not load products", description: message, variant: "destructive" });
+      setLoading(false);
+      return;
+    }
+    const { data, error, count } = response;
     if (error) {
+      setLoadError(error.message || "The product list could not be loaded.");
       toast({ title: "Could not load products", description: error.message, variant: "destructive" });
       setLoading(false);
       return;
     }
+    setLoadError(null);
     setProductCount(count ?? 0);
     const normalizedProducts = (data as unknown as ProductRow[] ?? []).map(normalizeProductRow);
     // A listing is one catalogue entity. Deduplicate by immutable id at the
@@ -230,10 +269,22 @@ export default function SellerProducts() {
     if (ids.length) {
       const s: Record<string, { views: number; saves: number; orders: number }> = {};
       ids.forEach((id) => { s[id] = { views: 0, saves: 0, orders: 0 }; });
-      const { data: productStats, error: productStatsError } = await (supabase as any).rpc("seller_product_stats", {
-        p_seller_id: user.id,
-        p_product_ids: ids,
-      });
+      let productStats: { product_id: string; views: number; saves: number; orders: number }[] | null = null;
+      let productStatsError: { message: string } | null = null;
+      try {
+        const statsResponse = await withSellerProductsTimeout<{
+          data: { product_id: string; views: number; saves: number; orders: number }[] | null;
+          error: { message: string } | null;
+        }>((supabase as any).rpc("seller_product_stats", {
+          p_seller_id: user.id,
+          p_product_ids: ids,
+        }));
+        productStats = statsResponse.data;
+        productStatsError = statsResponse.error;
+      } catch (caught) {
+        productStatsError = { message: caught instanceof Error ? caught.message : "Performance stats unavailable." };
+      }
+      setStatsWarning(Boolean(productStatsError));
       if (productStatsError) console.warn("[SellerProducts] product stats unavailable", productStatsError);
       (productStats || []).forEach((row: { product_id: string; views: number; saves: number; orders: number }) => {
         if (s[row.product_id]) s[row.product_id] = { views: Number(row.views) || 0, saves: Number(row.saves) || 0, orders: Number(row.orders) || 0 };
@@ -2554,6 +2605,18 @@ export default function SellerProducts() {
               {needsAttentionOnly ? "Showing listing health issues on this page" : "Show listing health issues on this page"}
             </Button>
           </div>
+          {loadError && (
+            <div role="alert" className="flex flex-col gap-3 rounded-xl border border-destructive/25 bg-destructive/5 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold text-foreground">Your product list is temporarily unavailable.</p>
+                <p className="mt-1 text-muted-foreground">Your listings were not changed. Try again when the connection is ready.</p>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => void fetchProducts()} disabled={loading} className="shrink-0">Try again</Button>
+            </div>
+          )}
+          {statsWarning && !loadError && (
+            <p role="status" className="text-xs text-muted-foreground">Listing performance numbers are temporarily unavailable; catalogue data is still current.</p>
+          )}
           {selectedProductIds.length > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/30 p-2.5">
               <span className="mr-1 text-sm font-medium text-foreground">{selectedProductIds.length} selected</span>
@@ -2604,6 +2667,19 @@ export default function SellerProducts() {
               </Card>
             ))}
           </div>
+        ) : loadError && products.length === 0 ? (
+          <Card className="border-destructive/25">
+            <CardContent className="py-16">
+              <div className="flex flex-col items-center justify-center text-center">
+                <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-destructive/10 mb-5">
+                  <RotateCcw className="h-9 w-9 text-destructive" />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-foreground">Products are temporarily unavailable</h3>
+                <p className="mt-2 max-w-sm text-sm text-muted-foreground">Your catalogue is safe. Retry the request to load your listings.</p>
+                <Button type="button" variant="outline" className="mt-5" onClick={() => void fetchProducts()} disabled={loading}>Try again</Button>
+              </div>
+            </CardContent>
+          </Card>
         ) : filtered.length === 0 ? (
           <Card className="border-border/60">
             <CardContent className="py-16">
@@ -2621,16 +2697,16 @@ export default function SellerProducts() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3">
             {filtered.map((product) => {
               const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
               const healthIssues = getListingHealth(product, categories.find((category) => category.id === product.category_id));
               const offerSummary = getListingOfferSummary(product);
               return (
-                <Card key={product.id} className="border-border/60 overflow-hidden group">
-                  <div className="aspect-video bg-muted relative">
+                <Card key={product.id} className="group overflow-hidden border-border/60 md:flex">
+                  <div className="relative aspect-video bg-muted md:h-40 md:w-48 md:shrink-0 md:aspect-auto">
                     {primaryImage ? (
-                      <ProductImage src={primaryImage.image_url} alt={product.title} className="w-full h-full object-cover" />
+                      <ProductImage src={primaryImage.image_url} cardSmallUrl={primaryImage.card_small_url} alt={product.title} className="w-full h-full object-cover" />
                     ) : (
                       <div className="flex items-center justify-center h-full">
                         <Package className="h-10 w-10 text-muted-foreground/40" />
@@ -2649,7 +2725,7 @@ export default function SellerProducts() {
                       />
                     </div>
                   </div>
-                  <CardContent className="p-3">
+                  <CardContent className="min-w-0 flex-1 p-3">
                     <h3 className="font-display font-semibold text-foreground truncate">{product.title}</h3>
                     {(() => {
                       const googleIssues = getGoogleIssues(product);

@@ -33,10 +33,12 @@ export default function ProductImage({
   const cardSrc = useMemo(
     () => {
       if (!originalSrc) return null;
-      // Product detail slots are usually about 600px wide. Start with the
-      // generated WebP derivative so the first paint is fast, then fall back
-      // to the original upload if the derivative is unavailable.
-      return variant === "card" || variant === "thumb" || variant === "detail"
+      // Cards and thumbnails can prefer generated derivatives because those
+      // slots are small and old listings may have them. Detail galleries must
+      // start from the original upload: older products are not guaranteed to
+      // have a card derivative, and a missing derivative must never produce a
+      // blank hero image on the product page.
+      return variant === "card" || variant === "thumb"
         ? getProductCardImageUrl(originalSrc) ?? originalSrc
         : originalSrc;
     },

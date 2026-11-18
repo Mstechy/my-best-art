@@ -80,12 +80,15 @@ export default function CheckoutPage() {
   const [shippingQuotes, setShippingQuotes] = useState<ShippingQuote[]>([]);
   const [shippingQuoteLoading, setShippingQuoteLoading] = useState(false);
   const [shippingQuoteError, setShippingQuoteError] = useState<string | null>(null);
+  const [paymentRetryAvailable, setPaymentRetryAvailable] = useState(false);
   const shippingTotal = useMemo(() => shippingQuotes.reduce((sum, quote) => sum + quote.shipping_amount, 0), [shippingQuotes]);
   const checkoutGrandTotal = checkoutTotal + shippingTotal;
   const shippingQuoteReady = Boolean(address.country) && !shippingQuoteLoading && !shippingQuoteError && shippingQuotes.length === Object.keys(sellerGroups).length;
   const checkoutEventSentRef = useRef(false);
   const addressCountryDirtyRef = useRef(false);
   const savedAddressAppliedRef = useRef(false);
+  const pendingPaymentOrderIdsRef = useRef<string[] | null>(null);
+  const checkoutIdempotencyKeyRef = useRef<string | null>(null);
 
   // The regional preference can resolve after checkout's first render. Keep a
   // pristine checkout destination aligned with it, without overwriting a
@@ -191,37 +194,58 @@ export default function CheckoutPage() {
         return;
       }
 
-      const reconciliationMessage = await reconcileCheckoutItems();
-      if (reconciliationMessage) {
-        setCheckoutNotice(reconciliationMessage);
-        toast.error(reconciliationMessage);
-        return;
-      }
+      let orderIds = pendingPaymentOrderIdsRef.current;
+      if (!orderIds) {
+        const reconciliationMessage = await reconcileCheckoutItems();
+        if (reconciliationMessage) {
+          // No order has been created yet, so the next corrected attempt can
+          // start with a fresh idempotency key.
+          checkoutIdempotencyKeyRef.current = null;
+          setCheckoutNotice(reconciliationMessage);
+          toast.error(reconciliationMessage);
+          return;
+        }
 
-      const freshQuotes = await fetchShippingQuotes();
-      if (freshQuotes.length !== Object.keys(sellerGroups).length) {
-        throw new Error("Shipping could not be calculated for every seller. Please review the delivery country.");
-      }
+        const freshQuotes = await fetchShippingQuotes();
+        if (freshQuotes.length !== Object.keys(sellerGroups).length) {
+          throw new Error("Shipping could not be calculated for every seller. Please review the delivery country.");
+        }
 
-      if (saveAfter) {
-        await supabase.from("addresses" as any).insert({
-          user_id: user.id, label: addressLabel || null, recipient: address.name, phone: address.phone || null,
-          line1: address.street, city: address.city, region: address.state || null,
-          postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
-        } as any);
-      }
+        if (saveAfter) {
+          await supabase.from("addresses" as any).insert({
+            user_id: user.id, label: addressLabel || null, recipient: address.name, phone: address.phone || null,
+            line1: address.street, city: address.city, region: address.state || null,
+            postal_code: address.zip || null, country: address.country, is_default: saved.length === 0,
+          } as any);
+        }
 
-      const orderIds = await createMarketplaceOrders(sellerGroups, address, idempotencyKey);
+        orderIds = await createMarketplaceOrders(sellerGroups, address, idempotencyKey);
+        // Payment initialization can fail after this point. Keep the order
+        // ids and the same idempotency key so retrying payment cannot create a
+        // second pending order for the same checkout.
+        pendingPaymentOrderIdsRef.current = orderIds;
+        setPaymentRetryAvailable(true);
+      }
       const { data: authSession } = await supabase.auth.getSession();
       if (!authSession.session?.access_token) throw new Error("Your session expired. Please sign in again.");
       const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON;
       if (!supabaseKey) throw new Error("Supabase client configuration is missing.");
-      const payment = await initializeMarketplacePayment(
-        orderIds,
-        user.email,
-        authSession.session.access_token,
-        supabaseKey,
-      );
+      let payment;
+      try {
+        payment = await initializeMarketplacePayment(
+          orderIds,
+          user.email,
+          authSession.session.access_token,
+          supabaseKey,
+        );
+      } catch (error) {
+        setPaymentRetryAvailable(true);
+        setCheckoutNotice("Your order is ready, but secure payment could not start. Retry payment to continue without creating another order.");
+        throw error;
+      }
+      pendingPaymentOrderIdsRef.current = null;
+      checkoutIdempotencyKeyRef.current = null;
+      setPaymentRetryAvailable(false);
       if (directCheckoutItem) clearDirectCheckout();
       else clearCart();
       toast.success("Order created. Complete payment securely with Paystack.");
@@ -243,7 +267,8 @@ export default function CheckoutPage() {
     setCheckoutNotice(null);
     setLoading(true);
     try {
-      const idempotencyKey = generateIdempotencyKey();
+      const idempotencyKey = checkoutIdempotencyKeyRef.current ?? generateIdempotencyKey();
+      checkoutIdempotencyKeyRef.current = idempotencyKey;
       await placeOrder(idempotencyKey);
     } catch (error: unknown) {
       logError(error, "checkout");
@@ -302,7 +327,7 @@ export default function CheckoutPage() {
               {saved.length > 0 && (
                 <div className="mb-5">
                   <label htmlFor="checkout-saved-address" className={labelCls}>Saved Addresses</label>
-                  <Select onValueChange={(id) => { const a = saved.find(s => s.id === id); if (a) applySaved(a); }}>
+                  <Select disabled={paymentRetryAvailable} onValueChange={(id) => { const a = saved.find(s => s.id === id); if (a) applySaved(a); }}>
                     <SelectTrigger id="checkout-saved-address" className="h-11 rounded-xl border-[#E8E8E8] dark:border-[#2A2A2A] bg-[#FAFAFA] dark:bg-[#111111] text-sm text-[#111111] dark:text-[#FAF5F2]">
                       <SelectValue placeholder="Choose a saved address" />
                     </SelectTrigger>
@@ -320,34 +345,34 @@ export default function CheckoutPage() {
               <div className="grid gap-3">
                 <div>
                   <label htmlFor="checkout-name" className={labelCls}>Full Name *</label>
-                  <input id="checkout-name" autoComplete="name" className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" aria-required="true" />
+                  <input id="checkout-name" autoComplete="name" disabled={paymentRetryAvailable} className={inputCls} value={address.name} onChange={e => setAddress(p => ({ ...p, name: e.target.value }))} placeholder="John Doe" aria-required="true" />
                 </div>
                  <div>
                    <label htmlFor="checkout-phone" className={labelCls}>Phone</label>
-                   <input id="checkout-phone" type="tel" inputMode="tel" autoComplete="tel" className={inputCls} value={address.phone} onChange={e => setAddress(p => ({ ...p, phone: e.target.value }))} placeholder={phonePlaceholder(address.country)} />
+                   <input id="checkout-phone" type="tel" inputMode="tel" autoComplete="tel" disabled={paymentRetryAvailable} className={inputCls} value={address.phone} onChange={e => setAddress(p => ({ ...p, phone: e.target.value }))} placeholder={phonePlaceholder(address.country)} />
                  </div>
                 <div>
                   <label htmlFor="checkout-street" className={labelCls}>Street Address *</label>
-                  <input id="checkout-street" autoComplete="street-address" className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" aria-required="true" />
+                  <input id="checkout-street" autoComplete="street-address" disabled={paymentRetryAvailable} className={inputCls} value={address.street} onChange={e => setAddress(p => ({ ...p, street: e.target.value }))} placeholder="123 Main St" aria-required="true" />
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="checkout-city" className={labelCls}>City *</label>
-                    <input id="checkout-city" autoComplete="address-level2" className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" aria-required="true" />
+                    <input id="checkout-city" autoComplete="address-level2" disabled={paymentRetryAvailable} className={inputCls} value={address.city} onChange={e => setAddress(p => ({ ...p, city: e.target.value }))} placeholder="New York" aria-required="true" />
                   </div>
                   <div>
                     <label htmlFor="checkout-state" className={labelCls}>State</label>
-                    <input id="checkout-state" autoComplete="address-level1" className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
+                    <input id="checkout-state" autoComplete="address-level1" disabled={paymentRetryAvailable} className={inputCls} value={address.state} onChange={e => setAddress(p => ({ ...p, state: e.target.value }))} placeholder="NY" />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label htmlFor="checkout-zip" className={labelCls}>ZIP Code</label>
-                    <input id="checkout-zip" autoComplete="postal-code" className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
+                    <input id="checkout-zip" autoComplete="postal-code" disabled={paymentRetryAvailable} className={inputCls} value={address.zip} onChange={e => setAddress(p => ({ ...p, zip: e.target.value }))} placeholder="10001" />
                   </div>
                   <div>
                     <label htmlFor="checkout-country" className={labelCls}>Country *</label>
-                    <Select value={address.country} onValueChange={country => { addressCountryDirtyRef.current = true; setAddress(p => ({ ...p, country })); }}>
+                    <Select disabled={paymentRetryAvailable} value={address.country} onValueChange={country => { addressCountryDirtyRef.current = true; setAddress(p => ({ ...p, country })); }}>
                       <SelectTrigger id="checkout-country" className="h-11 rounded-xl border-[#E8E8E8] bg-[#FAFAFA] text-sm dark:border-[#2A2A2A] dark:bg-[#111111]"><SelectValue placeholder="Select country" /></SelectTrigger>
                       <SelectContent>{COUNTRIES.map(country => <SelectItem key={country.code} value={country.code}>{country.name}</SelectItem>)}</SelectContent>
                     </Select>
@@ -357,13 +382,14 @@ export default function CheckoutPage() {
 
               <div className="mt-4 space-y-2">
                 <label className="flex items-center gap-2 text-xs cursor-pointer text-[#6E6C64] dark:text-[#A0A0A0]">
-                  <input id="checkout-save-address" name="save_address" type="checkbox" checked={saveAfter} onChange={e => setSaveAfter(e.target.checked)} className="h-3.5 w-3.5 rounded border-[#E8E8E8] dark:border-[#222222] accent-[#111111]" />
+                  <input id="checkout-save-address" name="save_address" type="checkbox" disabled={paymentRetryAvailable} checked={saveAfter} onChange={e => setSaveAfter(e.target.checked)} className="h-3.5 w-3.5 rounded border-[#E8E8E8] dark:border-[#222222] accent-[#111111]" />
                   <BookmarkPlus className="h-3.5 w-3.5" /> Save this address for future orders
                 </label>
                 {saveAfter && (
                   <input
                     id="checkout-address-label"
                     name="address_label"
+                    disabled={paymentRetryAvailable}
                     className={inputCls}
                     value={addressLabel}
                     onChange={e => setAddressLabel(e.target.value)}
@@ -440,10 +466,10 @@ export default function CheckoutPage() {
 
               <button
                 onClick={handlePlaceOrder}
-                disabled={loading || !shippingQuoteReady}
+                    disabled={loading || (!shippingQuoteReady && !paymentRetryAvailable)}
                 className="w-full mt-5 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50 hidden md:flex items-center justify-center gap-2"
               >
-                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
+                {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> {paymentRetryAvailable ? "Starting Payment…" : "Placing Order…"}</> : paymentRetryAvailable ? "Retry Payment" : "Place Order"}
               </button>
 
               <p className="text-[10px] text-[#6E6C64] text-center mt-3 flex items-center justify-center gap-1">
@@ -478,10 +504,10 @@ export default function CheckoutPage() {
           </div>
           <button
             onClick={handlePlaceOrder}
-            disabled={loading || !shippingQuoteReady}
+            disabled={loading || (!shippingQuoteReady && !paymentRetryAvailable)}
             className="flex shrink-0 items-center justify-center gap-2 rounded-full bg-[#111111] dark:bg-[#FAF5F2] px-6 py-3 text-sm font-bold text-white dark:text-[#111111] transition-colors hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] disabled:opacity-50"
           >
-            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Placing Order…</> : "Place Order"}
+            {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> {paymentRetryAvailable ? "Starting Payment…" : "Placing Order…"}</> : paymentRetryAvailable ? "Retry Payment" : "Place Order"}
           </button>
         </div>
       </div>

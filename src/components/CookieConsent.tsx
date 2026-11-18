@@ -32,7 +32,10 @@ export default function CookieConsent() {
       aria-labelledby="cookie-consent-title"
       aria-describedby="cookie-consent-description"
       data-testid="cookie-consent"
-      className="fixed inset-x-3 bottom-[calc(6rem_+_env(safe-area-inset-bottom,0px))] z-[60] sm:inset-x-auto sm:right-4 sm:w-[360px] md:bottom-4 animate-fade-in"
+      // Consent is persistent page chrome, not a modal. Keep it above the
+      // mobile tab/purchase bars but below dialogs and sheets (z-50), so it
+      // cannot cover an active product-option or checkout decision.
+      className="fixed inset-x-3 bottom-[calc(6rem_+_env(safe-area-inset-bottom,0px))] z-40 sm:inset-x-auto sm:right-4 sm:w-[360px] md:bottom-4 animate-fade-in"
     >
       <div className="relative rounded-2xl border border-[#E8E8E8] dark:border-[#222222] bg-white dark:bg-[#1A1A1A] shadow-xl p-4">
 

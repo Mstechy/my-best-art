@@ -1593,6 +1593,19 @@ export type Database = {
           total_users: number
         }[]
       }
+      buyer_dashboard_summary: {
+        Args: never
+        Returns: {
+          active_orders: number
+          in_transit: number
+          total_spent: number
+          spend_timeline: Json
+        }[]
+      }
+      request_buyer_order_cancellation: {
+        Args: { p_note?: string | null; p_order_id: string; p_reason: string }
+        Returns: undefined
+      }
       seller_dashboard_summary: {
         Args: { p_seller_id: string }
         Returns: {

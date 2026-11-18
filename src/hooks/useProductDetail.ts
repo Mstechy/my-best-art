@@ -147,7 +147,10 @@ export function useProduct(idOrSlug: string | undefined) {
       if (error) throw error;
       return normalizeProduct(data as unknown as Record<string, unknown>);
     },
-    { enabled: !!idOrSlug, staleTime: 5 * 60 * 1000 },
+    // A product route must fail into its retry state within the browser smoke
+    // window. A stalled request should not spend three attempts holding the
+    // entire page on a skeleton; the buyer can retry explicitly.
+    { enabled: !!idOrSlug, staleTime: 5 * 60 * 1000, retry: 1 },
   );
 }
 
@@ -398,8 +401,12 @@ export function useProductDetailData(productId: string | undefined) {
   // data. Reviews, documents, keywords, seller metrics and category context are
   // secondary sections; keeping them out of this gate lets the buy surface
   // render while those sections resolve independently.
-  const loading = product.isLoading || seller.isLoading || variants.isLoading;
-  const error = product.error ?? seller.error ?? variants.error ?? null;
+  // The product record is the blocking dependency for the first viewport.
+  // Seller identity and SKU metadata are valuable secondary surfaces, but a
+  // slow/failed optional query must not make a valid product look unavailable.
+  const loading = product.isLoading;
+  const error = product.error ?? null;
+  const secondaryError = seller.error ?? variants.error ?? null;
 
   const retry = async () => {
     await Promise.all([product.refetch(), seller.refetch(), variants.refetch()]);
@@ -418,6 +425,7 @@ export function useProductDetailData(productId: string | undefined) {
     sellerAvgRating,
     sellerTotalSold: sellerStats.data?.total_sold ?? 0,
     error,
+    secondaryError,
     retry,
     loading,
   };
