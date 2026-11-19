@@ -9,37 +9,47 @@ type DescriptionImageProps = {
 
 export default function DescriptionImage({ url, alt, className = "" }: DescriptionImageProps) {
   const [zoomed, setZoomed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
 
   if (!url) return null;
 
   return (
     <>
-      <div className={`relative w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-lg mb-2 min-h-[200px] ${className}`}>
+      <div
+        className={`relative w-full overflow-hidden rounded-xl border border-[#E8E8E8] bg-[#F7F7F5] shadow-sm dark:border-[#2A2A2A] dark:bg-[#181818] ${className}`}
+        aria-busy={!loaded && !loadFailed}
+      >
         {loadFailed ? (
-          <div className="flex min-h-[200px] items-center justify-center px-6 text-center text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0]" role="img" aria-label={alt || "Product detail image unavailable"}>
+          <div className="flex min-h-[180px] items-center justify-center px-6 text-center text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0]" role="img" aria-label={alt || "Product detail image unavailable"}>
             This product detail image is unavailable.
           </div>
         ) : (
           <>
+            {!loaded && <div className="absolute inset-0 min-h-[180px] animate-pulse bg-[#ECECE8] dark:bg-[#242424]" aria-hidden="true" />}
             <img
               src={url}
               alt={alt || "Product detail description graphic"}
               loading="lazy"
               decoding="async"
-              className="w-full h-auto object-cover transition-opacity duration-300 opacity-0 data-[loaded=true]:opacity-100"
-              onLoad={(e) => e.currentTarget.setAttribute("data-loaded", "true")}
-              onError={() => setLoadFailed(true)}
+              className={`relative block w-full h-auto object-contain transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+              onLoad={() => setLoaded(true)}
+              onError={() => {
+                setLoaded(false);
+                setLoadFailed(true);
+              }}
             />
             {/* Tap-to-zoom lightbox trigger */}
-            <button
-              type="button"
-              onClick={() => setZoomed(true)}
-              className="absolute top-2 right-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
-              aria-label="Zoom image"
-            >
-              <ZoomIn className="h-4 w-4" />
-            </button>
+            {loaded && (
+              <button
+                type="button"
+                onClick={() => setZoomed(true)}
+                className="absolute right-3 top-3 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/55 text-white shadow-sm backdrop-blur-sm transition-colors hover:bg-black/75 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D]"
+                aria-label="Zoom image"
+              >
+                <ZoomIn className="h-4 w-4" />
+              </button>
+            )}
           </>
         )}
       </div>

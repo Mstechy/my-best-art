@@ -20,10 +20,10 @@ export default function ProductRichDescription({
   const [specsOpen, setSpecsOpen] = useState(true);
 
   return (
-    <section className="w-full max-w-4xl mx-auto">
+    <section className="w-full max-w-5xl mx-auto" aria-label="Product details content">
       {/* Specifications — AliExpress-style collapsible dropdown */}
       {specsEntries && specsEntries.length > 0 && (
-        <div className="mb-8 border border-[#E8E8E8] dark:border-[#222222] rounded-xl overflow-hidden">
+        <div className="mb-8 overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white shadow-sm dark:border-[#222222] dark:bg-[#1A1A1A]">
           <button
             type="button"
             onClick={() => setSpecsOpen(o => !o)}
@@ -60,9 +60,9 @@ export default function ProductRichDescription({
 
       {/* Product details text */}
       {description && (
-        <div className="mb-8">
-          <h2 className="text-base font-bold text-[#111111] dark:text-[#FAF5F2] mb-4">Product Details</h2>
-          <div className="text-sm text-[#666666] dark:text-[#A0A0A0] leading-relaxed whitespace-pre-line">
+        <div className="mb-8 rounded-2xl border border-[#E8E8E8] bg-white p-4 shadow-sm dark:border-[#222222] dark:bg-[#1A1A1A] md:p-5">
+          <h2 id="product-details-content-heading" className="text-base font-bold text-[#111111] dark:text-[#FAF5F2]">Product Details</h2>
+          <div className="mt-3 text-sm leading-relaxed text-[#666666] dark:text-[#A0A0A0] whitespace-pre-line">
             {description}
           </div>
         </div>
@@ -70,13 +70,16 @@ export default function ProductRichDescription({
 
       {/* Image Stream Stack */}
       {images && images.length > 0 && (
-        <div className="flex flex-col w-full">
-          {images
-            .slice()
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
-            .map((img, idx) => (
-              <DescriptionImage key={`${img.url}-${idx}`} url={img.url} alt={img.alt || undefined} />
-            ))}
+        <div className="w-full">
+          <h2 className="mb-3 text-base font-bold text-[#111111] dark:text-[#FAF5F2]">Product images & details</h2>
+          <div className="flex flex-col gap-3 w-full">
+            {images
+              .slice()
+              .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
+              .map((img, idx) => (
+                <DescriptionImage key={`${img.url}-${idx}`} url={img.url} alt={img.alt || undefined} />
+              ))}
+          </div>
         </div>
       )}
     </section>
