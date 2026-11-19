@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { X, ZoomIn } from "lucide-react";
 
 type DescriptionImageProps = {
@@ -11,6 +11,14 @@ export default function DescriptionImage({ url, alt, className = "" }: Descripti
   const [zoomed, setZoomed] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const image = imageRef.current;
+    if (image?.complete && image.naturalWidth > 0) {
+      setLoaded(true);
+    }
+  }, [url]);
 
   if (!url) return null;
 
@@ -29,6 +37,7 @@ export default function DescriptionImage({ url, alt, className = "" }: Descripti
             {!loaded && <div className="absolute inset-0 min-h-[180px] animate-pulse bg-[#ECECE8] dark:bg-[#242424]" aria-hidden="true" />}
             <img
               src={url}
+              ref={imageRef}
               alt={alt || "Product detail description graphic"}
               loading="lazy"
               decoding="async"
