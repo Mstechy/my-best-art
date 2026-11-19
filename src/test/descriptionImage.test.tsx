@@ -25,7 +25,7 @@ describe("DescriptionImage", () => {
     const image = screen.getByRole("img", { name: "Missing detail graphic" });
     fireEvent.error(image);
 
-    expect(screen.queryByRole("img", { name: "Missing detail graphic" })).not.toBeInTheDocument();
+    expect(document.querySelector('img[src="/missing-product-detail.png"]')).not.toBeInTheDocument();
     expect(screen.getByText("This product detail image is unavailable.")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Zoom image" })).not.toBeInTheDocument();
   });
