@@ -659,7 +659,7 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
 
         {showPublicSecondaryNav && (
           <div className="mt-3 flex items-center gap-2 overflow-x-auto border-t border-[#E8E8E8] pt-2 text-xs dark:border-[#222222]">
-            <Link to="/categories" className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#111111] px-3 py-2 font-semibold text-white transition-colors hover:bg-[#2A2A2A] dark:bg-[#F6C75D] dark:text-[#111111]">
+            <Link to="/marketplace" className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#111111] px-3 py-2 font-semibold text-white transition-colors hover:bg-[#2A2A2A] dark:bg-[#F6C75D] dark:text-[#111111]">
               {t("nav.browseCategories")}
             </Link>
             <Link to="/marketplace?sort=flash_deals" className="inline-flex min-h-11 shrink-0 items-center rounded-full px-3 py-2 font-medium text-[#555550] transition-colors hover:bg-[#F2F3F5] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:bg-[#222222] dark:hover:text-[#FAF5F2]">

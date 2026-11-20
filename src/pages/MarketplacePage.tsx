@@ -30,7 +30,7 @@ import { countActive, defaultFilters, type MarketplaceFiltersState } from "@/com
 import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
-import { dedupeProducts, filterProductsByCategory, isMarketplaceSort } from "@/lib/marketplaceContracts";
+import { dedupeProducts, filterProductsByCategory, getCategoryTreeIds, isMarketplaceSort } from "@/lib/marketplaceContracts";
 import { getProductListingMeta } from "@/lib/productListingPresentation";
 import { toast } from "sonner";
 
@@ -372,19 +372,26 @@ export default function MarketplacePage() {
     return (categoryAttributes[key] || fallback[key] || "").trim();
   };
 
-  const filtered = useMemo(() => filterProductsByCategory(products, selectedCategory), [products, selectedCategory]);
+  const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || categoryFromRoute;
+  const selectedCategoryIds = useMemo(
+    () => getCategoryTreeIds(categories, selectedCategory),
+    [categories, selectedCategory],
+  );
+  const filtered = useMemo(
+    () => filterProductsByCategory(products, selectedCategory, selectedCategoryIds),
+    [products, selectedCategory, selectedCategoryIds],
+  );
 
   const visualFallbackProducts = useMemo(() => {
     if (!isVisualSearch || filtered.length > 0) return [];
-    return products.filter(product => !selectedCategory || product.category_id === selectedCategory).slice(0, 12);
-  }, [isVisualSearch, filtered.length, products, selectedCategory]);
+    return products.filter(product => !selectedCategory || Boolean(selectedCategoryIds?.has(product.category_id ?? ""))).slice(0, 12);
+  }, [isVisualSearch, filtered.length, products, selectedCategory, selectedCategoryIds]);
 
   const displayedProducts = useMemo(() => {
     const baseProducts = filtered.length > 0 ? filtered : visualFallbackProducts;
     return baseProducts;
   }, [filtered, visualFallbackProducts]);
 
-  const selectedCategoryRecord = categories.find(c => c.id === selectedCategory) || categoryFromRoute;
   const selectedCategoryConfig = findCategoryConfig(selectedCategoryRecord);
 
   // Departments with stock only. The catalogue holds 26 categories so it can grow, and
@@ -422,7 +429,7 @@ export default function MarketplacePage() {
               "@type": "BreadcrumbList",
               itemListElement: [
                 { "@type": "ListItem", position: 1, name: t("marketplace.breadcrumbHome"), item: "/" },
-                { "@type": "ListItem", position: 2, name: t("marketplace.breadcrumbCategories"), item: "/categories" },
+                { "@type": "ListItem", position: 2, name: t("marketplace.breadcrumbCategories"), item: "/marketplace" },
                 { "@type": "ListItem", position: 3, name: selectedCategoryRecord.name },
               ],
             },
@@ -440,8 +447,8 @@ export default function MarketplacePage() {
     structuredData: departmentSchema,
   });
   const selectedCategoryProducts = useMemo(
-    () => products.filter(product => !selectedCategory || product.category_id === selectedCategory),
-    [products, selectedCategory]
+    () => products.filter(product => !selectedCategory || Boolean(selectedCategoryIds?.has(product.category_id ?? ""))),
+    [products, selectedCategory, selectedCategoryIds]
   );
   const categoryFilterOptions = useMemo(() => {
     const options: Record<string, string[]> = {};
@@ -536,7 +543,7 @@ export default function MarketplacePage() {
               This department is not available. Browse the live departments or search the full marketplace instead.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <Link to="/categories" className="inline-flex min-h-11 items-center rounded-full bg-[#F6C75D] px-5 text-sm font-bold text-[#111111] hover:bg-[#E8A93D]">Browse departments</Link>
+              <Link to="/marketplace" className="inline-flex min-h-11 items-center rounded-full bg-[#F6C75D] px-5 text-sm font-bold text-[#111111] hover:bg-[#E8A93D]">Browse products</Link>
               <Link to="/marketplace" className="inline-flex min-h-11 items-center rounded-full border border-[#D9D9D9] bg-white px-5 text-sm font-semibold hover:bg-[#F2F3F5] dark:border-[#444444] dark:bg-[#1E1E1E]">Search products</Link>
             </div>
           </Container>
@@ -593,7 +600,7 @@ export default function MarketplacePage() {
                       <Link to={`/categories/${encodeURIComponent(parentCategory.slug)}`} className="hover:underline">{parentCategory.name}</Link>
                       <span className="mx-2">/</span>
                     </>
-                  ) : <Link to="/categories" className="hover:underline">{t("marketplace.breadcrumbCategories")}</Link>}
+                  ) : <Link to="/marketplace" className="hover:underline">{t("marketplace.breadcrumbCategories")}</Link>}
                   <span className="mx-2">/</span>
                   <span>{selectedCategoryRecord.name}</span>
                 </nav>
@@ -615,7 +622,7 @@ export default function MarketplacePage() {
                       <h2 id="department-types" className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Explore {selectedCategoryRecord.name} by type</h2>
                       <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Start with a focused department, then filter and compare real listings.</p>
                     </div>
-                    <Link to="/categories" className="shrink-0 text-xs font-semibold underline underline-offset-4">All departments</Link>
+                    <Link to="/marketplace" className="shrink-0 text-xs font-semibold underline underline-offset-4">All products</Link>
                   </div>
                   <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                     {departmentChildren.map((category) => (

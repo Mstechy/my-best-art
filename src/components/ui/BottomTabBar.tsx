@@ -9,7 +9,7 @@ interface BottomTabBarProps {
 }
 
 /**
- * Persistent bottom tab bar: Home | Category | Cart | Account.
+ * Persistent bottom tab bar: Home | Categories | Cart | Account.
  * Cart & Account gate on auth: logged out → /auth/login.
  * Active tab shows a filled/colored indicator.
  */
@@ -49,14 +49,14 @@ export function BottomTabBar({ className }: BottomTabBarProps) {
 
         {/* Category */}
         <Link
-          to="/categories"
+          to="/marketplace"
           className={cn(
             "flex flex-col items-center gap-0.5 py-2.5 text-[10px] font-semibold transition-colors",
             isCategory ? "text-[#9E6300] dark:text-[#F6C75D]" : "text-[#6E6C64] hover:text-[#111111] dark:text-[#A0A0A0] dark:hover:text-[#FAF5F2]"
           )}
         >
           <LayoutGrid className={cn("h-5 w-5", isCategory && "fill-current")} />
-          Category
+          Categories
         </Link>
 
         {/* Cart - opens the cart drawer */}

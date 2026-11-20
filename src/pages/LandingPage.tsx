@@ -388,7 +388,7 @@ export default function LandingPage() {
                 <span className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">{counts[category.id]}</span>
               </Link>
             ))}
-            <Link to="/categories" className="group flex min-w-[76px] snap-start flex-col items-center gap-2 text-center sm:min-w-0">
+            <Link to="/marketplace" className="group flex min-w-[76px] snap-start flex-col items-center gap-2 text-center sm:min-w-0">
               <span className="grid h-16 w-16 place-items-center rounded-full border border-dashed border-[#C8C8C0] text-[#555550] transition group-hover:border-[#111111] dark:border-[#444444] dark:text-[#A0A0A0] dark:group-hover:border-[#FAF5F2]">
                 <ArrowRight className="h-5 w-5" aria-hidden="true" />
               </span>

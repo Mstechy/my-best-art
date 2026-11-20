@@ -2,7 +2,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { lazy, Suspense, useEffect } from "react";
 import AfterFirstPaint from "@/components/AfterFirstPaint";
-import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route, useLocation } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { CartProvider } from "@/hooks/useCart";
 import { CurrencyProvider } from "@/hooks/useCurrency";
@@ -37,7 +37,6 @@ const PrivacyPage = lazy(() => import("@/pages/legal/PrivacyPage"));
 const RefundPolicyPage = lazy(() => import("@/pages/legal/RefundPolicyPage"));
 const ContactPage = lazy(() => import("@/pages/legal/ContactPage"));
 const CollectionPage = lazy(() => import("@/pages/CollectionPage"));
-const CategoriesPage = lazy(() => import("@/pages/CategoriesPage"));
 
 // Admin pages (lazy loaded)
 const AdminDashboard = lazy(() => import("@/pages/admin/AdminDashboard"));
@@ -150,7 +149,9 @@ function AppRoutes() {
         <Routes>
           <Route path="/" element={<RouteSuspense><LandingPage /></RouteSuspense>} />
           <Route path="/marketplace" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
-          <Route path="/categories" element={<RouteSuspense><CategoriesPage /></RouteSuspense>} />
+          {/* The bare categories entry is the marketplace discovery surface.
+              Leaf department URLs remain real, filterable catalogue routes. */}
+          <Route path="/categories" element={<Navigate to="/marketplace" replace />} />
           <Route path="/categories/:slug" element={<RouteSuspense><MarketplacePage /></RouteSuspense>} />
           <Route path="/collections/:slug" element={<RouteSuspense><CollectionPage /></RouteSuspense>} />
           <Route path="/product/:id" element={<RouteSuspense><ProductDetailPage /></RouteSuspense>} />

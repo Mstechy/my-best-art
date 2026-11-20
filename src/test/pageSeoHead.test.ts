@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import {
-  CATEGORIES_PAGE_SEO,
   CATEGORY_DESCRIPTION_TEMPLATE,
   CONTACT_PAGE_SEO,
   HOME_PAGE_SEO,
@@ -32,7 +31,7 @@ import {
  *
  * The defect: index.html shipped one hardcoded canonical - the homepage - and
  * Vite serves that single file for every route without a prerendered copy, so
- * /marketplace, /categories, all 26 departments, ten legal URLs and every junk
+ * /marketplace, all live departments, ten legal URLs and every junk
  * URL told Google that the real version of them was `/`. Google believed it, and
  * consolidated a 27-URL site into one page.
  *
@@ -188,7 +187,7 @@ describe("the registry against the app it describes", () => {
   });
 
   it("leaves a route with no canonical override its own URL", () => {
-    for (const routePath of ["/", "/marketplace", "/categories", "/contact", "/terms", "/collections/summer"]) {
+    for (const routePath of ["/", "/marketplace", "/contact", "/terms", "/collections/summer"]) {
       expect(canonicalPathFor(routePath)).toBe(normalizePath(routePath));
     }
     // A trailing slash or a campaign parameter is the same page, not a new one.
@@ -215,7 +214,6 @@ describe("the registry against the app it describes", () => {
     const descriptions: [string, string][] = [
       ["home", HOME_PAGE_SEO.description],
       ["marketplace", buildMarketplaceDescription()],
-      ["categories", CATEGORIES_PAGE_SEO.description],
       ["contact", CONTACT_PAGE_SEO.description],
       ["department", buildDepartmentSeo({ slug: "electronics", name: "Electronics" }).description],
       ["collection", buildCollectionSeo({ slug: "summer", title: "Summer" }).description],

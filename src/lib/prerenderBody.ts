@@ -6,7 +6,7 @@
  * nothing: no <h1>, no copy, and - the reason Google never discovered the
  * deeper pages - no links. A crawler on its first, HTML-only pass could see
  * the homepage's shell (which linked only to marketplace query-string URLs),
- * the sitemaps, and then a dead end: /categories linked to nothing, /terms
+ * the sitemaps, and then a dead end: /terms
  * linked to nothing, and the department and legal URLs sat behind JavaScript
  * that first-pass crawlers do not run. ~130 pages returned 200 with perfect
  * heads and an empty body, and Search Console counted two indexed pages.
@@ -42,7 +42,6 @@ export interface StaticBodyLink {
 export const CORE_NAV_LINKS: StaticBodyLink[] = [
   { href: "/", label: "Home" },
   { href: "/marketplace", label: "Marketplace" },
-  { href: "/categories", label: "Categories" },
   { href: "/about", label: "About" },
   { href: "/contact", label: "Contact" },
   { href: "/terms", label: "Terms" },

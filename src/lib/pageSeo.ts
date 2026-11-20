@@ -3,8 +3,8 @@
  *
  * The defect this module exists to kill: `index.html` shipped one hardcoded
  * canonical, `https://www.tradibu.com/`, and Vite serves that one file for every
- * route it does not have a prerendered copy of. So `/marketplace`, `/categories`,
- * every department, every legal page and every junk URL all told Google "the
+ * route it does not have a prerendered copy of. So `/marketplace`, every
+ * department, every legal page and every junk URL all told Google "the
  * real version of me is the homepage", and Google consolidated the lot into `/`.
  * A site with 26 departments had a crawlable surface of one page.
  *
@@ -100,15 +100,6 @@ export interface StaticPageSeo {
   canonicalPath?: string;
 }
 
-/**
- * Copy for `/categories`, matching the page's own H1.
- */
-export const CATEGORIES_PAGE_SEO = {
-  title: "Find products by department",
-  description:
-    "Browse Tradibu departments and available products from independent sellers. Filter by brand, size, condition, price and delivery destination.",
-};
-
 /** Copy for `/contact`, matching the page's own H1 and subtitle. */
 export const CONTACT_PAGE_SEO = {
   title: "Contact Tradibu",
@@ -126,7 +117,6 @@ export const CONTACT_PAGE_SEO = {
  * the one route whose static head was already correct.
  */
 export const STATIC_PAGES: StaticPageSeo[] = [
-  { path: "/categories", ...CATEGORIES_PAGE_SEO },
   { path: "/contact", ...CONTACT_PAGE_SEO },
 ];
 

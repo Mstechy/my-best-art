@@ -14,7 +14,7 @@ export default function SiteFooter() {
             <h2 className="font-sans text-xs font-bold uppercase tracking-wider text-[#111111] dark:text-[#FAF5F2] mb-4">{t("footer.shop")}</h2>
             <ul className="space-y-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
               <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.allProducts")}</Link></li>
-              <li><Link to="/categories" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.categories")}</Link></li>
+              <li><Link to="/marketplace" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.categories")}</Link></li>
               <li><Link to="/marketplace?sort=best_sellers" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.topSellers")}</Link></li>
               <li><Link to="/marketplace?sort=flash_deals" className="hover:text-[#111111] dark:hover:text-[#F6C75D] transition-colors">{t("footer.dealsDiscounts")}</Link></li>
             </ul>

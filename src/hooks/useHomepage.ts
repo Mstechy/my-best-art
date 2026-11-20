@@ -128,7 +128,8 @@ export function useHomepageCategories() {
  * Departments that actually have approved stock. The catalogue is pre-seeded with 26
  * departments so it can grow, which means most of them are empty until sellers list
  * in them. Navigation (header dropdown, category sidebar) must only offer departments a
- * shopper can actually buy from; the full directory stays on /categories.
+ * shopper can actually buy from; the bare categories entry opens marketplace discovery,
+ * while live department routes remain available at /categories/:slug.
  */
 export function usePopulatedCategories() {
   const { data } = useHomepageCategories();

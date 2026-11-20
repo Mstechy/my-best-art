@@ -26,6 +26,7 @@ import path from "node:path";
 const configPath = path.join(process.cwd(), "vercel.json");
 const config = JSON.parse(readFileSync(configPath, "utf8")) as {
   cleanUrls?: boolean;
+  redirects?: { source: string; destination: string; permanent?: boolean }[];
   rewrites?: { source: string; destination: string }[];
 };
 const rewrites = config.rewrites ?? [];
@@ -33,6 +34,14 @@ const rewrites = config.rewrites ?? [];
 describe("vercel.json routing", () => {
   it("keeps cleanUrls on, because the prerendered product pages are served through it", () => {
     expect(config.cleanUrls).toBe(true);
+  });
+
+  it("redirects the retired department directory to marketplace discovery", () => {
+    expect(config.redirects).toContainEqual({
+      source: "/categories",
+      destination: "/marketplace",
+      permanent: true,
+    });
   });
 
   it("keeps the SPA catch-all on the clean-URL form of the shell", () => {

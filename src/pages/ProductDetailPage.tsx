@@ -673,7 +673,7 @@ export default function ProductDetailPage() {
             {category?.name && (
               <>
                 <span aria-hidden="true">/</span>
-                <Link to={category.slug ? `/categories/${category.slug}` : "/categories"} className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">{category.name}</Link>
+                <Link to={category.slug ? `/categories/${category.slug}` : "/marketplace"} className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">{category.name}</Link>
               </>
             )}
             <span aria-hidden="true">/</span>
