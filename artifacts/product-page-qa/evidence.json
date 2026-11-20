@@ -1,0 +1,55 @@
+{
+  "contract": "Product detail and catalogue surfaces must present real seller-uploaded media and category-specific facts, remain usable at mobile and desktop widths, avoid horizontal overflow, and provide honest success, empty, and error states.",
+  "targetViewports": ["390x844", "1440x900"],
+  "accessibility": {
+    "status": "pass",
+    "evidence": "The public accessibility suite ran axe against the public routes with zero violations; product controls have accessible names and the mobile gallery test verifies selected thumbnail state."
+  },
+  "responsive": {
+    "status": "pass",
+    "evidence": "Playwright product smoke and surface checks passed at 390px and 1440px; both the iPhone and laptop checks assert no horizontal overflow."
+  },
+  "contentStates": {
+    "loading": {
+      "status": "pass",
+      "evidence": "The loading shell reserves the gallery and purchase-column structure, and the landing first-commit tests verify that the stable shell does not depend on a window load event."
+    },
+    "empty": {
+      "status": "pass",
+      "evidence": "The real /categories/watches route showed 'No products listed yet' and did not render the seeded iPhone or MacBook products."
+    },
+    "error": {
+      "status": "pass",
+      "evidence": "The real /product/not-a-real-product route showed 'Product not found' with a working Browse Marketplace recovery link."
+    },
+    "partial": {
+      "status": "not-applicable",
+      "reason": "This read-only browser pass did not inject a partial Supabase failure; optional policy and seller fallbacks are covered by the product-page source path but need a staging fault-injection pass."
+    },
+    "success": {
+      "status": "pass",
+      "evidence": "The real iPhone product rendered the gallery, seller-entered detail images, category-specific facts, purchase options, seller panel, product information navigation, and sticky mobile actions."
+    },
+    "permission": {
+      "status": "not-applicable",
+      "reason": "The public product and category routes audited here are intentionally guest-readable; authenticated checkout, seller ownership, and admin permission boundaries require the separate account-based release pass."
+    }
+  },
+  "renderedEvidence": [
+    {
+      "viewport": "1440x900",
+      "artifact": "desktop-top.png",
+      "observation": "Desktop product surface shows a two-column gallery and buy box with breadcrumbs, category-specific highlights, variant purchase state, shipping/policy rows, and seller identity."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "mobile-top.png",
+      "observation": "Mobile product surface keeps the gallery, title and purchase context readable while the fixed bottom bar keeps store, chat, cart, options, and buy actions reachable."
+    },
+    {
+      "viewport": "390x844",
+      "artifact": "mobile-below-gallery-settled.png",
+      "observation": "After lazy media settles, real seller-uploaded detail images are visible below the gallery without blank image containers; the sticky purchase bar remains available."
+    }
+  ]
+}

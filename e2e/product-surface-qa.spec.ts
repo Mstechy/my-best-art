@@ -34,3 +34,12 @@ test("empty watches department stays honest and does not reuse another catalogue
   await expect(page.getByText("Apple iPhone 17 Unlocked", { exact: true })).toHaveCount(0);
   await expect(page.getByText("MacBook", { exact: false })).toHaveCount(0);
 });
+
+test("missing product has a recoverable public error state", async ({ page }) => {
+  test.setTimeout(60_000);
+  const response = await page.goto("/product/not-a-real-product", { waitUntil: "domcontentloaded" });
+  expect(response?.status(), "SPA should still return the public document").toBeLessThan(400);
+  await expect(page.locator("main:visible")).toHaveCount(1, { timeout: 45_000 });
+  await expect(page.getByRole("heading", { name: "Product not found", exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("link", { name: "Browse Marketplace", exact: true })).toHaveAttribute("href", "/marketplace");
+});
