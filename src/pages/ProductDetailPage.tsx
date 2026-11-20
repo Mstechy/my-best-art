@@ -40,6 +40,7 @@ import { getProductPath } from "@/lib/productUrls";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
 import { countryName } from "@/lib/countries";
 import { getProductFactEntries } from "@/lib/cataloguePresentation";
+import { formatVariantAttributeLabel, getProductDetailFactKeys, getProductSurface, getVariantSelectionDescription } from "@/lib/productDetailPresentation";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -94,12 +95,12 @@ export default function ProductDetailPage() {
   // purchase an approved product. Keep a neutral identity fallback when that
   // optional profile request is unavailable; never invent a seller name or
   // verification state.
-  const seller = sellerQuery.data ?? (product ? {
+  const seller = useMemo(() => sellerQuery.data ?? (product ? {
     user_id: product.seller_id,
     full_name: null,
     is_verified: false,
     avatar_url: null,
-  } : null);
+  } : null), [product, sellerQuery.data]);
   const category = categoryQuery.data ?? null;
   const soldCount = soldCountQuery.data ?? 0;
   const productDocs = docsQuery.data ?? [];
@@ -156,6 +157,10 @@ export default function ProductDetailPage() {
   }, [id, user?.id]);
 
   const hasProductVariants = productVariants.length > 0;
+  const productSurface = useMemo(
+    () => getProductSurface(category?.slug, getProductType(product?.variants)?.key),
+    [category?.slug, product?.variants],
+  );
   const variantSizes = useMemo(() => product?.variants?.sizes?.length ? product.variants.sizes : [...new Set(productVariants.map(variant => variant.option_values.size).filter(Boolean))], [product, productVariants]);
   const variantColors = useMemo(() => product?.variants?.colors?.length ? product.variants.colors : [...new Set(productVariants.map(variant => variant.option_values.color).filter(Boolean))], [product, productVariants]);
   const variantAttributeKeys = useMemo(() => {
@@ -183,7 +188,7 @@ export default function ProductDetailPage() {
     if (!product) return null;
     // Quick facts are the comparison layer beside the buy box. Do not repeat
     // those same fields in the long specifications table below the description.
-    const systemKeys = new Set(["categoryGroup", "productTypeKey", "brand", "model", "storage", "color", "network", "connectivity", "operatingSystem", "condition"]);
+    const systemKeys = new Set(["categoryGroup", "productTypeKey", ...getProductDetailFactKeys(productSurface)]);
     const productType = getProductType(product.variants);
     const productTypeConfig = findProductTypeConfig(category, productType?.key);
     const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
@@ -201,13 +206,12 @@ export default function ProductDetailPage() {
     // Warranty is presented once in the purchase-service policy rows above;
     // do not repeat it in the long specification table.
     return Object.keys(details).length > 0 ? details : null;
-  }, [category, product, variantAttributeKeys]);
+  }, [category, product, productSurface, variantAttributeKeys]);
   const productQuickFacts = useMemo(() => {
     if (!product) return [];
     const productType = getProductType(product.variants);
     const productTypeConfig = findProductTypeConfig(category, productType?.key);
     const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
-    const isPhone = productType?.key === "mobile-phones" || productType?.key === "phones" || category?.slug === "phones-accessories";
     const choiceKeys = new Set([...variantChoiceKeys].map((key) => key.toLowerCase()));
     const isChoiceKey = (key: string) => {
       const normalized = key.toLowerCase();
@@ -215,9 +219,7 @@ export default function ProductDetailPage() {
         || (normalized === "color" && choiceKeys.has("colour"))
         || (normalized === "colour" && choiceKeys.has("color"));
     };
-    const keys = isPhone
-      ? ["brand", "model", "storage", "color", "network", "connectivity", "operatingSystem"]
-      : ["brand", "model", "storage", "color"];
+    const keys = getProductDetailFactKeys(productSurface);
     return getProductFactEntries({
       attributes: getCategoryAttributes(product.variants),
       topLevel: { brand: product.brand, color: product.color, condition: product.condition },
@@ -226,7 +228,7 @@ export default function ProductDetailPage() {
       // not in the product facts. Common facts such as 5G remain visible.
       keys: keys.filter((key) => !isChoiceKey(key)),
     });
-  }, [category, product, variantChoiceKeys]);
+  }, [category, product, productSurface, variantChoiceKeys]);
   const selectedVariant = hasProductVariants
     ? (variantAttributeKeys.size > 0 && [...variantAttributeKeys].every((key) => selectedVariantOptions[key])
       ? productVariants.find((variant) =>
@@ -785,7 +787,7 @@ export default function ProductDetailPage() {
 
                 {selectedVariant && (
                   <p className="mt-2 text-xs font-medium text-[#666666] dark:text-[#A0A0A0]" aria-live="polite">
-                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" / ")}
+                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")}
                   </p>
                 )}
 
@@ -855,7 +857,7 @@ export default function ProductDetailPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h2 className="text-sm font-bold">Choose options at purchase</h2>
-                    <p className="mt-1 text-xs leading-5 text-[#6E6C64]">Select the exact storage, colour, model, or configuration to see its price, stock, and matching image.</p>
+                    <p className="mt-1 text-xs leading-5 text-[#6E6C64]">{getVariantSelectionDescription(productSurface)}</p>
                   </div>
                   <button
                     type="button"
@@ -871,7 +873,7 @@ export default function ProductDetailPage() {
                     <span className="block text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{selectedVariant ? "Selected configuration" : "Configuration"}</span>
                     <span className="mt-0.5 block truncate font-bold">
                       {selectedVariant
-                        ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${key}: ${value}`).join(" / ")
+                        ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")
                         : "Choose options to continue"}
                     </span>
                   </span>
@@ -1284,7 +1286,7 @@ export default function ProductDetailPage() {
             </div>
           )}
           <div className="mt-5 space-y-5">
-            <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} />
+            <VariantSelector variants={productVariants} selectedOptions={selectedVariantOptions} onChange={setSelectedVariantOptions} surface={productSurface} />
             <div className="flex items-center justify-between rounded-2xl bg-[#F2F3F5] px-4 py-3 dark:bg-[#1E1E1E]">
               <div>
                 <p className="text-xs text-[#6E6C64]">{selectedVariant ? "Selected SKU" : variantChoiceKeys.size === 1 ? "Select an option" : "Select every option"}</p>

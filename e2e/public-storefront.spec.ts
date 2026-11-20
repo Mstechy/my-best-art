@@ -27,10 +27,23 @@ for (const viewport of viewports) {
     expect(scrollState.scrollY, "a fresh storefront visit should open at the hero").toBe(0);
     expect(scrollState.overflow, "public storefront must not overflow horizontally").toBe(false);
 
-    const departmentLink = page.locator('main:visible a[href^="/categories/"]').first();
-    await expect(departmentLink).toBeVisible({ timeout: 30_000 });
-    const departmentHref = await departmentLink.getAttribute("href");
-    expect(departmentHref).toMatch(/^\/categories\/[^/]+$/);
+    // The homepage intentionally renders an honest empty state when there are
+    // no approved category feeds to show. The canonical discovery path is the
+    // marketplace, where a department route can then be selected without
+    // requiring the homepage to fabricate category links.
+    const browseAllLink = page.getByRole("link", { name: "View All" }).first();
+    await expect(browseAllLink).toBeVisible({ timeout: 30_000 });
+    const marketplaceHref = await browseAllLink.getAttribute("href");
+    expect(marketplaceHref).toMatch(/^\/marketplace(?:\?.*)?$/);
+
+    const marketplaceResponse = await page.goto(marketplaceHref!, { waitUntil: "domcontentloaded" });
+    expect(marketplaceResponse?.status(), "marketplace should return a document").toBeLessThan(400);
+    await expect(page.locator("main:visible")).toHaveCount(1, { timeout: 30_000 });
+
+    // Electronics is a seeded, approved department used by the read-only
+    // public product smoke and keeps this journey independent of merchandising
+    // order on the homepage.
+    const departmentHref = "/categories/electronics";
 
     const departmentResponse = await page.goto(departmentHref!, { waitUntil: "domcontentloaded" });
     expect(departmentResponse?.status(), "department should return a document").toBeLessThan(400);
@@ -64,6 +77,6 @@ test("unknown department does not fall through to the full catalogue", async ({ 
   const response = await page.goto("/categories/not-a-real-department", { waitUntil: "domcontentloaded" });
   expect(response?.status()).toBeLessThan(400);
   await expect(page.getByRole("heading", { name: "Department not found" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("link", { name: "Browse departments" })).toHaveAttribute("href", "/categories");
+  await expect(page.getByRole("link", { name: "Browse products" })).toHaveAttribute("href", "/marketplace");
   expect(await page.locator('main:visible a[href^="/product/"]').count()).toBe(0);
 });

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import DescriptionImage from "./DescriptionImage";
+import { formatVariantAttributeLabel } from "@/lib/productDetailPresentation";
 
 type DescImage = { url: string; alt?: string | null; order?: number };
 
@@ -41,8 +42,8 @@ export default function ProductRichDescription({
                       key={key}
                       className={idx % 2 === 0 ? "bg-[#F9F9F8] dark:bg-[#1A1A1C]" : "bg-white dark:bg-[#1E1E1E]"}
                     >
-                      <td className="px-4 py-3 text-xs text-[#6E6C64] dark:text-[#A0A0A0] w-2/5 capitalize border-r border-[#E8E8E8] dark:border-[#222222]">
-                        {key.replace(/([A-Z])/g, " $1").trim()}
+                      <td className="px-4 py-3 text-xs text-[#6E6C64] dark:text-[#A0A0A0] w-2/5 border-r border-[#E8E8E8] dark:border-[#222222]">
+                        {formatVariantAttributeLabel(key)}
                       </td>
                       {/* `break-words`: a long unbroken value (serial, URL)
                           would otherwise widen the table past the card. */}

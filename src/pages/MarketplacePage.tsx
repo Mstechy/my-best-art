@@ -141,6 +141,15 @@ export default function MarketplacePage() {
     }
   }, [categoryParam, categories]);
 
+  // The same page component stays mounted when a buyer navigates between
+  // departments. Clear the previous department before the next route can
+  // write a catalogue query; otherwise a stale Electronics result can paint
+  // briefly (or remain cached) on /categories/watches.
+  useEffect(() => {
+    if (categoryParam) return;
+    setSelectedCategory(current => current === null ? current : null);
+  }, [categoryParam]);
+
   useEffect(() => { if (searchParam !== null) setSearch(searchParam); }, [searchParam]);
   useEffect(() => {
     const nextSort = isMarketplaceSort(sortParam) ? sortParam : "relevance";
@@ -166,10 +175,10 @@ export default function MarketplacePage() {
   }, [search, selectedCategory, categories, searchParams, setSearchParams, categoryRouteSlug, sortBy]);
 
   const categoryFilterPending = Boolean(categoryParam) && (
-    categoriesLoading || Boolean(categoryFromRoute && !selectedCategory)
+    categoriesLoading || Boolean(categoryFromRoute && selectedCategory !== categoryFromRoute.id)
   );
 
-  const catalogueCacheKey = useMemo(() => categoryFilterPending || categoryRouteNotFound ? null : cacheKeyFor("marketplace_catalogue", {
+  const catalogueCacheKey = useMemo(() => categoryFilterPending || categoryRouteNotFound ? null : cacheKeyFor("marketplace_catalogue:v2", {
     search: search.trim() || null,
     category: selectedCategory || null,
     shipsTo: shipsTo === "all" ? null : shipsTo,

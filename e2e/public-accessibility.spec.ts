@@ -41,16 +41,14 @@ for (const route of publicRoutes) {
   });
 }
 
-test("category department routes resolve to a marketplace listing", async ({ page }) => {
+test("categories entry opens marketplace discovery and department routes remain listings", async ({ page }) => {
   test.setTimeout(60_000);
   const directoryResponse = await page.goto("/categories", { waitUntil: "domcontentloaded" });
   expect(directoryResponse?.status(), "/categories should return a document").toBeLessThan(400);
   await expect(page.locator("main:visible")).toHaveCount(1, { timeout: 20_000 });
+  await expect(page).toHaveURL(/\/marketplace(?:\?.*)?$/);
+  await expect(page.getByRole("heading", { name: "Marketplace departments" })).toHaveCount(0);
 
-  // The directory is data-backed and may legitimately render its empty/loading
-  // state while a parallel browser worker is warming Supabase. Use the seeded
-  // department for this routing smoke check; the public storefront suite separately
-  // verifies that a live directory link is produced and navigates through it.
   const departmentHref = "/categories/electronics";
 
   const listingResponse = await page.goto(departmentHref!, { waitUntil: "domcontentloaded" });

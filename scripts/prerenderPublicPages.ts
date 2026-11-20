@@ -23,7 +23,7 @@ import { injectStaticBody, type StaticBodyLink } from "../src/lib/prerenderBody"
  * `scripts/prerenderProductPages.ts` fixed this for `/product/<id>` and left the
  * rest of the site alone, which meant the rest of the site kept the defect it
  * was written to remove: one byte-identical `index.html` for `/marketplace`,
- * `/categories`, all 26 departments, the collections, the seller storefronts and
+ * all live departments, the collections, the seller storefronts and
  * ten legal URLs, every one of them declaring the homepage as its canonical.
  * Google consolidated the lot into `/`, so a 27-URL sitemap described a
  * one-page site.
@@ -364,15 +364,6 @@ async function prerender(root: string, mode: string): Promise<void> {
   const codeAndLegal = [...codeDefinedRoutes(), ...legalRoutes(pages)];
   const routes = dedupeByPath([...codeAndLegal, ...departments, ...collections, ...sellers]);
 
-  // `/categories` is the hub of the database-backed half of the site: its
-  // static body links every department and collection, so a crawler that never
-  // executes JavaScript discovers all ~50 of those URLs in one hop from a page
-  // that is already in sitemap-pages.xml. Everything else gets the core nav
-  // (src/lib/prerenderBody.ts adds it to every document).
-  const bodyLinksByPath = new Map<string, StaticBodyLink[]>([
-    ["/categories", [...departmentSet.links, ...collectionSet.links]],
-  ]);
-
   // sitemap-categories.xml lives here rather than under public/ because its
   // contents are database rows: the department and collection URLs that
   // sitemap-pages.xml's header called un-listable by a static file - a build
@@ -403,8 +394,7 @@ async function prerender(root: string, mode: string): Promise<void> {
   // file, because `dedupeByPath` already saw to that.
   let written = 0;
   for (const route of routes) {
-    const bodyLinks = bodyLinksByPath.get(route.path) ?? [];
-    if (await attempt(`route ${route.path}`, () => writeRoute(dist, route, shell, bodyLinks), false)) written += 1;
+    if (await attempt(`route ${route.path}`, () => writeRoute(dist, route, shell, []), false)) written += 1;
   }
 
   console.log(

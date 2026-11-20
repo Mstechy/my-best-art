@@ -41,6 +41,11 @@ export function useCachedFetch<T = unknown>(
 ): UseCachedFetchResult<T> {
   const { ttlMs, bypassCache = false, staleWhileRevalidate: swr = false, onSuccess, onError } = options;
   const [data, setData] = useState<T | undefined>(undefined);
+  // Keep the payload associated with the key that produced it. A component
+  // can change keys while staying mounted (for example when moving from
+  // Electronics to Watches); returning the previous payload during that
+  // transition is a correctness bug, not just a loading-state issue.
+  const [dataKey, setDataKey] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<unknown>(undefined);
   const mountedRef = useRef(true);
@@ -49,6 +54,8 @@ export function useCachedFetch<T = unknown>(
 
   const fetch = useCallback(async (bypass = false) => {
     if (!cacheKey) {
+      setData(undefined);
+      setDataKey(null);
       setLoading(false);
       return;
     }
@@ -62,21 +69,24 @@ export function useCachedFetch<T = unknown>(
         if (!mountedRef.current) return;
         await persistentCacheSet(cacheKey, fresh, ttlMs);
         setData(fresh);
+        setDataKey(cacheKey);
         setLoading(false);
         onSuccess?.(fresh);
         return;
       }
 
       if (swr) {
-        const cached = await persistentCacheGet<T>(cacheKey);
+          const cached = await persistentCacheGet<T>(cacheKey);
         if (cached !== null) {
           setData(cached);
+          setDataKey(cacheKey);
           setLoading(false);
           fetcherRef.current()
             .then(async fresh => {
               if (!mountedRef.current) return;
               await persistentCacheSet(cacheKey, fresh, ttlMs);
               setData(fresh);
+              setDataKey(cacheKey);
               onSuccess?.(fresh);
             })
             .catch(err => {
@@ -91,6 +101,7 @@ export function useCachedFetch<T = unknown>(
       const cached = await persistentCacheGet<T>(cacheKey);
       if (cached !== null && !bypass) {
         setData(cached);
+        setDataKey(cacheKey);
         setLoading(false);
         return;
       }
@@ -99,6 +110,7 @@ export function useCachedFetch<T = unknown>(
       if (!mountedRef.current) return;
       await persistentCacheSet(cacheKey, fresh, ttlMs);
       setData(fresh);
+      setDataKey(cacheKey);
       setLoading(false);
       onSuccess?.(fresh);
     } catch (err) {
@@ -106,6 +118,7 @@ export function useCachedFetch<T = unknown>(
       const cached = await persistentCacheGet<T>(cacheKey);
       if (cached !== null) {
         setData(cached);
+        setDataKey(cacheKey);
       }
       setError(err);
       setLoading(false);
@@ -125,7 +138,7 @@ export function useCachedFetch<T = unknown>(
     await fetch(bypass);
   }, [fetch]);
 
-  return { data, loading, error, refetch };
+  return { data: dataKey === (cacheKey ?? null) ? data : undefined, loading, error, refetch };
 }
 
 /**

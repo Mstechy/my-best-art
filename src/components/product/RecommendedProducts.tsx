@@ -5,7 +5,6 @@ import { supabase } from "@/integrations/supabase/client";
 import ProductImage from "@/components/product/ProductImage";
 import { useCart } from "@/hooks/useCart";
 import { toast } from "sonner";
-import InfiniteScrollTrigger from "@/components/ui/InfiniteScrollTrigger";
 import { useCurrency } from "@/hooks/useCurrency";
 
 interface RecItem {
@@ -21,12 +20,13 @@ interface RecItem {
   product_images: { image_url: string; is_primary: boolean }[];
 }
 
-const PAGE_SIZE = 12;
+// Keep product detail pages focused. The marketplace owns deep pagination;
+// this section is a compact comparison rail rather than a second catalogue.
+const PAGE_SIZE = 8;
 
 export default function RecommendedProducts({ productId, categoryId }: { productId: string; categoryId: string | null }) {
   const { formatPrice } = useCurrency();
   const [items, setItems] = useState<RecItem[]>([]);
-  const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
   const recommendationsRef = useRef<HTMLDivElement>(null);
@@ -69,7 +69,6 @@ export default function RecommendedProducts({ productId, categoryId }: { product
   useEffect(() => {
     let cancelled = false;
     setItems([]);
-    setHasMore(true);
     setNearViewport(false);
     return () => { cancelled = true; };
   }, [loadPage]);
@@ -84,16 +83,13 @@ export default function RecommendedProducts({ productId, categoryId }: { product
         if (cancelled) return;
         if (error) {
           toast.error("Could not load recommended products.");
-          setHasMore(false);
         } else {
           setItems(rows);
-          setHasMore(rows.length === PAGE_SIZE);
         }
       } catch (error) {
         if (!cancelled) {
           console.error("Failed to load recommended products:", error);
           toast.error("Could not load recommended products.");
-          setHasMore(false);
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -102,41 +98,23 @@ export default function RecommendedProducts({ productId, categoryId }: { product
     return () => { cancelled = true; };
   }, [loadPage, nearViewport]);
 
-  const loadMore = useCallback(async () => {
-    if (loading || !hasMore) return;
-    setLoading(true);
-    try {
-      const { rows, error } = await loadPage(items.length);
-      if (error) {
-        toast.error("Could not load more recommended products.");
-        setHasMore(false);
-        return;
-      }
-      setItems(prev => {
-        const seen = new Set(prev.map(p => p.id));
-        const fresh = rows.filter(p => !seen.has(p.id));
-        return [...prev, ...fresh];
-      });
-      setHasMore(rows.length === PAGE_SIZE);
-    } catch (error) {
-      console.error("Failed to load more recommended products:", error);
-      toast.error("Could not load more recommended products.");
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-    }
-  }, [loading, hasMore, items.length, loadPage]);
-
   return (
     <div ref={recommendationsRef} className="min-h-px">
       {items.length > 0 && <section id="recommended" className="mt-10 px-4 md:px-0">
-      <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2] mb-1">More in this department</h2>
-      <p className="mb-4 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Similar active listings to help you compare before you decide.</p>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="mb-4 flex items-end justify-between gap-4">
+        <div>
+          <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">More in this department</h2>
+          <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Similar active listings to help you compare before you decide.</p>
+        </div>
+        <Link to={categoryId ? `/categories/${categoryId}` : "/marketplace"} className="shrink-0 text-xs font-bold text-[#111111] underline-offset-4 hover:underline dark:text-[#FAF5F2]">
+          View all
+        </Link>
+      </div>
+      <div className="flex snap-x gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="More products in this department">
         {items.map(p => {
           const img = p.product_images?.find(i => i.is_primary) || p.product_images?.[0];
           return (
-            <div key={p.id} className="group relative bg-white dark:bg-[#1A1A1A] rounded-xl overflow-hidden hover:shadow-md transition-shadow border border-[#E8E8E8] dark:border-[#222222]">
+            <div key={p.id} className="group relative min-w-[164px] max-w-[164px] snap-start overflow-hidden rounded-xl border border-[#E8E8E8] bg-white transition-shadow hover:shadow-md dark:border-[#222222] dark:bg-[#1A1A1A] sm:min-w-[192px] sm:max-w-[192px]">
               <Link to={`/product/${p.id}`} className="block">
                 <div className="aspect-square bg-[#F2F3F5] dark:bg-[#111111] relative">
                   {img ? (
@@ -146,15 +124,17 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                   )}
                 </div>
               </Link>
-              <div className="p-2 space-y-1.5">
+              <div className="space-y-1.5 p-2">
                 <Link to={`/product/${p.id}`} className="block">
-                  <div className="text-xs text-[#666666] dark:text-[#A0A0A0] truncate">{p.title}</div>
+                  <div className="line-clamp-2 text-xs font-medium leading-4 text-[#333333] dark:text-[#D7D7D7]">{p.title}</div>
                 </Link>
-                <div className="flex items-center gap-1.5 relative h-7">
-                  <span className="text-base font-black text-[#111111] dark:text-[#FAF5F2] tracking-tight">{formatPrice(p.price)}</span>
-                  {p.compare_at_price && (
-                    <span className="text-[10px] text-[#C0C0B8] line-through">{formatPrice(p.compare_at_price)}</span>
-                  )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <span className="block text-sm font-black tracking-tight text-[#111111] dark:text-[#FAF5F2]">{formatPrice(p.price)}</span>
+                    {p.compare_at_price && (
+                      <span className="block text-[10px] text-[#C0C0B8] line-through">{formatPrice(p.compare_at_price)}</span>
+                    )}
+                  </div>
                   <button
                     onClick={(e) => {
                       e.preventDefault();
@@ -171,9 +151,10 @@ export default function RecommendedProducts({ productId, categoryId }: { product
                       });
                       toast.success("Added to cart");
                     }}
-                    className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full border border-[#111111] dark:border-[#FAF5F2] flex items-center justify-center text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#222222] transition-colors"
+                    aria-label={`Add ${p.title} to cart`}
+                    className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-[#111111] text-[#111111] transition-colors hover:bg-[#F2F3F5] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
                   >
-                    <ShoppingCart className="h-3 w-3" />
+                    <ShoppingCart className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 <Link to={`/product/${p.id}`} className="block">
@@ -195,7 +176,6 @@ export default function RecommendedProducts({ productId, categoryId }: { product
         })}
       </div>
       {/* Infinite scroll — keeps loading more products so the page never ends (AliExpress behavior) */}
-      <InfiniteScrollTrigger onLoadMore={loadMore} hasMore={hasMore} loading={loading} />
       </section>}
     </div>
   );
