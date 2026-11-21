@@ -133,6 +133,14 @@ export default function SellerProductCsvImporter({
     [templateCategory],
   );
   const templateProductType = templateProductTypes.find((type) => type.key === templateProductTypeKey);
+  const templateAttributeHeaders = useMemo(
+    () => [...new Set(templateProductTypes.flatMap((type) => type.fields.map((field) => toAttributeColumn(field.key))))],
+    [templateProductTypes],
+  );
+  const mappingOptions = useMemo(
+    () => [...new Set([...CSV_MAPPABLE_HEADERS, ...templateAttributeHeaders])],
+    [templateAttributeHeaders],
+  );
 
   useEffect(() => {
     if (!templateCategorySlug && categories.length === 1) setTemplateCategorySlug(categories[0].slug);
@@ -383,7 +391,7 @@ export default function SellerProductCsvImporter({
                         <SelectContent>
                           <SelectItem value={CSV_UNMAPPED_COLUMN}>Choose mapping</SelectItem>
                           <SelectItem value={CSV_IGNORE_COLUMN}>Ignore column</SelectItem>
-                          {CSV_MAPPABLE_HEADERS.map((option) => <SelectItem key={option} value={option}>{formatCsvHeader(option)}</SelectItem>)}
+                          {mappingOptions.map((option) => <SelectItem key={option} value={option}>{formatCsvHeader(option)}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

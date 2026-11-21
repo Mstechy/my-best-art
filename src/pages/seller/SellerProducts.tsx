@@ -1744,6 +1744,12 @@ export default function SellerProducts() {
     setProductTypeKey(value);
     setCategoryAttributes((current) => Object.fromEntries(Object.entries(current).filter(([key]) => allowedFields.has(key))));
   };
+  const handleCategoryAttributeBlur = (field: { key: string; type?: string }, value: string) => {
+    const cleaned = field.type === "textarea"
+      ? normalizeSellerListingDescription(value)
+      : normalizeSellerListingValue(value);
+    updateCategoryAttribute(field.key, cleaned);
+  };
   const phoneTitleWarning = isPhoneListing
     ? getPhoneTitleQuality({
       title,
@@ -2166,6 +2172,7 @@ export default function SellerProducts() {
                               <Textarea
                                 value={fieldValue}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
+                                onBlur={(e) => handleCategoryAttributeBlur(field, e.target.value)}
                                 id={`product-spec-${field.key}`}
                                 placeholder={field.placeholder}
                                 className="mt-1"
@@ -2176,6 +2183,7 @@ export default function SellerProducts() {
                                 type={field.type === "date" ? "date" : "text"}
                                 value={fieldValue}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
+                                onBlur={(e) => handleCategoryAttributeBlur(field, e.target.value)}
                                 id={`product-spec-${field.key}`}
                                 placeholder={field.placeholder}
                                 className="mt-1"
@@ -2564,7 +2572,7 @@ export default function SellerProducts() {
                         <h3 className="mt-1 font-display text-lg font-semibold text-foreground">{title || "Product name"}</h3>
                       </div>
                       <div className="text-right">
-                        <p className="font-display text-lg font-bold text-foreground">{hasVariantRows ? (lowestVariantPrice === null ? "Add SKU prices" : `From ${formatPrice(lowestVariantPrice)}`) : price ? formatPrice(Number(price)) : formatPrice(0)}</p>
+                        <p className="font-display text-base font-semibold text-foreground">{hasVariantRows ? (lowestVariantPrice === null ? "Add SKU prices" : `From ${formatPrice(lowestVariantPrice)}`) : price ? formatPrice(Number(price)) : formatPrice(0)}</p>
                         {compareAtPrice && <p className="text-xs text-muted-foreground line-through">{formatPrice(Number(compareAtPrice))}</p>}
                       </div>
                     </div>
@@ -2583,15 +2591,15 @@ export default function SellerProducts() {
                       <p className="text-sm font-medium text-foreground mb-3">{selectedProductTypeConfig.label} Specifications</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {selectedProductTypeConfig.fields
-                          .filter(field => categoryAttributes[field.key])
+                          .filter(field => effectiveCategoryAttributes[field.key])
                           .map(field => (
                             <div key={field.key} className="rounded-md bg-muted/40 px-3 py-2 text-sm">
                               <span className="text-muted-foreground">{field.label}: </span>
-                              <span className="font-medium text-foreground">{categoryAttributes[field.key]}</span>
+                              <span className="font-medium text-foreground">{effectiveCategoryAttributes[field.key]}</span>
                             </div>
                           ))}
                       </div>
-                      {selectedProductTypeConfig.fields.every(field => !categoryAttributes[field.key]) && (
+                      {selectedProductTypeConfig.fields.every(field => !effectiveCategoryAttributes[field.key]) && (
                         <p className="text-xs text-muted-foreground">Add specifications to make the listing easier to compare.</p>
                       )}
                     </div>
@@ -2791,7 +2799,7 @@ export default function SellerProducts() {
                         : <p className="mt-1 truncate text-[10px] font-medium text-amber-700 dark:text-amber-300" title={googleIssues.join("; ")}>Google needs attention</p>;
                     })()}
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="font-display text-lg font-bold text-foreground">{offerSummary ? `From ${formatPrice(offerSummary.lowestPrice ?? product.price)}` : formatPrice(product.price)}</span>
+                      <span className="font-display text-base font-semibold text-foreground">{offerSummary ? `From ${formatPrice(offerSummary.lowestPrice ?? product.price)}` : formatPrice(product.price)}</span>
                       {product.compare_at_price && (
                         <span className="text-sm text-muted-foreground line-through">{formatPrice(product.compare_at_price)}</span>
                       )}

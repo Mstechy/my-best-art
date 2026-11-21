@@ -150,7 +150,37 @@ export function getSellerProductCsvHeaders(csv: string): string[] {
 }
 
 export function suggestSellerProductCsvMapping(headers: string[]): CsvColumnMapping {
-  const aliases = new Map(Object.entries(HEADER_ALIASES).flatMap(([canonical, values]) => values.map((alias) => [alias, canonical] as const)));
+  const attributeAliases: Record<string, string> = {
+    model: "attr_model",
+    storage: "attr_storage",
+    storage_capacity: "attr_storage",
+    ram: "attr_ram",
+    memory: "attr_ram",
+    processor: "attr_processor",
+    cpu: "attr_processor",
+    gpu: "attr_graphics",
+    graphics: "attr_graphics",
+    screen_size: "attr_screenSize",
+    display_resolution: "attr_displayResolution",
+    operating_system: "attr_operatingSystem",
+    connectivity: "attr_connectivity",
+    network: "attr_network",
+    sim_type: "attr_simType",
+    battery_health: "attr_batteryHealth",
+    cosmetic_condition: "attr_cosmeticCondition",
+    gender: "attr_gender",
+    size: "attr_size",
+    color: "attr_color",
+    colour: "attr_color",
+    material: "attr_material",
+    movement: "attr_movement",
+    case_material: "attr_caseMaterial",
+    strap_material: "attr_strapMaterial",
+  };
+  const aliases = new Map([
+    ...Object.entries(HEADER_ALIASES).flatMap(([canonical, values]) => values.map((alias) => [alias, canonical] as const)),
+    ...Object.entries(attributeAliases),
+  ]);
   return Object.fromEntries(headers.map((header) => [
     header,
     CSV_MAPPABLE_HEADERS.includes(header) || header.startsWith("attr_")
@@ -167,7 +197,7 @@ export function parseSellerProductCsvMoney(value: string): number | null {
   const cleaned = value
     .trim()
     .replace(/^(?:NGN|USD|EUR|GBP|N)\s*/i, "")
-    .replace(/[₦$€£,\s]/g, "");
+    .replace(/[\u20A6$\u20AC\u00A3,\s]/g, "");
   if (!/^\d+(?:\.\d+)?$/.test(cleaned)) return null;
   const amount = Number(cleaned);
   return Number.isFinite(amount) && amount > 0 ? amount : null;

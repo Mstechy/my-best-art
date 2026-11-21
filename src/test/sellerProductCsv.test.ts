@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CSV_IGNORE_COLUMN, getSellerProductCsvHeaders, suggestSellerProductCsvMapping, validateSellerProductCsv } from "@/lib/sellerProductCsv";
+import { CSV_IGNORE_COLUMN, buildSellerProductCsvTemplate, getSellerProductCsvHeaders, normalizeSellerListingDescription, normalizeSellerListingTitle, parseSellerProductCsvMoney, parseSellerProductCsvWholeNumber, suggestSellerProductCsvMapping, validateSellerProductCsv } from "@/lib/sellerProductCsv";
+import { getProductTypesForCategory } from "@/lib/categoryConfig";
 
 const fashion = { id: "fashion-id", name: "Fashion", slug: "fashion" };
 const electronics = { id: "electronics-id", name: "Electronics", slug: "electronics" };
@@ -157,5 +158,35 @@ describe("validateSellerProductCsv", () => {
     const result = validateSellerProductCsv(csv, [fashion], mapping);
     expect(result.errors).toEqual([]);
     expect(result.products[0]).toMatchObject({ title: row().title, price: 25000, stockQuantity: 5, gtin: null });
+  });
+
+  it("normalizes seller formatting without changing the product facts", () => {
+    expect(normalizeSellerListingTitle("  Apple   iPhone\n17  ")).toBe("Apple iPhone 17");
+    expect(normalizeSellerListingDescription(" One line  with spaces.\n\n\n Second line. ")).toBe("One line with spaces.\n\nSecond line.");
+    expect(parseSellerProductCsvMoney("₦1,089,000")).toBe(1089000);
+    expect(parseSellerProductCsvMoney("NGN 1 089 000")).toBe(1089000);
+    expect(parseSellerProductCsvWholeNumber("1,000")).toBe(1000);
+  });
+
+  it("maps common category specification columns to safe attribute fields", () => {
+    const mapping = suggestSellerProductCsvMapping(["model", "storage_capacity", "colour", "battery_health", "brand", "condition"]);
+    expect(mapping).toMatchObject({
+      model: "attr_model",
+      storage_capacity: "attr_storage",
+      colour: "attr_color",
+      battery_health: "attr_batteryHealth",
+      brand: "brand",
+      condition: "condition",
+    });
+  });
+
+  it("builds a tailored template without duplicating standard brand and condition columns", () => {
+    const phone = getProductTypesForCategory(electronics).find((type) => type.key === "mobile-phones");
+    expect(phone).toBeDefined();
+    const template = buildSellerProductCsvTemplate(electronics, phone!);
+    expect(template).toContain("attr_model");
+    expect(template).toContain("attr_storage");
+    expect(template).not.toContain("attr_brand");
+    expect(template).not.toContain("attr_condition");
   });
 });
