@@ -120,6 +120,28 @@ export function normalizeSellerProductCsvHeader(value: string): string {
   return value.trim().replace(/^\uFEFF/, "").toLowerCase().replace(/[\s-]+/g, "_");
 }
 
+/**
+ * Deterministic cleanup only. These helpers never add product facts or change
+ * a seller's meaning; they make common spreadsheet formatting safe to import.
+ */
+export function normalizeSellerListingTitle(value: string): string {
+  return value.replace(/\r\n?/g, "\n").replace(/\s+/g, " ").trim();
+}
+
+export function normalizeSellerListingDescription(value: string): string {
+  return value
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) => line.replace(/[ \t]+/g, " ").trim())
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export function normalizeSellerListingValue(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 export type CsvColumnMapping = Record<string, string>;
 
 export function getSellerProductCsvHeaders(csv: string): string[] {
@@ -141,23 +163,68 @@ function attributeHeader(key: string): string {
   return `attr_${key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`;
 }
 
-function parsePositivePrice(value: string): number | null {
-  const amount = Number(value.trim());
+export function parseSellerProductCsvMoney(value: string): number | null {
+  const cleaned = value
+    .trim()
+    .replace(/^(?:NGN|USD|EUR|GBP|N)\s*/i, "")
+    .replace(/[₦$€£,\s]/g, "");
+  if (!/^\d+(?:\.\d+)?$/.test(cleaned)) return null;
+  const amount = Number(cleaned);
   return Number.isFinite(amount) && amount > 0 ? amount : null;
 }
 
+export function parseSellerProductCsvWholeNumber(value: string): number | null {
+  const cleaned = value.trim().replace(/[\s,]/g, "");
+  if (!/^\d+$/.test(cleaned)) return null;
+  const amount = Number(cleaned);
+  return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
+}
+
+function normalizeLookup(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 function categoryFor(value: string, categories: CsvCategory[]): CsvCategory | undefined {
-  const normalized = value.trim().toLowerCase();
-  return categories.find((category) =>
-    category.slug.toLowerCase() === normalized || category.name.trim().toLowerCase() === normalized
+  const normalized = normalizeLookup(value);
+  const directMatches = categories.filter((category) =>
+    normalizeLookup(category.slug) === normalized || normalizeLookup(category.name) === normalized
   );
+  if (directMatches.length === 1) return directMatches[0];
+  if (directMatches.length > 1) return undefined;
+
+  // Sellers often paste a breadcrumb such as "Electronics > Mobile Phones".
+  // Only use its final segment when it resolves to exactly one real category;
+  // never guess between duplicate names.
+  const pathPart = value.split(/[>/]/).map((part) => normalizeLookup(part)).filter(Boolean).pop();
+  if (!pathPart || pathPart === normalized) return undefined;
+  const pathMatches = categories.filter((category) =>
+    normalizeLookup(category.slug) === pathPart || normalizeLookup(category.name) === pathPart
+  );
+  return pathMatches.length === 1 ? pathMatches[0] : undefined;
 }
 
 function productTypeFor(category: CsvCategory, value: string): ProductTypeConfig | undefined {
-  const normalized = value.trim().toLowerCase();
+  const normalized = normalizeLookup(value);
   return getProductTypesForCategory(category).find((type) =>
-    type.key.toLowerCase() === normalized || type.label.trim().toLowerCase() === normalized
+    normalizeLookup(type.key) === normalized || normalizeLookup(type.label) === normalized
   );
+}
+
+function normalizeCondition(value: string): CsvProduct["condition"] | null {
+  const normalized = normalizeLookup(value);
+  if (["new", "brand-new", "sealed"].includes(normalized)) return "new";
+  if (["used", "pre-owned", "preowned", "second-hand", "secondhand"].includes(normalized)) return "used";
+  if (["refurbished", "renewed", "reconditioned"].includes(normalized)) return "refurbished";
+  return null;
+}
+
+function splitImageUrls(value: string): string[] {
+  return [...new Set(value.split(/[|;\n]/).map((url) => url.trim()).filter(Boolean))];
 }
 
 export function validateSellerProductCsv(csv: string, categories: CsvCategory[], columnMapping: CsvColumnMapping = {}): CsvValidationResult {
@@ -196,23 +263,27 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[],
 
   records.slice(1).forEach((cells, index) => {
     const rowNumber = index + 2;
-    const row = Object.fromEntries(activeColumnIndexes.map((sourceColumn, activeColumn) => [headers[activeColumn], (cells[sourceColumn] ?? "").trim()]));
+    const row = Object.fromEntries(activeColumnIndexes.map((sourceColumn, activeColumn) => {
+      const header = headers[activeColumn];
+      const rawValue = cells[sourceColumn] ?? "";
+      return [header, header === "description" ? normalizeSellerListingDescription(rawValue) : normalizeSellerListingValue(rawValue)];
+    }));
     const rowErrors: string[] = [];
     if (cells.length > sourceHeaders.length) rowErrors.push("This row has more values than the header. Check for unescaped commas in cell values.");
-    const title = row.title ?? "";
+    const title = normalizeSellerListingTitle(row.title ?? "");
     if (!title) rowErrors.push("Add a product title.");
     if (title.length > 200) rowErrors.push("Product titles must be 200 characters or fewer.");
     if (!row.description || row.description.length < 80) rowErrors.push("Description must contain at least 80 characters.");
     if (row.description.length > 5000) rowErrors.push("Description must be 5,000 characters or fewer.");
 
-    const price = parsePositivePrice(row.price ?? "");
+    const price = parseSellerProductCsvMoney(row.price ?? "");
     if (price === null) rowErrors.push("Price must be a number greater than zero.");
-    const compareAtPrice = row.compare_at_price ? parsePositivePrice(row.compare_at_price) : null;
+    const compareAtPrice = row.compare_at_price ? parseSellerProductCsvMoney(row.compare_at_price) : null;
     if (row.compare_at_price && (compareAtPrice === null || (price !== null && compareAtPrice <= price))) {
       rowErrors.push("Compare-at price must be a valid amount greater than the product price.");
     }
-    const stockQuantity = Number(row.stock_quantity);
-    if (!row.stock_quantity || !Number.isInteger(stockQuantity) || stockQuantity < 0) {
+    const stockQuantity = parseSellerProductCsvWholeNumber(row.stock_quantity ?? "");
+    if (stockQuantity === null) {
       rowErrors.push("Stock quantity must be a whole number of zero or more.");
     }
 
@@ -226,7 +297,7 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[],
       rowErrors.push(`Product type "${row.product_type || "(blank)"}" is not available for ${category.name}.`);
     }
 
-    const imageUrls = [...new Set((row.image_urls ?? "").split("|").map((url) => url.trim()).filter(Boolean))];
+    const imageUrls = splitImageUrls(row.image_urls ?? "");
     if (imageUrls.length === 0) rowErrors.push("Add at least one public HTTPS image URL.");
     if (imageUrls.length > MAX_IMAGES) rowErrors.push(`Use no more than ${MAX_IMAGES} image URLs per product.`);
     if (imageUrls.some((value) => {
@@ -241,22 +312,22 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[],
     const attributes: Record<string, string> = {};
     activeColumnIndexes.forEach((sourceColumn, activeColumn) => {
       const header = headers[activeColumn];
-      if (header.startsWith("attr_") && cells[sourceColumn]?.trim()) {
+      if (header.startsWith("attr_") && row[header]) {
         const suppliedKey = header.slice(5);
         const canonicalKey = productType?.fields.find((field) =>
           field.key.toLowerCase().replace(/_/g, "") === suppliedKey.replace(/_/g, "")
         )?.key ?? suppliedKey;
-        attributes[canonicalKey] = cells[sourceColumn].trim();
+        attributes[canonicalKey] = row[header];
       }
     });
     const brand = row.brand || attributes.brand || "";
-    const conditionValue = (row.condition || attributes.condition || "new").toLowerCase();
-    const condition: CsvProduct["condition"] = conditionValue === "used" || conditionValue === "refurbished" ? conditionValue : "new";
-    if (!["new", "used", "refurbished"].includes(conditionValue)) {
+    const conditionValue = row.condition || attributes.condition || "new";
+    const condition = normalizeCondition(conditionValue);
+    if (!condition) {
       rowErrors.push("Condition must be new, used, or refurbished.");
     }
     if (brand && !attributes.brand && productType?.fields.some((field) => field.key === "brand")) attributes.brand = brand;
-    if (!attributes.condition && productType?.fields.some((field) => field.key === "condition")) attributes.condition = conditionValue;
+    if (!attributes.condition && productType?.fields.some((field) => field.key === "condition")) attributes.condition = condition || conditionValue;
 
     if (productType) {
       const allowedAttributes = new Set(productType.fields.map((field) => field.key));
@@ -271,7 +342,8 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[],
     }
 
     const gtin = row.gtin || "";
-    if (gtin && !isValidGtin(gtin)) rowErrors.push("GTIN must be a valid 8, 12, 13, or 14 digit code.");
+    const normalizedGtin = gtin.replace(/[\s-]/g, "");
+    if (normalizedGtin && !isValidGtin(normalizedGtin)) rowErrors.push("GTIN must be a valid 8, 12, 13, or 14 digit code.");
     const sku = row.sku || "";
     if (sku) {
       const normalizedSku = sku.toLowerCase();
@@ -300,9 +372,9 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[],
       imageUrls,
       sku: sku || null,
       brand: brand || null,
-      gtin: gtin || null,
+      gtin: normalizedGtin || null,
       mpn: row.mpn || null,
-      condition,
+      condition: condition!,
       attributes,
     });
   });
@@ -311,16 +383,28 @@ export function validateSellerProductCsv(csv: string, categories: CsvCategory[],
 }
 
 export const SELLER_PRODUCT_CSV_TEMPLATE = [
-  "title,description,price,currency,stock_quantity,category_slug,product_type,image_urls,sku,brand,gtin,mpn,condition,compare_at_price,attr_brand,attr_color,attr_material",
+  "title,description,price,currency,stock_quantity,category_slug,product_type,image_urls,sku,brand,gtin,mpn,condition,compare_at_price",
   "",
 ].join("\r\n");
+
+/** Build a type-specific template containing only attributes valid for the
+ * selected category/product type. Brand and condition use their standard
+ * columns, so sellers do not have to provide the same fact twice. */
+export function buildSellerProductCsvTemplate(category: CsvCategory, productType: ProductTypeConfig): string {
+  const baseHeaders = ["title", "description", "price", "currency", "stock_quantity", "category_slug", "product_type", "image_urls", "sku", "brand", "gtin", "mpn", "condition", "compare_at_price"];
+  const attributeHeaders = productType.fields
+    .filter((field) => field.key !== "brand" && field.key !== "condition")
+    .map((field) => attributeHeader(field.key));
+  return `${[...baseHeaders, ...attributeHeaders].filter((header, index, headers) => headers.indexOf(header) === index).join(",")}\r\n`;
+}
 
 export const SELLER_PRODUCT_CSV_GUIDE = [
   "Required columns: title, description, price, stock_quantity, category_slug, product_type, image_urls.",
   "Use category name/slug and product type key/label shown in the seller listing form. Common spreadsheet headers such as product_name, barcode, stock, and images are mapped during preview.",
-  "Add category-specific specifications as attr_fieldname columns, for example attr_color or attr_storage.",
-  "Separate multiple image URLs with |. Images must be public HTTPS URLs.",
-  "Descriptions must be 80-5000 characters. Currency defaults to NGN; condition defaults to new.",
+  "Use the tailored template for a category/product type: it includes only valid attr_fieldname columns and marks required fields in the category reference. Brand and condition use the standard columns.",
+  "Prices and stock accept normal spreadsheet formatting such as ₦1,089,000, 1,089,000, or 1 000. No currency conversion is performed.",
+  "Separate multiple image URLs with |, semicolons, or line breaks. Images must be public HTTPS URLs.",
+  "Descriptions are cleaned for repeated spaces but remain seller-provided and must be 80-5000 characters. Currency defaults to NGN; condition defaults to new.",
   "Use a unique SKU per product. If blank, Tradibu generates a stable SKU from the product content and image, so re-uploading the unchanged CSV is safe.",
   "One row is one single-price listing; SKU variant matrices must be created in the product form.",
   "Rows are imported atomically with their images and enter the normal admin approval queue. Re-importing unchanged rows is safe; edit changed listings from My Products.",

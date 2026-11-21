@@ -29,6 +29,7 @@ import { buildListingQualityWarnings, buildListingReadiness } from "@/lib/listin
 import { getCategoryPathLabel } from "@/lib/cataloguePresentation";
 import { getLaptopTitleQuality, getPhoneTitleQuality } from "@/lib/productListingPresentation";
 import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
+import { normalizeSellerListingDescription, normalizeSellerListingTitle, normalizeSellerListingValue } from "@/lib/sellerProductCsv";
 import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
 
@@ -1034,8 +1035,16 @@ export default function SellerProducts() {
     const cleanFeatures = keyFeatures.map(f => f.trim()).filter(Boolean).slice(0, 5);
     const cleanTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
     const derivedDeviceAttributes = isDeviceListing ? deriveVariantAttributes(variantRows) : {};
+    const baseListingAttributes = {
+      brand,
+      condition,
+      weight,
+      dimensions,
+      material,
+      color,
+    };
     const cleanCategoryAttributes = Object.fromEntries(
-      Object.entries({ ...categoryAttributes, ...derivedDeviceAttributes })
+      Object.entries({ ...categoryAttributes, ...baseListingAttributes, ...derivedDeviceAttributes })
         .map(([key, value]) => [key, value.trim()])
         .filter(([, value]) => value)
     );
@@ -1649,11 +1658,11 @@ export default function SellerProducts() {
   const selectableProductTypes = getProductTypesForCategory(selectedCategory);
   const selectedProductTypeConfig = findProductTypeConfig(selectedCategory, productTypeKey);
   const requiredSpecificationKeys = useMemo(
-    () => new Set(getRequiredFields(selectedProductTypeConfig)),
-    [selectedProductTypeConfig],
+    () => productTypeKey ? new Set(getRequiredFields(selectedProductTypeConfig)) : new Set<string>(),
+    [productTypeKey, selectedProductTypeConfig],
   );
-  const isPhoneListing = selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones";
-  const isLaptopListing = selectedProductTypeConfig.key === "laptops";
+  const isPhoneListing = Boolean(productTypeKey) && (selectedProductTypeConfig.key === "mobile-phones" || selectedProductTypeConfig.key === "phones");
+  const isLaptopListing = Boolean(productTypeKey) && selectedProductTypeConfig.key === "laptops";
   const isDeviceListing = isPhoneListing || isLaptopListing;
   const primaryVariationDetails = variationTypeDetails(variantPrimaryOption);
   const hasVariantRows = variantRows.length > 0;
@@ -1661,9 +1670,17 @@ export default function SellerProducts() {
     () => isDeviceListing ? deriveVariantAttributes(variantRows) : {},
     [isDeviceListing, variantRows],
   );
+  const baseCategoryAttributes = useMemo(() => ({
+    brand: brand.trim(),
+    condition: condition ? `${condition[0].toUpperCase()}${condition.slice(1)}` : "",
+    weight: weight.trim(),
+    dimensions: dimensions.trim(),
+    material: material.trim(),
+    color: color.trim(),
+  }), [brand, condition, weight, dimensions, material, color]);
   const effectiveCategoryAttributes = useMemo(
-    () => ({ ...categoryAttributes, ...deviceOptionAttributes }),
-    [categoryAttributes, deviceOptionAttributes],
+    () => ({ ...categoryAttributes, ...baseCategoryAttributes, ...deviceOptionAttributes }),
+    [categoryAttributes, baseCategoryAttributes, deviceOptionAttributes],
   );
   const showLegacySizeColumn = variantRows.some((row) => Boolean(row.size.trim()));
   const showColourColumn = variantRows.some((row) => Boolean(row.color.trim())) || Boolean(variantColorValues.trim());
@@ -1707,19 +1724,38 @@ export default function SellerProducts() {
   });
   const updateCategoryAttribute = (key: string, value: string) => {
     setCategoryAttributes(prev => ({ ...prev, [key]: value }));
+    if (key === "brand") setBrand(value);
+    if (key === "weight") setWeight(value);
+    if (key === "dimensions") setDimensions(value);
+    if (key === "material") setMaterial(value);
+    if (key === "color") setColor(value);
+    if (key === "condition") setCondition(value.toLowerCase());
+  };
+  const handleCategoryChange = (value: string) => {
+    const nextCategory = categories.find((category) => category.id === value);
+    const nextTypes = getProductTypesForCategory(nextCategory);
+    setCategoryId(value);
+    setProductTypeKey(nextTypes.length === 1 ? nextTypes[0].key : "");
+    setCategoryAttributes({});
+  };
+  const handleProductTypeChange = (value: string) => {
+    const nextType = findProductTypeConfig(selectedCategory, value);
+    const allowedFields = new Set(nextType.fields.map((field) => field.key));
+    setProductTypeKey(value);
+    setCategoryAttributes((current) => Object.fromEntries(Object.entries(current).filter(([key]) => allowedFields.has(key))));
   };
   const phoneTitleWarning = isPhoneListing
     ? getPhoneTitleQuality({
       title,
       brand,
-      variants: { categoryAttributes, productType: { key: selectedProductTypeConfig.key } },
+      variants: { categoryAttributes: effectiveCategoryAttributes, productType: { key: selectedProductTypeConfig.key } },
     })
     : null;
   const laptopTitleWarning = isLaptopListing
     ? getLaptopTitleQuality({
       title,
       brand,
-      variants: { categoryAttributes, productType: { key: selectedProductTypeConfig.key } },
+      variants: { categoryAttributes: effectiveCategoryAttributes, productType: { key: selectedProductTypeConfig.key } },
     })
     : null;
 
@@ -1828,7 +1864,7 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label htmlFor="product-category" className="text-sm font-medium text-foreground">Category *</label>
-                    <Select value={categoryId} onValueChange={(value) => { setCategoryId(value); setProductTypeKey(""); setCategoryAttributes({}); }}>
+                    <Select value={categoryId} onValueChange={handleCategoryChange}>
                       <SelectTrigger id="product-category" className="mt-1"><SelectValue placeholder="Select category" /></SelectTrigger>
                       <SelectContent>
                         {categories.map(c => <SelectItem key={c.id} value={c.id}>{getCategoryPathLabel(c, categories)}</SelectItem>)}
@@ -1838,7 +1874,7 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label htmlFor="product-type" className="text-sm font-medium text-foreground">Product Type *</label>
-                    <Select value={productTypeKey} onValueChange={(value) => { setProductTypeKey(value); setCategoryAttributes({}); }} disabled={!categoryId}>
+                    <Select value={productTypeKey} onValueChange={handleProductTypeChange} disabled={!categoryId}>
                       <SelectTrigger id="product-type" className="mt-1"><SelectValue placeholder={categoryId ? "Select product type" : "Choose category first"} /></SelectTrigger>
                       <SelectContent>
                         {selectableProductTypes.map(type => <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>)}
@@ -1846,9 +1882,26 @@ export default function SellerProducts() {
                     </Select>
                     <p className="mt-1 text-xs text-muted-foreground">Only product types that belong to this category are shown. Product type controls the exact fields buyers and admins will see.</p>
                   </div>
+                  {categoryId && productTypeKey && (
+                    <div className="rounded-lg border border-[#F3D36A] bg-[#FFF9E6] p-3 text-xs text-[#5F4A00] dark:border-[#6E5A17] dark:bg-[#2B250F] dark:text-[#F9E7A7]" aria-label="Listing assistant">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold">Listing assistant: {selectedProductTypeConfig.label}</p>
+                          <p className="mt-1 leading-relaxed">Enter only product facts you can verify. This is a checklist, not generated claims, and the same values are used in the buyer listing and import validation.</p>
+                        </div>
+                        <Button type="button" variant="outline" size="sm" className="h-8 shrink-0 border-[#D6B52D] bg-transparent text-xs text-inherit hover:bg-[#F7E7A8]/50" onClick={() => setFormTab("specs")}>Open details</Button>
+                      </div>
+                      <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+                        {selectedProductTypeConfig.fields.filter((field) => requiredSpecificationKeys.has(field.key)).map((field) => {
+                          const complete = Boolean(effectiveCategoryAttributes[field.key]?.trim());
+                          return <span key={field.key} className="flex items-center gap-1.5"><CheckCircle2 className={`h-3.5 w-3.5 ${complete ? "text-emerald-600" : "text-muted-foreground"}`} />{field.label}{complete ? " added" : ` — ${field.placeholder || "add verified value"}`}</span>;
+                        })}
+                      </div>
+                    </div>
+                  )}
                   <div>
                     <label htmlFor="product-title" className="text-sm font-medium text-foreground">Product Title *</label>
-                    <Input id="product-title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
+                    <Input id="product-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => setTitle(normalizeSellerListingTitle(title))} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : isLaptopListing ? "Use brand, model, RAM, storage, processor family, and a meaningful configuration. Keep claims consistent with the specifications below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
                     {isPhoneListing && (
                       <div className="mt-3 rounded-xl border border-[#F3D36A] bg-[#FFF9E6] p-3 text-xs text-[#5F4A00] dark:border-[#6E5A17] dark:bg-[#2B250F] dark:text-[#F9E7A7]">
@@ -1867,7 +1920,7 @@ export default function SellerProducts() {
                   </div>
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
-                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
+                    <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} onBlur={() => setDescription(normalizeSellerListingDescription(description))} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
                     <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: "Original iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version."</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
@@ -1906,11 +1959,11 @@ export default function SellerProducts() {
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div>
                         <label htmlFor="product-brand" className="text-sm font-medium text-foreground">Brand</label>
-                        <Input id="product-brand" value={brand} onChange={(event) => setBrand(event.target.value)} placeholder="Manufacturer brand" className="mt-1" />
+                        <Input id="product-brand" value={brand} onChange={(event) => updateCategoryAttribute("brand", event.target.value)} onBlur={() => updateCategoryAttribute("brand", normalizeSellerListingValue(brand))} placeholder="Manufacturer brand" className="mt-1" />
                       </div>
                       <div>
                         <label htmlFor="product-condition" className="text-sm font-medium text-foreground">Condition</label>
-                        <Select value={condition} onValueChange={setCondition}>
+                        <Select value={condition} onValueChange={(value) => updateCategoryAttribute("condition", value)}>
                           <SelectTrigger id="product-condition" className="mt-1"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="new">New</SelectItem>
@@ -2095,11 +2148,15 @@ export default function SellerProducts() {
                         {isLaptopListing && <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Use the exact processor, RAM, storage type/capacity, display resolution, GPU, and operating system. For used or refurbished laptops, report battery health honestly and show the screen, keyboard, ports, charger, and visible wear.</p>}
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {selectedProductTypeConfig.fields.map((field) => (
-                          <div key={field.key}>
+                        {selectedProductTypeConfig.fields.map((field) => {
+                          const fieldValue = effectiveCategoryAttributes[field.key] || "";
+                          const selectValue = field.type === "select"
+                            ? field.options?.find((option) => option.toLowerCase() === fieldValue.toLowerCase()) || ""
+                            : fieldValue;
+                          return <div key={field.key}>
                             <label htmlFor={`product-spec-${field.key}`} className="text-sm font-medium text-foreground">{field.label}{requiredSpecificationKeys.has(field.key) ? " *" : ""}</label>
                             {field.type === "select" ? (
-                              <Select value={categoryAttributes[field.key] || ""} onValueChange={(value) => updateCategoryAttribute(field.key, value)}>
+                              <Select value={selectValue} onValueChange={(value) => updateCategoryAttribute(field.key, value)}>
                                 <SelectTrigger id={`product-spec-${field.key}`} className="mt-1"><SelectValue placeholder={`Select ${field.label.toLowerCase()}`} /></SelectTrigger>
                                 <SelectContent>
                                   {(field.options || []).map(option => <SelectItem key={option} value={option}>{option}</SelectItem>)}
@@ -2107,7 +2164,7 @@ export default function SellerProducts() {
                               </Select>
                             ) : field.type === "textarea" ? (
                               <Textarea
-                                value={categoryAttributes[field.key] || ""}
+                                value={fieldValue}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
                                 id={`product-spec-${field.key}`}
                                 placeholder={field.placeholder}
@@ -2117,7 +2174,7 @@ export default function SellerProducts() {
                             ) : (
                               <Input
                                 type={field.type === "date" ? "date" : "text"}
-                                value={categoryAttributes[field.key] || ""}
+                                value={fieldValue}
                                 onChange={(e) => updateCategoryAttribute(field.key, e.target.value)}
                                 id={`product-spec-${field.key}`}
                                 placeholder={field.placeholder}
@@ -2125,8 +2182,8 @@ export default function SellerProducts() {
                               />
                             )}
                             {field.helpText && <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{field.helpText}</p>}
-                          </div>
-                        ))}
+                          </div>;
+                        })}
                       </div>
                     </>
                   )}

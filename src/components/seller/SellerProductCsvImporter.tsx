@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, CircleAlert, Download, Loader2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { getProductTypesForCategory, getRequiredFields } from "@/lib/categoryConfig";
-import { CSV_IGNORE_COLUMN, CSV_MAPPABLE_HEADERS, CSV_UNMAPPED_COLUMN, getSellerProductCsvHeaders, suggestSellerProductCsvMapping, SELLER_PRODUCT_CSV_GUIDE, SELLER_PRODUCT_CSV_TEMPLATE, validateSellerProductCsv, type CsvCategory, type CsvColumnMapping, type CsvProduct, type CsvRowError } from "@/lib/sellerProductCsv";
+import { buildSellerProductCsvTemplate, CSV_IGNORE_COLUMN, CSV_MAPPABLE_HEADERS, CSV_UNMAPPED_COLUMN, getSellerProductCsvHeaders, suggestSellerProductCsvMapping, SELLER_PRODUCT_CSV_GUIDE, SELLER_PRODUCT_CSV_TEMPLATE, validateSellerProductCsv, type CsvCategory, type CsvColumnMapping, type CsvProduct, type CsvRowError } from "@/lib/sellerProductCsv";
 
 type ImportStatus = "ready" | "imported" | "error";
 type ImportRow = { product: CsvProduct; status: ImportStatus; error?: string; sku?: string };
@@ -124,6 +124,25 @@ export default function SellerProductCsvImporter({
   const [importing, setImporting] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressLabel, setProgressLabel] = useState("");
+  const [templateCategorySlug, setTemplateCategorySlug] = useState("");
+  const [templateProductTypeKey, setTemplateProductTypeKey] = useState("");
+
+  const templateCategory = categories.find((category) => category.slug === templateCategorySlug);
+  const templateProductTypes = useMemo(
+    () => getProductTypesForCategory(templateCategory),
+    [templateCategory],
+  );
+  const templateProductType = templateProductTypes.find((type) => type.key === templateProductTypeKey);
+
+  useEffect(() => {
+    if (!templateCategorySlug && categories.length === 1) setTemplateCategorySlug(categories[0].slug);
+  }, [categories, templateCategorySlug]);
+
+  useEffect(() => {
+    if (!templateProductTypes.some((type) => type.key === templateProductTypeKey)) {
+      setTemplateProductTypeKey(templateProductTypes.length === 1 ? templateProductTypes[0].key : "");
+    }
+  }, [templateProductTypeKey, templateProductTypes]);
 
   const counts = useMemo(() => rows.reduce((result, row) => {
     result[row.status] += 1;
@@ -291,16 +310,51 @@ export default function SellerProductCsvImporter({
 
         <div className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 p-3">
-            <div>
+            <div className="min-w-0">
               <p className="text-sm font-semibold">Start with the template</p>
-              <p className="mt-1 text-xs text-muted-foreground">Images must be public HTTPS URLs. Separate multiple image URLs with a vertical bar: URL1|URL2.</p>
+              <p className="mt-1 text-xs text-muted-foreground">Use a tailored template to get only the fields valid for that product type. This prevents avoidable unknown-attribute errors.</p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-wrap gap-2 sm:w-auto">
               <Button type="button" variant="outline" size="sm" disabled={categoriesLoading || categories.length === 0} onClick={() => downloadFile("tradibu-category-attribute-reference.csv", categoryReferenceCsv(categories))}>
                 <Download className="mr-2 h-4 w-4" /> Category reference
               </Button>
               <Button type="button" variant="outline" size="sm" onClick={() => downloadFile("tradibu-product-import-template.csv", SELLER_PRODUCT_CSV_TEMPLATE)}>
-                <Download className="mr-2 h-4 w-4" /> CSV template
+                <Download className="mr-2 h-4 w-4" /> Universal template
+              </Button>
+            </div>
+            <div className="grid w-full gap-2 sm:grid-cols-2">
+              <div>
+                <label htmlFor="seller-template-category" className="text-xs font-medium">Template category</label>
+                <Select value={templateCategorySlug || "__none"} onValueChange={(value) => { setTemplateCategorySlug(value === "__none" ? "" : value); setTemplateProductTypeKey(""); }} disabled={categoriesLoading || categories.length === 0}>
+                  <SelectTrigger id="seller-template-category" className="mt-1 h-9 text-xs"><SelectValue placeholder="Choose category" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Choose category</SelectItem>
+                    {categories.map((category) => <SelectItem key={category.slug} value={category.slug}>{category.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label htmlFor="seller-template-product-type" className="text-xs font-medium">Product type</label>
+                <Select value={templateProductTypeKey || "__none"} onValueChange={(value) => setTemplateProductTypeKey(value === "__none" ? "" : value)} disabled={!templateCategory}>
+                  <SelectTrigger id="seller-template-product-type" className="mt-1 h-9 text-xs"><SelectValue placeholder="Choose product type" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none">Choose product type</SelectItem>
+                    {templateProductTypes.map((type) => <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="sm:col-span-2 sm:w-fit"
+                disabled={!templateCategory || !templateProductType}
+                onClick={() => {
+                  if (!templateCategory || !templateProductType) return;
+                  downloadFile(`tradibu-${templateCategory.slug}-${templateProductType.key}-template.csv`, buildSellerProductCsvTemplate(templateCategory, templateProductType));
+                }}
+              >
+                <Download className="mr-2 h-4 w-4" /> Download tailored template
               </Button>
             </div>
           </div>
@@ -309,7 +363,7 @@ export default function SellerProductCsvImporter({
             <summary className="cursor-pointer text-sm font-medium">CSV instructions and category values</summary>
             <pre className="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">{SELLER_PRODUCT_CSV_GUIDE}</pre>
             <p className="mt-2 text-xs font-medium">Categories: {categories.map((category) => `${category.name} (${category.slug})`).join(", ") || "Loading…"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">For each category, product type keys and labels must match the seller listing form. Add required fields as attr_fieldname columns.</p>
+            <p className="mt-1 text-xs text-muted-foreground">For each category, product type keys and labels match the seller listing form. The tailored template adds the required attribute columns for you.</p>
           </details>
 
           {sourceHeaders.length > 0 && (
