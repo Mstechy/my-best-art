@@ -40,10 +40,12 @@ for (const viewport of [
     await expect(page.getByRole("button", { name: "Share product" })).toBeVisible();
 
     if (viewport.name === "mobile") {
-      const chooseButton = page.getByRole("button", { name: "Choose" }).first();
+      await expect(page.getByText("Available configurations")).toHaveCount(0);
+      await expect(page.getByRole("heading", { name: "Product highlights" })).toHaveCount(0);
+      const chooseButton = page.getByRole("button", { name: "Choose options" }).first();
       await expect(chooseButton).toBeVisible();
       await chooseButton.click();
-      await expect(page.getByRole("dialog").getByText("Choose options")).toBeVisible();
+      await expect(page.getByRole("dialog").getByRole("heading", { name: /Choose/ })).toBeVisible();
       await expect(page.getByRole("dialog").locator("img")).toHaveCount(1);
     }
 

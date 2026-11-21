@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, ChevronLeft, ChevronRight, Flame, Store, ShoppingCart } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Heart, Truck, Shield, Info, Star, MessageSquare, Send, Tag, FileText, ImagePlus, X, ZoomIn, ZoomOut, Share2, Play, ChevronDown, ChevronLeft, ChevronRight, Store, ShoppingCart } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import type { TablesInsert } from "@/integrations/supabase/types";
@@ -201,16 +201,27 @@ export default function ProductDetailPage() {
   }, [productSurface, variantChoiceKeys]);
   const productDetailSpecs = useMemo(() => {
     if (!product) return null;
-    // Quick facts are the comparison layer beside the buy box. Do not repeat
-    // those same fields in the long specifications table below the description.
-    const systemKeys = new Set(["categoryGroup", "productTypeKey", ...getProductDetailFactKeys(productSurface)]);
     const productType = getProductType(product.variants);
     const productTypeConfig = findProductTypeConfig(category, productType?.key);
     const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
+    const variantKeys = new Set([...variantAttributeKeys].map((key) => key.toLowerCase()));
     const details: Record<string, string> = {};
+    const facts = getProductFactEntries({
+      attributes: getCategoryAttributes(product.variants),
+      topLevel: { brand: product.brand, color: product.color, condition: product.condition },
+      labels,
+      // Variant values belong to the purchase sheet. Keep fixed listing facts
+      // here so every technical fact is rendered once, below the purchase flow.
+      keys: getProductDetailFactKeys(productSurface).filter((key) => !variantKeys.has(key.toLowerCase())),
+      limit: 20,
+    });
+    facts.forEach((fact) => { details[fact.label] = fact.value; });
+
     Object.entries(getCategoryAttributes(product.variants)).forEach(([key, value]) => {
-      if (variantAttributeKeys.has(key) || systemKeys.has(key) || !value?.trim()) return;
-      details[labels[key] ?? key] = value.trim();
+      const normalizedKey = key.toLowerCase();
+      if (variantKeys.has(normalizedKey) || normalizedKey === "categorygroup" || normalizedKey === "producttypekey" || !value?.trim()) return;
+      const label = labels[key] ?? key;
+      if (!details[label]) details[label] = value.trim();
     });
     const addDetail = (label: string, value: string | null | undefined) => {
       if (value?.trim() && !details[label]) details[label] = value.trim();
@@ -222,28 +233,6 @@ export default function ProductDetailPage() {
     // do not repeat it in the long specification table.
     return Object.keys(details).length > 0 ? details : null;
   }, [category, product, productSurface, variantAttributeKeys]);
-  const productQuickFacts = useMemo(() => {
-    if (!product) return [];
-    const productType = getProductType(product.variants);
-    const productTypeConfig = findProductTypeConfig(category, productType?.key);
-    const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
-    const choiceKeys = new Set([...variantChoiceKeys].map((key) => key.toLowerCase()));
-    const isChoiceKey = (key: string) => {
-      const normalized = key.toLowerCase();
-      return choiceKeys.has(normalized)
-        || (normalized === "color" && choiceKeys.has("colour"))
-        || (normalized === "colour" && choiceKeys.has("color"));
-    };
-    const keys = getProductDetailFactKeys(productSurface);
-    return getProductFactEntries({
-      attributes: getCategoryAttributes(product.variants),
-      topLevel: { brand: product.brand, color: product.color, condition: product.condition },
-      labels,
-      // A dimension with multiple SKU values belongs in the purchase sheet,
-      // not in the product facts. Common facts such as 5G remain visible.
-      keys: keys.filter((key) => !isChoiceKey(key)),
-    });
-  }, [category, product, productSurface, variantChoiceKeys]);
   const selectedVariant = hasProductVariants
     ? (variantAttributeKeys.size > 0 && [...variantAttributeKeys].every((key) => selectedVariantOptions[key])
       ? productVariants.find((variant) =>
@@ -710,19 +699,6 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <>
-          <nav aria-label="Breadcrumb" className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
-            <Link to="/" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Home</Link>
-            <span aria-hidden="true">/</span>
-            <Link to="/marketplace" className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">Marketplace</Link>
-            {category?.name && (
-              <>
-                <span aria-hidden="true">/</span>
-                <Link to={category.slug ? `/categories/${category.slug}` : "/marketplace"} className="hover:text-[#111111] hover:underline dark:hover:text-[#FAF5F2]">{category.name}</Link>
-              </>
-            )}
-            <span aria-hidden="true">/</span>
-            <span className="max-w-[18rem] truncate font-medium text-[#111111] dark:text-[#FAF5F2]">{product.title}</span>
-          </nav>
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
             <div>
               {mediaItems.length > 0 && (
@@ -807,116 +783,69 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-             <div className="space-y-5 rounded-2xl border border-[#E8E8E8] bg-white p-5 shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A] md:p-6">
-               <div>
-                 {/* Marketplace hierarchy: identity, proof, price, options, then purchase. */}
-                 {product.condition && (
-                   <span className="mb-3 inline-flex rounded-full bg-[#F2F3F5] px-2.5 py-1 text-[11px] font-bold capitalize text-[#555555] dark:bg-[#202020] dark:text-[#C8C8C8]">
-                     {product.condition} condition
-                   </span>
-                 )}
-                 <div className="flex items-start gap-3 border-l-4 border-brand pl-3">
-                   <h1 className={`min-w-0 flex-1 text-[clamp(1.55rem,2.4vw,2.25rem)] font-black leading-[1.08] tracking-[-0.03em] text-[#111111] dark:text-[#FAF5F2] ${!titleExpanded ? "line-clamp-3" : ""}`}>{product.title || "Untitled product"}</h1>
-                  <button type="button" onClick={() => void shareProduct()} className="hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] md:grid" aria-label="Share product">
-                    <Share2 className="h-4 w-4" />
-                  </button>
-                </div>
-                {(product.title ?? "").length > 90 && (
-                  <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] dark:text-[#FAF5F2] underline">
-                    {titleExpanded ? "Less" : "More"}
-                  </button>
-                )}
-
-                {selectedVariant && (
-                  <p className="mt-2 text-xs font-medium text-[#666666] dark:text-[#A0A0A0]" aria-live="polite">
-                    Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")}
-                  </p>
-                )}
-
-                 {/* Show only earned signals; an empty row should never reserve space. */}
-                 {(seller?.is_verified || product.review_count > 0 || (product.show_sold_count !== false && soldCount > 0) || (!inventoryAvailable || (Boolean(selectedVariant) && purchasableStock === 0))) && (
-                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6E6C64]">
-                  {seller?.is_verified && (
-                    <span className="flex items-center gap-1 font-semibold text-[#16803C] dark:text-[#5EE38B]">
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                      Verified seller
-                    </span>
-                  )}
-                  {product.review_count > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 fill-[#F6C75D] text-[#F6C75D]" />
-                      <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{(product.average_rating ?? 0).toFixed(1)}</span>
-                      <span>({product.review_count})</span>
-                    </div>
-                  )}
-                  {product.show_sold_count !== false && soldCount > 0 && <span>{soldCount} sold</span>}
-                   {(!inventoryAvailable || (Boolean(selectedVariant) && purchasableStock === 0)) && <span className="font-semibold text-[#E53935]">Out of stock</span>}
+             <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
+               <section aria-labelledby="product-title">
+                 {/* The buy box follows the marketplace reading order: condition, title, proof, price, action. */}
+                 <div className="flex items-center justify-between gap-3">
+                   {product.condition ? (
+                     <span className="inline-flex rounded-full border border-[#E6C85C] bg-[#FFF8D9] px-2 py-0.5 text-[10px] font-bold capitalize text-[#6D5200] dark:border-[#8A742C] dark:bg-[#2A2512] dark:text-[#F6D96D]">
+                       {product.condition} condition
+                     </span>
+                   ) : <span aria-hidden="true" />}
+                   <button type="button" onClick={() => void shareProduct()} className="hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] md:grid" aria-label="Share product">
+                     <Share2 className="h-4 w-4" />
+                   </button>
                  </div>
+                 <div className="mt-3 flex items-start gap-3 border-l-4 border-brand pl-3">
+                   <h1 id="product-title" className={`min-w-0 flex-1 text-[1.15rem] font-bold leading-[1.25] tracking-[-0.01em] text-[#111111] dark:text-[#FAF5F2] sm:text-[1.25rem] lg:text-[1.35rem] ${!titleExpanded ? "line-clamp-3" : ""}`}>{product.title || "Untitled product"}</h1>
+                 </div>
+                 {(product.title ?? "").length > 90 && (
+                   <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] underline dark:text-[#FAF5F2]">
+                     {titleExpanded ? "Show less" : "Read full title"}
+                   </button>
                  )}
 
-                {/* The quantity control stays in the main buy box for every SKU type. */}
-                {/* Promo pricing banner (MarketHub-adapted) */}
-                {product.compare_at_price && product.compare_at_price > product.price && !hasProductVariants ? (
-                  <div className="mt-4 rounded-2xl bg-[#1A1A1A] dark:bg-[#252525] text-white px-4 py-3">
-                    <div className="flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-[#F6C75D]">
-                        <Flame className="h-3 w-3" />
-                        Limited Offer
-                      </span>
-                      <span className="text-[10px] font-bold text-[#D4D4D4]">
-                        Save {Math.round((1 - product.price / product.compare_at_price) * 100)}%
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap items-baseline gap-2 mt-2">
-                      <span className="text-3xl font-black text-white">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
-                      <span className="text-base text-[#D4D4D4] line-through">{formatPrice(product.compare_at_price)}</span>
-                      <span className="rounded-full bg-[#8F2B25] px-2 py-0.5 text-xs font-bold text-white">
-                        -{Math.round((1 - product.price / product.compare_at_price) * 100)}%
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-3 flex items-baseline gap-3">
-                    <span className="text-3xl font-black">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
-                    {purchasableStock > 0 && purchasableStock <= (product.low_stock_threshold ?? 5) && (
-                      <span className="text-xs font-semibold text-[#E53935]">Only {purchasableStock} left</span>
-                    )}
-                  </div>
-                )}
-              </div>
+                 {/* Only show facts the marketplace has actually earned. */}
+                 {(seller?.full_name || seller?.is_verified || product.review_count > 0 || (product.show_sold_count !== false && soldCount > 0)) && (
+                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">
+                     {seller?.full_name && <span>Sold by <span className="font-bold text-[#111111] dark:text-[#FAF5F2]">{seller.full_name}</span></span>}
+                     {seller?.is_verified && (
+                       <span className="flex items-center gap-1 font-semibold text-[#16803C] dark:text-[#5EE38B]"><CheckCircle2 className="h-3.5 w-3.5" />Verified seller</span>
+                     )}
+                     {product.review_count > 0 && (
+                       <span className="inline-flex items-center gap-1 font-semibold text-[#111111] dark:text-[#FAF5F2]"><Star className="h-3.5 w-3.5 fill-[#F6C75D] text-[#C99600]" />{(product.average_rating ?? 0).toFixed(1)} <span className="font-normal text-[#6E6C64] dark:text-[#A0A0A0]">({product.review_count} reviews)</span></span>
+                     )}
+                     {product.show_sold_count !== false && soldCount > 0 && <span>{soldCount} sold</span>}
+                   </div>
+                 )}
 
-             {hasProductVariants && (
-               <section className="rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#222222] dark:bg-[#181818]" aria-label="Product options">
-                 <div className="flex items-start justify-between gap-4">
-                   <div className="min-w-0">
-                     <h2 className="text-sm font-bold">Choose {variantSelectionLabel}</h2>
-                     <p className="mt-1 text-xs leading-5 text-[#6E6C64]">{getVariantSelectionDescription(productSurface)}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setPurchaseAction("cart")}
-                    disabled={!inventoryAvailable}
-                    className="shrink-0 rounded-full bg-[#111111] px-4 py-2.5 text-xs font-bold text-white transition-colors hover:bg-[#2A2A2A] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#FAF5F2] dark:text-[#111111]"
-                  >
-                    {selectedVariant ? "Change" : "Choose"}
-                  </button>
-                </div>
-                <div className="mt-4 flex items-center justify-between gap-3 rounded-xl bg-[#F2F3F5] px-3 py-2.5 text-xs dark:bg-[#222222]" aria-live="polite">
-                  <span className="min-w-0">
-                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{selectedVariant ? "Selected configuration" : "Configuration"}</span>
-                    <span className="mt-0.5 block truncate font-bold">
-                      {selectedVariant
-                        ? Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")
-                        : "Choose options to continue"}
-                    </span>
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block font-bold">{selectedVariant ? formatPrice(purchasablePrice) : `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}`}</span>
-                    {selectedVariant && <span className="font-semibold text-[#16803C] dark:text-[#5EE38B]">{purchasableStock} available</span>}
-                  </span>
-                </div>
-              </section>
-            )}
+                 <div className="mt-3 rounded-xl border border-[#E9D27A] bg-[#FFFBEA] px-3.5 py-3 dark:border-[#6D5C24] dark:bg-[#24200F]">
+                   <div className="flex items-start justify-between gap-3">
+                     <div className="min-w-0">
+                       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#756A45] dark:text-[#D8C77B]">{hasProductVariants && !selectedVariant ? "Starting price" : "Price"}</p>
+                       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                         <span className="text-[1.45rem] font-black leading-none tracking-[-0.025em] text-[#111111] dark:text-[#FFF8D9] sm:text-[1.55rem] lg:text-[1.7rem]">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
+                         {product.compare_at_price && product.compare_at_price > product.price && !hasProductVariants && (
+                           <>
+                             <span className="text-sm font-semibold text-[#756A45] line-through dark:text-[#B7AB76]">{formatPrice(product.compare_at_price)}</span>
+                             <span className="rounded-md bg-[#D94A38] px-1.5 py-0.5 text-[11px] font-black text-white">-{Math.round((1 - product.price / product.compare_at_price) * 100)}%</span>
+                           </>
+                         )}
+                       </div>
+                       {hasProductVariants && !selectedVariant ? (
+                       <p className="mt-1 text-[11px] leading-4 text-[#756A45] dark:text-[#D8C77B]">Select an option to see its exact price, stock, and matching image.</p>
+                       ) : selectedVariant ? (
+                         <p className="mt-1 text-[11px] font-semibold text-[#756A45] dark:text-[#D8C77B]" aria-live="polite">Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")}</p>
+                       ) : null}
+                     </div>
+                     <div className="shrink-0 text-right text-xs font-semibold">
+                       {!inventoryAvailable ? <span className="text-[#B42318]">Out of stock</span> : selectedVariant || !hasProductVariants ? (
+                         <span className={purchasableStock <= (product.low_stock_threshold ?? 5) ? "text-[#B42318]" : "text-[#16803C]"}>{purchasableStock <= (product.low_stock_threshold ?? 5) ? `Only ${purchasableStock} left` : "In stock"}</span>
+                       ) : <span className="text-[#16803C]">In stock</span>}
+                     </div>
+                   </div>
+                 </div>
+               </section>
 
             {!hasProductVariants && (
               <>
@@ -963,6 +892,7 @@ export default function ProductDetailPage() {
             )}
 
             <div className="flex flex-wrap items-end gap-4">
+              {(!hasProductVariants || selectedVariant) && (
               <div className="shrink-0">
                 <span className="mb-1.5 block text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Quantity</span>
                 <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]" aria-label="Quantity">
@@ -971,6 +901,7 @@ export default function ProductDetailPage() {
                   <button type="button" onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} disabled={!canPurchase || quantity >= purchasableStock} aria-label="Increase quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">+</button>
                 </div>
               </div>
+              )}
               <div className="flex min-w-0 flex-1 gap-3">
                 <button
                   type="button"
@@ -1053,23 +984,6 @@ export default function ProductDetailPage() {
                 chatHref={`${chatPath}?seller=${seller.user_id}&product=${product.id}`}
                onVerifiedClick={() => setVerifiedSellerOpen(true)}
              />
-            )}
-
-            {productQuickFacts.length > 0 && (
-              <section className="overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#2A2A2A] dark:bg-[#1A1A1A]" aria-labelledby="product-at-a-glance">
-                <div className="border-b border-[#E8E8E8] px-4 py-3 dark:border-[#2A2A2A]">
-                  <h2 id="product-at-a-glance" className="text-sm font-black tracking-tight text-[#111111] dark:text-[#FAF5F2]">At a glance</h2>
-                  <p className="mt-0.5 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Key information from this seller’s listing.</p>
-                </div>
-                <dl className="grid grid-cols-1 sm:grid-cols-2" aria-label="Product highlights">
-                  {productQuickFacts.map((fact, index) => (
-                    <div key={fact.key} className={`px-4 py-3 ${index > 0 ? "border-t border-[#E8E8E8] dark:border-[#2A2A2A]" : ""} sm:[&:nth-child(2)]:border-t-0 sm:[&:nth-child(even)]:border-l sm:[&:nth-child(even)]:border-[#E8E8E8] sm:[&:nth-child(even)]:dark:border-[#2A2A2A]`}>
-                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{fact.label}</dt>
-                      <dd className="mt-0.5 break-words text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{fact.value}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </section>
             )}
 
             {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
