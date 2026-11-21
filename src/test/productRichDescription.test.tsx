@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import ProductRichDescription from "@/components/product/ProductRichDescription";
 
 describe("ProductRichDescription", () => {
-  it("keeps long seller detail galleries collapsed until requested", () => {
+  it("shows long seller detail galleries and lets the buyer collapse them", () => {
     render(
       <ProductRichDescription
         images={[
@@ -14,25 +14,32 @@ describe("ProductRichDescription", () => {
       />,
     );
 
-    const toggle = screen.getByRole("button", { name: "Show full listing details" });
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(screen.queryByAltText("Listing detail one")).not.toBeInTheDocument();
+    const toggle = screen.getByRole("button", { name: "Hide full listing details" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByAltText("Listing detail one")).toBeInTheDocument();
+    expect(screen.getByAltText("Listing detail two")).toBeInTheDocument();
 
     fireEvent.click(toggle);
 
-    expect(screen.getByRole("button", { name: "Hide full listing details" })).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByAltText("Listing detail one")).toBeInTheDocument();
-    expect(screen.getByAltText("Listing detail two")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Show full listing details" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByAltText("Listing detail one")).not.toBeInTheDocument();
+    expect(screen.queryByAltText("Listing detail two")).not.toBeInTheDocument();
   });
 
-  it("keeps a single detail image visible without an extra interaction", () => {
+  it("shows a single detail image with the same collapse control", () => {
     render(
       <ProductRichDescription
         images={[{ url: "/listing-detail.jpg", alt: "Listing detail", order: 1 }]}
       />,
     );
 
-    expect(screen.getByRole("button", { name: "Hide full listing details" })).toHaveAttribute("aria-expanded", "true");
+    const toggle = screen.getByRole("button", { name: "Hide full listing details" });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByAltText("Listing detail")).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+
+    expect(screen.getByRole("button", { name: "Show full listing details" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByAltText("Listing detail")).not.toBeInTheDocument();
   });
 });

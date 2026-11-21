@@ -14,6 +14,11 @@
   animation: progressive-shimmer 1.5s ease-in-out infinite;
 }
 
+@keyframes catalogue-progress {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(360%); }
+}
+
 /* Shared responsive safety for phone, tablet, and desktop viewports. */
 @layer base {
   html {

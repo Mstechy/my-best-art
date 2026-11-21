@@ -282,7 +282,10 @@ export default function MarketplacePage() {
   );
 
   useEffect(() => {
-    setProducts([]);
+    // Keep the current result grid mounted while a new query/category is
+    // loading. Clearing it here caused a skeleton -> empty state -> grid
+    // swap, which looked like the page was shaking when a search had no hit.
+    // The incoming catalogue response replaces these rows atomically below.
     setPageCursor(null);
     setHasMore(false);
   }, [catalogueCacheKey]);
@@ -371,6 +374,7 @@ export default function MarketplacePage() {
   // product feed. Buyers should see catalogue results as soon as that query
   // settles, even if the optional department tree is slower.
   const pageLoading = catalogueLoading;
+  const resultsTransitioning = catalogueLoading && products.length > 0;
 
   const attributeValue = (product: Product, key: string) => {
     const categoryAttributes = getCategoryAttributes(product.variants);
@@ -711,7 +715,12 @@ export default function MarketplacePage() {
               </p>
             </div>
             {/* Keep catalogue geometry predictable while data settles. */}
-            <div>
+            <div className="relative">
+              {resultsTransitioning && (
+                <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-1 overflow-hidden rounded-full bg-[#F6C75D]/20" aria-hidden="true">
+                  <div className="h-full w-1/3 animate-[catalogue-progress_1.2s_ease-in-out_infinite] rounded-full bg-[#F6C75D]" />
+                </div>
+              )}
               {pageLoading && products.length === 0 ? (
                 <div role="list" aria-label="Product results" aria-busy="true" className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                   {[...Array(10)].map((_, i) => (
@@ -744,7 +753,7 @@ export default function MarketplacePage() {
                   </p>
                 </div>
               ) : (
-                <div role="list" aria-label="Product results" aria-busy="false" className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div role="list" aria-label="Product results" aria-busy={catalogueLoading} className={`grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 transition-opacity duration-200 ${resultsTransitioning ? "opacity-60" : "opacity-100"}`}>
                   {displayedProducts.map((product, index) => {
                     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
                     const baseDiscount = product.compare_at_price && product.compare_at_price > product.price

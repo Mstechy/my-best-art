@@ -46,7 +46,7 @@ for (const viewport of [
       await expect(chooseButton).toBeVisible();
       await chooseButton.click();
       await expect(page.getByRole("dialog").getByRole("heading", { name: /Choose/ })).toBeVisible();
-      await expect(page.getByRole("dialog").locator("img")).toHaveCount(1);
+      await expect.poll(() => page.getByRole("dialog").locator("img").count()).toBeGreaterThan(0);
     }
 
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1);

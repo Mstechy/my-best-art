@@ -28,13 +28,13 @@ export default function ProductRichDescription({
   );
 
   const [specsOpen, setSpecsOpen] = useState(true);
-  const [imagesOpen, setImagesOpen] = useState(sortedImages.length <= 1);
+  const [imagesOpen, setImagesOpen] = useState(true);
 
   useEffect(() => {
-    // Long seller-uploaded detail galleries should not push reviews and Q&A
-    // hundreds of screenfuls below the purchase decision. Keep the media in
-    // the page, but let the buyer explicitly expand it when they need it.
-    setImagesOpen(sortedImages.length <= 1);
+    // Seller-uploaded media is part of the listing, so show it immediately.
+    // Buyers can collapse the detail gallery with the explicit control below
+    // when they want to get back to reviews or related products faster.
+    setImagesOpen(true);
   }, [sortedImages]);
 
   return (
@@ -89,11 +89,12 @@ export default function ProductRichDescription({
       {/* Long seller-uploaded image details are available on demand. */}
       {sortedImages.length > 0 && (
         <div className="w-full">
-          <div className="flex flex-col gap-3 rounded-2xl border border-[#E8E8E8] bg-white p-4 shadow-sm dark:border-[#222222] dark:bg-[#1A1A1A] sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex flex-col gap-3 overflow-hidden rounded-2xl border border-[#E8D477] bg-gradient-to-br from-[#FFF8D6] via-white to-[#F7FAF5] p-4 shadow-sm dark:border-[#6E5A1B] dark:from-[#2A2410] dark:via-[#1A1A1A] dark:to-[#172018] sm:flex-row sm:items-center sm:justify-between">
+            <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-[#F6C75D]" />
             <div>
               <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Product images & details</h2>
               <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">
-                {sortedImages.length} seller-uploaded {sortedImages.length === 1 ? "image" : "images"} with additional listing details.
+                {sortedImages.length} seller-uploaded {sortedImages.length === 1 ? "image" : "images"}. Show them when you want to review the full listing.
               </p>
             </div>
             <button
@@ -101,7 +102,7 @@ export default function ProductRichDescription({
               onClick={() => setImagesOpen((open) => !open)}
               aria-expanded={imagesOpen}
               aria-controls="product-description-images"
-              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border border-[#111111] px-4 text-xs font-bold text-[#111111] transition-colors hover:bg-[#F7F7F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222]"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[#111111] px-4 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#2B2B2B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-white"
             >
               {imagesOpen ? "Hide full listing details" : "Show full listing details"}
               <ChevronDown className={`h-4 w-4 transition-transform ${imagesOpen ? "rotate-180" : ""}`} aria-hidden="true" />

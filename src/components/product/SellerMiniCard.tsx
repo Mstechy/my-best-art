@@ -16,14 +16,15 @@ interface Props {
 
 export default function SellerMiniCard({ sellerId, name, avatarUrl, isVerified, rating, soldCount, followers, reviewCount, chatHref, onVerifiedClick }: Props) {
   return (
-    <div className="rounded-2xl border border-[#E8E8E8] dark:border-[#222222] p-4 bg-white/80 dark:bg-[#1A1A1A]/80 backdrop-blur-sm">
+    <div className="relative overflow-hidden rounded-2xl border border-[#E8D477] bg-gradient-to-br from-[#FFF8D6] via-white to-[#F7FAF5] p-4 shadow-sm dark:border-[#6E5A1B] dark:from-[#2A2410] dark:via-[#1A1A1A] dark:to-[#172018]">
+      <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-[#F6C75D]" />
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#FAFAFA] dark:bg-[#111111] overflow-hidden shrink-0 border border-[#E8E8E8] dark:border-[#222222]">
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#F6C75D] dark:bg-[#6E5A1B] overflow-hidden shrink-0 border border-[#E8D477] dark:border-[#8A7225]">
             {avatarUrl ? (
               <img src={avatarUrl} alt="" className="w-full h-full object-cover" />
             ) : (
-              <span className="text-sm font-bold text-[#666666] dark:text-[#A0A0A0]">{name?.trim().charAt(0).toUpperCase() || <Store className="h-5 w-5" />}</span>
+              <span className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">{name?.trim().charAt(0).toUpperCase() || <Store className="h-5 w-5" />}</span>
             )}
           </div>
           <div className="min-w-0">
@@ -55,8 +56,8 @@ export default function SellerMiniCard({ sellerId, name, avatarUrl, isVerified, 
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          {chatHref && <Link to={chatHref} className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E8E8E8] bg-[#FAFAFA] text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-[#FAF5F2] dark:hover:bg-[#222222]" aria-label="Chat with seller"><MessageSquare className="h-4 w-4" /></Link>}
-          <Link to={`/seller/${sellerId}`} className="flex h-11 items-center justify-center rounded-full border border-[#E8E8E8] bg-[#FAFAFA] px-4 text-xs font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#2A2A2A] dark:bg-[#111111] dark:text-[#FAF5F2] dark:hover:bg-[#222222]">Visit Store</Link>
+          {chatHref && <Link to={chatHref} className="flex h-11 w-11 items-center justify-center rounded-full border border-[#E8D477] bg-white/80 text-[#111111] transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#6E5A1B] dark:bg-[#111111] dark:text-[#FAF5F2] dark:hover:bg-[#222222]" aria-label="Chat with seller"><MessageSquare className="h-4 w-4" /></Link>}
+          <Link to={`/seller/${sellerId}`} className="flex h-11 items-center justify-center rounded-full bg-[#111111] px-4 text-xs font-bold text-white shadow-sm transition-colors hover:bg-[#2B2B2B] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-white">Visit Store</Link>
         </div>
       </div>
     </div>
