@@ -21,9 +21,13 @@ for (const viewport of [
     expect(response?.status(), "product route should return a document").toBeLessThan(400);
     await expect(page.locator("main:visible")).toHaveCount(1, { timeout: 45_000 });
     await expect(page.locator("h1")).toHaveCount(1, { timeout: 45_000 });
-    const heroImage = page.locator(`img[alt="${"Apple iPhone 17 Unlocked"}"]`).first();
+    const heroImage = page.locator('img[alt^="Apple iPhone 17 Unlocked"]').first();
     await expect(heroImage).toBeVisible({ timeout: 20_000 });
     await expect.poll(() => heroImage.evaluate((image) => (image as HTMLImageElement).naturalWidth), { timeout: 20_000 }).toBeGreaterThan(0);
+    const expandDescription = page.getByRole("button", { name: "Show full listing details" });
+    if (await expandDescription.count()) {
+      await expandDescription.click();
+    }
     const descriptionImages = page.locator('main img[alt="Product detail description graphic"]');
     expect(await descriptionImages.count(), "seller-uploaded product detail images should render").toBeGreaterThan(0);
     for (let index = 0; index < await descriptionImages.count(); index += 1) {
@@ -39,7 +43,7 @@ for (const viewport of [
       const chooseButton = page.getByRole("button", { name: "Choose" }).first();
       await expect(chooseButton).toBeVisible();
       await chooseButton.click();
-      await expect(page.getByRole("dialog").getByText("Select options")).toBeVisible();
+      await expect(page.getByRole("dialog").getByText("Choose options")).toBeVisible();
       await expect(page.getByRole("dialog").locator("img")).toHaveCount(1);
     }
 

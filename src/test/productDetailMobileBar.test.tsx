@@ -275,11 +275,11 @@ describe("ProductDetailPage mobile bottom chrome", () => {
 
     const { container } = renderPage();
     const bar = bottomBar(container);
-    const selectOptions = within(bar).getByRole("button", { name: "Select options" });
+    const selectOptions = within(bar).getByRole("button", { name: "Choose options" });
 
     expect(selectOptions).toBeEnabled();
     fireEvent.click(selectOptions);
-    expect(screen.getByRole("heading", { name: "Select options" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Choose options" })).toBeInTheDocument();
   });
 
   it("gives each product gallery thumbnail an accessible name and selected state", () => {

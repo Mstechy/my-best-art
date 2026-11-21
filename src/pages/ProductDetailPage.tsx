@@ -40,7 +40,7 @@ import { getProductPath } from "@/lib/productUrls";
 import { useResolvedPolicies } from "@/hooks/useResolvedPolicies";
 import { countryName } from "@/lib/countries";
 import { getProductFactEntries } from "@/lib/cataloguePresentation";
-import { formatVariantAttributeLabel, getProductDetailFactKeys, getProductSurface, getVariantSelectionDescription } from "@/lib/productDetailPresentation";
+import { formatVariantAttributeLabel, getProductDetailFactKeys, getProductSurface, getVariantAttributeOrder, getVariantSelectionDescription } from "@/lib/productDetailPresentation";
 
 export default function ProductDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -190,6 +190,15 @@ export default function ProductDetailPage() {
     });
     return keys;
   }, [inStockVariants, variantAttributeKeys]);
+  const variantSelectionLabel = useMemo(() => {
+    const orderedKeys = [
+      ...getVariantAttributeOrder(productSurface),
+      ...variantChoiceKeys,
+    ].filter((key, index, keys) => keys.indexOf(key) === index && variantChoiceKeys.has(key));
+    const labels = orderedKeys.map(formatVariantAttributeLabel).map((label) => label.toLowerCase());
+    if (labels.length <= 1) return labels[0] || "options";
+    return `${labels.slice(0, -1).join(", ")} and ${labels[labels.length - 1]}`;
+  }, [productSurface, variantChoiceKeys]);
   const productDetailSpecs = useMemo(() => {
     if (!product) return null;
     // Quick facts are the comparison layer beside the buy box. Do not repeat
@@ -273,7 +282,7 @@ export default function ProductDetailPage() {
   const purchaseButtonLabel = !inventoryAvailable
     ? "Out of stock"
     : requiresOptionSelection
-      ? "Select options"
+      ? "Choose options"
       : "Add to Cart";
   // An incomplete variant selection is an actionable state: the button opens
   // the selector sheet. Only a genuinely unavailable product/SKU is disabled.
@@ -400,9 +409,10 @@ export default function ProductDetailPage() {
   const [showAllReviews, setShowAllReviews] = useState(false);
 
   const detailsRef = useRef<HTMLDivElement>(null);
+  const specificationsRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
   const qaRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<"details" | "reviews" | "qa">("details");
+  const [activeTab, setActiveTab] = useState<"details" | "specifications" | "reviews" | "qa">("details");
 
   useEffect(() => {
     setReviewFilter("all");
@@ -411,7 +421,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     const sections = [
-      { id: "product-details", tab: "details" as const, element: detailsRef.current },
+      { id: "product-specifications", tab: "specifications" as const, element: specificationsRef.current },
       { id: "product-reviews", tab: "reviews" as const, element: reviewsRef.current },
       { id: "qa", tab: "qa" as const, element: qaRef.current },
     ].filter((section): section is typeof section & { element: HTMLDivElement } => Boolean(section.element));
@@ -797,16 +807,16 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <div className="space-y-5 rounded-2xl border border-[#E8E8E8] bg-white p-5 shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A] md:p-6">
-              <div>
-                {/* Condition pill + title (2-line clamp with expand) */}
-                {product.condition && (
-                  <span className="inline-block mb-2 rounded-md bg-[#F2F3F5] dark:bg-[#202020] px-2 py-0.5 text-[11px] font-semibold text-[#666666] dark:text-[#A0A0A0]">
-                    {product.condition}
-                  </span>
-                )}
-                <div className="flex items-start gap-3">
-                  <h1 className={`min-w-0 flex-1 text-2xl font-bold ${!titleExpanded ? "line-clamp-2" : ""}`}>{product.title || "Untitled product"}</h1>
+             <div className="space-y-5 rounded-2xl border border-[#E8E8E8] bg-white p-5 shadow-sm dark:border-[#2A2A2A] dark:bg-[#1A1A1A] md:p-6">
+               <div>
+                 {/* Marketplace hierarchy: identity, proof, price, options, then purchase. */}
+                 {product.condition && (
+                   <span className="mb-3 inline-flex rounded-full bg-[#F2F3F5] px-2.5 py-1 text-[11px] font-bold capitalize text-[#555555] dark:bg-[#202020] dark:text-[#C8C8C8]">
+                     {product.condition} condition
+                   </span>
+                 )}
+                 <div className="flex items-start gap-3 border-l-4 border-brand pl-3">
+                   <h1 className={`min-w-0 flex-1 text-[clamp(1.55rem,2.4vw,2.25rem)] font-black leading-[1.08] tracking-[-0.03em] text-[#111111] dark:text-[#FAF5F2] ${!titleExpanded ? "line-clamp-3" : ""}`}>{product.title || "Untitled product"}</h1>
                   <button type="button" onClick={() => void shareProduct()} className="hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] md:grid" aria-label="Share product">
                     <Share2 className="h-4 w-4" />
                   </button>
@@ -823,8 +833,9 @@ export default function ProductDetailPage() {
                   </p>
                 )}
 
-                {/* Social proof directly under title (AliExpress parity) */}
-                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6E6C64]">
+                 {/* Show only earned signals; an empty row should never reserve space. */}
+                 {(seller?.is_verified || product.review_count > 0 || (product.show_sold_count !== false && soldCount > 0) || (!inventoryAvailable || (Boolean(selectedVariant) && purchasableStock === 0))) && (
+                 <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#6E6C64]">
                   {seller?.is_verified && (
                     <span className="flex items-center gap-1 font-semibold text-[#16803C] dark:text-[#5EE38B]">
                       <CheckCircle2 className="h-3.5 w-3.5" />
@@ -839,19 +850,9 @@ export default function ProductDetailPage() {
                     </div>
                   )}
                   {product.show_sold_count !== false && soldCount > 0 && <span>{soldCount} sold</span>}
-                  {(!inventoryAvailable || (Boolean(selectedVariant) && purchasableStock === 0)) && <span className="font-semibold text-[#E53935]">Out of stock</span>}
-                </div>
-
-                {productQuickFacts.length > 0 && (
-                  <dl className="mt-4 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-[#E8E8E8] bg-[#E8E8E8] dark:border-[#222222] dark:bg-[#222222]" aria-label="Product highlights">
-                    {productQuickFacts.map((fact) => (
-                      <div key={fact.key} className="bg-white px-3 py-2.5 dark:bg-[#1A1A1A]">
-                        <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{fact.label}</dt>
-                        <dd className="mt-0.5 break-words text-xs font-semibold text-[#111111] dark:text-[#FAF5F2]">{fact.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
-                )}
+                   {(!inventoryAvailable || (Boolean(selectedVariant) && purchasableStock === 0)) && <span className="font-semibold text-[#E53935]">Out of stock</span>}
+                 </div>
+                 )}
 
                 {/* The quantity control stays in the main buy box for every SKU type. */}
                 {/* Promo pricing banner (MarketHub-adapted) */}
@@ -884,12 +885,12 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-            {hasProductVariants && (
-              <section className="rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#222222] dark:bg-[#181818]" aria-label="Product options">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h2 className="text-sm font-bold">Choose options at purchase</h2>
-                    <p className="mt-1 text-xs leading-5 text-[#6E6C64]">{getVariantSelectionDescription(productSurface)}</p>
+             {hasProductVariants && (
+               <section className="rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-4 dark:border-[#222222] dark:bg-[#181818]" aria-label="Product options">
+                 <div className="flex items-start justify-between gap-4">
+                   <div className="min-w-0">
+                     <h2 className="text-sm font-bold">Choose {variantSelectionLabel}</h2>
+                     <p className="mt-1 text-xs leading-5 text-[#6E6C64]">{getVariantSelectionDescription(productSurface)}</p>
                   </div>
                   <button
                     type="button"
@@ -961,28 +962,33 @@ export default function ProductDetailPage() {
               </>
             )}
 
-            <div className="flex items-center gap-4">
-              <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]" aria-label="Quantity">
-                <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!canPurchase || quantity <= 1} aria-label="Decrease quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">−</button>
-                <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]" aria-live="polite">{quantity}</span>
-                <button type="button" onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} disabled={!canPurchase || quantity >= purchasableStock} aria-label="Increase quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">+</button>
+            <div className="flex flex-wrap items-end gap-4">
+              <div className="shrink-0">
+                <span className="mb-1.5 block text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">Quantity</span>
+                <div className="flex items-center overflow-hidden rounded-xl border border-[#E8E8E8] dark:border-[#222222]" aria-label="Quantity">
+                  <button type="button" onClick={() => setQuantity(q => Math.max(1, q - 1))} disabled={!canPurchase || quantity <= 1} aria-label="Decrease quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">−</button>
+                  <span className="flex h-10 w-12 items-center justify-center border-x border-[#E8E8E8] text-sm font-semibold dark:border-[#222222]" aria-live="polite">{quantity}</span>
+                  <button type="button" onClick={() => setQuantity(q => Math.min(purchasableStock, q + 1))} disabled={!canPurchase || quantity >= purchasableStock} aria-label="Increase quantity" className="flex min-h-[44px] min-w-[44px] items-center justify-center text-sm font-bold transition-colors hover:bg-[#F2F3F5] disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-[#2A2A2D]">+</button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => startPurchase("cart")}
-                disabled={purchaseDisabled}
-                className="flex-1 py-3 rounded-full bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111] text-sm font-bold hover:bg-[#2A2A2A] dark:hover:bg-[#EAE0D8] transition-colors disabled:opacity-50"
-              >
-                {purchaseButtonLabel}
-              </button>
-              <button
-                type="button"
-                onClick={() => startPurchase("buy")}
-                disabled={purchaseDisabled}
-                className="hidden flex-1 rounded-full border border-[#111111] py-3 text-sm font-bold text-[#111111] transition-colors hover:bg-[#F2F3F5] disabled:opacity-50 dark:border-[#FAF5F2] dark:text-[#FAF5F2] dark:hover:bg-[#222222] md:block"
-              >
-                Buy Now
-              </button>
+              <div className="flex min-w-0 flex-1 gap-3">
+                <button
+                  type="button"
+                  onClick={() => startPurchase("cart")}
+                  disabled={purchaseDisabled}
+                  className="min-w-0 flex-1 rounded-full bg-[#111111] py-3 text-sm font-bold text-white transition-colors hover:bg-[#2A2A2A] disabled:opacity-50 dark:bg-[#FAF5F2] dark:text-[#111111] dark:hover:bg-[#EAE0D8]"
+                >
+                  {purchaseButtonLabel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => startPurchase("buy")}
+                  disabled={purchaseDisabled}
+                  className="hidden min-w-0 flex-1 rounded-full border border-brand bg-brand py-3 text-sm font-bold text-ink transition-colors hover:bg-brand-dark disabled:opacity-50 md:block"
+                >
+                  Buy Now
+                </button>
+              </div>
             </div>
 
             {user && user.id !== product.seller_id && canPurchase && (
@@ -1034,8 +1040,8 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            {seller && (
-              <SellerMiniCard
+             {seller && (
+               <SellerMiniCard
                 sellerId={seller.user_id}
                 name={seller.full_name || "Seller"}
                 isVerified={seller.is_verified}
@@ -1045,22 +1051,47 @@ export default function ProductDetailPage() {
                 rating={sellerAvgRating}
                 soldCount={sellerTotalSold}
                 chatHref={`${chatPath}?seller=${seller.user_id}&product=${product.id}`}
-                onVerifiedClick={() => setVerifiedSellerOpen(true)}
-              />
+               onVerifiedClick={() => setVerifiedSellerOpen(true)}
+             />
+            )}
+
+            {productQuickFacts.length > 0 && (
+              <section className="overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white dark:border-[#2A2A2A] dark:bg-[#1A1A1A]" aria-labelledby="product-at-a-glance">
+                <div className="border-b border-[#E8E8E8] px-4 py-3 dark:border-[#2A2A2A]">
+                  <h2 id="product-at-a-glance" className="text-sm font-black tracking-tight text-[#111111] dark:text-[#FAF5F2]">At a glance</h2>
+                  <p className="mt-0.5 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Key information from this seller’s listing.</p>
+                </div>
+                <dl className="grid grid-cols-1 sm:grid-cols-2" aria-label="Product highlights">
+                  {productQuickFacts.map((fact, index) => (
+                    <div key={fact.key} className={`px-4 py-3 ${index > 0 ? "border-t border-[#E8E8E8] dark:border-[#2A2A2A]" : ""} sm:[&:nth-child(2)]:border-t-0 sm:[&:nth-child(even)]:border-l sm:[&:nth-child(even)]:border-[#E8E8E8] sm:[&:nth-child(even)]:dark:border-[#2A2A2A]`}>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-[#6E6C64] dark:text-[#A0A0A0]">{fact.label}</dt>
+                      <dd className="mt-0.5 break-words text-xs font-bold text-[#111111] dark:text-[#FAF5F2]">{fact.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </section>
             )}
 
             {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
            </div>
-           <nav aria-label="Product information" className="sticky top-[57px] z-20 mt-8 flex snap-x gap-2 overflow-x-auto border-y border-[#E8E8E8] bg-[#FAFAFA]/95 py-2 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-[#2A2A2A] dark:bg-[#171717]/95 md:top-[73px]">
+            <nav aria-label="Product information" className="sticky top-[57px] z-20 mt-8 flex snap-x gap-2 overflow-x-auto border-y border-[#E8E8E8] bg-[#FAFAFA]/95 py-2 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-[#2A2A2A] dark:bg-[#171717]/95 md:top-[73px]">
              <a
                href="#product-details"
                onClick={() => setActiveTab("details")}
                aria-current={activeTab === "details" ? "location" : undefined}
                className={`min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] ${activeTab === "details" ? "bg-[#111111] text-white shadow-sm dark:bg-[#FAF5F2] dark:text-[#111111]" : "hover:bg-white hover:shadow-sm dark:hover:bg-[#222222]"}`}
              >
-               Details
-             </a>
+                Details
+              </a>
+              <a
+                href="#product-specifications"
+                onClick={() => setActiveTab("specifications")}
+                aria-current={activeTab === "specifications" ? "location" : undefined}
+                className={`min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] ${activeTab === "specifications" ? "bg-[#111111] text-white shadow-sm dark:bg-[#FAF5F2] dark:text-[#111111]" : "hover:bg-white hover:shadow-sm dark:hover:bg-[#222222]"}`}
+              >
+                Specifications
+              </a>
              <a
                href="#product-reviews"
                onClick={() => setActiveTab("reviews")}
@@ -1130,6 +1161,7 @@ export default function ProductDetailPage() {
               images={product.description_images}
               description={product.description}
               specs={productDetailSpecs}
+              specificationsRef={specificationsRef}
             />
 
             {productDocs.length > 0 && (
@@ -1323,8 +1355,8 @@ export default function ProductDetailPage() {
       <Sheet open={purchaseAction !== null} onOpenChange={(open) => { if (!open) setPurchaseAction(null); }}>
         <SheetContent side="bottom" className="max-h-[85vh] overflow-y-auto rounded-t-3xl border-[#E8E8E8] bg-white px-5 pb-6 pt-5 dark:border-[#222222] dark:bg-[#111111] sm:mx-auto sm:max-w-xl">
           <SheetHeader className="pr-8 text-left">
-            <SheetTitle>Select options</SheetTitle>
-            <SheetDescription>Choose a complete in-stock combination to see its exact price.</SheetDescription>
+            <SheetTitle>Choose {variantSelectionLabel}</SheetTitle>
+            <SheetDescription>{getVariantSelectionDescription(productSurface)}</SheetDescription>
           </SheetHeader>
           {mediaItems.find((item) => item.type === "image")?.url && (
             <div className="mt-4 flex items-center gap-3 rounded-2xl border border-[#E8E8E8] bg-[#FAFAFA] p-3 dark:border-[#222222] dark:bg-[#181818]">

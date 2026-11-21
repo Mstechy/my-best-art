@@ -9,10 +9,12 @@ export default function ProductRichDescription({
   images,
   description,
   specs,
+  specificationsRef,
 }: {
   images?: DescImage[] | null;
   description?: string | null;
   specs?: Record<string, string> | null;
+  specificationsRef?: React.Ref<HTMLDivElement>;
 }) {
   const specsEntries = specs && Object.keys(specs).length > 0
     ? Object.entries(specs)
@@ -39,7 +41,7 @@ export default function ProductRichDescription({
     <section className="w-full max-w-5xl mx-auto" aria-label="Product details content">
       {/* Specifications — AliExpress-style collapsible dropdown */}
       {specsEntries && specsEntries.length > 0 && (
-        <div className="mb-8 overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white shadow-sm dark:border-[#222222] dark:bg-[#1A1A1A]">
+        <div id="product-specifications" ref={specificationsRef} className="mb-8 scroll-mt-32 overflow-hidden rounded-2xl border border-[#E8E8E8] bg-white shadow-sm dark:border-[#222222] dark:bg-[#1A1A1A]">
           <button
             type="button"
             onClick={() => setSpecsOpen(o => !o)}
