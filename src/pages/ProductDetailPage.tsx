@@ -26,7 +26,7 @@ import ReviewSummary from "@/components/product/ReviewSummary";
 import ReviewCard, { type ReviewData as ReviewCardData } from "@/components/product/ReviewCard";
 import QAndASection from "@/components/product/QAndASection";
 import RecommendedProducts from "@/components/product/RecommendedProducts";
-import { isLikelyTestData, isLikelyTestFeature } from "@/lib/productContent";
+import { isLikelyTestFeature } from "@/lib/productContent";
 import { findProductTypeConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
 import ProductImage from "@/components/product/ProductImage";
 import ProductVideoPlayer from "@/components/product/ProductVideoPlayer";
@@ -399,15 +399,41 @@ export default function ProductDetailPage() {
   const [reviewFilter, setReviewFilter] = useState("all");
   const [showAllReviews, setShowAllReviews] = useState(false);
 
-  const overviewRef = useRef<HTMLDivElement>(null);
+  const detailsRef = useRef<HTMLDivElement>(null);
   const reviewsRef = useRef<HTMLDivElement>(null);
-  const recommendedRef = useRef<HTMLDivElement>(null);
-  const [activeTab, setActiveTab] = useState<"overview" | "reviews" | "description" | "recommended">("overview");
+  const qaRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<"details" | "reviews" | "qa">("details");
 
   useEffect(() => {
     setReviewFilter("all");
-    setActiveTab("overview");
+    setActiveTab("details");
   }, [id, product?.id]);
+
+  useEffect(() => {
+    const sections = [
+      { id: "product-details", tab: "details" as const, element: detailsRef.current },
+      { id: "product-reviews", tab: "reviews" as const, element: reviewsRef.current },
+      { id: "qa", tab: "qa" as const, element: qaRef.current },
+    ].filter((section): section is typeof section & { element: HTMLDivElement } => Boolean(section.element));
+
+    if (sections.length === 0 || typeof IntersectionObserver === "undefined") return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+
+        if (!visible) return;
+        const section = sections.find((candidate) => candidate.element === visible.target);
+        if (section) setActiveTab(section.tab);
+      },
+      { rootMargin: "-88px 0px -58% 0px", threshold: [0, 0.1] },
+    );
+
+    sections.forEach((section) => observer.observe(section.element));
+    return () => observer.disconnect();
+  }, [product?.id, product?.description_images?.length]);
 
   useEffect(() => {
     setSelectedVariantOptions({});
@@ -1026,10 +1052,31 @@ export default function ProductDetailPage() {
             {/* Specifications are rendered once in the Product Details section below (AliExpress style) */}
             </div>
            </div>
-           <nav aria-label="Product information" className="mt-8 flex snap-x gap-2 overflow-x-auto border-y border-[#E8E8E8] bg-[#FAFAFA] py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-[#2A2A2A] dark:bg-[#171717]">
-             <a href="#product-details" className="min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">Details</a>
-             <a href="#product-reviews" className="min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">Reviews{product.review_count > 0 ? ` (${product.review_count})` : ""}</a>
-             <a href="#qa" className="min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition hover:bg-white hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:hover:bg-[#222222]">Questions & Answers</a>
+           <nav aria-label="Product information" className="sticky top-[57px] z-20 mt-8 flex snap-x gap-2 overflow-x-auto border-y border-[#E8E8E8] bg-[#FAFAFA]/95 py-2 backdrop-blur [scrollbar-width:none] [&::-webkit-scrollbar]:hidden dark:border-[#2A2A2A] dark:bg-[#171717]/95 md:top-[73px]">
+             <a
+               href="#product-details"
+               onClick={() => setActiveTab("details")}
+               aria-current={activeTab === "details" ? "location" : undefined}
+               className={`min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] ${activeTab === "details" ? "bg-[#111111] text-white shadow-sm dark:bg-[#FAF5F2] dark:text-[#111111]" : "hover:bg-white hover:shadow-sm dark:hover:bg-[#222222]"}`}
+             >
+               Details
+             </a>
+             <a
+               href="#product-reviews"
+               onClick={() => setActiveTab("reviews")}
+               aria-current={activeTab === "reviews" ? "location" : undefined}
+               className={`min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] ${activeTab === "reviews" ? "bg-[#111111] text-white shadow-sm dark:bg-[#FAF5F2] dark:text-[#111111]" : "hover:bg-white hover:shadow-sm dark:hover:bg-[#222222]"}`}
+             >
+               Reviews{product.review_count > 0 ? ` (${product.review_count})` : ""}
+             </a>
+             <a
+               href="#qa"
+               onClick={() => setActiveTab("qa")}
+               aria-current={activeTab === "qa" ? "location" : undefined}
+               className={`min-h-10 shrink-0 snap-start rounded-full px-4 py-2 text-xs font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] ${activeTab === "qa" ? "bg-[#111111] text-white shadow-sm dark:bg-[#FAF5F2] dark:text-[#111111]" : "hover:bg-white hover:shadow-sm dark:hover:bg-[#222222]"}`}
+             >
+               Questions & Answers
+             </a>
            </nav>
            </>
         )}
@@ -1060,7 +1107,7 @@ export default function ProductDetailPage() {
         </Sheet>
 
         {product && (
-          <div id="product-details" className="mt-12 space-y-6 scroll-mt-24">
+          <div id="product-details" ref={detailsRef} className="mt-12 space-y-6 scroll-mt-32">
             {product.key_features && product.key_features.length > 0 && (
               <Collapsible open={specsOpen} onOpenChange={setSpecsOpen}>
                 <CollapsibleTrigger className="flex items-center justify-between w-full py-3 border-b border-[#E8E8E8] dark:border-[#222222] text-sm font-bold">
@@ -1099,10 +1146,10 @@ export default function ProductDetailPage() {
               </section>
             )}
 
-            <div id="product-reviews" ref={reviewsRef} className="scroll-mt-24">
+            <div id="product-reviews" ref={reviewsRef} className="scroll-mt-32">
               <h2 className="mb-3 text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Customer reviews</h2>
               {reviewsQuery.isLoading && <div className="space-y-3 animate-pulse"><div className="h-5 w-24 rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="h-20 rounded-xl bg-[#F2F3F5] dark:bg-[#202020]" /></div>}
-              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><p className="text-base font-bold">Reviews</p><p className="text-xs text-[#6E6C64]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
+              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><p className="text-xs text-[#6E6C64]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
               {reviews.length > 0 && <ReviewSummary
                 average={product.average_rating}
                 total={product.review_count}
@@ -1203,9 +1250,11 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-            <QAndASection productId={product.id} />
+            <div id="qa" ref={qaRef} className="scroll-mt-32">
+              <QAndASection productId={product.id} />
+            </div>
 
-            <div ref={recommendedRef}>
+            <div>
               <RecommendedProducts productId={product.id} categoryId={product.category_id} />
             </div>
 
