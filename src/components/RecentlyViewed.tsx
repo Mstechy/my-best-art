@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCurrency } from "@/hooks/useCurrency";
 import { Link } from "react-router-dom";
 import { supabase } from "../integrations/supabase/client";
 import { Package, Star, ShoppingCart } from "lucide-react";
@@ -6,7 +6,7 @@ import { useRecentlyViewed } from "../hooks/useRecentlyViewed";
 import ProductImage from "@/components/product/ProductImage";
 import { useCart } from "@/hooks/useCart";
 import { toast } from "sonner";
-import { useCurrency } from "@/hooks/useCurrency";
+import { supabaseKeys, useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 
 interface Item {
   id: string;
@@ -24,24 +24,27 @@ interface Item {
 export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
   const { formatPrice } = useCurrency();
   const { ids } = useRecentlyViewed();
-  const [items, setItems] = useState<Item[]>([]);
   const { addItem } = useCart();
 
-  const fetch = useCallback(async () => {
-    const filteredIds = ids.filter(i => i !== excludeId);
-    if (filteredIds.length === 0) { setItems([]); return; }
-    const { data } = await supabase
+  const filteredIds = ids.filter(i => i !== excludeId);
+  const recentlyViewedQuery = useSupabaseQuery<Item[]>(
+    [...supabaseKeys.table("products"), "recently-viewed", excludeId ?? "current", ...filteredIds],
+    async () => {
+      if (filteredIds.length === 0) return [];
+      const { data, error } = await supabase
       .from("products")
       .select("id, title, price, compare_at_price, average_rating, review_count, seller_id, stock_quantity, categories(name), product_images(image_url, is_primary)")
       .in("id", filteredIds)
       .eq("status", "active")
       .eq("is_approved", true);
-    if (!data) return;
-    const map = new Map(data.map((d: any) => [d.id, d]));
-    setItems(filteredIds.map(id => map.get(id)).filter(Boolean) as Item[]);
-  }, [ids, excludeId]);
+      if (error) throw error;
+      const map = new Map((data ?? []).map((d: any) => [d.id, d]));
+      return filteredIds.map(id => map.get(id)).filter(Boolean) as Item[];
+    },
+    { enabled: filteredIds.length > 0, staleTime: 2 * 60 * 1000 },
+  );
 
-  useEffect(() => { fetch(); }, [fetch]);
+  const items = recentlyViewedQuery.data ?? [];
 
   if (items.length === 0) return null;
 
@@ -53,7 +56,11 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
           const img = p.product_images?.find(i => i.is_primary) || p.product_images?.[0];
           return (
             <div key={p.id} className="shrink-0 w-40 sm:w-44 snap-start group relative bg-white dark:bg-[#1A1A1A] rounded-xl overflow-hidden hover:shadow-md transition-shadow border border-[#E8E8E8] dark:border-[#222222]">
-              <Link to={`/product/${p.id}`} className="block">
+              <Link
+                to={`/product/${p.id}`}
+                className="block"
+                aria-label={`View ${p.title}`}
+              >
                 <div className="aspect-square bg-[#F2F3F5] dark:bg-[#111111] relative">
                   {img ? (
                     <ProductImage src={img.image_url} alt={p.title} className="w-full h-full object-cover" loading="lazy" />
@@ -75,6 +82,8 @@ export default function RecentlyViewed({ excludeId }: { excludeId?: string }) {
                   )}
                   
                   <button 
+                    type="button"
+                    aria-label={`Add ${p.title} to cart`}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();

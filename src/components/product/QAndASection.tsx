@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { supabaseKeys, useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { MessageCircleQuestion, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -20,22 +21,25 @@ interface Question {
 export default function QAndASection({ productId }: { productId: string }) {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    const { data } = await (supabase as any)
+  // React Query deduplicates this request across StrictMode remounts and
+  // revisit navigation while keeping the questions backed by Supabase.
+  const questionsQuery = useSupabaseQuery<Question[]>(
+    [...supabaseKeys.table("product_questions"), "product", productId],
+    async () => {
+      if (!productId) return [];
+      const { data, error } = await (supabase as any)
       .from("product_questions")
       .select("*")
       .eq("product_id", productId)
       .order("created_at", { ascending: false });
+      if (error) throw error;
     const list = (data || []) as any[];
-    if (list.length === 0) { setQuestions([]); setLoading(false); return; }
+    if (list.length === 0) return [];
     const [{ data: profs }, { data: answers }] = await Promise.all([
       supabase.from("profiles").select("user_id, full_name").in("user_id", list.map(q => q.asker_id)),
       (supabase as any).from("product_question_answers").select("*").in("question_id", list.map(q => q.id)),
@@ -44,11 +48,13 @@ export default function QAndASection({ productId }: { productId: string }) {
     (profs || []).forEach((p: any) => { nameMap[p.user_id] = p.full_name; });
     const ansMap: Record<string, any> = {};
     (answers || []).forEach((a: any) => { if (!ansMap[a.question_id]) ansMap[a.question_id] = a; });
-    setQuestions(list.map(q => ({ ...q, asker_name: nameMap[q.asker_id], answer: ansMap[q.id] || null })));
-    setLoading(false);
-  }, [productId]);
+      return list.map(q => ({ ...q, asker_name: nameMap[q.asker_id], answer: ansMap[q.id] || null }));
+    },
+    { enabled: !!productId, staleTime: 2 * 60 * 1000 },
+  );
 
-  useEffect(() => { if (productId) void load(); }, [productId, load]);
+  const questions = questionsQuery.data ?? [];
+  const loading = questionsQuery.isLoading;
 
   const submit = async () => {
     if (!user) { navigate(`/auth/login?redirect=${encodeURIComponent(`/product/${productId}`)}`); return; }
@@ -62,7 +68,7 @@ export default function QAndASection({ productId }: { productId: string }) {
     setSubmitting(false);
     if (error) { toast.error(error.message); return; }
     toast.success("Question posted — the seller will be notified");
-    setText(""); setOpen(false); load();
+    setText(""); setOpen(false); void questionsQuery.refetch();
   };
 
   return (

@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Package, Star, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,6 +6,7 @@ import ProductImage from "@/components/product/ProductImage";
 import { useCart } from "@/hooks/useCart";
 import { toast } from "sonner";
 import { useCurrency } from "@/hooks/useCurrency";
+import { supabaseKeys, useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 
 interface RecItem {
   id: string;
@@ -26,25 +27,30 @@ const PAGE_SIZE = 8;
 
 export default function RecommendedProducts({ productId, categoryId }: { productId: string; categoryId: string | null }) {
   const { formatPrice } = useCurrency();
-  const [items, setItems] = useState<RecItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [nearViewport, setNearViewport] = useState(false);
   const recommendationsRef = useRef<HTMLDivElement>(null);
   const { addItem } = useCart();
 
-  const loadPage = useCallback(async (offset: number) => {
-    let q = supabase
+  const recommendationsQuery = useSupabaseQuery<RecItem[]>(
+    [...supabaseKeys.table("products"), "recommendations", productId, categoryId ?? "all"],
+    async () => {
+      let q = supabase
       .from("products")
       .select("id, title, price, compare_at_price, average_rating, review_count, seller_id, stock_quantity, categories(name), product_images(image_url, is_primary)")
       .eq("status", "active")
       .eq("is_approved", true)
       .neq("id", productId)
       .order("created_at", { ascending: false })
-      .range(offset, offset + PAGE_SIZE - 1);
-    if (categoryId) q = q.eq("category_id", categoryId);
-    const { data, error } = await q;
-    return { rows: (data as unknown as RecItem[]) || [], error };
-  }, [productId, categoryId]);
+        .range(0, PAGE_SIZE - 1);
+      if (categoryId) q = q.eq("category_id", categoryId);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data as unknown as RecItem[]) || [];
+    },
+    { enabled: nearViewport, staleTime: 5 * 60 * 1000, retry: 1 },
+  );
+
+  const items = recommendationsQuery.data ?? [];
 
   useEffect(() => {
     const target = recommendationsRef.current;
@@ -64,39 +70,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
     );
     observer.observe(target);
     return () => observer.disconnect();
-  }, [loadPage]);
-
-  useEffect(() => {
-    let cancelled = false;
-    setItems([]);
-    setNearViewport(false);
-    return () => { cancelled = true; };
-  }, [loadPage]);
-
-  useEffect(() => {
-    if (!nearViewport) return;
-    let cancelled = false;
-    setLoading(true);
-    (async () => {
-      try {
-        const { rows, error } = await loadPage(0);
-        if (cancelled) return;
-        if (error) {
-          toast.error("Could not load recommended products.");
-        } else {
-          setItems(rows);
-        }
-      } catch (error) {
-        if (!cancelled) {
-          console.error("Failed to load recommended products:", error);
-          toast.error("Could not load recommended products.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [loadPage, nearViewport]);
+  }, [productId, categoryId]);
 
   return (
     <div ref={recommendationsRef} className="min-h-px">
@@ -175,7 +149,7 @@ export default function RecommendedProducts({ productId, categoryId }: { product
           );
         })}
       </div>
-      {/* Infinite scroll — keeps loading more products so the page never ends (AliExpress behavior) */}
+      {/* Keep this rail intentionally compact; the marketplace owns full pagination. */}
       </section>}
     </div>
   );

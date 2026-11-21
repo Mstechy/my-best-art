@@ -20,6 +20,7 @@ import {
   Store, ClipboardList, LogIn, HelpCircle, LogOut, ArrowRight, MessageSquare, Heart, Camera
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { supabaseKeys, useSupabaseQuery } from "@/hooks/useSupabaseQuery";
 import { createVisualHash } from "@/lib/visualHash";
 import { analyzeVisualProductImage } from "@/lib/visualProductSearch";
 
@@ -77,10 +78,36 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
-  const [navigationCollections, setNavigationCollections] = useState<NavigationCollection[]>([]);
   const [localSearch, setLocalSearch] = useState(search);
   const dashboardPath = role === "admin" ? "/admin/dashboard" : role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
   const chatPath = role === "buyer" ? "/buyer/chat" : "/seller/chat";
+
+  const navigationCollectionsQuery = useSupabaseQuery<NavigationCollection[]>(
+    [...supabaseKeys.table("marketplace_collections"), "public-navigation"],
+    async () => {
+      // Prefer the current flag, but keep the legacy placement fallback so
+      // existing approved collections remain reachable during migration.
+      const { data } = await (supabase.from("marketplace_collections") as any)
+        .select("title,slug")
+        .is("seller_id", null)
+        .eq("status", "active")
+        .eq("show_in_navigation", true)
+        .order("display_order")
+        .order("sort_order");
+
+      if (data && data.length > 0) return data as NavigationCollection[];
+
+      const { data: oldData } = await (supabase.from("marketplace_collections") as any)
+        .select("title,slug")
+        .is("seller_id", null)
+        .eq("status", "active")
+        .eq("placement", "navigation")
+        .order("sort_order");
+      return (oldData || []) as NavigationCollection[];
+    },
+    { staleTime: 10 * 60 * 1000 },
+  );
+  const navigationCollections = navigationCollectionsQuery.data ?? [];
 
   const menuItems = [
     { icon: Home, label: t("nav.home"), href: "/" },
@@ -105,33 +132,6 @@ const MarketplaceNavbar = memo(function MarketplaceNavbar({
   useEffect(() => {
     setImageSearchCategory(selectedCategory);
   }, [selectedCategory]);
-
-  useEffect(() => {
-    const loadNavigationCollections = async () => {
-      // Try new show_in_navigation flag first, fall back to old placement check
-      const { data } = await (supabase.from("marketplace_collections") as any)
-        .select("title,slug")
-        .is("seller_id", null)
-        .eq("status", "active")
-        .eq("show_in_navigation", true)
-        .order("display_order")
-        .order("sort_order");
-      
-      // If no results with show_in_navigation, fall back to old placement method
-      if (!data || data.length === 0) {
-        const { data: oldData } = await (supabase.from("marketplace_collections") as any)
-          .select("title,slug")
-          .is("seller_id", null)
-          .eq("status", "active")
-          .eq("placement", "navigation")
-          .order("sort_order");
-        setNavigationCollections((oldData || []) as NavigationCollection[]);
-      } else {
-        setNavigationCollections((data || []) as NavigationCollection[]);
-      }
-    };
-    loadNavigationCollections();
-  }, []);
 
   // Sync local search when prop changes (e.g., navigating between pages)
   useEffect(() => {

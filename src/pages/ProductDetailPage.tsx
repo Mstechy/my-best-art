@@ -62,6 +62,7 @@ export default function ProductDetailPage() {
   const [selectedColor, setSelectedColor] = useState<string>("");
   const [titleExpanded, setTitleExpanded] = useState(false);
   const ga4ViewedProductRef = useRef<string | null>(null);
+  const productViewRef = useRef<string | null>(null);
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -152,8 +153,13 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    const viewerId = user?.id ?? null;
-    trackView(id, viewerId);
+    // React StrictMode and auth hydration can run this effect more than once.
+    // A product view is a page-session event, so keep one write per product
+    // visit instead of inflating analytics when the viewer changes from
+    // anonymous to authenticated or the tree is replayed in development.
+    if (productViewRef.current === id) return;
+    productViewRef.current = id;
+    trackView(id, user?.id ?? null);
   }, [id, user?.id]);
 
   const hasProductVariants = productVariants.length > 0;
@@ -1096,7 +1102,7 @@ export default function ProductDetailPage() {
             <div id="product-reviews" ref={reviewsRef} className="scroll-mt-24">
               <h2 className="mb-3 text-lg font-bold text-[#111111] dark:text-[#FAF5F2]">Customer reviews</h2>
               {reviewsQuery.isLoading && <div className="space-y-3 animate-pulse"><div className="h-5 w-24 rounded bg-[#F2F3F5] dark:bg-[#202020]" /><div className="h-20 rounded-xl bg-[#F2F3F5] dark:bg-[#202020]" /></div>}
-              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><h2 className="text-base font-bold">Reviews</h2><p className="text-xs text-[#6E6C64]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
+              {!reviewsQuery.isLoading && reviews.length === 0 && <div className="flex min-h-11 items-center justify-between gap-3 border-y border-[#E8E8E8] py-3 dark:border-[#222222]"><div><p className="text-base font-bold">Reviews</p><p className="text-xs text-[#6E6C64]">No reviews yet</p></div>{user && canReview && !alreadyReviewed && <button type="button" onClick={() => setReviewFormOpen(true)} className="min-h-11 rounded-full border border-[#111111] px-4 text-xs font-bold dark:border-[#FAF5F2]">Be the first to review</button>}</div>}
               {reviews.length > 0 && <ReviewSummary
                 average={product.average_rating}
                 total={product.review_count}
