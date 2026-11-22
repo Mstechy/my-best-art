@@ -641,7 +641,7 @@ export default function ProductDetailPage() {
       </header>
       <CartDrawer />
       <main>
-      <Container className="py-6">
+          <Container className="py-4 sm:py-6">
         {product && productDetailSecondaryError && (
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#F3D7A6] bg-[#FFF8E8] px-4 py-3 text-xs text-[#7C4A03] dark:border-[#5B421B] dark:bg-[#2A2111] dark:text-[#F8D48A]" role="status">
             <span>Some seller or option details are temporarily unavailable. The product can still be viewed; retry to refresh them.</span>
@@ -699,7 +699,7 @@ export default function ProductDetailPage() {
           </div>
         ) : (
           <>
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,0.92fr)] lg:gap-10">
             <div>
               {mediaItems.length > 0 && (
                 <Carousel setApi={setCarouselApi} className="w-full">
@@ -783,22 +783,22 @@ export default function ProductDetailPage() {
               )}
             </div>
 
-             <div className="space-y-5 lg:sticky lg:top-24 lg:self-start">
-               <section aria-labelledby="product-title">
-                 {/* The buy box follows the marketplace reading order: condition, title, proof, price, action. */}
-                 <div className="flex items-center justify-between gap-3">
-                   {product.condition ? (
-                     <span className="inline-flex rounded-full border border-[#E6C85C] bg-[#FFF8D9] px-2 py-0.5 text-[10px] font-bold capitalize text-[#6D5200] dark:border-[#8A742C] dark:bg-[#2A2512] dark:text-[#F6D96D]">
-                       {product.condition} condition
-                     </span>
+              <div className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+                <section aria-labelledby="product-title">
+                  {/* The buy box follows the marketplace reading order: condition, title, proof, price, action. */}
+                  <div className="flex items-center justify-between gap-3">
+                    {product.condition ? (
+                      <span className="inline-flex rounded-md border border-[#E8E8E2] bg-[#F7F7F3] px-2 py-1 text-[10px] font-semibold capitalize text-[#5F5D55] dark:border-[#333333] dark:bg-[#1E1E1E] dark:text-[#D8D5C8]">
+                        {product.condition} condition
+                      </span>
                    ) : <span aria-hidden="true" />}
                    <button type="button" onClick={() => void shareProduct()} className="hidden h-10 w-10 shrink-0 place-items-center rounded-full border border-[#E8E8E8] text-[#6E6C64] transition hover:border-[#111111] hover:text-[#111111] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F6C75D] dark:border-[#333333] dark:hover:border-[#FAF5F2] dark:hover:text-[#FAF5F2] md:grid" aria-label="Share product">
                      <Share2 className="h-4 w-4" />
                    </button>
                  </div>
-                 <div className="mt-3 flex items-start gap-3 border-l-4 border-brand pl-3">
-                   <h1 id="product-title" className={`min-w-0 flex-1 text-[1.15rem] font-bold leading-[1.25] tracking-[-0.01em] text-[#111111] dark:text-[#FAF5F2] sm:text-[1.25rem] lg:text-[1.35rem] ${!titleExpanded ? "line-clamp-3" : ""}`}>{product.title || "Untitled product"}</h1>
-                 </div>
+                  <div className="mt-3 flex items-start">
+                    <h1 id="product-title" className={`min-w-0 flex-1 text-[1.05rem] font-semibold leading-[1.32] tracking-[-0.005em] text-[#171717] dark:text-[#FAF5F2] sm:text-[1.12rem] lg:text-[1.22rem] ${!titleExpanded ? "line-clamp-3" : ""}`}>{product.title || "Untitled product"}</h1>
+                  </div>
                  {(product.title ?? "").length > 90 && (
                    <button type="button" onClick={() => setTitleExpanded(e => !e)} className="mt-1 text-xs font-semibold text-[#111111] underline dark:text-[#FAF5F2]">
                      {titleExpanded ? "Show less" : "Read full title"}
@@ -807,8 +807,8 @@ export default function ProductDetailPage() {
 
                  {/* Only show facts the marketplace has actually earned. */}
                  {(seller?.full_name || seller?.is_verified || product.review_count > 0 || (product.show_sold_count !== false && soldCount > 0)) && (
-                   <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">
-                     {seller?.full_name && <span>Sold by <span className="font-bold text-[#111111] dark:text-[#FAF5F2]">{seller.full_name}</span></span>}
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">
+                      {seller?.full_name && <span>Sold by <span className="font-semibold text-[#111111] dark:text-[#FAF5F2]">{seller.full_name}</span></span>}
                      {seller?.is_verified && (
                        <span className="flex items-center gap-1 font-semibold text-[#16803C] dark:text-[#5EE38B]"><CheckCircle2 className="h-3.5 w-3.5" />Verified seller</span>
                      )}
@@ -819,24 +819,24 @@ export default function ProductDetailPage() {
                    </div>
                  )}
 
-                 <div className="mt-3 rounded-xl border border-[#E9D27A] bg-[#FFFBEA] px-3.5 py-3 dark:border-[#6D5C24] dark:bg-[#24200F]">
-                   <div className="flex items-start justify-between gap-3">
-                     <div className="min-w-0">
-                       <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[#756A45] dark:text-[#D8C77B]">{hasProductVariants && !selectedVariant ? "Starting price" : "Price"}</p>
-                       <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                         <span className="text-[1.45rem] font-black leading-none tracking-[-0.025em] text-[#111111] dark:text-[#FFF8D9] sm:text-[1.55rem] lg:text-[1.7rem]">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
-                         {product.compare_at_price && product.compare_at_price > product.price && !hasProductVariants && (
-                           <>
-                             <span className="text-sm font-semibold text-[#756A45] line-through dark:text-[#B7AB76]">{formatPrice(product.compare_at_price)}</span>
-                             <span className="rounded-md bg-[#D94A38] px-1.5 py-0.5 text-[11px] font-black text-white">-{Math.round((1 - product.price / product.compare_at_price) * 100)}%</span>
-                           </>
-                         )}
-                       </div>
-                       {hasProductVariants && !selectedVariant ? (
-                       <p className="mt-1 text-[11px] leading-4 text-[#756A45] dark:text-[#D8C77B]">Select an option to see its exact price, stock, and matching image.</p>
-                       ) : selectedVariant ? (
-                         <p className="mt-1 text-[11px] font-semibold text-[#756A45] dark:text-[#D8C77B]" aria-live="polite">Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")}</p>
-                       ) : null}
+                  <div className="mt-3 rounded-2xl border border-[#E6E4DC] bg-[#FAFAF7] px-3.5 py-3 dark:border-[#333333] dark:bg-[#1A1A1A]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[#77746A] dark:text-[#B7B3A7]">{hasProductVariants && !selectedVariant ? "Starting price" : "Price"}</p>
+                        <div className="mt-1 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                          <span className="text-[1.3rem] font-bold leading-none tracking-[-0.02em] text-[#111111] dark:text-[#FAF5F2] sm:text-[1.4rem] lg:text-[1.5rem]">{hasProductVariants && !selectedVariant ? `From ${formatPrice(startingVariantPrice ?? purchasablePrice)}` : formatPrice(purchasablePrice)}</span>
+                          {product.compare_at_price && product.compare_at_price > product.price && !hasProductVariants && (
+                            <>
+                              <span className="text-xs font-medium text-[#77746A] line-through dark:text-[#B7B3A7]">{formatPrice(product.compare_at_price)}</span>
+                              <span className="rounded-md bg-[#FFF0C2] px-1.5 py-0.5 text-[10px] font-bold text-[#705300] dark:bg-[#3A3014] dark:text-[#F6D96D]">-{Math.round((1 - product.price / product.compare_at_price) * 100)}%</span>
+                            </>
+                          )}
+                        </div>
+                        {hasProductVariants && !selectedVariant ? (
+                        <p className="mt-1 text-[10px] leading-4 text-[#77746A] dark:text-[#B7B3A7]">Choose options at purchase to see the exact price, stock, and matching image.</p>
+                        ) : selectedVariant ? (
+                          <p className="mt-1 text-[10px] font-semibold text-[#5F5D55] dark:text-[#D8D5C8]" aria-live="polite">Selected: {Object.entries(selectedVariant.option_values).map(([key, value]) => `${formatVariantAttributeLabel(key)}: ${value}`).join(" / ")}</p>
+                        ) : null}
                      </div>
                      <div className="shrink-0 text-right text-xs font-semibold">
                        {!inventoryAvailable ? <span className="text-[#B42318]">Out of stock</span> : selectedVariant || !hasProductVariants ? (

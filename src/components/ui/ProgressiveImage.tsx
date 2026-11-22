@@ -6,6 +6,7 @@ interface ProgressiveImageProps {
   placeholderColor?: string;
   className?: string;
   style?: React.CSSProperties;
+  imageStyle?: React.CSSProperties;
   width?: number;
   height?: number;
   srcSet?: string;
@@ -33,6 +34,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
   placeholderColor = "#F2F3F5",
   className = "",
   style,
+  imageStyle,
   width,
   height,
   srcSet,
@@ -159,7 +161,7 @@ const ProgressiveImage = memo(function ProgressiveImage({
           decoding={decoding}
           onLoad={handleLoad}
           onError={handleError}
-          style={!error ? shimmerStyle : {}}
+          style={!error ? { ...shimmerStyle, ...imageStyle } : imageStyle}
         />
       )}
 

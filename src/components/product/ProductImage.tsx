@@ -91,24 +91,28 @@ export default function ProductImage({
     );
   }
 
-  if (variant === "card") {
+  if (variant === "card" || variant === "detail") {
     return (
-      <div className={cn("h-full w-full", className)}>
-        <ProgressiveImage
-          src={currentSrc}
-          srcSet={responsiveSrc?.srcSet}
-          sizes={responsiveSrc?.sizes}
-          alt={alt}
-          width={900}
-          height={900}
-          loading={loading}
-          fetchPriority={fetchPriority}
-          fit={fit}
-          wrapperClassName="h-full w-full"
-          className="group-hover:scale-105"
-          onError={handleError}
-        />
-      </div>
+      <ProgressiveImage
+        src={currentSrc}
+        srcSet={responsiveSrc?.srcSet}
+        sizes={responsiveSrc?.sizes}
+        alt={alt}
+        width={900}
+        height={900}
+        loading={loading}
+        fetchPriority={fetchPriority}
+        fit={fit}
+        wrapperClassName="h-full w-full"
+        imageStyle={style}
+        className={cn(
+          "select-none transition-transform duration-300",
+          variant === "detail" ? "object-contain" : "object-cover",
+          variant === "card" && "group-hover:scale-105",
+          className,
+        )}
+        onError={handleError}
+      />
     );
   }
 
@@ -125,7 +129,7 @@ export default function ProductImage({
       style={style}
       className={cn(
         "h-full w-full select-none transition-transform duration-300",
-        variant === "detail" ? "object-contain" : "object-cover",
+        fit === "contain" ? "object-contain" : "object-cover",
         className,
       )}
     />

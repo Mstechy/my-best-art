@@ -25,7 +25,7 @@ export type ProductImageRow = {
 };
 
 export type Product = { id: string; title: string; price: number; compare_at_price: number | null; currency: string; seller_id: string; stock_quantity: number; average_rating: number; review_count: number; ships_to: string[] | null; flash_deal_end_at: string | null; created_at: string; product_images: ProductImageRow[] };
-export type Category = { id: string; name: string; slug: string; icon?: string; parent_id?: string | null };
+export type Category = { id: string; name: string; slug: string; icon?: string; parent_id?: string | null; image_url?: string | null };
 export type Seller = { full_name: string | null; is_verified: boolean };
 export type FeedItem = Product & { sold_count: number; trend_score: number };
 export type FeedName = "flash_deals" | "best_sellers" | "new_arrivals" | "trending" | "recommended";
@@ -86,7 +86,7 @@ export function useHomepageCategories() {
     supabaseKeys.rpc("homepage_categories"),
     async () => {
       const [categoriesRes, countsRes] = await Promise.all([
-        (supabase as any).from("categories").select("id,name,slug,icon,parent_id").order("sort_order"),
+        (supabase as any).from("categories").select("id,name,slug,icon,parent_id,image_url").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
       ]);
       if (categoriesRes.error) throw categoriesRes.error;
@@ -96,25 +96,47 @@ export function useHomepageCategories() {
         ((countsRes.data ?? []) as any[]).map((row: any) => [row.category_id, Number(row.product_count)])
       );
 
-      // Departments carry no artwork of their own: categories.image_url is null for
-      // every seeded row, so a department card shows the first approved product
-      // listed in it. Only departments that actually have stock render a card, so
-      // the lookup is restricted to those ids and to a handful of products rather
-      // than scanning the whole catalogue.
+      // Use a category's managed artwork first. Seeded departments may not have an
+      // image yet, so the homepage falls back to a real approved product image.
+      // Only the first visible department shortcuts need artwork; querying a few
+      // products per shortcut avoids a global catalogue scan and still guarantees
+      // that a later department (for example Watches) cannot lose its image merely
+      // because an earlier department has many products.
       const populatedIds = categories.filter((category) => (counts[category.id] ?? 0) > 0).map((category) => category.id);
-      const imageByCategory: Record<string, string> = {};
-      if (populatedIds.length > 0) {
-        const { data: products } = await supabase
-          .from("products")
-          .select("category_id, product_images(image_url, is_primary)")
-          .eq("status", "active")
-          .eq("is_approved", true)
-          .in("category_id", populatedIds)
-          .limit(12);
-        for (const product of (products ?? []) as any[]) {
-          if (!product?.category_id || imageByCategory[product.category_id]) continue;
-          const image = product.product_images?.find((item: any) => item.is_primary)?.image_url || product.product_images?.[0]?.image_url;
-          if (image) imageByCategory[product.category_id] = image;
+      const shortcutIds = populatedIds.slice(0, 6);
+      const imageByCategory: Record<string, string> = Object.fromEntries(
+        categories
+          .filter((category) => shortcutIds.includes(category.id) && typeof category.image_url === "string" && category.image_url.trim())
+          .map((category) => [category.id, category.image_url!.trim()]),
+      );
+
+      const missingShortcutIds = shortcutIds.filter((categoryId) => !imageByCategory[categoryId]);
+      if (missingShortcutIds.length > 0) {
+        const productResults = await Promise.all(
+          missingShortcutIds.map(async (categoryId) => {
+            const { data: products } = await supabase
+              .from("products")
+              .select("category_id, product_images(image_url, is_primary, sort_order)")
+              .eq("category_id", categoryId)
+              .eq("status", "active")
+              .eq("is_approved", true)
+              .order("created_at", { ascending: false })
+              .limit(4);
+            return products ?? [];
+          }),
+        );
+
+        for (const products of productResults) {
+          for (const product of products as any[]) {
+            const image = product?.product_images
+              ?.slice()
+              .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+              .find((item: any) => typeof item?.image_url === "string" && item.image_url.trim())?.image_url;
+            if (product?.category_id && image) {
+              imageByCategory[product.category_id] = image;
+              break;
+            }
+          }
         }
       }
 
