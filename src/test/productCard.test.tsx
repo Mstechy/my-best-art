@@ -113,4 +113,27 @@ describe("ProductCard", () => {
     expect(screen.getByText("Ships to Nigeria")).toBeInTheDocument();
     expect(screen.queryByText("Options available")).not.toBeInTheDocument();
   });
+
+  it("gives the primary marketplace action readable text without losing a touch target", () => {
+    render(
+      <I18nextProvider i18n={i18n}>
+        <MemoryRouter>
+          <ProductCard
+            product={{ ...product, stockQuantity: 8 }}
+            formatPrice={(amount) => `$${amount}`}
+            density="marketplace"
+            buyNowLabel="Buy Now"
+            addToCartLabel="Add to cart"
+            onBuyNow={() => undefined}
+            onAddToCart={() => undefined}
+          />
+        </MemoryRouter>
+      </I18nextProvider>,
+    );
+
+    const buyNow = screen.getByRole("button", { name: "Buy Now" });
+    expect(buyNow).toHaveClass("text-[13px]");
+    expect(buyNow).toHaveClass("min-h-11");
+    expect(buyNow).toHaveClass("flex-1");
+  });
 });

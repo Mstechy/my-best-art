@@ -167,7 +167,7 @@ export function useMarketplaceCategories() {
     supabaseKeys.rpc("marketplace_categories"),
     async () => {
       const [categoriesRes, countsRes] = await Promise.all([
-        (supabase as any).from("categories").select("id,name,slug,icon,parent_id").order("sort_order"),
+        (supabase as any).from("categories").select("id,name,slug,icon,parent_id,image_url").order("sort_order"),
         (supabase as any).rpc("homepage_category_counts"),
       ]);
       if (categoriesRes.error) throw categoriesRes.error;

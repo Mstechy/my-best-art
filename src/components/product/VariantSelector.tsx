@@ -39,14 +39,24 @@ export default function VariantSelector({
 
   if (attributeKeys.length === 0) return null;
 
-  const isOptionAvailable = (key: string, value: string) => variants.some((variant) =>
-    variant.is_active &&
-    variant.stock_quantity > 0 &&
-    variant.option_values[key] === value &&
-    Object.entries(selectedOptions).every(([selectedKey, selectedValue]) =>
-      selectedKey === key || variant.option_values[selectedKey] === selectedValue,
-    ),
-  );
+  const isOptionAvailable = (key: string, value: string) => {
+    const availableVariants = variants.filter((variant) => variant.is_active && variant.stock_quantity > 0);
+    const matchesCandidate = (variant: ProductVariant) => variant.option_values[key] === value;
+
+    // A value must remain clickable when it exists on any real in-stock SKU.
+    // A strict intersection with the currently selected dimensions would make
+    // valid dependent choices look disabled (for example, 256GB only exists
+    // with Yellow, while Black is currently selected). `selectVariantOptions`
+    // reconciles those dependent dimensions to the real SKU after the click.
+    const hasCompatibleVariant = availableVariants.some((variant) =>
+      matchesCandidate(variant) &&
+      Object.entries(selectedOptions).every(([selectedKey, selectedValue]) =>
+        selectedKey === key || variant.option_values[selectedKey] === selectedValue,
+      ),
+    );
+
+    return hasCompatibleVariant || availableVariants.some(matchesCandidate);
+  };
 
   const selectableKeys = attributeKeys.filter((key) => {
     const values = new Set(variants

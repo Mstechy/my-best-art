@@ -206,6 +206,15 @@ export default function ProductDetailPage() {
     const labels = Object.fromEntries(productTypeConfig.fields.map((field) => [field.key, field.label]));
     const variantKeys = new Set([...variantAttributeKeys].map((key) => key.toLowerCase()));
     const details: Record<string, string> = {};
+    const detailLabels = new Set<string>();
+    const addDetail = (label: string, value: string | null | undefined) => {
+      const trimmedLabel = label.trim();
+      const trimmedValue = value?.trim();
+      const normalizedLabel = trimmedLabel.toLowerCase().replace(/\s+/g, " ");
+      if (!trimmedLabel || !trimmedValue || detailLabels.has(normalizedLabel)) return;
+      detailLabels.add(normalizedLabel);
+      details[trimmedLabel] = trimmedValue;
+    };
     const facts = getProductFactEntries({
       attributes: getCategoryAttributes(product.variants),
       topLevel: { brand: product.brand, color: product.color, condition: product.condition },
@@ -215,17 +224,14 @@ export default function ProductDetailPage() {
       keys: getProductDetailFactKeys(productSurface).filter((key) => !variantKeys.has(key.toLowerCase())),
       limit: 20,
     });
-    facts.forEach((fact) => { details[fact.label] = fact.value; });
+    facts.forEach((fact) => addDetail(fact.label, fact.value));
 
     Object.entries(getCategoryAttributes(product.variants)).forEach(([key, value]) => {
       const normalizedKey = key.toLowerCase();
       if (variantKeys.has(normalizedKey) || normalizedKey === "categorygroup" || normalizedKey === "producttypekey" || !value?.trim()) return;
       const label = labels[key] ?? key;
-      if (!details[label]) details[label] = value.trim();
+      addDetail(label, value);
     });
-    const addDetail = (label: string, value: string | null | undefined) => {
-      if (value?.trim() && !details[label]) details[label] = value.trim();
-    };
     addDetail("Material", product.material);
     addDetail("Dimensions", product.dimensions);
     addDetail("Weight", product.weight);

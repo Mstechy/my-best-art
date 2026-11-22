@@ -19,6 +19,12 @@ const CATEGORY_ICONS: Record<string, LucideIcon> = {
 
 const categoryIcon = (icon?: string | null) => CATEGORY_ICONS[icon || ""] || Package;
 
+/** Shared visual treatment for category shortcuts and the sidebar. */
+export function CategoryIcon({ icon, className = "h-4 w-4" }: { icon?: string | null; className?: string }) {
+  const Icon = categoryIcon(icon);
+  return <Icon aria-hidden="true" className={className} />;
+}
+
 const TOP_LEVEL_ORDER = [
   "fashion",
   "electronics",
@@ -142,7 +148,9 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
                       onClick={() => onSelect(sub.slug)}
                       className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-xs font-semibold transition-colors ${isActive ? "bg-[#111111] dark:bg-[#FAF5F2] text-white dark:text-[#111111]" : "text-[#111111] dark:text-[#FAF5F2] hover:bg-[#F2F3F5] dark:hover:bg-[#2A2A2D]"}`}
                     >
-                      {(() => { const Icon = categoryIcon(sub.icon); return <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${isActive ? "bg-white/15 dark:bg-black/10" : "bg-[#F2F3F5] dark:bg-[#2A2A2D]"}`}><Icon aria-hidden="true" className="h-3.5 w-3.5" /></span>; })()}
+                      <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full ${isActive ? "bg-white/15 dark:bg-black/10" : "bg-[#F2F3F5] dark:bg-[#2A2A2D]"}`}>
+                        <CategoryIcon icon={sub.icon} className="h-3.5 w-3.5" />
+                      </span>
                       {sub.label}
                     </button>
                   );

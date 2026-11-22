@@ -289,7 +289,7 @@ export function ProductCard({
               {/* Ink text on the brand orange, not white: white on #ff791a is
                  a 2.62:1 contrast ratio (axe color-contrast), while #111111
                  on the same orange clears 7:1 and keeps the button's colour. */}
-              {onBuyNow && <button type="button" onClick={onBuyNow} disabled={unavailable} className="min-h-11 rounded-full bg-primary px-3 text-[10px] font-bold text-[#111111] transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{buyNowLabel}</button>}
+              {onBuyNow && <button type="button" onClick={onBuyNow} disabled={unavailable} className="min-h-11 min-w-0 flex-1 whitespace-nowrap rounded-full bg-primary px-3 text-[13px] font-semibold leading-none text-[#111111] transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50">{buyNowLabel}</button>}
               {onAddToCart && <button type="button" onClick={onAddToCart} disabled={unavailable} className="grid h-11 w-11 place-items-center rounded-full bg-foreground text-background transition-colors hover:bg-foreground/85 disabled:cursor-not-allowed disabled:opacity-50" aria-label={addToCartLabel}>
                 <ShoppingCart className="h-3.5 w-3.5" />
               </button>}

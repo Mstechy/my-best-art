@@ -127,7 +127,10 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     let active = true;
-    if (!address.country || Object.keys(sellerGroups).length === 0) {
+    // Shipping quotes are an authenticated server-side contract. Do not call
+    // the RPC for guests: it requires the `authenticated` role and the buyer
+    // cannot place an order until signed in anyway.
+    if (!user || !address.country || Object.keys(sellerGroups).length === 0) {
       setShippingQuotes([]);
       setShippingQuoteError(null);
       setShippingQuoteLoading(false);
@@ -144,7 +147,7 @@ export default function CheckoutPage() {
       })
       .finally(() => { if (active) setShippingQuoteLoading(false); });
     return () => { active = false; };
-  }, [address.country, fetchShippingQuotes, sellerGroups]);
+  }, [address.country, fetchShippingQuotes, sellerGroups, user]);
   const reconcileCheckoutItems = useCallback(async (): Promise<string | null> => {
     const reconciliation = await reconcileLiveCheckoutItems(checkoutItems);
     const { items: nextItems, priceChanged, availabilityChanged } = reconciliation;
@@ -443,7 +446,7 @@ export default function CheckoutPage() {
                 <div className="flex justify-between text-xs">
                   <span className="text-[#6E6C64]">Shipping</span>
                   <span className="text-right text-[#6E6C64] dark:text-[#A0A0A0] font-semibold">
-                    {shippingQuoteLoading ? "Calculating…" : shippingQuoteError ? "Unavailable" : address.country ? formatPrice(shippingTotal) : "Select a country"}
+                    {shippingQuoteLoading ? "Calculating…" : shippingQuoteError ? "Unavailable" : !user ? "Sign in to calculate" : address.country ? formatPrice(shippingTotal) : "Select a country"}
                   </span>
                 </div>
                 {shippingQuoteReady && (() => {
@@ -454,6 +457,7 @@ export default function CheckoutPage() {
                   return <p className="text-[10px] text-[#6E6C64] dark:text-[#A0A0A0]">Estimated delivery: {min.toLocaleDateString()} – {max.toLocaleDateString()}</p>;
                 })()}
                 {shippingQuoteError && <p role="alert" className="text-[10px] leading-relaxed text-red-600 dark:text-red-400">{shippingQuoteError}</p>}
+                {!user && checkoutItems.length > 0 && <p className="text-[10px] leading-relaxed text-[#6E6C64] dark:text-[#A0A0A0]">Sign in to calculate destination shipping and continue to payment.</p>}
                 <div className="flex justify-between text-sm font-bold text-[#111111] dark:text-[#FAF5F2] pt-2 border-t border-[#F2F3F5] dark:border-[#1E1E1E]">
                   <span>Total</span><span>{formatPrice(checkoutGrandTotal)}</span>
                 </div>

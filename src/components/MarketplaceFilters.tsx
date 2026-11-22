@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "../components/ui/sheet";
 import { Button } from "../components/ui/button";
-import { Slider } from "../components/ui/slider";
+import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Filter, Star } from "lucide-react";
 import { defaultFilters, type MarketplaceFiltersState } from "./marketplaceFiltersState";
@@ -30,7 +30,14 @@ export default function MarketplaceFilters({
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(value);
 
-  const apply = () => { onChange(draft); setOpen(false); };
+  const apply = () => {
+    const minPrice = Math.max(0, Number.isFinite(draft.minPrice) ? draft.minPrice : 0);
+    const maxPrice = draft.maxPrice === null
+      ? null
+      : Math.max(minPrice, Number.isFinite(draft.maxPrice) ? draft.maxPrice : minPrice);
+    onChange({ ...draft, minPrice, maxPrice });
+    setOpen(false);
+  };
   const reset = () => { setDraft(defaultFilters); onChange(defaultFilters); };
   const updateCategoryFilter = (key: string, nextValue: string) => {
     setDraft(d => {
@@ -65,17 +72,35 @@ export default function MarketplaceFilters({
         <div className="space-y-6 mt-6">
           <div>
             <Label>Price Range</Label>
-            <div className="mt-3 px-1">
-              <Slider
-                min={0} max={10000} step={10}
-                value={[draft.minPrice, draft.maxPrice]}
-                aria-label="Price range"
-                onValueChange={([min, max]) => setDraft(d => ({ ...d, minPrice: min, maxPrice: max }))}
-              />
-              <div className="flex justify-between mt-2 text-xs text-muted-foreground">
-                <span>{formatPrice(draft.minPrice)}</span>
-                <span>{formatPrice(draft.maxPrice)}{draft.maxPrice === 10000 ? "+" : ""}</span>
-              </div>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">From</span>
+                <Input
+                  type="number"
+                  min={0}
+                  step="any"
+                  inputMode="decimal"
+                  value={draft.minPrice || ""}
+                  onChange={(event) => setDraft(d => ({ ...d, minPrice: event.target.value === "" ? 0 : Math.max(0, Number(event.target.value)) }))}
+                  aria-label="Minimum price"
+                />
+              </label>
+              <label className="space-y-1">
+                <span className="text-xs text-muted-foreground">To</span>
+                <Input
+                  type="number"
+                  min={draft.minPrice || 0}
+                  step="any"
+                  inputMode="decimal"
+                  value={draft.maxPrice ?? ""}
+                  onChange={(event) => setDraft(d => ({ ...d, maxPrice: event.target.value === "" ? null : Math.max(0, Number(event.target.value)) }))}
+                  aria-label="Maximum price"
+                />
+              </label>
+            </div>
+            <div className="mt-2 flex justify-between text-xs text-muted-foreground">
+              <span>{formatPrice(draft.minPrice)}</span>
+              <span>{draft.maxPrice === null ? "No maximum" : formatPrice(draft.maxPrice)}</span>
             </div>
           </div>
 

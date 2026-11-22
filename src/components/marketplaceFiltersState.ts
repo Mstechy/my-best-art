@@ -6,7 +6,8 @@
  */
 export interface MarketplaceFiltersState {
   minPrice: number;
-  maxPrice: number;
+  /** Null means the buyer has not set an upper bound. */
+  maxPrice: number | null;
   minRating: number;
   inStockOnly: boolean;
   condition: string; // "any" | "new" | "used" | "refurbished"
@@ -15,7 +16,7 @@ export interface MarketplaceFiltersState {
 
 export const defaultFilters: MarketplaceFiltersState = {
   minPrice: 0,
-  maxPrice: 10000,
+  maxPrice: null,
   minRating: 0,
   inStockOnly: false,
   condition: "any",
@@ -24,7 +25,7 @@ export const defaultFilters: MarketplaceFiltersState = {
 
 export function countActive(f: MarketplaceFiltersState): number {
   let n = 0;
-  if (f.minPrice > 0 || f.maxPrice < 10000) n++;
+  if (f.minPrice > 0 || f.maxPrice !== null) n++;
   if (f.minRating > 0) n++;
   if (f.inStockOnly) n++;
   if (f.condition !== "any") n++;

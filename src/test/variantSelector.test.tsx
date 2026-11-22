@@ -57,9 +57,14 @@ describe("VariantSelector", () => {
     expect(onChange).toHaveBeenCalledWith({ storage: "128GB", color: "Blue" });
   });
 
-  it("disables values that are unavailable for the selected dimension", () => {
-    render(<VariantSelector variants={variants} selectedOptions={{ storage: "128GB" }} onChange={vi.fn()} />);
+  it("keeps a dependent value changeable and reconciles it to a real SKU", () => {
+    const onChange = vi.fn();
+    render(<VariantSelector variants={variants} selectedOptions={{ storage: "128GB", color: "Black" }} onChange={onChange} />);
 
-    expect(screen.getByRole("button", { name: "Colour: Yellow, unavailable" })).toBeDisabled();
+    const yellow = screen.getByRole("button", { name: "Colour: Yellow, available" });
+    expect(yellow).not.toBeDisabled();
+    fireEvent.click(yellow);
+
+    expect(onChange).toHaveBeenCalledWith({ color: "Yellow", storage: "256GB" });
   });
 });
