@@ -3,6 +3,7 @@ import { normalizeSellerListingDescription, normalizeSellerListingTitle, normali
 
 export type SellerListingSuggestionInput = {
   productTypeLabel?: string;
+  currentTitle?: string;
   fields: CategoryAttribute[];
   categoryAttributes: Record<string, string | undefined>;
   requiredKeys?: string[];
@@ -17,6 +18,8 @@ export type SellerListingFact = {
 export type SellerListingSuggestions = {
   title: string;
   description: string;
+  metaDescription: string;
+  tags: string[];
   facts: SellerListingFact[];
   missingRequiredLabels: string[];
 };
@@ -122,14 +125,44 @@ function buildDescription(input: SellerListingSuggestionInput, facts: SellerList
   return normalizeSellerListingDescription(`${prefix} ${factsText}.`);
 }
 
+function buildMetaDescription(input: SellerListingSuggestionInput, facts: SellerListingFact[], title: string): string {
+  const sourceTitle = trimValue(input.currentTitle) || title;
+  if (!sourceTitle || facts.length === 0) return "";
+  const supportingFacts = facts
+    .filter((fact) => !["model", "brand"].includes(fact.key))
+    .slice(0, 3)
+    .map((fact) => `${fact.label}: ${fact.value}`);
+  const details = supportingFacts.length > 0 ? ` ${supportingFacts.join(". ")}.` : "";
+  return normalizeSellerListingDescription(`${sourceTitle}${input.productTypeLabel ? ` — ${input.productTypeLabel}.` : "."}${details}`).slice(0, 160).trim();
+}
+
+function buildTags(input: SellerListingSuggestionInput, facts: SellerListingFact[]): string[] {
+  const candidates = [
+    input.productTypeLabel || "",
+    ...facts
+      .filter((fact) => ["brand", "model", "storage", "ram", "processor", "connectivity", "color", "material", "movement"].includes(fact.key))
+      .map((fact) => fact.value),
+  ];
+  const tags: string[] = [];
+  candidates.forEach((candidate) => {
+    const value = trimValue(candidate);
+    if (!value || tags.some((tag) => comparable(tag) === comparable(value))) return;
+    tags.push(value);
+  });
+  return tags.slice(0, 8);
+}
+
 export function buildSellerListingSuggestions(input: SellerListingSuggestionInput): SellerListingSuggestions {
   const facts = buildFacts(input);
   const required = new Set(input.requiredKeys || []);
   const labelByKey = new Map(input.fields.map((field) => [field.key, field.label]));
+  const title = buildTitle(input, facts);
 
   return {
-    title: buildTitle(input, facts),
+    title,
     description: buildDescription(input, facts),
+    metaDescription: buildMetaDescription(input, facts, title),
+    tags: buildTags(input, facts),
     facts,
     missingRequiredLabels: [...required]
       .filter((key) => !trimValue(input.categoryAttributes[key]))

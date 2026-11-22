@@ -364,6 +364,15 @@ export default function SellerProductCsvImporter({
               >
                 <Download className="mr-2 h-4 w-4" /> Download tailored template
               </Button>
+              {templateProductType && (
+                <div className="sm:col-span-2 rounded-md border border-sky-200 bg-sky-50 p-2.5 text-xs text-sky-950 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-100">
+                  <p className="font-semibold">This template accepts {templateProductType.label} fields only.</p>
+                  <p className="mt-1 leading-relaxed">
+                    Required specification columns: {getRequiredFields(templateProductType).map(toAttributeColumn).join(", ") || "none beyond the standard columns"}.
+                  </p>
+                  <p className="mt-1 leading-relaxed text-sky-800 dark:text-sky-200">Brand and condition use the standard columns. Do not rename the generated headers or add attributes from another product type.</p>
+                </div>
+              )}
             </div>
           </div>
 

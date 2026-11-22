@@ -26,6 +26,9 @@ describe("seller listing assistant", () => {
 
     expect(result.title).toBe("Apple iPhone 17");
     expect(result.title).not.toContain("Apple, Apple");
+    expect(result.metaDescription).toContain("Apple iPhone 17");
+    expect(result.tags).toContain("Mobile Phones");
+    expect(result.tags).toContain("128GB, 256GB");
     expect(result.missingRequiredLabels).toEqual([]);
   });
 
@@ -47,6 +50,8 @@ describe("seller listing assistant", () => {
     expect(result.description).toContain("Color: Silver");
     expect(result.description).toContain("Condition: Used");
     expect(result.description).not.toContain("waterproof");
+    expect(result.metaDescription).toContain("Business Quartz Chronograph");
+    expect(result.tags).toEqual(expect.arrayContaining(["Watches", "Olevs", "Business Quartz Chronograph", "Silver"]));
     expect(result.missingRequiredLabels).toEqual(["Storage"]);
   });
 
@@ -55,6 +60,8 @@ describe("seller listing assistant", () => {
 
     expect(result.title).toBe("");
     expect(result.description).toBe("");
+    expect(result.metaDescription).toBe("");
+    expect(result.tags).toEqual([]);
     expect(result.facts).toEqual([]);
     expect(result.missingRequiredLabels).toEqual(["Model"]);
   });

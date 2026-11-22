@@ -1686,12 +1686,25 @@ export default function SellerProducts() {
   const listingSuggestions = useMemo(
     () => buildSellerListingSuggestions({
       productTypeLabel: selectedProductTypeConfig.label,
+      currentTitle: title,
       fields: selectedProductTypeConfig.fields,
       categoryAttributes: effectiveCategoryAttributes,
       requiredKeys: [...requiredSpecificationKeys],
     }),
-    [selectedProductTypeConfig, effectiveCategoryAttributes, requiredSpecificationKeys],
+    [selectedProductTypeConfig, title, effectiveCategoryAttributes, requiredSpecificationKeys],
   );
+  const blankSuggestionLabels = useMemo(() => [
+    !title.trim() && listingSuggestions.title ? "title" : null,
+    !description.trim() && listingSuggestions.description ? "product details" : null,
+    !metaDescription.trim() && listingSuggestions.metaDescription ? "search description" : null,
+    !tagsInput.trim() && listingSuggestions.tags.length > 0 ? "tags" : null,
+  ].filter((value): value is string => Boolean(value)), [
+    title,
+    description,
+    metaDescription,
+    tagsInput,
+    listingSuggestions,
+  ]);
   const showLegacySizeColumn = variantRows.some((row) => Boolean(row.size.trim()));
   const showColourColumn = variantRows.some((row) => Boolean(row.color.trim())) || Boolean(variantColorValues.trim());
   const variantRowsWithPrices = variantRows.filter((row) => Number.isFinite(Number(row.price)) && Number(row.price) > 0);
@@ -1740,6 +1753,31 @@ export default function SellerProducts() {
     if (key === "material") setMaterial(value);
     if (key === "color") setColor(value);
     if (key === "condition") setCondition(value.toLowerCase());
+  };
+  const applyBlankListingSuggestions = () => {
+    const applied: string[] = [];
+    if (!title.trim() && listingSuggestions.title) {
+      setTitle(listingSuggestions.title);
+      applied.push("title");
+    }
+    if (!description.trim() && listingSuggestions.description) {
+      setDescription(listingSuggestions.description);
+      setDescriptionError("");
+      applied.push("product details");
+    }
+    if (!metaDescription.trim() && listingSuggestions.metaDescription) {
+      setMetaDescription(listingSuggestions.metaDescription);
+      applied.push("search description");
+    }
+    if (!tagsInput.trim() && listingSuggestions.tags.length > 0) {
+      setTagsInput(listingSuggestions.tags.join(", "));
+      applied.push("tags");
+    }
+    if (applied.length === 0) {
+      toast({ title: "Nothing to apply", description: "Your existing listing fields were left unchanged." });
+      return;
+    }
+    toast({ title: "Safe suggestions applied", description: `${applied.join(", ")} added to blank fields. Review the values before submitting.` });
   };
   const handleCategoryChange = (value: string) => {
     const nextCategory = categories.find((category) => category.id === value);
@@ -1913,6 +1951,39 @@ export default function SellerProducts() {
                           return <span key={field.key} className="flex items-center gap-1.5"><CheckCircle2 className={`h-3.5 w-3.5 ${complete ? "text-emerald-600" : "text-muted-foreground"}`} />{field.label}{complete ? " added" : ` — ${field.placeholder || "add verified value"}`}</span>;
                         })}
                       </div>
+                      <div className="mt-3 rounded-md border border-[#E8CF6A]/70 bg-background/60 p-3">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-xs font-semibold text-foreground">Safe listing suggestions</p>
+                            <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                              {blankSuggestionLabels.length > 0
+                                ? `Can fill blank fields only: ${blankSuggestionLabels.join(", ")}.`
+                                : "Nothing will be changed automatically; your listing fields are already filled."}
+                            </p>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            className="h-8 shrink-0 text-xs"
+                            onClick={applyBlankListingSuggestions}
+                            disabled={blankSuggestionLabels.length === 0}
+                          >
+                            Apply blank fields
+                          </Button>
+                        </div>
+                        {listingSuggestions.metaDescription && (
+                          <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+                            Search description preview: <span className="text-foreground">{listingSuggestions.metaDescription}</span>
+                          </p>
+                        )}
+                        {listingSuggestions.tags.length > 0 && (
+                          <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
+                            Tags preview: <span className="text-foreground">{listingSuggestions.tags.join(", ")}</span>
+                          </p>
+                        )}
+                        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">Review every suggestion before submission. No ratings, compatibility claims, shipping promises, or product facts are invented.</p>
+                      </div>
                     </div>
                   )}
                   <div>
@@ -1963,6 +2034,7 @@ export default function SellerProducts() {
                           </Button>
                         </div>
                         <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">This is a factual starting point. Add real usage, package, compatibility, or care information only when you can verify it.</p>
+                        {listingSuggestions.description.length < 80 && <p className="mt-1 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300">This starter is {listingSuggestions.description.length}/80 characters. Add more verified detail before submitting.</p>}
                       </div>
                     )}
                     <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: "Original iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version."</p>
