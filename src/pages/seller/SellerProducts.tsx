@@ -30,6 +30,7 @@ import { getCategoryPathLabel } from "@/lib/cataloguePresentation";
 import { getLaptopTitleQuality, getPhoneTitleQuality } from "@/lib/productListingPresentation";
 import { googleFeedIssues, isValidGtin } from "@/lib/googleFeed";
 import { normalizeSellerListingDescription, normalizeSellerListingTitle, normalizeSellerListingValue } from "@/lib/sellerProductCsv";
+import { buildSellerListingSuggestions } from "@/lib/sellerListingAssistant";
 import { useCurrency } from "@/hooks/useCurrency";
 import SellerProductCsvImporter from "@/components/seller/SellerProductCsvImporter";
 
@@ -1682,6 +1683,15 @@ export default function SellerProducts() {
     () => ({ ...categoryAttributes, ...baseCategoryAttributes, ...deviceOptionAttributes }),
     [categoryAttributes, baseCategoryAttributes, deviceOptionAttributes],
   );
+  const listingSuggestions = useMemo(
+    () => buildSellerListingSuggestions({
+      productTypeLabel: selectedProductTypeConfig.label,
+      fields: selectedProductTypeConfig.fields,
+      categoryAttributes: effectiveCategoryAttributes,
+      requiredKeys: [...requiredSpecificationKeys],
+    }),
+    [selectedProductTypeConfig, effectiveCategoryAttributes, requiredSpecificationKeys],
+  );
   const showLegacySizeColumn = variantRows.some((row) => Boolean(row.size.trim()));
   const showColourColumn = variantRows.some((row) => Boolean(row.color.trim())) || Boolean(variantColorValues.trim());
   const variantRowsWithPrices = variantRows.filter((row) => Number.isFinite(Number(row.price)) && Number(row.price) > 0);
@@ -1909,6 +1919,20 @@ export default function SellerProducts() {
                     <label htmlFor="product-title" className="text-sm font-medium text-foreground">Product Title *</label>
                     <Input id="product-title" value={title} onChange={(e) => setTitle(e.target.value)} onBlur={() => setTitle(normalizeSellerListingTitle(title))} placeholder={isPhoneListing ? "e.g. Apple iPhone 15 Pro, 256GB, Factory Unlocked" : isLaptopListing ? "e.g. Lenovo ThinkPad T14 Gen 5, 16GB RAM, 512GB SSD" : "e.g. Wireless Bluetooth Headphones"} className="mt-1" />
                     <p className="mt-1 text-xs text-muted-foreground">{isPhoneListing ? "Keep this short: brand, model, key configuration, and carrier status. Example: Apple iPhone 16, 128GB, Unlocked. Put screen, RAM, chip, connectivity, and other full details below." : isLaptopListing ? "Use brand, model, RAM, storage, processor family, and a meaningful configuration. Keep claims consistent with the specifications below." : "Keep this short: brand, product type, and main differentiator. Put full features, uses, and package contents in Product details below."}</p>
+                    {listingSuggestions.title && (
+                      <div className="mt-2 rounded-md border border-border bg-muted/30 p-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground">Suggested from entered facts</p>
+                            <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{listingSuggestions.title}</p>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setTitle(listingSuggestions.title)}>
+                            {title.trim() ? "Use title" : "Use suggestion"}
+                          </Button>
+                        </div>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">Uses only the verified values entered in Details. It does not add claims or replace your title automatically.</p>
+                      </div>
+                    )}
                     {isPhoneListing && (
                       <div className="mt-3 rounded-xl border border-[#F3D36A] bg-[#FFF9E6] p-3 text-xs text-[#5F4A00] dark:border-[#6E5A17] dark:bg-[#2B250F] dark:text-[#F9E7A7]">
                         <p className="font-semibold">Phone listing checklist</p>
@@ -1927,6 +1951,20 @@ export default function SellerProducts() {
                   <div>
                     <label className="text-sm font-medium text-foreground">Product Details <span className="text-xs text-muted-foreground font-normal">(min 80 characters)</span></label>
                     <Textarea value={description} onChange={(e) => { setDescription(e.target.value); setDescriptionError(""); }} onBlur={() => setDescription(normalizeSellerListingDescription(description))} placeholder="Detailed product description — features, use cases, what's in the box..." className="mt-1" rows={5} />
+                    {listingSuggestions.description && (
+                      <div className="mt-2 rounded-md border border-border bg-muted/30 p-2.5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-xs font-medium text-foreground">Verified details draft</p>
+                            <p className="mt-1 line-clamp-3 text-xs leading-relaxed text-muted-foreground">{listingSuggestions.description}</p>
+                          </div>
+                          <Button type="button" variant="outline" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => { setDescription(listingSuggestions.description); setDescriptionError(""); }}>
+                            {description.trim() ? "Use details" : "Use draft"}
+                          </Button>
+                        </div>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">This is a factual starting point. Add real usage, package, compatibility, or care information only when you can verify it.</p>
+                      </div>
+                    )}
                     <p className="mt-1 text-xs text-muted-foreground">Add the long information here, not in the title. Example: "Original iPhone 16 with 6.1-inch Super Retina XDR OLED display, 128GB storage, 6GB RAM, Face ID, NFC, A18 chip, 5G support, unlocked US/CN version."</p>
                     <div className="mt-1 flex items-center justify-between">
                       <span className="text-xs text-muted-foreground">{description.length}/5000</span>
