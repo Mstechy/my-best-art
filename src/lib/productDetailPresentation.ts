@@ -40,8 +40,13 @@ const normalize = (value: string | null | undefined) =>
 
 export function formatVariantAttributeLabel(key: string): string {
   const trimmed = key.trim();
+  const compactKey = trimmed.replace(/[\s_-]+/g, "").toLowerCase();
+  const canonicalKey = Object.keys(ATTRIBUTE_LABELS).find(
+    (candidate) => candidate.replace(/[\s_-]+/g, "").toLowerCase() === compactKey,
+  );
   return ATTRIBUTE_LABELS[trimmed]
     ?? ATTRIBUTE_LABELS[trimmed.charAt(0).toLowerCase() + trimmed.slice(1)]
+    ?? (canonicalKey ? ATTRIBUTE_LABELS[canonicalKey] : undefined)
     ?? trimmed.replace(/([A-Z])/g, " $1").replace(/^./, (value) => value.toUpperCase());
 }
 

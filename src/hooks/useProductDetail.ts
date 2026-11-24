@@ -147,10 +147,11 @@ export function useProduct(idOrSlug: string | undefined) {
       if (error) throw error;
       return normalizeProduct(data as unknown as Record<string, unknown>);
     },
-    // A product route must fail into its retry state within the browser smoke
-    // window. A stalled request should not spend three attempts holding the
-    // entire page on a skeleton; the buyer can retry explicitly.
-    { enabled: !!idOrSlug, staleTime: 5 * 60 * 1000, retry: 1 },
+    // A product route must fail into a recoverable state within the browser
+    // smoke window. Do not spend a second full network timeout retrying the
+    // blocking first-viewport request; the page already exposes an explicit
+    // retry action and optional seller/variant queries remain independent.
+    { enabled: !!idOrSlug, staleTime: 5 * 60 * 1000, retry: false },
   );
 }
 

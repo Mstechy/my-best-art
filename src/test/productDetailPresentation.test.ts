@@ -33,5 +33,6 @@ describe("product detail presentation", () => {
     expect(formatVariantAttributeLabel("storageType")).toBe("Storage type");
     expect(formatVariantAttributeLabel("simType")).toBe("SIM / cellular support");
     expect(formatVariantAttributeLabel("batteryHealth")).toBe("Battery health");
+    expect(formatVariantAttributeLabel("R A M")).toBe("RAM");
   });
 });

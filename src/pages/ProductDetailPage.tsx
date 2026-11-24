@@ -229,7 +229,10 @@ export default function ProductDetailPage() {
     Object.entries(getCategoryAttributes(product.variants)).forEach(([key, value]) => {
       const normalizedKey = key.toLowerCase();
       if (variantKeys.has(normalizedKey) || normalizedKey === "categorygroup" || normalizedKey === "producttypekey" || !value?.trim()) return;
-      const label = labels[key] ?? key;
+      // Imported listings can preserve legacy keys such as "R A M". Use the
+      // shared buyer label formatter for unknown spellings so the table shows
+      // one canonical label and does not render a second RAM row.
+      const label = labels[key] ?? formatVariantAttributeLabel(key);
       addDetail(label, value);
     });
     addDetail("Material", product.material);

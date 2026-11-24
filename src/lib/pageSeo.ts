@@ -55,12 +55,12 @@ export const HOME_PAGE_SEO = {
  * served HTML behind. `{{category}}` is i18next's placeholder, kept verbatim.
  */
 export const MARKETPLACE_SEO = {
-  title: "Marketplace",
-  description: "Discover products from independent sellers on Tradibu",
+  title: "Shop the marketplace",
+  description: "Browse products from independent sellers.",
 };
 
 export const CATEGORY_DESCRIPTION_TEMPLATE =
-  "Explore {{category}} products from independent sellers. Filter, compare, and keep discovering.";
+  "Browse {{category}} products from independent sellers.";
 
 /** i18next's default `{{var}}` interpolation, reproduced so the build matches. */
 function interpolateTemplate(template: string, vars: Record<string, string>): string {

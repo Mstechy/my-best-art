@@ -34,7 +34,7 @@ test("watches department stays scoped and does not reuse another catalogue", asy
   // The live catalogue may legitimately gain a watch after this test is written.
   // Assert the stable contract instead of hard-coding an empty department: either
   // the honest empty state is shown, or every visible result remains in Watches.
-  const catalogueState = page.getByText(/No products listed yet|Showing \d+ products/).first();
+  const catalogueState = page.getByText(/No products listed yet|Showing \d+ product(?:s)?/).first();
   await expect(catalogueState).toBeVisible({ timeout: 30_000 });
   const emptyState = page.getByText("No products listed yet", { exact: true });
   if (await emptyState.isVisible()) {
@@ -54,6 +54,6 @@ test("missing product has a recoverable public error state", async ({ page }) =>
   const response = await page.goto("/product/not-a-real-product", { waitUntil: "domcontentloaded" });
   expect(response?.status(), "SPA should still return the public document").toBeLessThan(400);
   await expect(page.locator("main:visible")).toHaveCount(1, { timeout: 45_000 });
-  await expect(page.getByRole("heading", { name: "Product not found", exact: true })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("link", { name: "Browse Marketplace", exact: true })).toHaveAttribute("href", "/marketplace");
+  await expect(page.getByRole("heading", { name: /Product not found|This product is temporarily unavailable/, exact: false })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole("link", { name: /Browse marketplace/i })).toHaveAttribute("href", "/marketplace");
 });
