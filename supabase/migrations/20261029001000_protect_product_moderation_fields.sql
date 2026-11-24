@@ -44,3 +44,5 @@ CREATE TRIGGER trg_prevent_seller_moderation_field_changes
 REVOKE ALL ON FUNCTION public.prevent_seller_moderation_field_changes() FROM PUBLIC;
 
 NOTIFY pgrst, 'reload schema';
+
+o;

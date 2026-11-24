@@ -175,7 +175,51 @@ export function useMarketplaceCategories() {
       const counts = Object.fromEntries(
         ((countsRes.data ?? []) as any[]).map((row: any) => [row.category_id, Number(row.product_count)]),
       ) as Record<string, number>;
-      return { categories: (categoriesRes.data ?? []) as Category[], counts };
+      const categories = (categoriesRes.data ?? []) as Category[];
+      const populatedIds = categories
+        .filter((category) => (counts[category.id] ?? 0) > 0)
+        .map((category) => category.id);
+      const imageByCategory: Record<string, string> = Object.fromEntries(
+        categories
+          .filter((category) => populatedIds.includes(category.id) && typeof category.image_url === "string" && category.image_url.trim())
+          .map((category) => [category.id, category.image_url!.trim()]),
+      );
+
+      // A department tile should show the catalogue, not a generic icon. When
+      // admins have not uploaded category artwork yet, use one real approved
+      // listing image for each populated department. The per-category limit
+      // prevents a large department from starving smaller ones such as Watches.
+      const missingImageIds = populatedIds.filter((categoryId) => !imageByCategory[categoryId]);
+      if (missingImageIds.length > 0) {
+        const productResults = await Promise.all(
+          missingImageIds.map(async (categoryId) => {
+            const { data: products } = await supabase
+              .from("products")
+              .select("category_id, product_images(image_url, is_primary, sort_order)")
+              .eq("category_id", categoryId)
+              .eq("status", "active")
+              .eq("is_approved", true)
+              .order("created_at", { ascending: false })
+              .limit(4);
+            return products ?? [];
+          }),
+        );
+
+        productResults.forEach((products) => {
+          for (const product of products as any[]) {
+            const image = product?.product_images
+              ?.slice()
+              .sort((a: any, b: any) => Number(b.is_primary) - Number(a.is_primary) || Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0))
+              .find((item: any) => typeof item?.image_url === "string" && item.image_url.trim())?.image_url;
+            if (product?.category_id && image) {
+              imageByCategory[product.category_id] = image;
+              break;
+            }
+          }
+        });
+      }
+
+      return { categories, counts, imageByCategory };
     },
     { staleTime: 5 * 60 * 1000 },
   );

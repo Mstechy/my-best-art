@@ -138,7 +138,7 @@ export default function CategorySidebar({ selectedCategory, onSelect, categories
                   className="w-full flex items-center justify-between px-3 pt-2 pb-1 text-[10px] font-bold text-[#6E6C64] dark:text-[#A0A0A0] uppercase tracking-wider"
                 >
                   <span>{group.label}</span>
-                  <span className="text-[#6E6C64] dark:text-[#A0A0A0]">{isOpen ? "−" : "+"}</span>
+                  <span className="text-[#6E6C64] dark:text-[#A0A0A0]" aria-hidden="true">{isOpen ? "−" : "+"}</span>
                 </button>
                 {isOpen && group.subcategories.map(sub => {
                   const isActive = selectedCategorySlug === sub.slug;

@@ -9,7 +9,7 @@ import AnimatedSection from "@/components/AnimatedSection";
 import MarketplaceNavbar from "@/components/MarketplaceNavbar";
 import CartDrawer from "@/components/CartDrawer";
 import SiteFooter from "@/components/SiteFooter";
-import CategorySidebar from "@/components/CategorySidebar";
+import CategorySidebar, { CategoryIcon } from "@/components/CategorySidebar";
 import RegionalPreferences from "@/components/RegionalPreferences";
 import { BottomTabBar } from "@/components/ui/BottomTabBar";
 import { Container } from "@/components/ui/Container";
@@ -24,14 +24,15 @@ import { useMarketplaceCategories } from "@/hooks/useHomepage";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { countryName } from "@/lib/countries";
-import { findCategoryConfig, getCategoryAttributes, getProductVideos } from "@/lib/categoryConfig";
-import MarketplaceFilters from "@/components/MarketplaceFilters";
+import { findCategoryConfig, getCategoryAttributes, getProductType, getProductVideos } from "@/lib/categoryConfig";
+import MarketplaceFilters, { MarketplaceFiltersPanel } from "@/components/MarketplaceFilters";
 import { countActive, defaultFilters, type MarketplaceFiltersState } from "@/components/marketplaceFiltersState";
 import { ProductCard } from "@/components/product/ProductCard";
 import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { dedupeProducts, filterProductsByCategory, getCategoryTreeIds, isMarketplaceSort } from "@/lib/marketplaceContracts";
 import { getProductListingMeta } from "@/lib/productListingPresentation";
+import { buildMarketplaceDiscoveryShortcuts } from "@/lib/marketplaceDiscovery";
 import { toast } from "sonner";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -66,9 +67,115 @@ interface Product {
   relevance?: number;
 }
 
-interface Category { id: string; name: string; slug: string; icon?: string; parent_id?: string | null; }
+interface Category { id: string; name: string; slug: string; icon?: string; parent_id?: string | null; image_url?: string | null; }
 interface CatalogueCursor { relevance: number; createdAt: string; id: string; }
 const CATALOGUE_PAGE_SIZE = 24;
+
+interface CatalogueRequest {
+  query: string | null;
+  categoryId: string | null;
+  country: string | null;
+  minPrice: number | null;
+  maxPrice: number | null;
+  minRating: number | null;
+  inStockOnly: boolean;
+  condition: string | null;
+  attributeFilters: Record<string, string>;
+  productType: string | null;
+  sort: string;
+  limit: number;
+  cursorRelevance: number | null;
+  cursorCreatedAt: string | null;
+  cursorId: string | null;
+  seed: string | null;
+}
+
+const legacyCatalogueSort = (products: Product[], sort: string) => {
+  const sorted = [...products];
+  sorted.sort((a, b) => {
+    if (sort === "price_low") return a.price - b.price;
+    if (sort === "price_high") return b.price - a.price;
+    if (sort === "rating") return (b.average_rating || 0) - (a.average_rating || 0);
+    if (sort === "newest") return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return 0;
+  });
+  return sorted;
+};
+
+/**
+ * The newest catalogue RPC is the authoritative path. The legacy function is
+ * kept as a compatibility bridge for projects where the migration has not yet
+ * reached the remote PostgREST schema cache. Both paths still return only IDs
+ * and rows visible through Supabase policies; this never invents catalogue
+ * records or reads an unapproved product directly.
+ */
+async function requestCatalogue(request: CatalogueRequest): Promise<{ products: Product[]; hasMore: boolean }> {
+  const attributeFilters = {
+    ...request.attributeFilters,
+    ...(request.productType ? { productType: request.productType } : {}),
+  };
+  const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
+    p_query: request.query,
+    p_category_id: request.categoryId,
+    p_country: request.country,
+    p_min_price: request.minPrice,
+    p_max_price: request.maxPrice,
+    p_min_rating: request.minRating,
+    p_in_stock_only: request.inStockOnly,
+    p_condition: request.condition,
+    p_attribute_filters: attributeFilters,
+    p_sort: request.sort,
+    p_limit: request.limit,
+    p_cursor_relevance: request.cursorRelevance,
+    p_cursor_created_at: request.cursorCreatedAt,
+    p_cursor_id: request.cursorId,
+    p_seed: request.seed,
+  });
+
+  if (!error) {
+    const parsed = typeof data === "string" ? JSON.parse(data) : data;
+    return {
+      products: (parsed?.products || []) as Product[],
+      hasMore: !!parsed?.has_more,
+    };
+  }
+
+  console.warn("search_products_combined unavailable; using legacy catalogue search", error);
+  const { data: legacyIds, error: legacyError } = await supabase.rpc("search_marketplace_product_ids", {
+    p_query: request.query,
+    p_category_id: request.categoryId,
+    p_country: request.country,
+    p_min_price: request.minPrice,
+    p_max_price: request.maxPrice,
+    p_min_rating: request.minRating,
+    p_in_stock_only: request.inStockOnly,
+    p_condition: request.condition,
+    p_limit: request.limit,
+    p_cursor_relevance: request.cursorRelevance,
+    p_cursor_created_at: request.cursorCreatedAt,
+    p_cursor_id: request.cursorId,
+  });
+  if (legacyError) throw error;
+
+  const orderedIds = ((legacyIds || []) as Array<{ product_id: string; relevance?: number; created_at?: string }>).map(row => row.product_id);
+  if (orderedIds.length === 0) return { products: [], hasMore: false };
+
+  const { data: productRows, error: productError } = await (supabase.from("products") as any)
+    .select("*, product_images(*)")
+    .in("id", orderedIds);
+  if (productError) throw productError;
+
+  const relevanceById = new Map(((legacyIds || []) as Array<{ product_id: string; relevance?: number }>).map(row => [row.product_id, Number(row.relevance || 0)]));
+  const products = ((productRows || []) as Product[])
+    .map(product => ({ ...product, relevance: relevanceById.get(product.id) ?? 0 }))
+    .filter(product => Object.entries(request.attributeFilters).every(([key, value]) => getCategoryAttributes(product.variants)[key] === value))
+    .filter(product => !request.productType || getProductType(product.variants)?.key === request.productType);
+
+  return {
+    products: legacyCatalogueSort(products, request.sort),
+    hasMore: orderedIds.length >= request.limit,
+  };
+}
 
 async function hydrateVariantMetadata(products: Product[]): Promise<Product[]> {
   const productIds = products.map(product => product.id);
@@ -94,6 +201,7 @@ export default function MarketplacePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { slug: categoryRouteSlug } = useParams<{ slug?: string }>();
   const categoryParam = categoryRouteSlug ?? searchParams.get("category");
+  const productTypeParam = searchParams.get("type");
   const searchParam = searchParams.get("search");
   const visualParam = searchParams.get("visual");
   const visualHashParam = searchParams.get("visualHash");
@@ -181,6 +289,7 @@ export default function MarketplacePage() {
   const catalogueCacheKey = useMemo(() => categoryFilterPending || categoryRouteNotFound ? null : cacheKeyFor("marketplace_catalogue:v2", {
     search: search.trim() || null,
     category: selectedCategory || null,
+    productType: productTypeParam || null,
     shipsTo: shipsTo === "all" ? null : shipsTo,
     minPrice: filters.minPrice ?? null,
     maxPrice: filters.maxPrice,
@@ -192,7 +301,7 @@ export default function MarketplacePage() {
     seed: sortBy === "random" ? pageSeed : null,
     visualHash: visualHashParam || null,
     pageSize: CATALOGUE_PAGE_SIZE,
-  }), [categoryFilterPending, categoryRouteNotFound, search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
+  }), [categoryFilterPending, categoryRouteNotFound, productTypeParam, search, selectedCategory, shipsTo, filters, sortBy, pageSeed, visualHashParam]);
 
   const {
     data: catalogueData,
@@ -222,58 +331,53 @@ export default function MarketplacePage() {
         // first; semantic visual matches fill the remaining slots.
         let semanticProducts: Product[] = [];
         if (search.trim()) {
-          const { data: semanticData, error: semanticError } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
-            p_query: search.trim(),
-            p_category_id: selectedCategory || null,
-            p_country: shipsTo === "all" ? null : shipsTo,
-            p_min_price: filters.minPrice || null,
-            p_max_price: filters.maxPrice,
-            p_min_rating: filters.minRating || null,
-            p_in_stock_only: filters.inStockOnly || null,
-            p_condition: filters.condition === "any" ? null : filters.condition,
-            p_attribute_filters: filters.categoryAttributes || {},
-            p_sort: "relevance",
-            p_limit: CATALOGUE_PAGE_SIZE,
-            p_cursor_relevance: null,
-            p_cursor_created_at: null,
-            p_cursor_id: null,
-            p_seed: null,
+          const semanticResult = await requestCatalogue({
+            query: search.trim(),
+            categoryId: selectedCategory || null,
+            country: shipsTo === "all" ? null : shipsTo,
+            minPrice: filters.minPrice || null,
+            maxPrice: filters.maxPrice,
+            minRating: filters.minRating || null,
+            inStockOnly: Boolean(filters.inStockOnly),
+            condition: filters.condition === "any" ? null : filters.condition,
+            attributeFilters: filters.categoryAttributes || {},
+            productType: productTypeParam,
+            sort: "relevance",
+            limit: CATALOGUE_PAGE_SIZE,
+            cursorRelevance: null,
+            cursorCreatedAt: null,
+            cursorId: null,
+            seed: null,
           });
-          if (semanticError) throw semanticError;
-          const parsedSemantic = typeof semanticData === "string" ? JSON.parse(semanticData) : semanticData;
-          semanticProducts = await hydrateVariantMetadata((parsedSemantic?.products || []) as Product[]);
+          semanticProducts = await hydrateVariantMetadata(semanticResult.products);
         }
 
-        const seen = new Set(visuallyMatchedProducts.map(product => product.id));
-        const merged = [...visuallyMatchedProducts, ...semanticProducts.filter(product => !seen.has(product.id))];
+        const typeMatchedVisualProducts = productTypeParam
+          ? visuallyMatchedProducts.filter((product) => getProductType(product.variants)?.key === productTypeParam)
+          : visuallyMatchedProducts;
+        const seen = new Set(typeMatchedVisualProducts.map(product => product.id));
+        const merged = [...typeMatchedVisualProducts, ...semanticProducts.filter(product => !seen.has(product.id))];
         return { products: merged.slice(0, CATALOGUE_PAGE_SIZE), hasMore: false };
       }
 
-      const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
-        p_query: search.trim() || null,
-        p_category_id: selectedCategory || null,
-        p_country: shipsTo === "all" ? null : shipsTo,
-        p_min_price: filters.minPrice || null,
-        p_max_price: filters.maxPrice,
-        p_min_rating: filters.minRating || null,
-        p_in_stock_only: filters.inStockOnly || null,
-        p_condition: filters.condition === "any" ? null : filters.condition,
-        p_attribute_filters: filters.categoryAttributes || {},
-        p_sort: sortBy,
-        p_limit: CATALOGUE_PAGE_SIZE,
-        p_cursor_relevance: null,
-        p_cursor_created_at: null,
-        p_cursor_id: null,
-        p_seed: sortBy === "random" ? pageSeed : null,
+      return requestCatalogue({
+        query: search.trim() || null,
+        categoryId: selectedCategory || null,
+        country: shipsTo === "all" ? null : shipsTo,
+        minPrice: filters.minPrice || null,
+        maxPrice: filters.maxPrice,
+        minRating: filters.minRating || null,
+        inStockOnly: Boolean(filters.inStockOnly),
+        condition: filters.condition === "any" ? null : filters.condition,
+        attributeFilters: filters.categoryAttributes || {},
+        productType: productTypeParam,
+        sort: sortBy,
+        limit: CATALOGUE_PAGE_SIZE,
+        cursorRelevance: null,
+        cursorCreatedAt: null,
+        cursorId: null,
+        seed: sortBy === "random" ? pageSeed : null,
       });
-      if (error) throw error;
-      const parsed = typeof data === "string" ? JSON.parse(data) : data;
-      return {
-        // Variant labels are optional card enrichment. Do not make the first
-        // catalogue paint wait for a second product_variants query.
-        products: (parsed?.products || []) as Product[],
-        hasMore: !!parsed?.has_more,
-      };
     },
     {
       staleWhileRevalidate: true,
@@ -292,19 +396,22 @@ export default function MarketplacePage() {
 
   useEffect(() => {
     if (!catalogueData) return;
-    setProducts(catalogueData.products);
-    const last = catalogueData.products[catalogueData.products.length - 1];
+    const visibleProducts = productTypeParam
+      ? catalogueData.products.filter((product) => getProductType(product.variants)?.key === productTypeParam)
+      : catalogueData.products;
+    setProducts(visibleProducts);
+    const last = visibleProducts[visibleProducts.length - 1];
     setPageCursor(last ? { relevance: last.relevance ?? 0, createdAt: last.created_at, id: last.id } : null);
     setHasMore(catalogueData.hasMore);
 
     // Enrich after the first product rows are visible. This removes the
     // catalogue -> variants request waterfall while keeping size/color
     // metadata available shortly afterwards for cards and filters.
-    void hydrateVariantMetadata(catalogueData.products).then((enriched) => {
+    void hydrateVariantMetadata(visibleProducts).then((enriched) => {
       const byId = new Map(enriched.map((product) => [product.id, product]));
       setProducts((current) => current.map((product) => byId.get(product.id) || product));
     });
-  }, [catalogueData]);
+  }, [catalogueData, productTypeParam]);
 
   const fetchCatalogue = useCallback(async (reset = false) => {
     if (reset) {
@@ -316,26 +423,24 @@ export default function MarketplacePage() {
 
     setLoadingMore(true);
     try {
-      const { data, error } = await supabase.rpc("search_products_combined" as "search_marketplace_product_ids", {
-        p_query: search.trim() || null,
-        p_category_id: selectedCategory || null,
-        p_country: shipsTo === "all" ? null : shipsTo,
-        p_min_price: filters.minPrice || null,
-        p_max_price: filters.maxPrice,
-        p_min_rating: filters.minRating || null,
-        p_in_stock_only: filters.inStockOnly || null,
-        p_condition: filters.condition === "any" ? null : filters.condition,
-        p_attribute_filters: filters.categoryAttributes || {},
-        p_sort: sortBy,
-        p_limit: CATALOGUE_PAGE_SIZE,
-        p_cursor_relevance: pageCursor.relevance,
-        p_cursor_created_at: pageCursor.createdAt,
-        p_cursor_id: pageCursor.id,
-        p_seed: sortBy === "random" ? pageSeed : null,
+      const result = await requestCatalogue({
+        query: search.trim() || null,
+        categoryId: selectedCategory || null,
+        country: shipsTo === "all" ? null : shipsTo,
+        minPrice: filters.minPrice || null,
+        maxPrice: filters.maxPrice,
+        minRating: filters.minRating || null,
+        inStockOnly: Boolean(filters.inStockOnly),
+        condition: filters.condition === "any" ? null : filters.condition,
+        attributeFilters: filters.categoryAttributes || {},
+        productType: productTypeParam,
+        sort: sortBy,
+        limit: CATALOGUE_PAGE_SIZE,
+        cursorRelevance: pageCursor.relevance,
+        cursorCreatedAt: pageCursor.createdAt,
+        cursorId: pageCursor.id,
+        seed: sortBy === "random" ? pageSeed : null,
       });
-      if (error) throw error;
-      const parsed = typeof data === "string" ? JSON.parse(data) : data;
-      const result = { products: (parsed?.products || []) as Product[], hasMore: !!parsed?.has_more };
       setProducts(prev => [...prev, ...dedupeProducts(result.products, prev)]);
       void hydrateVariantMetadata(result.products).then((enriched) => {
         const byId = new Map(enriched.map((product) => [product.id, product]));
@@ -349,7 +454,7 @@ export default function MarketplacePage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [filters, pageCursor, pageSeed, refetchCatalogue, search, selectedCategory, shipsTo, sortBy]);
+  }, [filters, pageCursor, pageSeed, productTypeParam, refetchCatalogue, search, selectedCategory, shipsTo, sortBy]);
 
   useEffect(() => {
     const fetchSellerProfiles = async () => {
@@ -413,11 +518,20 @@ export default function MarketplacePage() {
     () => (categoryData?.categories ?? []).filter((category) => (categoryData?.counts?.[category.id] ?? 0) > 0),
     [categoryData],
   );
-  const departmentChildren = useMemo(
-    () => selectedCategoryRecord
-      ? populatedCategories.filter((category) => category.parent_id === selectedCategoryRecord.id)
-      : [],
-    [populatedCategories, selectedCategoryRecord],
+  const categoryContextPending = Boolean(
+    categoryRouteSlug && (categoriesLoading || !categoryFromRoute || selectedCategory !== categoryFromRoute.id),
+  );
+  const departmentShortcuts = useMemo(
+    () => buildMarketplaceDiscoveryShortcuts({
+      products,
+      categories,
+      counts: categoryData?.counts,
+      imageByCategory: categoryData?.imageByCategory,
+      selectedCategoryId: selectedCategoryRecord?.id,
+      selectedProductTypeKey: productTypeParam,
+      categoryContextPending,
+    }),
+    [categories, categoryContextPending, categoryData?.counts, categoryData?.imageByCategory, productTypeParam, products, selectedCategoryRecord?.id],
   );
   const parentCategory = useMemo(
     () => selectedCategoryRecord?.parent_id
@@ -476,6 +590,7 @@ export default function MarketplacePage() {
     return options;
   }, [selectedCategoryConfig, selectedCategoryProducts]);
   const activeFilterCount = countActive(filters);
+  const showSortControl = Boolean(selectedCategoryRecord || search.trim() || isVisualSearch);
 
   const handleAddToCart = (product: Product) => {
     if (product.variants && (product.variants.sizes?.length || product.variants.colors?.length || product.variants.categoryAttributes)) {
@@ -584,6 +699,7 @@ export default function MarketplacePage() {
           setFilters(f => ({ ...f, categoryAttributes: {} }));
         }}
         showRegionalPreferences={false}
+        showTrending={!categoryRouteSlug && !selectedCategoryRecord}
       />
       <CartDrawer />
       <main className="min-h-screen pb-[calc(4rem_+_env(safe-area-inset-bottom,0px))] md:pb-16">
@@ -600,6 +716,16 @@ export default function MarketplacePage() {
                 }}
                 categories={categories.filter(category => populatedCategories.some(populated => populated.id === category.id || populated.parent_id === category.id)).map(category => ({ id: category.id, name: category.name, slug: category.slug, icon: category.icon, parent_id: category.parent_id }))}
               />
+              <div className="mt-4">
+                <MarketplaceFiltersPanel
+                  value={filters}
+                  onChange={setFilters}
+                  activeCount={activeFilterCount}
+                  categoryName={selectedCategoryRecord?.name}
+                  categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
+                  categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
+                />
+              </div>
             </div>
           </div>
           <div className="flex-1 min-w-0">
@@ -621,33 +747,48 @@ export default function MarketplacePage() {
               <h1 className="text-2xl font-black tracking-tight text-[#111111] dark:text-[#FAF5F2] leading-[1.1] font-sans mb-2 sm:text-3xl">
                 {selectedCategoryRecord?.name || t("marketplace.title")}
               </h1>
-              <p className="text-[13px] text-[#6E6C64] dark:text-[#A0A0A0] mb-4">
+              <p className="max-w-2xl text-[13px] text-[#6E6C64] dark:text-[#A0A0A0] mb-4">
                 {isVisualSearch
                   ? (filtered.length > 0 ? t("marketplace.imageSearchActive") : t("marketplace.imageSearchFallback"))
                   : selectedCategoryRecord
                     ? t("marketplace.categoryDescription", { category: selectedCategoryRecord.name })
                     : t("marketplace.defaultDescription")}
               </p>
-              {departmentChildren.length > 0 && (
+              {departmentShortcuts.length > 0 && (
                 <section className="mb-6" aria-labelledby="department-types">
                   <div className="mb-3 flex items-end justify-between gap-3">
                     <div>
-                      <h2 id="department-types" className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Explore {selectedCategoryRecord.name} by type</h2>
-                      <p className="mt-1 text-xs text-[#6E6C64] dark:text-[#A0A0A0]">Start with a focused department, then filter and compare real listings.</p>
+                      <h2 id="department-types" className="text-lg font-black tracking-tight text-[#111111] dark:text-[#FAF5F2]">
+                        {selectedCategoryRecord ? `Explore ${selectedCategoryRecord.name} by type` : t("marketplace.popularCategories")}
+                      </h2>
                     </div>
-                    <Link to="/marketplace" className="shrink-0 text-xs font-semibold underline underline-offset-4">All products</Link>
+                    {!selectedCategoryRecord && (
+                      <Link to="/marketplace" className="shrink-0 text-xs font-semibold text-[#7A5200] underline underline-offset-4 hover:text-[#111111] dark:text-[#F6C75D]">{t("marketplace.viewAll")}</Link>
+                    )}
                   </div>
-                  <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                    {departmentChildren.map((category) => (
-                      <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}`} className="flex min-w-[138px] snap-start items-center gap-2 rounded-xl border border-[#E8E8E8] bg-white px-3 py-3 text-xs font-semibold transition hover:border-[#F6C75D] hover:shadow-sm dark:border-[#333333] dark:bg-[#1E1E1E] dark:hover:border-[#F6C75D]">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF4C7] text-base dark:bg-[#4A3A12]">{category.icon || "•"}</span>
-                        <span className="min-w-0"><span className="block truncate">{category.name}</span><span className="mt-0.5 block text-[10px] font-normal text-[#6E6C64] dark:text-[#A0A0A0]">{categoryData?.counts?.[category.id] ?? 0} products</span></span>
+                  <div className="flex snap-x gap-3 overflow-x-auto pb-2 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                    {departmentShortcuts.map((category) => (
+                      <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}${category.productTypeKey ? `?type=${encodeURIComponent(category.productTypeKey)}` : ""}`} className="group flex w-[92px] shrink-0 snap-start flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-[#F7F4EC] dark:hover:bg-[#222222] sm:w-[104px]">
+                        <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-[#E8E8E8] bg-[#F7F7F5] p-2 shadow-[0_1px_2px_rgba(17,17,17,0.04)] transition group-hover:border-[#F6C75D] group-hover:shadow-[0_8px_20px_rgba(17,17,17,0.08)] dark:border-[#333333] dark:bg-[#2A2A2D] sm:h-24 sm:w-24">
+                          {category.image_url ? (
+                            <img src={category.image_url} alt="" loading="lazy" className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.04]" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-[#6E6C64] dark:text-[#A0A0A0]">
+                              <CategoryIcon icon={category.icon} className="h-7 w-7" />
+                            </div>
+                          )}
+                        </div>
+                        <span className="line-clamp-2 text-xs font-semibold leading-tight text-[#111111] dark:text-[#FAF5F2]">{category.name}</span>
                       </Link>
                     ))}
                   </div>
                 </section>
               )}
             </AnimatedSection>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#E8E8E8] bg-white px-3 py-2 dark:border-[#222222] dark:bg-[#1E1E1E]">
+              <RegionalPreferences showLabel className="justify-start px-1 py-1" />
+              <p className="text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.catalogueRegionDescription")}</p>
+            </div>
             <AnimatedSection variant="fade-up" delay={60}>
               <div className="flex flex-wrap items-center gap-3 mb-6 select-none">
                 <Sheet open={isCategoriesOpen} onOpenChange={setIsCategoriesOpen}>
@@ -674,13 +815,15 @@ export default function MarketplacePage() {
                     />
                   </SheetContent>
                 </Sheet>
-                <MarketplaceFilters
-                  value={filters} onChange={setFilters} activeCount={activeFilterCount}
-                  categoryName={selectedCategoryRecord?.name}
-                  categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
-                  categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
-                />
-                <Select value={sortBy} onValueChange={(value) => { if (isMarketplaceSort(value)) setSortBy(value); }}>
+                <div className="lg:hidden">
+                  <MarketplaceFilters
+                    value={filters} onChange={setFilters} activeCount={activeFilterCount}
+                    categoryName={selectedCategoryRecord?.name}
+                    categoryFilters={selectedCategoryRecord ? selectedCategoryConfig.filters : []}
+                    categoryFilterOptions={selectedCategoryRecord ? categoryFilterOptions : {}}
+                  />
+                </div>
+                {showSortControl && <Select value={sortBy} onValueChange={(value) => { if (isMarketplaceSort(value)) setSortBy(value); }}>
                   {/* The visible SelectValue supplies the combobox name. An
                        aria-label that only says "Sort by" would override the
                        visible option text and fail axe's label-content-name
@@ -698,20 +841,16 @@ export default function MarketplacePage() {
                     <SelectItem value="price_low">{t("marketplace.sortOptions.priceLow")}</SelectItem>
                     <SelectItem value="price_high">{t("marketplace.sortOptions.priceHigh")}</SelectItem>
                   </SelectContent>
-                </Select>
+                </Select>}
               </div>
             </AnimatedSection>
-            <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#E8E8E8] bg-white px-3 py-2.5 dark:border-[#222222] dark:bg-[#1E1E1E]">
-              <RegionalPreferences showLabel className="justify-start px-1 py-1" />
-              <p className="text-[11px] text-[#6E6C64] dark:text-[#A0A0A0]">{t("marketplace.catalogueRegionDescription")}</p>
-            </div>
             <div className="mb-4 flex min-h-5 items-center" aria-live="polite">
               <p className="text-xs font-medium text-[#6E6C64] dark:text-[#A0A0A0]">
                 {catalogueLoading
                   ? t("marketplace.loadingProducts")
                   : catalogueError
                     ? t("marketplace.loadErrorTitle")
-                    : t("marketplace.showingProducts", { count: displayedProducts.length })}
+                    : t(displayedProducts.length === 1 ? "marketplace.showingProduct" : "marketplace.showingProducts", { count: displayedProducts.length })}
               </p>
             </div>
             {/* Keep catalogue geometry predictable while data settles. */}
@@ -722,7 +861,7 @@ export default function MarketplacePage() {
                 </div>
               )}
               {pageLoading && products.length === 0 ? (
-                <div role="list" aria-label="Product results" aria-busy="true" className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                <div role="list" aria-label="Product results" aria-busy="true" className="grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4">
                   {[...Array(10)].map((_, i) => (
                     <div key={i} role="listitem" className="rounded-2xl border border-[#E8E8E8]/40 dark:border-[#222222] bg-white dark:bg-[#1E1E1E] overflow-hidden animate-pulse">
                       <div className="aspect-square bg-[#F5F5F5] dark:bg-[#1E1E1E]" />
@@ -753,7 +892,7 @@ export default function MarketplacePage() {
                   </p>
                 </div>
               ) : (
-                <div role="list" aria-label="Product results" aria-busy={catalogueLoading} className={`grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 transition-opacity duration-200 ${resultsTransitioning ? "opacity-60" : "opacity-100"}`}>
+                <div role="list" aria-label="Product results" aria-busy={catalogueLoading} className={`grid gap-2.5 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 transition-opacity duration-200 ${resultsTransitioning ? "opacity-60" : "opacity-100"}`}>
                   {displayedProducts.map((product, index) => {
                     const primaryImage = product.product_images?.find(i => i.is_primary) || product.product_images?.[0];
                     const baseDiscount = product.compare_at_price && product.compare_at_price > product.price

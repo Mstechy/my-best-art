@@ -7,3 +7,4 @@ GRANT EXECUTE ON FUNCTION public.quote_marketplace_shipping(uuid, jsonb, text) T
 
 -- Make the function/grant visible to PostgREST without restarting the API.
 NOTIFY pgrst, 'reload schema';
+mulator
