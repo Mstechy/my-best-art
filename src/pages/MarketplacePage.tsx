@@ -32,7 +32,7 @@ import { trackProductDiscovery } from "@/lib/productDiscovery";
 import { trackGA4Event } from "@/lib/marketingAnalytics";
 import { dedupeProducts, filterProductsByCategory, getCategoryTreeIds, isMarketplaceSort } from "@/lib/marketplaceContracts";
 import { getProductListingMeta } from "@/lib/productListingPresentation";
-import { buildMarketplaceDiscoveryShortcuts } from "@/lib/marketplaceDiscovery";
+import { buildMarketplaceDiscoveryHref, buildMarketplaceDiscoveryShortcuts } from "@/lib/marketplaceDiscovery";
 import { toast } from "sonner";
 
 type SellerProfilePublic = Database["public"]["Views"]["seller_profiles_public"]["Row"];
@@ -88,6 +88,38 @@ interface CatalogueRequest {
   cursorCreatedAt: string | null;
   cursorId: string | null;
   seed: string | null;
+}
+
+interface DiscoveryShortcutCardProps {
+  category: Category;
+  to: string;
+}
+
+function DiscoveryShortcutCard({ category, to }: DiscoveryShortcutCardProps) {
+  const [imageFailed, setImageFailed] = useState(false);
+
+  return (
+    <Link
+      to={to}
+      className="group flex w-[92px] shrink-0 flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-[#F7F4EC] dark:hover:bg-[#222222] sm:w-[104px]"
+    >
+      <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-[#E8E8E8] bg-[#F7F7F5] p-2 shadow-[0_1px_2px_rgba(17,17,17,0.04)] transition group-hover:border-[#F6C75D] group-hover:shadow-[0_8px_20px_rgba(17,17,17,0.08)] dark:border-[#333333] dark:bg-[#2A2A2D] sm:h-24 sm:w-24">
+        <div className="absolute inset-0 flex items-center justify-center text-[#6E6C64] dark:text-[#A0A0A0]" aria-hidden="true">
+          <CategoryIcon icon={category.icon} className="h-7 w-7" />
+        </div>
+        {category.image_url && !imageFailed && (
+          <img
+            src={category.image_url}
+            alt=""
+            loading="lazy"
+            onError={() => setImageFailed(true)}
+            className="relative z-10 h-full w-full object-contain transition duration-300 group-hover:scale-[1.04]"
+          />
+        )}
+      </div>
+      <span className="line-clamp-2 text-xs font-semibold leading-tight text-[#111111] dark:text-[#FAF5F2]">{category.name}</span>
+    </Link>
+  );
 }
 
 const legacyCatalogueSort = (products: Product[], sort: string) => {
@@ -766,20 +798,13 @@ export default function MarketplacePage() {
                       <Link to="/marketplace" className="shrink-0 text-xs font-semibold text-[#7A5200] underline underline-offset-4 hover:text-[#111111] dark:text-[#F6C75D]">{t("marketplace.viewAll")}</Link>
                     )}
                   </div>
-                  <div className="flex snap-x gap-3 overflow-x-auto pb-2 pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <div className="flex flex-wrap gap-3 pb-2">
                     {departmentShortcuts.map((category) => (
-                      <Link key={category.id} to={`/categories/${encodeURIComponent(category.slug)}${category.productTypeKey ? `?type=${encodeURIComponent(category.productTypeKey)}` : ""}`} className="group flex w-[92px] shrink-0 snap-start flex-col items-center gap-2 rounded-xl px-1 py-1 text-center transition hover:bg-[#F7F4EC] dark:hover:bg-[#222222] sm:w-[104px]">
-                        <div className="relative h-20 w-20 overflow-hidden rounded-xl border border-[#E8E8E8] bg-[#F7F7F5] p-2 shadow-[0_1px_2px_rgba(17,17,17,0.04)] transition group-hover:border-[#F6C75D] group-hover:shadow-[0_8px_20px_rgba(17,17,17,0.08)] dark:border-[#333333] dark:bg-[#2A2A2D] sm:h-24 sm:w-24">
-                          {category.image_url ? (
-                            <img src={category.image_url} alt="" loading="lazy" className="h-full w-full object-contain transition duration-300 group-hover:scale-[1.04]" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-[#6E6C64] dark:text-[#A0A0A0]">
-                              <CategoryIcon icon={category.icon} className="h-7 w-7" />
-                            </div>
-                          )}
-                        </div>
-                        <span className="line-clamp-2 text-xs font-semibold leading-tight text-[#111111] dark:text-[#FAF5F2]">{category.name}</span>
-                      </Link>
+                      <DiscoveryShortcutCard
+                        key={category.id}
+                        category={category}
+                        to={buildMarketplaceDiscoveryHref(category)}
+                      />
                     ))}
                   </div>
                 </section>

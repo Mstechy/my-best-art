@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMarketplaceDiscoveryShortcuts } from "@/lib/marketplaceDiscovery";
+import { buildMarketplaceDiscoveryHref, buildMarketplaceDiscoveryShortcuts } from "@/lib/marketplaceDiscovery";
 
 const categories = [
   { id: "electronics", name: "Electronics", slug: "electronics", parent_id: null },
@@ -8,6 +8,11 @@ const categories = [
 ];
 
 describe("marketplace discovery shortcuts", () => {
+  it("keeps product-type shortcuts on the marketplace route when no department exists", () => {
+    expect(buildMarketplaceDiscoveryHref({ slug: "marketplace", productTypeKey: "mobile-phones" })).toBe("/marketplace?type=mobile-phones");
+    expect(buildMarketplaceDiscoveryHref({ slug: "electronics", productTypeKey: "mobile-phones" })).toBe("/categories/electronics?type=mobile-phones");
+  });
+
   it("shows product-led types once instead of repeating their parent departments", () => {
     const shortcuts = buildMarketplaceDiscoveryShortcuts({
       categories,

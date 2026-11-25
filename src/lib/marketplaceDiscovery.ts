@@ -23,6 +23,23 @@ export interface DiscoveryShortcut extends DiscoveryCategory {
   productTypeLabel?: string;
 }
 
+/**
+ * Return the canonical route for a product-led shortcut. A product type can
+ * exist before a matching department row exists, so it must not route through
+ * the synthetic `/categories/marketplace` slug.
+ */
+export function buildMarketplaceDiscoveryHref(shortcut: Pick<DiscoveryShortcut, "slug" | "productTypeKey">) {
+  const query = shortcut.productTypeKey
+    ? `?type=${encodeURIComponent(shortcut.productTypeKey)}`
+    : "";
+
+  if (shortcut.productTypeKey && shortcut.slug === "marketplace") {
+    return `/marketplace${query}`;
+  }
+
+  return `/categories/${encodeURIComponent(shortcut.slug)}${query}`;
+}
+
 interface BuildMarketplaceDiscoveryArgs {
   products: DiscoveryProduct[];
   categories: DiscoveryCategory[];

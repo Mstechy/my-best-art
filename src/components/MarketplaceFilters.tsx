@@ -103,7 +103,7 @@ function FilterFields({
               key={rating}
               aria-pressed={draft.minRating === rating}
               onClick={() => setDraft(current => ({ ...current, minRating: rating }))}
-              className={`flex h-9 items-center justify-center gap-0.5 rounded-lg border text-[11px] font-medium transition-colors ${draft.minRating === rating ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}
+              className={`flex h-9 items-center justify-center gap-0.5 rounded-lg border text-[11px] font-medium transition-colors ${draft.minRating === rating ? "border-[#C2410C] bg-[#FFF1E6] text-[#9A3412] dark:border-[#F6C75D] dark:bg-[#3A2910] dark:text-[#F6C75D]" : "border-border hover:bg-muted"}`}
             >
               {rating === 0 ? "Any" : <><span>{rating}</span><Star className="h-3 w-3 fill-current" /></>}
             </button>
@@ -120,7 +120,7 @@ function FilterFields({
               key={condition}
               aria-pressed={draft.condition === condition}
               onClick={() => setDraft(current => ({ ...current, condition }))}
-              className={`h-9 rounded-lg border text-[11px] font-medium capitalize transition-colors ${draft.condition === condition ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-muted"}`}
+              className={`h-9 rounded-lg border text-[11px] font-medium capitalize transition-colors ${draft.condition === condition ? "border-[#C2410C] bg-[#FFF1E6] text-[#9A3412] dark:border-[#F6C75D] dark:bg-[#3A2910] dark:text-[#F6C75D]" : "border-border hover:bg-muted"}`}
             >
               {condition}
             </button>
@@ -155,7 +155,7 @@ function FilterFields({
                     type="button"
                     aria-pressed={!draft.categoryAttributes[filter]}
                     onClick={() => updateCategoryFilter(filter, "any")}
-                    className={`block w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${!draft.categoryAttributes[filter] ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"}`}
+                    className={`block w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${!draft.categoryAttributes[filter] ? "bg-[#FFF1E6] font-semibold text-[#9A3412] dark:bg-[#3A2910] dark:text-[#F6C75D]" : "hover:bg-muted"}`}
                   >
                     Any
                   </button>
@@ -165,7 +165,7 @@ function FilterFields({
                       key={option}
                       aria-pressed={draft.categoryAttributes[filter] === option}
                       onClick={() => updateCategoryFilter(filter, option)}
-                      className={`block w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${draft.categoryAttributes[filter] === option ? "bg-primary/10 font-semibold text-primary" : "hover:bg-muted"}`}
+                      className={`block w-full rounded-md px-2 py-1.5 text-left text-xs transition-colors ${draft.categoryAttributes[filter] === option ? "bg-[#FFF1E6] font-semibold text-[#9A3412] dark:bg-[#3A2910] dark:text-[#F6C75D]" : "hover:bg-muted"}`}
                     >
                       {option}
                     </button>
@@ -179,7 +179,7 @@ function FilterFields({
 
       <div className="flex gap-2 border-t border-border pt-4">
         <Button type="button" variant="outline" onClick={onReset} className="h-9 flex-1 text-xs">Reset</Button>
-        <Button type="button" onClick={onApply} className="h-9 flex-1 bg-primary text-xs text-primary-foreground">Apply</Button>
+        <Button type="button" variant="brand" onClick={onApply} className="h-9 flex-1 text-xs">Apply</Button>
       </div>
     </div>
   );
@@ -220,7 +220,7 @@ export function MarketplaceFiltersPanel({
           <h2 className="text-sm font-bold text-[#111111] dark:text-[#FAF5F2]">Refine results</h2>
           <p className="mt-0.5 text-[11px] text-muted-foreground">Narrow the live catalogue</p>
         </div>
-        {activeCount > 0 && <span className="rounded-full bg-primary/10 px-2 py-1 text-[10px] font-bold text-primary">{activeCount} active</span>}
+        {activeCount > 0 && <span className="rounded-full bg-[#FFF1E6] px-2 py-1 text-[10px] font-bold text-[#9A3412] dark:bg-[#3A2910] dark:text-[#F6C75D]">{activeCount} active</span>}
       </div>
       <FilterFields
         draft={draft}
@@ -267,7 +267,7 @@ export default function MarketplaceFilters({
         <Button variant="outline" className="h-10 gap-2 rounded-full">
           <Filter className="h-4 w-4" />
           Filters
-          {activeCount > 0 && <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold text-primary-foreground">{activeCount}</span>}
+          {activeCount > 0 && <span className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1.5 text-[10px] font-bold text-ink">{activeCount}</span>}
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full overflow-y-auto sm:max-w-md">
