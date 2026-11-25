@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { getProductTypesForCategory, getRequiredFields } from "@/lib/categoryConfig";
-import { buildSellerProductCsvTemplate, CSV_IGNORE_COLUMN, CSV_MAPPABLE_HEADERS, CSV_UNMAPPED_COLUMN, getSellerProductCsvHeaders, suggestSellerProductCsvMapping, SELLER_PRODUCT_CSV_GUIDE, SELLER_PRODUCT_CSV_TEMPLATE, validateSellerProductCsv, type CsvCategory, type CsvColumnMapping, type CsvProduct, type CsvRowError } from "@/lib/sellerProductCsv";
+import { buildSellerProductCsvErrorReport, buildSellerProductCsvTemplate, CSV_IGNORE_COLUMN, CSV_MAPPABLE_HEADERS, CSV_UNMAPPED_COLUMN, getSellerProductCsvHeaders, isSellerProductSpreadsheetFileName, readSellerProductSpreadsheet, suggestSellerProductCsvMapping, SELLER_PRODUCT_CSV_GUIDE, SELLER_PRODUCT_CSV_TEMPLATE, validateSellerProductCsv, type CsvCategory, type CsvColumnMapping, type CsvProduct, type CsvRowError } from "@/lib/sellerProductCsv";
 
 type ImportStatus = "ready" | "imported" | "error";
 type ImportRow = { product: CsvProduct; status: ImportStatus; error?: string; sku?: string };
@@ -188,8 +188,8 @@ export default function SellerProductCsvImporter({
     setSourceHeaders([]);
     setColumnMapping({});
     if (!file) return;
-    if (!file.name.toLowerCase().endsWith(".csv")) {
-      setFileError("Choose a .csv file exported from Excel or Google Sheets.");
+    if (!isSellerProductSpreadsheetFileName(file.name)) {
+      setFileError("Choose a CSV or Excel workbook (.xlsx or .xls) exported from your spreadsheet app.");
       return;
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -197,7 +197,7 @@ export default function SellerProductCsvImporter({
       return;
     }
     try {
-      const contents = await file.text();
+      const contents = await readSellerProductSpreadsheet(file);
       const headers = getSellerProductCsvHeaders(contents);
       const mapping = suggestSellerProductCsvMapping(headers);
       setFileName(file.name);
@@ -312,7 +312,7 @@ export default function SellerProductCsvImporter({
         <DialogHeader>
           <DialogTitle>Import products from a spreadsheet</DialogTitle>
           <DialogDescription>
-            Add up to 1,000 listings in one CSV. We validate the entire file before creating products; new listings still go through the normal approval process.
+            Add up to 1,000 listings in one CSV or Excel workbook. We validate the entire file before creating products; new listings still go through the normal approval process.
           </DialogDescription>
         </DialogHeader>
 
@@ -412,11 +412,11 @@ export default function SellerProductCsvImporter({
           )}
 
           <div>
-            <label htmlFor="seller-product-csv" className="mb-1 block text-sm font-medium">Choose a CSV file</label>
+            <label htmlFor="seller-product-csv" className="mb-1 block text-sm font-medium">Choose a CSV or Excel file</label>
             <input
               id="seller-product-csv"
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
               disabled={importing || categoriesLoading || categories.length === 0}
               onChange={(event) => {
                 const file = event.target.files?.[0];
@@ -426,7 +426,7 @@ export default function SellerProductCsvImporter({
               className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-muted file:px-3 file:py-1.5 file:text-sm"
             />
             <p className="mt-1 text-xs text-muted-foreground">
-              {categoriesLoading ? "Loading product categories…" : categories.length === 0 ? "No product categories are available. Refresh or contact support before importing." : "CSV only, up to 5 MB. The importer accepts a maximum of 1,000 product rows."}
+              {categoriesLoading ? "Loading product categories…" : categories.length === 0 ? "No product categories are available. Refresh or contact support before importing." : "CSV or Excel, up to 5 MB. Excel imports use the first non-empty worksheet and the importer accepts a maximum of 1,000 product rows."}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">Each row imports one single-price listing. SKU variant matrices are not imported; use the product form for listings with selectable variants.</p>
           </div>
@@ -436,7 +436,18 @@ export default function SellerProductCsvImporter({
 
           {fileErrors.length > 0 && (
             <div className="max-h-40 space-y-2 overflow-y-auto rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
-              <p className="flex items-center gap-2 text-sm font-semibold"><CircleAlert className="h-4 w-4" /> Fix these rows in the spreadsheet, then upload it again</p>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <p className="flex items-center gap-2 text-sm font-semibold"><CircleAlert className="h-4 w-4" /> Fix these rows in the spreadsheet, then upload it again</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 shrink-0 bg-background"
+                  onClick={() => downloadFile(`${fileName.replace(/\.(csv|xlsx|xls)$/i, "") || "tradibu-product-import"}-errors.csv`, buildSellerProductCsvErrorReport(fileErrors))}
+                >
+                  <Download className="mr-2 h-4 w-4" /> Download error report
+                </Button>
+              </div>
               {fileErrors.slice(0, 30).map((item) => (
                 <p key={`${item.rowNumber}-${item.title}`} className="text-xs">
                   <strong>Row {item.rowNumber} ({item.title}):</strong> {item.errors.join(" ")}

@@ -11,6 +11,7 @@ const OPTIONAL_HEADERS = [
 export const CSV_IGNORE_COLUMN = "__ignore__";
 export const CSV_UNMAPPED_COLUMN = "__unmapped__";
 export const CSV_MAPPABLE_HEADERS = [...REQUIRED_HEADERS, ...OPTIONAL_HEADERS];
+export const SELLER_PRODUCT_SPREADSHEET_EXTENSIONS = [".csv", ".xlsx", ".xls"] as const;
 
 const HEADER_ALIASES: Record<string, string[]> = {
   title: ["product_name", "product_title", "item_name", "item_title", "name"],
@@ -65,6 +66,61 @@ export interface CsvRowError {
 export interface CsvValidationResult {
   products: CsvProduct[];
   errors: CsvRowError[];
+}
+
+function escapeCsvCell(value: string): string {
+  return `"${value.replace(/"/g, '""')}"`;
+}
+
+/**
+ * Creates a small, spreadsheet-friendly report for rows rejected by the
+ * validator. It contains only the source row number, the normalized title
+ * used in the preview, and the actionable validation messages; it never adds
+ * or changes product facts.
+ */
+export function buildSellerProductCsvErrorReport(errors: CsvRowError[]): string {
+  const rows = [
+    ["row_number", "product_title", "errors"],
+    ...errors.map((item) => [String(item.rowNumber), item.title, item.errors.join(" ")]),
+  ];
+  return rows.map((row) => row.map(escapeCsvCell).join(",")).join("\r\n") + "\r\n";
+}
+
+export function isSellerProductSpreadsheetFileName(fileName: string): boolean {
+  const normalizedName = fileName.trim().toLowerCase();
+  return SELLER_PRODUCT_SPREADSHEET_EXTENSIONS.some((extension) => normalizedName.endsWith(extension));
+}
+
+/**
+ * Converts the seller's first non-empty worksheet to the same CSV contract
+ * used by the existing validator. Reading happens in the browser, before any
+ * row is sent to Supabase; the validated import RPC remains the only write
+ * path. CSV files are returned untouched so their existing parsing behavior is
+ * preserved.
+ */
+export async function readSellerProductSpreadsheet(file: {
+  name: string;
+  text: () => Promise<string>;
+  arrayBuffer: () => Promise<ArrayBuffer>;
+}): Promise<string> {
+  const normalizedName = file.name.trim().toLowerCase();
+  if (normalizedName.endsWith(".csv")) return file.text();
+  if (!normalizedName.endsWith(".xlsx") && !normalizedName.endsWith(".xls")) {
+    throw new Error("Choose a CSV or Excel workbook (.xlsx or .xls) exported from your spreadsheet app.");
+  }
+
+  // Keep the seller-products route light for sellers who only use the form or
+  // CSV. The parser is loaded only after an Excel workbook is selected.
+  const XLSX = await import("xlsx");
+  const workbook = XLSX.read(await file.arrayBuffer(), { type: "array", dense: true, cellDates: false });
+  for (const sheetName of workbook.SheetNames) {
+    const sheet = workbook.Sheets[sheetName];
+    if (!sheet?.["!ref"]) continue;
+    const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false, RS: "\r\n" });
+    if (csv.trim()) return csv;
+  }
+
+  throw new Error("The Excel workbook does not contain a non-empty worksheet.");
 }
 
 function parseRecords(csv: string): string[][] {
@@ -430,6 +486,7 @@ export function buildSellerProductCsvTemplate(category: CsvCategory, productType
 
 export const SELLER_PRODUCT_CSV_GUIDE = [
   "Required columns: title, description, price, stock_quantity, category_slug, product_type, image_urls.",
+  "Excel workbooks are supported: Tradibu reads the first non-empty worksheet and sends it through the same CSV validation rules. Keep one header row and one product per row.",
   "Use category name/slug and product type key/label shown in the seller listing form. Common spreadsheet headers such as product_name, barcode, stock, and images are mapped during preview.",
   "Use the tailored template for a category/product type: it includes only valid attr_fieldname columns and marks required fields in the category reference. Brand and condition use the standard columns.",
   "Prices and stock accept normal spreadsheet formatting such as ₦1,089,000, 1,089,000, or 1 000. No currency conversion is performed.",

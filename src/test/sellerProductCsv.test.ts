@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CSV_IGNORE_COLUMN, buildSellerProductCsvTemplate, getSellerProductCsvHeaders, normalizeSellerListingDescription, normalizeSellerListingTitle, parseSellerProductCsvMoney, parseSellerProductCsvWholeNumber, suggestSellerProductCsvMapping, validateSellerProductCsv } from "@/lib/sellerProductCsv";
+import * as XLSX from "xlsx";
+import { buildSellerProductCsvErrorReport, CSV_IGNORE_COLUMN, buildSellerProductCsvTemplate, getSellerProductCsvHeaders, isSellerProductSpreadsheetFileName, normalizeSellerListingDescription, normalizeSellerListingTitle, parseSellerProductCsvMoney, parseSellerProductCsvWholeNumber, readSellerProductSpreadsheet, suggestSellerProductCsvMapping, validateSellerProductCsv } from "@/lib/sellerProductCsv";
 import { getProductTypesForCategory } from "@/lib/categoryConfig";
 
 const fashion = { id: "fashion-id", name: "Fashion", slug: "fashion" };
@@ -188,5 +189,40 @@ describe("validateSellerProductCsv", () => {
     expect(template).toContain("attr_storage");
     expect(template).not.toContain("attr_brand");
     expect(template).not.toContain("attr_condition");
+  });
+
+  it("builds a downloadable error report without changing row facts", () => {
+    const report = buildSellerProductCsvErrorReport([
+      { rowNumber: 7, title: "Apple, iPhone", errors: ["Add a product title.", "Price must be greater than zero."] },
+    ]);
+
+    expect(report).toBe([
+      '"row_number","product_title","errors"',
+      '"7","Apple, iPhone","Add a product title. Price must be greater than zero."',
+      "",
+    ].join("\r\n"));
+  });
+
+  it("reads the first non-empty worksheet from Excel through the CSV contract", async () => {
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([]), "Cover");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet([
+      ["title", "description"],
+      ["Apple iPhone", "A phone with a long enough description for the seller listing validator."],
+    ]), "Products");
+    const buffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
+
+    expect(isSellerProductSpreadsheetFileName("catalog.xlsx")).toBe(true);
+    expect(isSellerProductSpreadsheetFileName("catalog.xls")).toBe(true);
+    expect(isSellerProductSpreadsheetFileName("catalog.csv")).toBe(true);
+    expect(isSellerProductSpreadsheetFileName("catalog.pdf")).toBe(false);
+
+    const csv = await readSellerProductSpreadsheet({
+      name: "catalog.xlsx",
+      text: async () => "",
+      arrayBuffer: async () => buffer,
+    });
+    expect(csv).toContain("title,description");
+    expect(csv).toContain("Apple iPhone");
   });
 });
