@@ -78,6 +78,12 @@ interface SellerRow {
   full_name: string | null;
 }
 
+interface SellerStoreRow {
+  seller_id: string;
+  bio: string | null;
+  logo_url: string | null;
+}
+
 interface StaticRoute {
   path: string;
   seo: PageSeoInput;
@@ -279,12 +285,34 @@ async function sellerRoutes(supabase: ResolvedSupabase): Promise<StaticRoute[]> 
     "seller_profiles_public",
     `select=user_id,full_name&user_id=in.(${ids.join(",")})`,
   );
+  let stores: SellerStoreRow[] = [];
+  try {
+    stores = await fetchRows<SellerStoreRow>(
+      supabase,
+      "seller_stores",
+      `select=seller_id,bio,logo_url&seller_id=in.(${ids.join(",")})`,
+    );
+  } catch (error) {
+    // Store branding is optional SEO enrichment. A seller storefront should
+    // still be prerendered from its approved public profile if this optional
+    // table is unavailable to the build-time anon key.
+    console.warn(`[prerender] seller store enrichment skipped: ${String(error)}`);
+  }
+  const storesBySeller = new Map(stores.map((store) => [store.seller_id, store]));
   return rows
     .filter((row) => Boolean(row.user_id))
-    .map((row) => ({
-      path: `/seller/${row.user_id}`,
-      seo: buildSellerSeo({ id: row.user_id, storeName: (row.full_name || "").trim() || "Store" }),
-    }));
+    .map((row) => {
+      const store = storesBySeller.get(row.user_id);
+      return {
+        path: `/seller/${row.user_id}`,
+        seo: buildSellerSeo({
+          id: row.user_id,
+          storeName: (row.full_name || "").trim() || "Store",
+          description: store?.bio,
+          logoUrl: store?.logo_url,
+        }),
+      };
+    });
 }
 
 /**

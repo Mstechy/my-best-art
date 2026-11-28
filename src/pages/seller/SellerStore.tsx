@@ -173,6 +173,41 @@ export default function SellerStore() {
               </div>
             </div>
           </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-medium text-foreground">Returns and warranty</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              These details appear on your product pages. For the platform-wide policy, buyers can always use the public
+              <Link to="/refund-policy" className="ml-1 underline underline-offset-2">Refund and Return Policy</Link>.
+            </p>
+            <div className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="return-accepted">Do you accept returns?</Label>
+                <select
+                  id="return-accepted"
+                  value={returnAccepted}
+                  onChange={(e) => setReturnAccepted(e.target.value)}
+                  className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                >
+                  <option value="">Use platform policy</option>
+                  <option value="yes">Yes</option>
+                  <option value="no">No</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="return-window">Return window (days)</Label>
+                <Input id="return-window" type="number" min="0" value={returnWindowDays} onChange={(e) => setReturnWindowDays(e.target.value)} placeholder="Optional" />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="return-policy">Return policy details</Label>
+                <Textarea id="return-policy" value={returnPolicy} onChange={(e) => setReturnPolicy(e.target.value)} rows={3} placeholder="Describe eligibility, condition and required proof." />
+              </div>
+              <div className="sm:col-span-2">
+                <Label htmlFor="warranty-terms">Warranty terms</Label>
+                <Textarea id="warranty-terms" value={warrantyTerms} onChange={(e) => setWarrantyTerms(e.target.value)} rows={3} placeholder="State the warranty duration and what it covers, or leave blank." />
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

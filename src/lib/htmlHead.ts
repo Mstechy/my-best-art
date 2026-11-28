@@ -14,6 +14,9 @@
  * `Array.prototype.at` - both are newer than ES2020.
  */
 
+/** Stable id shared by build-time page JSON-LD and the runtime SEO hook. */
+export const PAGE_STRUCTURED_DATA_ID = "page-structured-data";
+
 /**
  * Insert `snippet` immediately before `</head>`.
  *

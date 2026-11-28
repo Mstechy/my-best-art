@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useParams, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,16 +57,19 @@ export default function SellerStorePage() {
   const [loadError, setLoadError] = useState(false);
 
   // Declared above the early returns below, because a hook cannot run
-  // conditionally. The name starts as the same "Store" placeholder the heading
-  // falls back to and is replaced the moment the seller row lands - the value
-  // the prerenderer wrote at build time, which is what a crawler reads before
-  // any of this runs.
-  useSEO(
-    buildSellerSeo({
-      id: id || "",
-      storeName: seller?.full_name?.trim() || "Store",
-    }),
+  // conditionally. The SEO node starts with safe public fallbacks and is
+  // replaced with the seller's live name, bio and logo as those rows arrive.
+  const sellerSeo = useMemo(
+    () =>
+      buildSellerSeo({
+        id: id || "",
+        storeName: seller?.full_name?.trim() || "Store",
+        description: store?.bio,
+        logoUrl: store?.logo_url || seller?.avatar_url,
+      }),
+    [id, seller?.full_name, seller?.avatar_url, store?.bio, store?.logo_url],
   );
+  useSEO(sellerSeo);
   const { policies, isLoading: policiesLoading, sourceLabel } = useResolvedPolicies(id, null);
 
   useEffect(() => {

@@ -25,8 +25,21 @@
  * BOTH tsconfig.app.json (lib: ES2020 + DOM) and tsconfig.node.json (lib:
  * ES2023, strict). No `replaceAll`, no `Array.prototype.at`.
  */
-import { setCanonical, setMeta, setTitle, stripHomeShell, stripImagePreloads, stripLandingPreloads } from "./htmlHead";
+import {
+  PAGE_STRUCTURED_DATA_ID,
+  insertBeforeHeadClose,
+  setCanonical,
+  setMeta,
+  setTitle,
+  stripHomeShell,
+  stripImagePreloads,
+  stripJsonLdByType,
+  stripLandingPreloads,
+  toHtmlJsonLd,
+} from "./htmlHead";
 import { META_DESCRIPTION_MAX, buildPageTitle, resolveSiteUrl, truncateText } from "./productSeo";
+
+const SITE_NAME = "Tradibu";
 
 /**
  * Homepage copy.
@@ -85,6 +98,10 @@ export interface PageSeoInput {
   url: string;
   title: string;
   description: string;
+  /** Optional real image used for social previews and storefront schema. */
+  image?: string | null;
+  /** Optional route-specific JSON-LD node. Never populated with guessed data. */
+  structuredData?: Record<string, unknown>;
 }
 
 export interface StaticPageSeo {
@@ -301,20 +318,59 @@ export function buildCollectionSeo(input: {
 /**
  * Seller storefront: `/seller/<id>`.
  *
- * Deliberately built from the store name alone. Mentioning the seller's bio or
- * their live product count would look richer, but both change without a deploy,
- * so the static file written at build time and the page rendered at visit time
- * would start to disagree the moment a seller edits their store - which is the
- * drift this whole arrangement exists to prevent.
+ * Built from the seller's public profile fields when they are available. The
+ * prerenderer uses the same builder with the profile snapshot it fetched, while
+ * the runtime hook replaces the node when live data arrives. No ratings, sales
+ * counts, addresses or other claims are inferred here.
  */
-export function buildSellerSeo(input: { id: string; storeName: string }): PageSeoInput {
+export function buildSellerJsonLd(input: {
+  id: string;
+  storeName: string;
+  description?: string | null;
+  logoUrl?: string | null;
+}): Record<string, unknown> {
+  const url = resolveSiteUrl(`/seller/${encodeURIComponent(input.id)}`);
+  const name = truncateText(input.storeName.trim() || "Store", 100);
+  const schema: Record<string, unknown> = {
+    "@context": "https://schema.org",
+    "@type": "Store",
+    "@id": `${url}#store`,
+    name,
+    url,
+    description: buildPageDescription(
+      input.description,
+      `Shop products from ${name} on Tradibu, an independent seller storefront with secure Paystack payments.`,
+    ),
+    parentOrganization: {
+      "@type": "Organization",
+      name: SITE_NAME,
+      url: resolveSiteUrl("/"),
+    },
+  };
+
+  const logoUrl = input.logoUrl && input.logoUrl.trim();
+  if (logoUrl) {
+    schema.logo = resolveSiteUrl(logoUrl);
+    schema.image = resolveSiteUrl(logoUrl);
+  }
+  return schema;
+}
+
+export function buildSellerSeo(input: {
+  id: string;
+  storeName: string;
+  description?: string | null;
+  logoUrl?: string | null;
+}): PageSeoInput {
   return {
     url: `/seller/${encodeURIComponent(input.id)}`,
     title: input.storeName,
+    image: input.logoUrl || null,
     description: buildPageDescription(
-      null,
+      input.description,
       `Shop ${input.storeName} on Tradibu - an independent seller on Tradibu with secure Paystack payments and store delivery policies.`,
     ),
+    structuredData: buildSellerJsonLd(input),
   };
 }
 
@@ -326,10 +382,10 @@ export function buildSellerSeo(input: { id: string; storeName: string }): PageSe
  * primitives from `./htmlHead`, so both writers produce the same markup from the
  * same instruction.
  *
- * No structured data is added or removed here. The shell's WebSite/Organization
- * `@graph` is site-level and correct on every page, and a page-specific node
- * would be inventing evidence this function does not have: a department page has
- * no offer, no rating and no dates to declare.
+ * The shell's WebSite/Organization `@graph` is site-level and correct on every
+ * page. Route-specific structured data is only added when the caller supplies a
+ * data-backed node, such as a seller's public Store profile; no offer, rating,
+ * sales count or other unsupported claim is synthesized here.
  *
  * The homepage-only hints - the hero image preload, the landing route's
  * modulepreload block and the first-paint shell in `#root` - are stripped on
@@ -363,6 +419,16 @@ export function injectPageHead(html: string, input: PageSeoInput): string {
   out = setMeta(out, "property", "og:url", absoluteUrl);
   out = setMeta(out, "name", "twitter:title", title);
   out = setMeta(out, "name", "twitter:description", input.description);
+  if (input.image) {
+    const absoluteImage = new URL(input.image, resolveSiteUrl("/")).toString();
+    out = setMeta(out, "property", "og:image", absoluteImage);
+    out = setMeta(out, "name", "twitter:image", absoluteImage);
+  }
+  if (input.structuredData) {
+    const schemaType = typeof input.structuredData["@type"] === "string" ? input.structuredData["@type"] : null;
+    if (schemaType) out = stripJsonLdByType(out, schemaType);
+    out = insertBeforeHeadClose(out, toHtmlJsonLd(input.structuredData, PAGE_STRUCTURED_DATA_ID));
+  }
   out = setCanonical(out, absoluteUrl);
   return out;
 }

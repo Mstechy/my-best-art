@@ -12,6 +12,7 @@ import {
   buildDepartmentSeo,
   buildLegalPageDescription,
   buildMarketplaceDescription,
+  buildSellerJsonLd,
   buildSellerSeo,
   canonicalPathFor,
   canonicalUrlFor,
@@ -300,6 +301,37 @@ describe("injectPageHead", () => {
     expect(marketplacePage).toContain('"SearchAction"');
     expect(marketplacePage).not.toMatch(/"@type":\s*"Product"/);
     expect(marketplacePage).not.toContain('id="page-structured-data"');
+  });
+
+  it("publishes one data-backed seller Store node and its public logo", () => {
+    const seller = buildSellerSeo({
+      id: "seller-1",
+      storeName: "Ada Stores",
+      description: "Independent electronics seller in Lagos.",
+      logoUrl: "/uploads/ada-stores.webp",
+    });
+    const page = injectPageHead(shell, seller);
+    expect(page).toContain('id="page-structured-data"');
+    expect(page).toContain('"@type":"Store"');
+    expect(page).toContain('"name":"Ada Stores"');
+    expect(page).toContain('"@id":"https://www.tradibu.com/seller/seller-1#store"');
+    expect(page).toContain('property="og:image" content="https://www.tradibu.com/uploads/ada-stores.webp"');
+    expect(page).toContain('name="twitter:image" content="https://www.tradibu.com/uploads/ada-stores.webp"');
+    expect(page).toContain("Independent electronics seller in Lagos.");
+    expect(count(page, '"@type":"Store"')).toBe(1);
+
+    // A second prerender pass must replace the route node rather than creating
+    // duplicate Store entities beside the site-wide graph.
+    const twice = injectPageHead(page, seller);
+    expect(count(twice, 'id="page-structured-data"')).toBe(1);
+    expect(count(twice, '"@type":"Store"')).toBe(1);
+  });
+
+  it("does not invent seller ratings or sales data", () => {
+    expect(buildSellerJsonLd({ id: "seller-1", storeName: "Ada Stores" })).not.toHaveProperty(
+      "aggregateRating",
+    );
+    expect(buildSellerJsonLd({ id: "seller-1", storeName: "Ada Stores" })).not.toHaveProperty("reviewCount");
   });
 
   it("cannot be broken out of by markup in a title or a description", () => {

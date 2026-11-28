@@ -8,6 +8,7 @@ import {
 } from "@/lib/productSeo";
 import { getProductCardImageUrl } from "@/lib/productImageUrls";
 import { getProductPath, getProductUrl } from "@/lib/productUrls";
+import { PAGE_STRUCTURED_DATA_ID } from "@/lib/htmlHead";
 
 interface SEOProps {
   title?: string;
@@ -26,8 +27,8 @@ const SITE_URL = "https://www.tradibu.com";
 const DEFAULT_DESCRIPTION = "Connecting buyers with independent sellers on Tradibu. Shop with secure Paystack payments and clear seller delivery and return terms.";
 const DEFAULT_IMAGE = "/placeholder.svg";
 
-/** `id` of the structured-data script `useSEO` itself owns. Exported because the reconciliation tests assert against it. */
-export const PAGE_STRUCTURED_DATA_ID = "page-structured-data";
+/** Exported for reconciliation tests and other head writers. */
+export { PAGE_STRUCTURED_DATA_ID } from "@/lib/htmlHead";
 
 /**
  * The path currently being rendered.
