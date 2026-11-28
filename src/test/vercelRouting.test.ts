@@ -66,4 +66,11 @@ describe("vercel.json routing", () => {
   it("keeps the catch-all after the specific rewrites", () => {
     expect(rewrites.findIndex((rule) => rule.source === "/(.*)")).toBe(rewrites.length - 1);
   });
+
+  it("serves the seller sitemap from a live API route", () => {
+    expect(rewrites).toContainEqual({
+      source: "/sitemap-sellers.xml",
+      destination: "/api/sitemap-sellers",
+    });
+  });
 });

@@ -389,32 +389,6 @@ async function prerender(root: string, mode: string): Promise<void> {
     undefined,
   );
 
-  // Public seller storefronts are data-backed too. Keep this separate from the
-  // department/collection sitemap so search engines can crawl the marketplace's
-  // two discovery surfaces independently. `sellerRoutes` already limits this
-  // list to sellers with active, approved products and uses the same canonical
-  // route/head data that is written below. The file is written even when the
-  // live catalogue is unavailable, so the sitemap index never points at a
-  // missing document after a build with no Supabase credentials.
-  await attempt(
-    "sitemap-sellers.xml",
-    async () => {
-      const today = new Date().toISOString().slice(0, 10);
-      const urls = sellers
-        .map(
-          (route) =>
-            `  <url><loc>${canonicalUrlFor(route.path).replace(/&/g, "&amp;")}</loc><lastmod>${today}</lastmod>` +
-            `<changefreq>daily</changefreq><priority>0.6</priority></url>`,
-        )
-        .join("\n");
-      const xml =
-        `<?xml version="1.0" encoding="UTF-8"?>\n` +
-        `<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`;
-      await fs.writeFile(path.join(dist, "sitemap-sellers.xml"), xml, "utf8");
-    },
-    undefined,
-  );
-
   // One unwritable route must not cost the other forty their <head>, so each is
   // fenced on its own and the run continues. Two writers never interleave on one
   // file, because `dedupeByPath` already saw to that.

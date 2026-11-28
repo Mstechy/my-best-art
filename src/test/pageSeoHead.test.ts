@@ -415,9 +415,17 @@ describe("the build wiring", () => {
   });
 
   it("generates seller sitemap URLs from the dynamic storefront route set", () => {
-    expect(publicPrerenderer).toContain('"sitemap-sellers.xml"');
     expect(publicPrerenderer).toContain("sellerRoutes(supabase)");
     expect(publicPrerenderer).toContain("canonicalUrlFor(route.path)");
+  });
+
+  it("keeps the live seller sitemap endpoint data-backed", () => {
+    const sellerSitemap = read("api/sitemap-sellers.js");
+    expect(sellerSitemap).toContain('.from("products")');
+    expect(sellerSitemap).toContain('.eq("status", "active")');
+    expect(sellerSitemap).toContain('.eq("is_approved", true)');
+    expect(sellerSitemap).toContain('.from("seller_profiles_public")');
+    expect(sellerSitemap).toContain('`<url><loc>${SITE_URL}/seller/');
   });
 });
 

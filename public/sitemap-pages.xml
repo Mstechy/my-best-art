@@ -17,9 +17,10 @@
   prerendered page declares its own canonical. The bare /categories URL is a
   permanent redirect to /marketplace and is intentionally not submitted.
 
-  Public seller storefronts are also data-backed and are written by the build to
-  sitemap-sellers.xml. Only approved sellers with at least one active approved
-  product are included; seller dashboard routes remain blocked by robots.txt.
+  Public seller storefronts are also data-backed and are served from
+  sitemap-sellers.xml by the live API route. Only approved sellers with at
+  least one active approved product are included; seller dashboard routes
+  remain blocked by robots.txt.
 -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://www.tradibu.com/</loc><changefreq>daily</changefreq><priority>1.0</priority></url>
