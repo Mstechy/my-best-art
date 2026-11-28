@@ -377,8 +377,17 @@ describe("the submitted sitemap", () => {
   });
 });
 
+describe("the sitemap index", () => {
+  const index = read("public/sitemap.xml");
+
+  it("submits the dynamic seller storefront sitemap", () => {
+    expect(index).toContain("https://www.tradibu.com/sitemap-sellers.xml");
+  });
+});
+
 describe("the build wiring", () => {
   const config = read("vite.config.ts");
+  const publicPrerenderer = read("scripts/prerenderPublicPages.ts");
 
   it("runs the page prerenderer, and runs it after the preload rewrite", () => {
     // Registration order is execution order for `writeBundle`, and the page
@@ -403,6 +412,12 @@ describe("the build wiring", () => {
     // in src/test/vercelRouting.test.ts; this is the other half.
     const vercel = JSON.parse(read("vercel.json")) as { cleanUrls?: boolean };
     expect(vercel.cleanUrls).toBe(true);
+  });
+
+  it("generates seller sitemap URLs from the dynamic storefront route set", () => {
+    expect(publicPrerenderer).toContain('"sitemap-sellers.xml"');
+    expect(publicPrerenderer).toContain("sellerRoutes(supabase)");
+    expect(publicPrerenderer).toContain("canonicalUrlFor(route.path)");
   });
 });
 
